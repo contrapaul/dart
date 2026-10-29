@@ -13,15 +13,29 @@ a floor; clicking drops more. No gameplay yet.
 Next up: ENG-01 (game loop and input) and ENG-03 (voxel chunk storage), which
 can run in parallel. P0 prototype due 2026-11-12.
 
+Live at https://dart.contrapaul.com since 2026-10-30, deployed by hand with
+`npm run deploy`. Repo: github.com/contrapaul/dart (public).
+
 ## Open items
 
+- [ ] Paul: connect the repo in the Cloudflare dashboard so a push to `main`
+      deploys (Workers & Pages > dart > Settings > Builds > Connect, build
+      command `npm run build`, deploy command `npx wrangler deploy`). Until
+      then, deploy with `npm run deploy`.
 - [ ] Paul: confirm the code licence (MIT, copied from build) is what you want.
 - [ ] Paul: which model you run in Pi (PLAN.md 11.1).
 - [ ] Paul: blaster cards, story outline, Foamer names (PRE-02 to PRE-05).
 
 ## Gotchas that have already bitten
 
-(none yet)
+- **Bundle is 4.9 MB (1.8 MB gzipped), almost all Rapier.** The compat
+  build inlines its WebAssembly as base64. Fine for now; at OPS-02 consider
+  the non-compat `@dimforge/rapier3d` with the `.wasm` served as its own
+  file, and splitting Three.js into its own cached chunk.
+- **A new custom domain answers 500 for about a minute** after the first
+  deploy while Cloudflare provisions it. Wait before assuming it failed.
+- **The dev server is started from the workspace launch config**
+  (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
 
@@ -38,3 +52,6 @@ can run in parallel. P0 prototype due 2026-11-12.
   revalidates the HTML.
 - `.gitignore` keeps `reference/` and `audio-raw/` out of the public repo.
 - Title on the page is placeholder text until Paul's logo exists.
+- Verified: `npm run build` passes; the scene runs with no console errors both
+  locally and on https://dart.contrapaul.com. Not verified: frame rate on the
+  benchmark Mac (nothing heavy to measure yet), push-to-deploy (not connected).

@@ -575,3 +575,4 @@ All twelve answered 2026-10-29.
 | 2026-10-29 | Pi is the second coding agent (review and parallel work). | 11.1 |
 | 2026-10-29 | Try Hunyuan3D locally for blaster meshes, gated by spike ART-00. | 11.1, 12 |
 | 2026-10-29 | Blaster sound effects recorded from Paul's own blasters. | 8.3 |
+| 2026-10-30 | PRE-09 done: public repo contrapaul/dart, live at dart.contrapaul.com. Code licence MIT (to confirm). | 7.6 |
