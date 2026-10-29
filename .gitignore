@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+dist/
+.wrangler/
+# Temporary copies left by sandboxed file writes.
+*.sb-*
+
+# Reference photos of real blasters are other people's copyright. They stay
+# on Paul's machine; only the written design briefs are committed.
+reference/
+# Raw blaster recordings. Only edited sound files in assets/audio are published.
+audio-raw/

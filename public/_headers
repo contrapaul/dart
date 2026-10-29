@@ -1,0 +1,9 @@
+# index.html must never be stale, so a fix reaches players straight away.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Vite puts a content hash in every filename under /assets: cache hard.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

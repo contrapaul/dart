@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Static assets only: Vite builds the game into dist/ and Cloudflare serves
+  // it. The custom_domain route creates the DNS record in the contrapaul.com
+  // zone on first deploy.
+  "name": "dart",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [{ "pattern": "dart.contrapaul.com", "custom_domain": true }]
+}
