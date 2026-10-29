@@ -59,8 +59,9 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
   Gamepad: RT fire, LT shield, RB melee, LB dash, A jump, LS click sprint,
   Start pause. All placeholders until playtests.
 - Verified in the Browser pane with a simulated lock: lock hides the
-  overlay, unlock pauses, held W walks, mouse moves the view, a sub-frame
-  click fires exactly once. Not verified: real Pointer Lock (the pane refuses
+  overlay, unlock pauses, held W walks, mouse moves the view, instant
+  click taps (down and up in the same frame) still throw blocks; the exact
+  one-block-per-tap count was not measured. Not verified: real Pointer Lock (the pane refuses
   it; Paul to try on the live site) and gamepad (no pad attached).
 - Push-to-deploy confirmed: the push at 16:42 UTC built and deployed.
 
