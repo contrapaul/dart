@@ -1,0 +1,17 @@
+{
+  "_note": "Voxel materials. id 0 is empty space. hardness scales how much a hit carves (1 = normal foam); indestructible voxels anchor structures and never break. Foam colours are placeholders until Paul picks Foamer colours.",
+  "materials": [
+    { "id": 1, "name": "foam-orange", "color": "#ff7a1a", "hardness": 1 },
+    { "id": 2, "name": "foam-blue", "color": "#2ec4ff", "hardness": 1 },
+    { "id": 3, "name": "foam-lime", "color": "#b6ff3b", "hardness": 1 },
+    { "id": 4, "name": "foam-pink", "color": "#ff4fa3", "hardness": 1 },
+    { "id": 5, "name": "foam-yellow", "color": "#ffd23f", "hardness": 1 },
+    { "id": 6, "name": "foam-purple", "color": "#9b5cff", "hardness": 1 },
+    { "id": 20, "name": "cardboard", "color": "#c89a5b", "hardness": 0.7 },
+    { "id": 21, "name": "plastic", "color": "#e8e4f0", "hardness": 1.5 },
+    { "id": 22, "name": "wood", "color": "#a0673a", "hardness": 2.5 },
+    { "id": 23, "name": "brick", "color": "#b85c4a", "hardness": 4 },
+    { "id": 24, "name": "concrete", "color": "#8f8a9e", "hardness": 6 },
+    { "id": 255, "name": "bedrock", "color": "#3d2f6b", "hardness": 0, "indestructible": true }
+  ]
+}

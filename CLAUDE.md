@@ -106,7 +106,8 @@ saying you are finished. Record decisions in PLAN.md section 14.
 ## Working on it
 
 - `npm install`, then `npm run dev` (Vite, http://localhost:5173).
-- `npm run build` type-checks and builds to `dist/`.
+- `npm run build` type-checks and builds to `dist/`. `npm test` runs the
+  Vitest unit tests in `tests/`.
 - Deploy: push to `main`. Cloudflare runs `npm run build` and serves
   `dist/`. `npm run deploy` also works from a machine logged in to wrangler.
 - Work is split into task cards (PLAN.md sections 11 and 12). One owner per

@@ -6,11 +6,15 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 and ENG-02 done. The test course: click to capture the mouse,
+PRE-09, ENG-01, ENG-02 and ENG-03 done. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and walls.
 Fire throws foam blocks. Esc or gamepad Start pauses.
 
-Next up: ENG-03 (voxel chunk storage). P0 prototype due 2026-11-12.
+Voxel storage exists but nothing draws voxels yet.
+
+Next up: ENG-04 (greedy mesher in a Web Worker pool), then ENG-05 (carve and
+debris) and ENG-06 (break-off islands). ENG-07 (foam shader) and GAME-01
+(dart projectiles) can run alongside. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo
 in the Cloudflare dashboard: a push to `main` builds (`npm run build`) and
@@ -38,6 +42,25 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: ENG-03 voxel chunk storage and material palette
+
+- `src/voxel/chunk.ts`: `Chunk` (32 x 32 x 32 bytes, index
+  `x + z*32 + y*1024`, non-empty count) and `VoxelVolume` (sparse map of
+  chunks, any integer voxel coordinate including negatives, per-volume
+  `voxelSize` in metres). Empty chunks are freed. Edits mark their chunk
+  dirty, plus the neighbour chunk when the voxel sits on an edge, because the
+  mesher (ENG-04) needs both sides of a boundary face. `takeDirty()` hands
+  the mesher the keys, including keys of freed chunks so their meshes can be
+  dropped.
+- `src/voxel/materials.ts` + `data/materials.json`: palette of up to 255
+  materials with colour, hardness (damage is divided by it) and an
+  indestructible flag for anchors. Six foam colours are placeholders until
+  Paul picks Foamer colours; also cardboard, plastic, wood, brick, concrete,
+  bedrock. Bad ids, duplicate ids and duplicate names throw at load.
+- Added Vitest (`npm test`); 12 tests in `tests/voxel/`.
+- Verified: tests pass, types check, build passes. Not verified: anything
+  visual (no mesher yet) or performance.
 
 ### 2026-10-30: ENG-02 first person controller
 
