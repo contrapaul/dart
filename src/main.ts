@@ -4,6 +4,10 @@ import { createPhysics } from "./physics/world";
 import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
+import { VoxelVolume } from "./voxel/chunk";
+import { materialId } from "./voxel/materials";
+import { MesherPool } from "./voxel/mesher-pool";
+import { VolumeMesh } from "./voxel/volume-mesh";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -63,6 +67,26 @@ addBox(0, 2, 20, 40, 4, 1, WALL);
 addBox(-20, 2, 0, 1, 4, 40, WALL);
 addBox(20, 2, 0, 1, 4, 40, WALL);
 
+// Voxel demo (ENG-04): a 4 m foam wall at 0.1 m voxels, wide enough to
+// cross a chunk seam, with carved holes. ENG-05 adds carving by damage.
+const VOXEL = 0.1;
+const voxels = new VoxelVolume(VOXEL);
+const stripes = ["foam-orange", "foam-blue", "foam-lime", "foam-pink", "foam-yellow", "foam-purple"].map(materialId);
+for (let y = 0; y < 24; y++) voxels.fillBox(0, y, 0, 39, y, 3, stripes[Math.floor(y / 4)]);
+voxels.fillBox(0, 0, 0, 39, 0, 3, materialId("bedrock"));
+function carveSphere(cx: number, cy: number, cz: number, r: number) {
+  for (let y = Math.floor(cy - r); y <= cy + r; y++)
+    for (let z = Math.floor(cz - r); z <= cz + r; z++)
+      for (let x = Math.floor(cx - r); x <= cx + r; x++)
+        if ((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2 <= r * r) voxels.set(x, y, z, 0);
+}
+carveSphere(10, 12, 2, 5);
+carveSphere(31, 16, 0, 4);
+carveSphere(24, 23, 3, 3);
+const mesherPool = new MesherPool();
+const voxelMesh = new VolumeMesh(voxels, mesherPool, rapier, world, new THREE.Vector3(-8, 0, -10));
+scene.add(voxelMesh.group);
+
 // Foam blocks: one shared geometry, one material per colour.
 const blockGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
 const materials = FOAM_COLOURS.map(
@@ -112,6 +136,7 @@ setPaused(true);
 startLoop({
   frame(dt) {
     input.poll();
+    voxelMesh.update();
     if (paused) return;
     const look = input.takeLook(dt);
     player.yaw -= look.yaw;
@@ -145,4 +170,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { player } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, carveSphere, mesherPool } });

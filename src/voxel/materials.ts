@@ -46,3 +46,17 @@ export function materialId(name: string): number {
   if (!m) throw new Error(`unknown voxel material ${name}`);
   return m.id;
 }
+
+/** Linear RGB per material id (256 x 3), for vertex colours. Three.js treats
+ *  vertex colours as linear, so the sRGB hex values are converted here. */
+export function linearColorTable() {
+  const table = new Float32Array(256 * 3);
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  for (const m of palette.byId) {
+    if (!m) continue;
+    table[m.id * 3] = lin(((m.color >> 16) & 255) / 255);
+    table[m.id * 3 + 1] = lin(((m.color >> 8) & 255) / 255);
+    table[m.id * 3 + 2] = lin((m.color & 255) / 255);
+  }
+  return table;
+}

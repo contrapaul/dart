@@ -6,15 +6,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01, ENG-02 and ENG-03 done. The test course: click to capture the mouse,
+PRE-09 and ENG-01 to ENG-04 done. GAME-01 (dart projectiles) is with Pi on
+branch `game-01` in worktree `../dart-game-01` (card: `tasks/GAME-01.md`);
+review it before merging. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and walls.
 Fire throws foam blocks. Esc or gamepad Start pauses.
 
-Voxel storage exists but nothing draws voxels yet.
+A striped 4 m foam wall made of 0.1 m voxels stands in the course, with
+carved holes; it is drawn and collided from worker-built greedy meshes.
 
-Next up: ENG-04 (greedy mesher in a Web Worker pool), then ENG-05 (carve and
-debris) and ENG-06 (break-off islands). ENG-07 (foam shader) and GAME-01
-(dart projectiles) can run alongside. P0 prototype due 2026-11-12.
+Next up: ENG-05 (carve by damage, debris), then ENG-06 (break-off islands).
+ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo
 in the Cloudflare dashboard: a push to `main` builds (`npm run build`) and
@@ -42,6 +44,40 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: ENG-04 greedy mesher in a Web Worker pool
+
+- `src/voxel/mesher.ts`: `greedyMesh()` merges same-material faces that
+  touch empty space into rectangles. Input is the chunk plus a one-voxel
+  border from its six face neighbours (`buildPadded()`, 34^3 bytes), so faces
+  on chunk seams are culled correctly. Output: positions (voxel units),
+  normals, linear vertex colours, 32-bit indices.
+- `src/voxel/mesher.worker.ts` + `mesher-pool.ts`: up to 4 workers
+  (cores minus one), job queue, buffers transferred both ways.
+- `src/voxel/volume-mesh.ts`: `VolumeMesh` turns a `VoxelVolume` into one
+  `THREE.Mesh` and one Rapier trimesh collider per chunk on a fixed body.
+  Each chunk has a version number so a slow, stale worker result never
+  overwrites a newer one. Call `update()` once per frame.
+- `linearColorTable()` in `materials.ts`: palette colours converted from
+  sRGB to linear for vertex colours.
+- Demo in `main.ts`: striped foam wall 40 x 24 x 4 voxels at 0.1 m, crossing
+  a chunk seam, bedrock bottom row, three carved holes. In dev,
+  `__dart.carveSphere(x, y, z, r)` carves at runtime (ENG-05 replaces it).
+- Measured on Paul's Mac. Single-thread in Node: solid chunk 1.3 ms, carved
+  wall 0.7 ms, terrain 0.8 ms, random 30% fill 5.4 ms, 3D checkerboard
+  (worst case) 9.1 ms. In browser workers after warm-up: 2.0 ms average,
+  5.3 ms max per chunk. First jobs take 8 to 9 ms (JIT warm-up). A burst of
+  20 carves in one frame: worst frame 9.4 ms, 120 fps held. Target was
+  under 4 ms for realistic chunks: met; noise-like chunks are slower but off
+  the main thread.
+- Verified: 6 new mesher tests (winding matches normals, box merges to 6
+  quads, materials not merged, seam faces hidden, colours, empty input);
+  wall renders with no seam; player collides with it (stops 0.37 m from the
+  face). Not verified: Windows integrated graphics.
+- Fixed: a rejected Pointer Lock fallback request was an uncaught promise
+  error (also happens in real Chrome when clicking within a second of Esc).
+- Not done yet: ambient occlusion and the foam look (ENG-07), smoothed
+  meshing for Foamers (PLAN.md 7.4, needs its own task).
 
 ### 2026-10-30: ENG-03 voxel chunk storage and material palette
 

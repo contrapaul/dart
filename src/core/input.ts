@@ -96,8 +96,10 @@ export class Input {
 
   requestLock() {
     // Raw mouse input where supported; some platforms refuse it, so fall back.
+    // Browsers also refuse a re-lock for about a second after Esc: the
+    // player just clicks again, so the rejection is ignored.
     const p = this.canvas.requestPointerLock({ unadjustedMovement: true }) as Promise<void> | undefined;
-    p?.catch(() => this.canvas.requestPointerLock());
+    p?.catch(() => (this.canvas.requestPointerLock() as Promise<void> | undefined)?.catch(() => {}));
   }
 
   /** Call once per render frame, before the fixed steps. Reads the gamepad. */
