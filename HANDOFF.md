@@ -6,12 +6,13 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09 (repo setup) done. The page is a skeleton that proves the stack: Three.js
-renders, Rapier runs (its WebAssembly bundled inline), and foam blocks fall onto
-a floor; clicking drops more. No gameplay yet.
+PRE-09 and ENG-01 done. The test scene: click to capture the mouse, walk with
+WASD or a gamepad (temporary walker, no collisions), look around, fire to throw
+foam blocks. Esc or gamepad Start pauses.
 
-Next up: ENG-01 (game loop and input) and ENG-03 (voxel chunk storage), which
-can run in parallel. P0 prototype due 2026-11-12.
+Next up: ENG-02 (first person controller on Rapier, replaces the walker) and
+ENG-03 (voxel chunk storage), which can run in parallel. P0 prototype due
+2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo
 in the Cloudflare dashboard: a push to `main` builds (`npm run build`) and
@@ -29,10 +30,39 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
   file, and splitting Three.js into its own cached chunk.
 - **A new custom domain answers 500 for about a minute** after the first
   deploy while Cloudflare provisions it. Wait before assuming it failed.
+- **`display` beats the `hidden` attribute.** An element with a CSS
+  `display` value ignores `hidden` unless there is a `[hidden] { display:
+  none }` rule. `#overlay` has one.
+- **The Browser pane will not grant Pointer Lock.** To test input there,
+  override `document.pointerLockElement` in the console, dispatch
+  `pointerlockchange`, then dispatch keyboard and mouse events.
 - **The dev server is started from the workspace launch config**
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: ENG-01 game loop and input
+
+- `src/core/input.ts`: named actions (move, jump, sprint, dash, fire, shield,
+  melee, reload, use, weapon next/prev/1 to 8, pause) from keyboard, mouse
+  with Pointer Lock, wheel and a standard-mapping gamepad. Bindings and
+  tuning (sensitivity, invert Y, stick deadzone and curve, trigger threshold)
+  are in `data/input.json`.
+- Timing rule: button edges are latched when they happen and cleared after
+  each fixed step (`endStep()`), so a tap shorter than a frame still counts
+  and is seen by one step only. Look is read once per render frame
+  (`takeLook(dt)`) so aiming is smooth at any frame rate.
+- `src/core/loop.ts` now has three hooks: `frame` (input and look), `update`
+  (fixed 60 Hz), `render`.
+- Default bindings: left mouse fire, right mouse shield, middle mouse or F
+  melee, Space jump, Left Shift sprint, Q dash, R reload, E use, P pause.
+  Gamepad: RT fire, LT shield, RB melee, LB dash, A jump, LS click sprint,
+  Start pause. All placeholders until playtests.
+- Verified in the Browser pane with a simulated lock: lock hides the
+  overlay, unlock pauses, held W walks, mouse moves the view, a sub-frame
+  click fires exactly once. Not verified: real Pointer Lock (the pane refuses
+  it; Paul to try on the live site) and gamepad (no pad attached).
+- Push-to-deploy confirmed: the push at 16:42 UTC built and deployed.
 
 ### 2026-10-30: PRE-09 repo setup
 

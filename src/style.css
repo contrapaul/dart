@@ -24,6 +24,10 @@ body {
   pointer-events: none;
 }
 
+#overlay[hidden] {
+  display: none;
+}
+
 #overlay h1 {
   margin: 0;
   font-size: clamp(4rem, 14vw, 10rem);

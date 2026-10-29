@@ -1,0 +1,52 @@
+{
+  "settings": {
+    "mouseSensitivity": 0.0022,
+    "invertY": false,
+    "padLookSpeed": 3.2,
+    "padDeadzone": 0.15,
+    "padLookCurve": 2,
+    "triggerThreshold": 0.5
+  },
+  "keyboard": {
+    "moveForward": ["KeyW", "ArrowUp"],
+    "moveBack": ["KeyS", "ArrowDown"],
+    "moveLeft": ["KeyA", "ArrowLeft"],
+    "moveRight": ["KeyD", "ArrowRight"],
+    "jump": ["Space"],
+    "sprint": ["ShiftLeft"],
+    "dash": ["KeyQ"],
+    "melee": ["KeyF"],
+    "reload": ["KeyR"],
+    "use": ["KeyE"],
+    "weapon1": ["Digit1"],
+    "weapon2": ["Digit2"],
+    "weapon3": ["Digit3"],
+    "weapon4": ["Digit4"],
+    "weapon5": ["Digit5"],
+    "weapon6": ["Digit6"],
+    "weapon7": ["Digit7"],
+    "weapon8": ["Digit8"],
+    "pause": ["KeyP"]
+  },
+  "mouse": {
+    "fire": [0],
+    "melee": [1],
+    "shield": [2]
+  },
+  "wheel": {
+    "weaponNext": ["down"],
+    "weaponPrev": ["up"]
+  },
+  "gamepad": {
+    "jump": [0],
+    "use": [1],
+    "reload": [2],
+    "weaponNext": [3],
+    "dash": [4],
+    "melee": [5],
+    "shield": [6],
+    "fire": [7],
+    "pause": [9],
+    "sprint": [10]
+  }
+}
