@@ -3,17 +3,16 @@ import { createRenderer } from "./render/scene";
 import { createPhysics } from "./physics/world";
 import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
+import { PlayerController } from "./player/controller";
 
-// Test scene: proves rendering, physics and input together. A temporary
-// walker (no collisions) looks and moves; fire throws foam blocks.
-// ENG-02 replaces the walker with the real first person controller.
+// Test course: proves rendering, physics, input and the player controller
+// together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
+// and a too-steep ramp. Fire throws foam blocks.
 
 const FOAM_COLOURS = [0xff7a1a, 0x2ec4ff, 0xb6ff3b, 0xff4fa3, 0xffd23f, 0x9b5cff];
 const MAX_BLOCKS = 200;
-const EYE_HEIGHT = 1.7;
-const WALK_SPEED = 6;
-const SPRINT_SPEED = 10;
 const THROW_SPEED = 18;
+const SPAWN = new THREE.Vector3(0, 0, 12);
 
 const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 const overlay = document.querySelector<HTMLDivElement>("#overlay")!;
@@ -25,18 +24,44 @@ const input = new Input(canvas);
 
 const { rapier, world } = await createPhysics();
 
-// Floor
-const floorSize = 20;
-const floor = new THREE.Mesh(
-  new THREE.BoxGeometry(floorSize, 1, floorSize),
-  new THREE.MeshStandardMaterial({ color: 0x3d2f6b, roughness: 0.9 }),
-);
-floor.position.y = -0.5;
-floor.receiveShadow = true;
-scene.add(floor);
-world.createCollider(
-  rapier.ColliderDesc.cuboid(floorSize / 2, 0.5, floorSize / 2).setTranslation(0, -0.5, 0),
-);
+// Static geometry: a box mesh plus a matching fixed collider.
+function addBox(
+  x: number, y: number, z: number, w: number, h: number, d: number,
+  color: number, rotX = 0,
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.9 }),
+  );
+  mesh.position.set(x, y, z);
+  mesh.rotation.x = rotX;
+  mesh.castShadow = mesh.receiveShadow = true;
+  scene.add(mesh);
+  const q = mesh.quaternion;
+  world.createCollider(
+    rapier.ColliderDesc.cuboid(w / 2, h / 2, d / 2)
+      .setTranslation(x, y, z)
+      .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }),
+  );
+}
+
+const WALL = 0x5a4890;
+addBox(0, -0.5, 0, 40, 1, 40, 0x3d2f6b); // floor
+// Steps 0.3 m high: walked up without jumping.
+for (let i = 1; i <= 4; i++) addBox(-12, 0.15 * i, 4.8 - i * 0.8, 3, 0.3 * i, 0.8, WALL);
+// Ledges: 1.0 m and 2.4 m can be mantled from a jump (reach is jump height
+// plus mantleMaxHeight, about 2.7 m); 3.2 m cannot.
+addBox(-5, 0.5, 0, 3, 1.0, 3, 0x6b58a8);
+addBox(0, 1.2, 0, 3, 2.4, 3, 0x6b58a8);
+addBox(5, 1.6, 0, 3, 3.2, 3, WALL);
+// Ramps: 25 degrees walkable, 55 degrees too steep.
+addBox(11, 1.2, 2, 3, 0.4, 7, 0x7a68c0, THREE.MathUtils.degToRad(25));
+addBox(16, 2, 2, 3, 0.4, 6, WALL, THREE.MathUtils.degToRad(55));
+// Outer walls
+addBox(0, 2, -20, 40, 4, 1, WALL);
+addBox(0, 2, 20, 40, 4, 1, WALL);
+addBox(-20, 2, 0, 1, 4, 40, WALL);
+addBox(20, 2, 0, 1, 4, 40, WALL);
 
 // Foam blocks: one shared geometry, one material per colour.
 const blockGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
@@ -64,19 +89,15 @@ function spawnBlock(pos: THREE.Vector3, vel: THREE.Vector3) {
   blocks.push({ mesh, body });
 }
 
-for (let i = 0; i < 40; i++) {
+for (let i = 0; i < 30; i++) {
   spawnBlock(
-    new THREE.Vector3((Math.random() - 0.5) * 6, 8 + Math.random() * 4, (Math.random() - 0.5) * 6),
+    new THREE.Vector3(8 + Math.random() * 6, 0.3 + i * 0.7, -8 + Math.random() * 4),
     new THREE.Vector3(),
   );
 }
 
-// Temporary walker state
-const player = new THREE.Vector3(0, EYE_HEIGHT, 8);
-let yaw = 0;
-let pitch = -0.2;
-const forward = new THREE.Vector3();
-const right = new THREE.Vector3();
+const player = new PlayerController(rapier, world, SPAWN);
+const eye = new THREE.Vector3();
 
 let paused = true;
 function setPaused(p: boolean) {
@@ -93,32 +114,26 @@ startLoop({
     input.poll();
     if (paused) return;
     const look = input.takeLook(dt);
-    yaw -= look.yaw;
-    pitch = THREE.MathUtils.clamp(pitch + look.pitch, -1.5, 1.5);
+    player.yaw -= look.yaw;
+    player.pitch = THREE.MathUtils.clamp(player.pitch + look.pitch, -1.5, 1.5);
   },
   update(dt) {
     // Gamepad start toggles pause; with a mouse, Esc releases the lock instead.
     if (input.wasPressed("pause")) setPaused(!paused);
     if (!paused) {
-      forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-      right.set(Math.cos(yaw), 0, -Math.sin(yaw));
-      const m = input.move();
-      const speed = input.isDown("sprint") ? SPRINT_SPEED : WALK_SPEED;
-      player.addScaledVector(forward, m.y * speed * dt).addScaledVector(right, m.x * speed * dt);
-      player.x = THREE.MathUtils.clamp(player.x, -floorSize / 2, floorSize / 2);
-      player.z = THREE.MathUtils.clamp(player.z, -floorSize / 2, floorSize / 2);
-
+      player.update(dt, input);
+      if (player.feet < -20) player.teleport(SPAWN);
       if (input.wasPressed("fire")) {
         const dir = camera.getWorldDirection(new THREE.Vector3());
-        spawnBlock(player.clone().addScaledVector(dir, 0.8), dir.multiplyScalar(THROW_SPEED));
+        spawnBlock(camera.position.clone().addScaledVector(dir, 0.8), dir.multiplyScalar(THROW_SPEED));
       }
       world.step();
     }
     input.endStep();
   },
-  render() {
-    camera.position.copy(player);
-    camera.rotation.set(pitch, yaw, 0);
+  render(_dt, alpha) {
+    camera.position.copy(player.eye(paused ? 1 : alpha, eye));
+    camera.rotation.set(player.pitch, player.yaw, 0);
     for (const { mesh, body } of blocks) {
       const p = body.translation();
       const r = body.rotation();
@@ -128,3 +143,6 @@ startLoop({
     renderer.render(scene, camera);
   },
 });
+
+// Dev-only hook for automated checks in the browser pane.
+if (import.meta.env.DEV) Object.assign(window, { __dart: { player } });

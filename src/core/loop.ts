@@ -8,8 +8,9 @@ export interface LoopHooks {
   frame(dt: number): void;
   /** Zero or more times per frame, always with dt = STEP. */
   update(dt: number): void;
-  /** Once per render frame, after the steps. */
-  render(dt: number): void;
+  /** Once per render frame, after the steps. alpha (0 to 1) is how far the
+   *  clock is between the last step and the next, for interpolation. */
+  render(dt: number, alpha: number): void;
 }
 
 export function startLoop(hooks: LoopHooks) {
@@ -26,7 +27,7 @@ export function startLoop(hooks: LoopHooks) {
       hooks.update(STEP);
       acc -= STEP;
     }
-    hooks.render(dt);
+    hooks.render(dt, acc / STEP);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

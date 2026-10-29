@@ -6,13 +6,11 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09 and ENG-01 done. The test scene: click to capture the mouse, walk with
-WASD or a gamepad (temporary walker, no collisions), look around, fire to throw
-foam blocks. Esc or gamepad Start pauses.
+PRE-09, ENG-01 and ENG-02 done. The test course: click to capture the mouse,
+then walk, sprint, jump, dash and mantle around steps, ledges, ramps and walls.
+Fire throws foam blocks. Esc or gamepad Start pauses.
 
-Next up: ENG-02 (first person controller on Rapier, replaces the walker) and
-ENG-03 (voxel chunk storage), which can run in parallel. P0 prototype due
-2026-11-12.
+Next up: ENG-03 (voxel chunk storage). P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo
 in the Cloudflare dashboard: a push to `main` builds (`npm run build`) and
@@ -40,6 +38,29 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: ENG-02 first person controller
+
+- `src/player/controller.ts`: capsule (1.8 m, radius 0.35) on Rapier's
+  kinematic character controller. Walk 7 m/s, sprint 10.5, jump about 1.2 m,
+  dash (Q / LB) 22 m/s for 0.16 s with 0.7 s cooldown, autostep 0.4 m,
+  46 degree max slope, coyote time and jump buffering. Pushes foam blocks.
+- Mantle: while airborne and pushing forward, a chest-height ray finds a
+  wall, a downward ray finds its top, and a capsule test checks there is room.
+  Then the player rises and steps over in 0.28 s. Reach is jump height plus
+  `mantleMaxHeight` (1.5), so ledges up to about 2.7 m. No mantle from the
+  ground without a jump: that is deliberate, but worth a playtest.
+- The loop's render hook now gets `alpha`, and the camera interpolates
+  between steps, so movement is smooth on 120 Hz screens.
+- All tuning in `data/player.json`.
+- `main.ts` is now a test course: 0.3 m steps, 1.0 / 2.4 / 3.2 m blocks,
+  25 and 55 degree ramps, outer walls. In dev builds `window.__dart.player`
+  exposes the controller for automated checks.
+- Verified by scripted input in the Browser pane: walk 5.9 m in 1 s (from
+  standstill), sprint 8.4 m, dash 4.2 m, jump peak 1.22 m, steps climbed to
+  1.2 m, 25 degree ramp climbed, 55 degree ramp refused, 2.4 m ledge mantled,
+  3.2 m wall refused, no mantle without a jump. 120 fps in the pane. Not
+  verified: how it feels with a real mouse; gamepad.
 
 ### 2026-10-30: ENG-01 game loop and input
 

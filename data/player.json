@@ -1,0 +1,21 @@
+{
+  "height": 1.8,
+  "radius": 0.35,
+  "eyeHeight": 1.6,
+  "walkSpeed": 7,
+  "sprintSpeed": 10.5,
+  "groundAccel": 70,
+  "airAccel": 18,
+  "gravity": 22,
+  "jumpSpeed": 7.5,
+  "maxFallSpeed": 40,
+  "coyoteTime": 0.1,
+  "jumpBuffer": 0.12,
+  "stepHeight": 0.4,
+  "maxSlopeDeg": 46,
+  "dashSpeed": 22,
+  "dashTime": 0.16,
+  "dashCooldown": 0.7,
+  "mantleMaxHeight": 1.5,
+  "mantleTime": 0.28
+}
