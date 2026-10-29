@@ -1,0 +1,19 @@
+{
+  "_note": "Voxel carving and foam debris. Distances in voxels unless named Metres.",
+  "carve": {
+    "minEffectiveRadius": 0.5
+  },
+  "debris": {
+    "max": 150,
+    "perCarveMax": 14,
+    "voxelsPerPiece": 3,
+    "lifetime": 4,
+    "fadeTime": 0.3,
+    "minSpeed": 2,
+    "maxSpeed": 5,
+    "upBoost": 1.5,
+    "density": 0.25,
+    "restitution": 0.3,
+    "friction": 0.8
+  }
+}

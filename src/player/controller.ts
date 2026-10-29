@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
-import type { Rapier } from "../physics/world";
+import { SOLID_QUERY_GROUPS, type Rapier } from "../physics/world";
 import type { Input } from "../core/input";
 import tuning from "../../data/player.json";
 
@@ -19,7 +19,7 @@ export class PlayerController {
   readonly vel = new THREE.Vector3();
 
   private body: RAPIER.RigidBody;
-  private collider: RAPIER.Collider;
+  readonly collider: RAPIER.Collider;
   private cc: RAPIER.KinematicCharacterController;
   private shape: RAPIER.Capsule;
   private halfHeight = P.height / 2;
@@ -116,7 +116,7 @@ export class PlayerController {
     if (m.y > 0.5 && !this.grounded && this.tryMantle()) return this.stepMantle(dt);
 
     const desired = { x: this.vel.x * dt, y: this.vel.y * dt, z: this.vel.z * dt };
-    this.cc.computeColliderMovement(this.collider, desired);
+    this.cc.computeColliderMovement(this.collider, desired, undefined, SOLID_QUERY_GROUPS);
     const moved = this.cc.computedMovement();
     this.grounded = this.cc.computedGrounded();
     this.pos.x += moved.x;

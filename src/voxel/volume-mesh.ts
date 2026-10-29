@@ -35,6 +35,20 @@ export class VolumeMesh {
     );
   }
 
+  /** World position to voxel coordinates (in place). The volume does not rotate. */
+  worldToVoxel(v: THREE.Vector3) {
+    return v.sub(this.group.position).divideScalar(this.volume.voxelSize);
+  }
+
+  /** Voxel coordinates to world position (in place). */
+  voxelToWorld(v: THREE.Vector3) {
+    return v.multiplyScalar(this.volume.voxelSize).add(this.group.position);
+  }
+
+  owns(collider: RAPIER.Collider) {
+    return collider.parent()?.handle === this.body.handle;
+  }
+
   /** Call once per frame: sends dirty chunks to the workers. */
   update() {
     for (const key of this.volume.takeDirty()) {

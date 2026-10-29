@@ -6,17 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09 and ENG-01 to ENG-04 done. GAME-01 (dart projectiles) is with Pi on
-branch `game-01` in worktree `../dart-game-01` (card: `tasks/GAME-01.md`);
-review it before merging. The test course: click to capture the mouse,
+PRE-09 and ENG-01 to ENG-05 done. GAME-01 (dart projectiles) is with Pi
+(Qwen3.8-27B on the `qwen-machine` 1Cat vLLM config) on branch `game-01` in
+worktree `../dart-game-01` (card: `tasks/GAME-01.md`); review before merging. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and walls.
 Fire throws foam blocks. Esc or gamepad Start pauses.
 
-A striped 4 m foam wall made of 0.1 m voxels stands in the course, with
-carved holes; it is drawn and collided from worker-built greedy meshes.
+A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
+with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
+debug blast: it carves where you look and throws foam debris.
 
-Next up: ENG-05 (carve by damage, debris), then ENG-06 (break-off islands).
-ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
+Next up: ENG-06 (pieces cut loose fall as physics bodies; right now they
+float). ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo
 in the Cloudflare dashboard: a push to `main` builds (`npm run build`) and
@@ -40,10 +41,44 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
 - **The Browser pane will not grant Pointer Lock.** To test input there,
   override `document.pointerLockElement` in the console, dispatch
   `pointerlockchange`, then dispatch keyboard and mouse events.
+- **Merging game-01 will conflict in `src/player/controller.ts`.** ENG-05
+  made `collider` a public `readonly` field (the card asked Pi for a getter
+  of the same name, which TypeScript cannot have alongside a private field
+  called `collider`). Keep the public field and drop Pi's getter.
 - **The dev server is started from the workspace launch config**
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: ENG-05 carving and foam debris
+
+- `src/voxel/carve.ts`: `carveSphere(volume, x, y, z, radius)` in voxel
+  units. Each material's sphere shrinks to `radius / hardness`; under
+  `minEffectiveRadius` (0.5 voxels) nothing is removed, so weak hits only
+  scuff hard materials. Indestructible voxels never go. Returns the removed
+  voxels with their materials.
+- `src/voxel/debris.ts`: `DebrisSystem`, a ring of `debris.max` (150) slots
+  drawn as one `InstancedMesh` with per-instance colour. Each carve spawns up
+  to 14 chunks, flying outward from the crater. Chunks are Rapier dynamic
+  bodies that live 4 s and shrink away in the last 0.3 s; the oldest is
+  reused when the ring is full.
+- Collision groups (`src/physics/world.ts`): debris only collides with the
+  world. Player movement queries use `SOLID_QUERY_GROUPS`, so debris never
+  blocks or lifts the player, though the player still shoves it physically.
+- `VolumeMesh` gained `worldToVoxel`, `voxelToWorld` and `owns(collider)`.
+  `PlayerController.collider` is now public.
+- Tuning in `data/destruction.json`.
+- Demo: melee is a debug blast (0.35 m radius) until blasters exist
+  (GAME-02 wires dart hits to carving instead).
+- Verified: 6 new tests (foam crater size, wood carves under a quarter of
+  foam, concrete scuffs at low radius, bedrock untouched, debris never over
+  the cap with about 390 requested, all bodies freed after the lifetime).
+  In the browser: one blast removed 108 foam voxels; same blast removed 141
+  cardboard, 36 wood, 0 concrete. 40 blasts in 3 s: 120 fps, worst frame
+  13 ms, debris peaked at 145. Walking through floor debris kept the feet at
+  0.01 m. Not verified: Windows integrated graphics.
+- Known gap: voxels cut off from the ground float in mid-air. That is
+  ENG-06.
 
 ### 2026-10-30: ENG-04 greedy mesher in a Web Worker pool
 

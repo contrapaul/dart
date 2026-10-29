@@ -6,6 +6,8 @@ import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";
+import { carveSphere } from "./voxel/carve";
+import { DebrisSystem } from "./voxel/debris";
 import { MesherPool } from "./voxel/mesher-pool";
 import { VolumeMesh } from "./voxel/volume-mesh";
 
@@ -67,25 +69,41 @@ addBox(0, 2, 20, 40, 4, 1, WALL);
 addBox(-20, 2, 0, 1, 4, 40, WALL);
 addBox(20, 2, 0, 1, 4, 40, WALL);
 
-// Voxel demo (ENG-04): a 4 m foam wall at 0.1 m voxels, wide enough to
-// cross a chunk seam, with carved holes. ENG-05 adds carving by damage.
+// Voxel demo (ENG-04, ENG-05): a 4 m foam wall at 0.1 m voxels, wide enough
+// to cross a chunk seam. Melee (F / middle mouse) is a temporary debug blast
+// that carves where you look and throws foam debris, until blasters exist.
 const VOXEL = 0.1;
 const voxels = new VoxelVolume(VOXEL);
 const stripes = ["foam-orange", "foam-blue", "foam-lime", "foam-pink", "foam-yellow", "foam-purple"].map(materialId);
 for (let y = 0; y < 24; y++) voxels.fillBox(0, y, 0, 39, y, 3, stripes[Math.floor(y / 4)]);
 voxels.fillBox(0, 0, 0, 39, 0, 3, materialId("bedrock"));
-function carveSphere(cx: number, cy: number, cz: number, r: number) {
-  for (let y = Math.floor(cy - r); y <= cy + r; y++)
-    for (let z = Math.floor(cz - r); z <= cz + r; z++)
-      for (let x = Math.floor(cx - r); x <= cx + r; x++)
-        if ((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2 <= r * r) voxels.set(x, y, z, 0);
-}
-carveSphere(10, 12, 2, 5);
-carveSphere(31, 16, 0, 4);
-carveSphere(24, 23, 3, 3);
+carveSphere(voxels, 10, 12, 2, 5);
+carveSphere(voxels, 31, 16, 0, 4);
+carveSphere(voxels, 24, 23, 3, 3);
+// A cardboard, wood and concrete strip on top, to show hardness.
+voxels.fillBox(0, 24, 0, 12, 27, 3, materialId("cardboard"));
+voxels.fillBox(13, 24, 0, 26, 27, 3, materialId("wood"));
+voxels.fillBox(27, 24, 0, 39, 27, 3, materialId("concrete"));
 const mesherPool = new MesherPool();
 const voxelMesh = new VolumeMesh(voxels, mesherPool, rapier, world, new THREE.Vector3(-8, 0, -10));
 scene.add(voxelMesh.group);
+const debris = new DebrisSystem(rapier, world);
+scene.add(debris.mesh);
+
+const BLAST_RADIUS_METRES = 0.35;
+const blastRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
+function debugBlast() {
+  const dir = camera.getWorldDirection(new THREE.Vector3());
+  blastRay.origin = camera.position;
+  blastRay.dir = dir;
+  const hit = world.castRay(blastRay, 60, true, 8 /* EXCLUDE_SENSORS */, undefined, player.collider);
+  if (!hit || !voxelMesh.owns(hit.collider)) return;
+  // Centre slightly inside the surface so the crater is not half empty air.
+  const point = camera.position.clone().addScaledVector(dir, hit.timeOfImpact + VOXEL * 0.5);
+  const c = voxelMesh.worldToVoxel(point);
+  const removed = carveSphere(voxels, c.x, c.y, c.z, BLAST_RADIUS_METRES / VOXEL);
+  debris.spawn(removed, c, VOXEL, (v) => voxelMesh.voxelToWorld(v));
+}
 
 // Foam blocks: one shared geometry, one material per colour.
 const blockGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
@@ -147,6 +165,8 @@ startLoop({
     if (input.wasPressed("pause")) setPaused(!paused);
     if (!paused) {
       player.update(dt, input);
+      if (input.wasPressed("melee")) debugBlast();
+      debris.update(dt);
       if (player.feet < -20) player.teleport(SPAWN);
       if (input.wasPressed("fire")) {
         const dir = camera.getWorldDirection(new THREE.Vector3());
@@ -157,6 +177,7 @@ startLoop({
     input.endStep();
   },
   render(_dt, alpha) {
+    debris.syncRender();
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     camera.rotation.set(player.pitch, player.yaw, 0);
     for (const { mesh, body } of blocks) {
@@ -170,4 +191,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, carveSphere, mesherPool } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool } });
