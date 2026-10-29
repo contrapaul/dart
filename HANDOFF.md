@@ -13,17 +13,12 @@ a floor; clicking drops more. No gameplay yet.
 Next up: ENG-01 (game loop and input) and ENG-03 (voxel chunk storage), which
 can run in parallel. P0 prototype due 2026-11-12.
 
-Live at https://dart.contrapaul.com since 2026-10-30, deployed by hand with
-`npm run deploy`. Repo: github.com/contrapaul/dart (public).
+Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo
+in the Cloudflare dashboard: a push to `main` builds (`npm run build`) and
+deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
 
 ## Open items
 
-- [ ] Paul: connect the repo in the Cloudflare dashboard so a push to `main`
-      deploys (Workers & Pages > dart > Settings > Builds > Connect, build
-      command `npm run build`, deploy command `npx wrangler deploy`). Until
-      then, deploy with `npm run deploy`.
-- [ ] Paul: confirm the code licence (MIT, copied from build) is what you want.
-- [ ] Paul: which model you run in Pi (PLAN.md 11.1).
 - [ ] Paul: blaster cards, story outline, Foamer names (PRE-02 to PRE-05).
 
 ## Gotchas that have already bitten

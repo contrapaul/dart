@@ -107,9 +107,8 @@ saying you are finished. Record decisions in PLAN.md section 14.
 
 - `npm install`, then `npm run dev` (Vite, http://localhost:5173).
 - `npm run build` type-checks and builds to `dist/`.
-- Deploy: `npm run deploy` from a machine logged in to wrangler. Once Paul
-  connects Git in the Cloudflare dashboard (see HANDOFF.md), pushing to
-  `main` deploys too.
+- Deploy: push to `main`. Cloudflare runs `npm run build` and serves
+  `dist/`. `npm run deploy` also works from a machine logged in to wrangler.
 - Work is split into task cards (PLAN.md sections 11 and 12). One owner per
   module at a time; code from one model is reviewed by another.
 - Layout follows PLAN.md section 7.5. Tuning numbers belong in `data/` JSON,
