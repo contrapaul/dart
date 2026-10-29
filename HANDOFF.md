@@ -6,11 +6,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09 and ENG-01 to ENG-04 done. GAME-01 (dart projectiles) is with Pi on
+PRE-09 and ENG-01 to ENG-04 done. GAME-01 (dart projectiles) is committed on
 branch `game-01` in worktree `../dart-game-01` (card: `tasks/GAME-01.md`);
 review it before merging. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and walls.
-Fire throws foam blocks. Esc or gamepad Start pauses.
+Left mouse fires darts, E throws foam blocks, T toggles dart type. Esc or
+gamepad Start pauses.
 
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, with
 carved holes; it is drawn and collided from worker-built greedy meshes.
@@ -44,6 +45,58 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-31: GAME-01 dart projectile system
+
+- `src/weapons/darts.ts`: `DartSystem` (pool, flight, collision, sticking,
+  rendering). Darts are not Rapier bodies: at full rate up to 310 live darts
+  mean 310 thin ray casts per step, which beats 310 rigid bodies. Flight is
+  a per-step `vel.y -= 9.81*gravityScale*dt`, drag (`v *= 1-drag*dt`), then a
+  `castRayAndGetNormal` sweep from the old to the new position (solid, sensors
+  excluded, the firing player's collider excluded via the `ignore` argument).
+- `onHit` fires exactly once per impact with the hit point, normal, unit
+  flight direction, speed, type and the hit collider. A dynamic body that is
+  hit gets `impulse` (N.s) along the flight direction at the hit point via
+  `applyImpulseAtPoint`.
+- Suction darts stick, tip sunk 0.3 x length into the surface, pointing along
+  their flight. If the hit collider belongs to a rigid body, the dart's
+  position and rotation are stored in that body's local frame and recomputed
+  each step, so darts ride along with falling foam blocks. If the collider is
+  removed, the dart un-sticks and falls as a non-sticking dart.
+- Standard darts bounce: velocity reflected about the normal, scaled by
+  `restitution`. Below 1.5 m/s on a surface with normal.y > 0.7 they become
+  resting: they lie flat and stop being simulated.
+- Pooling: one `THREE.InstancedMesh` per type, sized 310 (150 + 100 + 60).
+  No vectors or meshes allocated after construction, all reusable. Caps are
+  enforced by killing the oldest dart in that state; the cap check is a while
+  loop so a batch that lands in the same step cannot exceed it. Resting darts
+  shrink to zero over 0.3 s after `lifetime` seconds and are freed.
+- `src/weapons/dart-model.ts`: dart geometry per type built in code, no model
+  files: a cylinder body plus a half-ellipsoid tip, 22% of the length, 25%
+  wider, with vertex colours blending body to tip toward the nose. Long axis
+  +Z, tip at +Z, origin at the centre. `MeshStandardMaterial` with
+  `vertexColors: true, roughness: 0.8`.
+- `src/main.ts`: dart type toggles with KeyT (a debug key, not in
+  `data/input.json`), with a `console.info` naming the new type. Fire holds
+  to auto-fire at that type's `fireInterval`; the muzzle is 0.2 m right and
+  0.15 m down from the eye, aimed at a point 50 m along the view, so the
+  darts converge on the crosshair. Foam-block throwing moved to E (`use`).
+- `src/player/controller.ts`: added a public read-only `get collider()`
+  returning the capsule, so the dart system can exclude the shooter.
+- `data/darts.json`: dart types and caps. `fireInterval` is new, the minimum
+  seconds between shots of that type (auto-fire rate limit).
+- `tests/weapons/darts.test.ts`: 7 tests against a real Rapier world. All
+  pass. Test 4 found the contact solver shoves a dynamic box that overlaps
+  a static collider (in the tests, the player capsule); the test box stands
+  off to the side now.
+- Verified: `npm test` passes (25 tests, 7 new), `npm run build` passes, no
+  extra em/en dashes in the repo (checked with a perl script because macOS
+  grep does not support -P), HEAD is a00f537+1.
+- Unverified (no browser here): what the darts look like, that they arc and
+  stick where they hit, the 10 s hold-fire memory/fps check, that E still
+  throws blocks. Paul or the reviewer: open the dev server on port 5174,
+  click to capture the mouse, fire at the vox wall, hold fire for 10 s with
+  the dev tools open, press E, toggle darts with T.
 
 ### 2026-10-30: ENG-04 greedy mesher in a Web Worker pool
 

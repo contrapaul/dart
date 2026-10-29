@@ -19,7 +19,12 @@ export class PlayerController {
   readonly vel = new THREE.Vector3();
 
   private body: RAPIER.RigidBody;
-  private collider: RAPIER.Collider;
+  private _collider: RAPIER.Collider;
+
+  /** The player's capsule, for weapons to exclude it from their hits. */
+  get collider() {
+    return this._collider;
+  }
   private cc: RAPIER.KinematicCharacterController;
   private shape: RAPIER.Capsule;
   private halfHeight = P.height / 2;
@@ -45,7 +50,7 @@ export class PlayerController {
       rapier.RigidBodyDesc.kinematicPositionBased().setTranslation(this.pos.x, this.pos.y, this.pos.z),
     );
     this.shape = new rapier.Capsule(this.halfHeight - P.radius, P.radius);
-    this.collider = world.createCollider(
+    this._collider = world.createCollider(
       rapier.ColliderDesc.capsule(this.halfHeight - P.radius, P.radius),
       this.body,
     );

@@ -4,6 +4,9 @@ import { createPhysics } from "./physics/world";
 import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
+import { DartSystem } from "./weapons/darts";
+import type { DartTypeName } from "./weapons/darts";
+import dartTuning from "../data/darts.json";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";
 import { MesherPool } from "./voxel/mesher-pool";
@@ -123,6 +126,26 @@ for (let i = 0; i < 30; i++) {
 const player = new PlayerController(rapier, world, SPAWN);
 const eye = new THREE.Vector3();
 
+// Darts: one pooled system, excluding the player's own capsule from hits.
+const darts = new DartSystem(scene, world, rapier, player.collider);
+let dartType: DartTypeName = "standard";
+let fireCd = 0;
+// KeyT toggles the dart type. A debug key read with a plain keydown listener,
+// not through data/input.json.
+window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyT" && !e.repeat) {
+    dartType = dartType === "standard" ? "suction" : "standard";
+    console.info("Dart type: " + dartType);
+  }
+});
+// Scratch vectors for the aim math; allocated once.
+const _dir = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _origin = new THREE.Vector3();
+const _aim = new THREE.Vector3();
+const _aimDir = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+
 let paused = true;
 function setPaused(p: boolean) {
   paused = p;
@@ -148,10 +171,28 @@ startLoop({
     if (!paused) {
       player.update(dt, input);
       if (player.feet < -20) player.teleport(SPAWN);
-      if (input.wasPressed("fire")) {
+      // Darts: auto-fire while held, one shot per fire interval.
+      fireCd -= dt;
+      if (input.isDown("fire")) {
+        if (fireCd <= 0) {
+          const dir = camera.getWorldDirection(_dir);
+          _right.crossVectors(dir, _up).normalize();
+          // Muzzle: 0.2 m right, 0.15 m down from the eye.
+          _origin.copy(camera.position).addScaledVector(_right, 0.2).addScaledVector(_up, -0.15);
+          // Aim at a point 50 m ahead so darts converge on the crosshair.
+          _aim.copy(camera.position).addScaledVector(dir, 50);
+          darts.fire(_origin, _aimDir.subVectors(_aim, _origin).normalize(), dartType);
+          fireCd = dartTuning.types[dartType].fireInterval;
+        }
+      } else {
+        fireCd = 0; // release snap: the next press fires immediately
+      }
+      // E throws a foam block (was fire before darts).
+      if (input.wasPressed("use")) {
         const dir = camera.getWorldDirection(new THREE.Vector3());
         spawnBlock(camera.position.clone().addScaledVector(dir, 0.8), dir.multiplyScalar(THROW_SPEED));
       }
+      darts.update(dt);
       world.step();
     }
     input.endStep();
@@ -165,6 +206,7 @@ startLoop({
       mesh.position.set(p.x, p.y, p.z);
       mesh.quaternion.set(r.x, r.y, r.z, r.w);
     }
+    darts.syncRender();
     renderer.render(scene, camera);
   },
 });
