@@ -467,7 +467,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ENG-09 | Smoothed meshing (surface nets) for Foamer volumes, same worker pool (PLAN 7.4) | A | ENG-04 |
 | GAME-01 | Projectile system: visible darts, arc, sticking, pooling (card: `tasks/GAME-01.md`) | Pi | ENG-02 |
 | GAME-02 | One placeholder blaster (pump action) end to end (card: `tasks/GAME-02.md`) | Pi | GAME-01 |
-| GAME-03 | One voxel test Foamer that walks at you and pops into chunks | F | ENG-05 |
+| GAME-03 | One voxel test Foamer that walks at you and pops into chunks (card: `tasks/GAME-03.md`) | Pi | ENG-05 |
 | QA-01 | Performance test on Paul's low-end target machine; record numbers in HANDOFF.md | P + A | all above |
 | **Gate** | Go / no-go on the voxel approach (fall back to pre-fractured meshes if it fails) | P | QA-01 |
 
