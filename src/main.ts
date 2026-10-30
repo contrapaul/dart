@@ -5,8 +5,11 @@ import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
 import { DartSystem } from "./weapons/darts";
-import type { DartTypeName } from "./weapons/darts";
-import dartTuning from "../data/darts.json";
+import { Blaster, type BlasterSpec } from "./weapons/blaster";
+import { BlasterModel } from "./weapons/blaster-model";
+import { DartImpacts } from "./weapons/impacts";
+import { Hud } from "./ui/hud";
+import blasterTuning from "../data/blasters.json";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";
 import { carveSphere } from "./voxel/carve";
@@ -29,7 +32,9 @@ const status = document.querySelector<HTMLParagraphElement>("#status")!;
 
 const { renderer, scene, camera } = createRenderer(canvas);
 camera.rotation.order = "YXZ";
+scene.add(camera); // needed so children (the blaster viewmodel) render
 const input = new Input(canvas);
+const hud = new Hud(document.querySelector<HTMLDivElement>("#hud")!);
 
 const { rapier, world } = await createPhysics();
 
@@ -146,28 +151,33 @@ const eye = new THREE.Vector3();
 
 // Darts: one pooled system, excluding the player's own capsule from hits.
 const darts = new DartSystem(scene, world, rapier, player.collider);
-let dartType: DartTypeName = "standard";
-let fireCd = 0;
+// The placeholder pump blaster: ammo, priming, reload. Numbers in
+// data/blasters.json.
+const blasterSpec = blasterTuning.placeholder as unknown as BlasterSpec;
+const blaster = new Blaster(blasterSpec, darts);
+const blasterModel = new BlasterModel(blasterSpec, camera);
+blaster.onShot = () => blasterModel.kick();
+// Dart hits on the voxel wall carve a crater and throw foam debris.
+const impacts = new DartImpacts(darts, debris, [voxelMesh]);
 // KeyT toggles the dart type. A debug key read with a plain keydown listener,
 // not through data/input.json.
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyT" && !e.repeat) {
-    dartType = dartType === "standard" ? "suction" : "standard";
-    console.info("Dart type: " + dartType);
+    blaster.dartType = blaster.dartType === "standard" ? "suction" : "standard";
+    console.info("Dart type: " + blaster.dartType);
   }
 });
 // Scratch vectors for the aim math; allocated once.
-const _dir = new THREE.Vector3();
-const _right = new THREE.Vector3();
-const _origin = new THREE.Vector3();
+const _muzzle = new THREE.Vector3();
 const _aim = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
-const _up = new THREE.Vector3(0, 1, 0);
+const _dir = new THREE.Vector3();
 
 let paused = true;
 function setPaused(p: boolean) {
   paused = p;
   overlay.hidden = !p;
+  hud.show(!p);
   status.textContent = "Click to play. Esc to pause.";
   if (p && input.locked) document.exitPointerLock();
 }
@@ -189,25 +199,23 @@ startLoop({
     if (!paused) {
       player.update(dt, input);
       if (input.wasPressed("melee")) debugBlast();
+      // Blaster: muzzle from the camera, aim 50 m down the view, then the
+      // blaster's fixed step, then the darts.
+      camera.updateMatrixWorld();
+      _muzzle.set(blasterSpec.muzzle[0], blasterSpec.muzzle[1], blasterSpec.muzzle[2]);
+      camera.localToWorld(_muzzle);
+      camera.getWorldDirection(_dir);
+      _aim.copy(camera.position).addScaledVector(_dir, 50);
+      _aimDir.subVectors(_aim, _muzzle).normalize();
+      blaster.update(
+        dt,
+        { firePressed: input.wasPressed("fire"), reloadPressed: input.wasPressed("reload") },
+        _muzzle,
+        _aimDir,
+      );
       debris.update(dt);
       if (player.feet < -20) player.teleport(SPAWN);
-      // Darts: auto-fire while held, one shot per fire interval.
-      fireCd -= dt;
-      if (input.isDown("fire")) {
-        if (fireCd <= 0) {
-          const dir = camera.getWorldDirection(_dir);
-          _right.crossVectors(dir, _up).normalize();
-          // Muzzle: 0.2 m right, 0.15 m down from the eye.
-          _origin.copy(camera.position).addScaledVector(_right, 0.2).addScaledVector(_up, -0.15);
-          // Aim at a point 50 m ahead so darts converge on the crosshair.
-          _aim.copy(camera.position).addScaledVector(dir, 50);
-          darts.fire(_origin, _aimDir.subVectors(_aim, _origin).normalize(), dartType);
-          fireCd = dartTuning.types[dartType].fireInterval;
-        }
-      } else {
-        fireCd = 0; // release snap: the next press fires immediately
-      }
-      // E throws a foam block (was fire before darts).
+      // E throws a foam block.
       if (input.wasPressed("use")) {
         const dir = camera.getWorldDirection(new THREE.Vector3());
         spawnBlock(camera.position.clone().addScaledVector(dir, 0.8), dir.multiplyScalar(THROW_SPEED));
@@ -221,6 +229,8 @@ startLoop({
     debris.syncRender();
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     camera.rotation.set(player.pitch, player.yaw, 0);
+    blasterModel.update(_dt, blaster);
+    hud.setAmmo(blaster.mag, blaster.reserve, blaster.state);
     for (const { mesh, body } of blocks) {
       const p = body.translation();
       const r = body.rotation();
@@ -233,4 +243,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts } });

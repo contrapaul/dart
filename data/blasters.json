@@ -1,0 +1,20 @@
+{
+  "_note": "Placeholder until Paul's first blaster card (PLAN.md section 5). Units: metres, seconds, degrees.",
+  "placeholder": {
+    "dartType": "standard",
+    "dartsPerShot": 3,
+    "spreadDeg": 2.5,
+    "magSize": 8,
+    "reserveMax": 40,
+    "reserveStart": 40,
+    "primeTime": 0.45,
+    "reloadTime": 1.4,
+    "autoReload": true,
+    "muzzle": [0.16, -0.13, -0.42],
+    "recoilKick": 0.05,
+    "recoilReturn": 12,
+    "bodyColor": "#ff7a1a",
+    "accentColor": "#2ec4ff",
+    "trimColor": "#fff6e8"
+  }
+}
