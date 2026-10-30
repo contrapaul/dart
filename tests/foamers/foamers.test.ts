@@ -4,6 +4,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { VoxelVolume } from "../../src/voxel/chunk";
 import { linearColorTable } from "../../src/voxel/materials";
 import { greedyMesh } from "../../src/voxel/mesher";
+import { surfaceNets } from "../../src/voxel/surface-nets";
 import type { Mesher } from "../../src/voxel/pieces";
 import { DebrisSystem } from "../../src/voxel/debris";
 import { DartSystem } from "../../src/weapons/darts";
@@ -18,9 +19,14 @@ const SPEC = foamerData.test;
 const SIZE = [SPEC.size[0], SPEC.size[1], SPEC.size[2]] as [number, number, number];
 const DEBRIS_CAP = destructionData.debris.max;
 
-/** Node has no Worker: mesh synchronously on the main thread. */
+/** Node has no Worker: mesh synchronously on the main thread, smoothed
+ *  when asked, as the worker does. */
 function fakeMesher(): Mesher {
-  return { mesh: (padded) => Promise.resolve(greedyMesh(padded, linearColorTable())) };
+  const colors = linearColorTable();
+  return {
+    mesh: (padded, smooth) =>
+      Promise.resolve(smooth ? surfaceNets(padded, colors) : greedyMesh(padded, colors)),
+  };
 }
 
 /** Let pending remesh promises resolve, then step once more so the

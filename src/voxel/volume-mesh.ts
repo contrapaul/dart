@@ -40,6 +40,8 @@ export class VolumeMesh {
     private world: RAPIER.World,
     origin: THREE.Vector3,
     body?: RAPIER.RigidBody,
+    /** Surface nets instead of greedy blocks (Foamers, ENG-09). */
+    private smooth = false,
   ) {
     this.group.position.copy(origin);
     if (body) {
@@ -95,7 +97,7 @@ export class VolumeMesh {
       }
       const [cx, cy, cz] = chunkCoords(key);
       this.pendingJobs++;
-      this.pool.mesh(buildPadded(this.volume, cx, cy, cz, chunk)).then((data) => {
+      this.pool.mesh(buildPadded(this.volume, cx, cy, cz, chunk), this.smooth).then((data) => {
         this.pendingJobs--;
         if (this.dead || view.version !== version) return;
         this.apply(key, view, data);

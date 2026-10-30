@@ -76,7 +76,8 @@ export class Foamer implements VoxelTarget {
       this.body,
     );
 
-    this.mesh = new VolumeMesh(this.volume, mesher, rapier, world, new THREE.Vector3(), this.body);
+    // Smoothed (surface nets), so the Foamer looks soft rather than blocky.
+    this.mesh = new VolumeMesh(this.volume, mesher, rapier, world, new THREE.Vector3(), this.body, true);
     this.group.add(this.mesh.group);
     // Place the body once for spawn: setTranslation and setRotation in place.
     const corner = cornerOffset(this.hx, this.hz, this.yaw, new THREE.Vector3());

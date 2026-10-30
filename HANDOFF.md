@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
+PRE-09, ENG-01 to ENG-07, ENG-09, GAME-01, GAME-02 (placeholder blaster) and
 GAME-03 (test Foamer) done. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and
 walls. Left mouse fires the placeholder pump blaster (3 darts per shot,
@@ -37,7 +37,7 @@ shadows are never black, and a rim light on edges facing away from the
 camera. The course boxes, floor, blaster and darts keep their old
 materials.
 
-Next up: ENG-09 (smoothed meshing for Foamers, owner A) and QA-01 (performance on the low-end machine). P0 prototype due 2026-11-12.
+Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
@@ -65,6 +65,38 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-31: ENG-09 smoothed meshing for Foamers (Claude)
+
+- `src/voxel/surface-nets.ts`: naive surface nets with relaxation. One
+  vertex per cell the surface crosses (mean of its crossing edges), one
+  quad per solid/empty voxel edge, then `smooth.iterations` (4, in
+  `data/render.json`) passes moving each vertex toward its neighbours'
+  mean, clamped to its own cell. Smooth normals from the faces. Colour per
+  vertex: the most common material among the cell's surface voxels (so an
+  eye beats the lime behind it).
+- Why this method: every solid voxel still makes geometry (a blurred
+  density field makes one- and two-voxel details vanish), the surface
+  never leaves the voxels that made it, so dart hits on the smooth
+  collider still match the voxels they carve, and flat faces stay flat.
+- Wiring: the mesher worker takes `smooth` per job; `MesherPool.mesh` and
+  the `Mesher` interface gained `smooth?`; `VolumeMesh` has a `smooth`
+  constructor flag; Foamers pass true. Walls and falling pieces stay
+  greedy blocks (PLAN 7.4 allowed either; blocks read better for
+  destructible props and cost less).
+- Cost: 5.4 ms per Foamer remesh in a worker (greedy: 1.1 ms), 2,448
+  triangles. Main thread unchanged apart from the trimesh collider.
+- Limits: relaxation does not see across chunk seams, so a smoothed volume
+  should fit in one chunk (32 voxels a side; 1.6 m at 0.05 m voxels).
+  Painted details need to be about 3 voxels wide to survive smoothing:
+  the placeholder Foamer's 1-voxel white eye ring now reads as a thin
+  rim. A design note for Paul's Foamers. No voxel AO on smooth meshes
+  (the foam shader still applies).
+- Tests: 5 in `tests/voxel/surface-nets.test.ts` (closed and outward
+  facing, flat faces kept, corners rounded, more passes rounder, colours,
+  empty input). Foamer tests now mesh smooth through the fake mesher.
+- Browser: smooth blob, eyes visible, dart carves read as soft dents, no
+  console errors.
 
 ### 2026-10-31: Stutter and exploding foam fixes (Claude, from Paul's play test)
 

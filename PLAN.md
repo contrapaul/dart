@@ -464,7 +464,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ENG-05 | Sphere carve + debris spawning with caps | A | ENG-04 |
 | ENG-06 | Island detection and break-off rigid bodies (card: `tasks/ENG-06.md`) | Pi | ENG-05 |
 | ENG-07 | Foam shader v1 and voxel AO (card: `tasks/ENG-07.md`) | Pi | ENG-04 |
-| ENG-09 | Smoothed meshing (surface nets) for Foamer volumes, same worker pool (PLAN 7.4) | A | ENG-04 |
+| ENG-09 | Smoothed meshing (surface nets) for Foamer volumes, same worker pool (PLAN 7.4) | Claude | ENG-04 |
 | GAME-01 | Projectile system: visible darts, arc, sticking, pooling (card: `tasks/GAME-01.md`) | Pi | ENG-02 |
 | GAME-02 | One placeholder blaster (pump action) end to end (card: `tasks/GAME-02.md`) | Pi | GAME-01 |
 | GAME-03 | One voxel test Foamer that walks at you and pops into chunks (card: `tasks/GAME-03.md`) | Pi | ENG-05 |
@@ -580,3 +580,5 @@ All twelve answered 2026-10-29.
 | 2026-10-30 | Pi runs Qwen 3.8-27b: given long tasks with detailed task cards. | 11.1 |
 | 2026-10-30 | Placeholder blaster crater size approved (standard dart carveRadius 0.12 m). Larger carve radius comes per blaster, set in blaster data at GAME-09. | 12 |
 | 2026-10-30 | Foam look v1 (ENG-07): voxel AO baked into vertex colours by the greedy mesher (faces merge only with equal AO), and a foam patch on MeshStandardMaterial (pores, tint, glow, rim). Pore noise is in local voxel units and wraps every chunk, so pore size follows voxel size. Tuning in `data/render.json`. | 7.4 |
+| 2026-10-31 | Smoothing (ENG-09): surface nets with relaxation for Foamers only; walls and falling pieces stay greedy blocks. Foamer painted details must be about 3 voxels wide to survive smoothing. | 7.4 |
+| 2026-10-31 | Everything that moves on the 60 Hz step is drawn interpolated between steps (fixes stutter on 120 Hz displays). A dart push changes a body's speed by at most 4 m/s. | 7.3 |
