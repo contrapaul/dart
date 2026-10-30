@@ -37,7 +37,8 @@ function after(src: string, anchor: string, code: string) {
 
 // Value noise on the integer lattice, wrapped per hash call so a lattice
 // that tiles every `wrap` cells tiles exactly (wrap 0 = no wrap). No sin
-// of large numbers: the hash only ever sees the wrapped cell index.
+// of large numbers: the hash only ever sees the wrapped cell index, which
+// stays small, so it is stable at mediump precision.
 const NOISE = `
 varying vec3 vFoamPos;
 uniform float uCellsPerUnit;
@@ -53,7 +54,10 @@ uniform float uRimPower;
 float foamCell( vec3 i, float wrap ) {
   i = floor( i ) + vec3( 157.0, 113.0, 271.0 );
   if ( wrap > 0.0 ) i = mod( i, vec3( wrap ) );
-  return fract( i.x * 127.1 + i.y * 311.7 + i.z * 74.7 );
+  // A scrambling hash (a linear one makes diagonal stripes on the lattice).
+  vec3 h = fract( i * vec3( 0.1031, 0.1030, 0.0973 ) );
+  h += dot( h, h.yzx + 33.33 );
+  return fract( ( h.x + h.y ) * h.z );
 }
 
 float foamNoise( vec3 p, float wrap ) {

@@ -68,6 +68,15 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ### 2026-10-30: ENG-07 foam shader and voxel ambient occlusion (Pi, Qwen 3.8-27b)
 
+- Review (Claude): the pore hash was linear in the cell index
+  (`fract(127.1x + 311.7y + 74.7z)` on integers is `fract(0.1x + 0.7y +
+  0.7z)`), so the pores showed as regular diagonal stripes in the browser.
+  Replaced with a scrambling hash (Hoskins style, on the small wrapped cell
+  index). Browser after the fix: irregular speckle, no line at the x = 3.2
+  m chunk seam, crater corners and the Foamer's steps read darker with AO,
+  eyes still white and ink, no shader warnings. Pi's note says PLAN.md got
+  decision rows; it had not, so they are added now. Still unverified: fps
+  with 10 Foamers (pane hidden) and Paul's view of the look.
 - Built `data/render.json` (all the look numbers, exact values from the
 card), `src/render/foam-material.ts` (`createFoamMaterial`,
 `voxelFoamMaterial`, `patchFoamShader`, a MeshStandardMaterial with an
