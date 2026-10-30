@@ -115,11 +115,13 @@ export class Foamer implements VoxelTarget {
     this.body.setNextKinematicRotation({ x: _q.x, y: _q.y, z: _q.z, w: _q.w });
   }
 
-  /** Render frame: copy the pose and the windup squash to the groups. */
+  /** Render frame: copy the pose and the windup squash to the groups. The
+   *  outer group sits on the feet centre, unturned, so the squash scales
+   *  about the feet; the mesh inside carries the corner offset and the yaw,
+   *  matching the body. */
   syncRender() {
     const corner = cornerOffset(this.hx, this.hz, this.yaw, new THREE.Vector3());
-    this.group.position.copy(this.centre).add(corner);
-    this.group.quaternion.set(_q.x, _q.y, _q.z, _q.w);
+    this.group.position.copy(this.centre);
     const inv = 1 / Math.sqrt(this.squashY);
     this.group.scale.set(inv, this.squashY, inv);
     this.mesh.group.position.copy(corner);

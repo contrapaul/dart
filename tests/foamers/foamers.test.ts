@@ -235,4 +235,34 @@ describe("test Foamer (GAME-03)", () => {
     for (let i = 0; i < 30; i++) tick(r, player);
     expect(r.darts.stats().stuck).toBe(0);
   });
+
+  it("8b. a suction dart that lands the popping hit falls clear instead of sticking to the removed body", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 1);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    await settle(f.mesh, r.world);
+    f.health = SPEC.damage.suction;
+    r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "suction");
+    for (let i = 0; i < 120 && r.foamers.stats.popped === 0; i++) tick(r, player);
+    expect(r.foamers.stats.popped).toBe(1);
+    for (let i = 0; i < 30; i++) tick(r, player);
+    expect(r.darts.stats().stuck).toBe(0);
+  });
+
+  it("3b. the drawn mesh lines up with the body for a turned Foamer", () => {
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(2, 0, -1))!;
+    f.yaw = 1.1;
+    f.applyPose();
+    r.world.step();
+    f.syncRender();
+    f.group.updateWorldMatrix(true, true);
+    for (const v of [[0, 0, 0], [SIZE[0], SIZE[1], SIZE[2]], [3, 20, 11]]) {
+      const drawn = new THREE.Vector3(v[0], v[1], v[2])
+        .multiplyScalar(SPEC.voxelSize)
+        .applyMatrix4(f.mesh.group.matrixWorld);
+      const body = f.voxelToWorld(new THREE.Vector3(v[0], v[1], v[2]));
+      expect(drawn.distanceTo(body)).toBeLessThan(1e-4);
+    }
+  });
 });

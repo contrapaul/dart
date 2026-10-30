@@ -60,6 +60,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ### 2026-10-30: GAME-03 test Foamer that walks at you and pops (Pi, Qwen 3.8-27b)
 
+- Review (Claude): two bugs fixed before merge. (1) A suction dart that
+  landed the popping hit still tried to stick to the removed body and
+  Rapier threw `RuntimeError: unreachable`. `stepFlying` now checks
+  `world.getRigidBody` after `onHit`; if the body is gone the dart bounces
+  and cannot stick again (not even to the pop's foam chunks). Test 8b.
+  (2) The mesh was drawn about 0.4 m off its body and turned twice, so it
+  faced sideways: `syncRender` applied the corner offset and yaw to both
+  the outer group and the mesh group. The outer group now sits on the feet
+  centre, unturned (the squash scales about the feet), and only the mesh
+  group carries offset and yaw. Test 3b checks drawn voxels against
+  `voxelToWorld` for a turned Foamer. Browser: mesh centre matches the
+  feet centre, eyes face the player, a suction pop throws no error, 6
+  standard hits pop it, respawn works, 10 Foamers update in 0.04 ms per
+  step. Still unverified: real fps with 10 Foamers (the pane was hidden
+  and throttled) and the pointer-locked play feel.
 - Owned files built exactly as the card lists them:
   `data/foamers.json` (numbers + spawner), `src/foamers/foamer-model.ts`
   (`buildTestFoamer`: a rounded lime blob, flat bottom, one chunk, big

@@ -265,7 +265,12 @@ export class DartSystem {
           true,
         );
       }
-      if (s.spec.sticks && s.canStick) {
+      // A body removed inside onHit (a popped Foamer) has nothing left to
+      // stick to: the dart bounces off where it was and, like a released
+      // dart, does not stick again (not even to the foam chunks).
+      const bodyGone = hitBody !== null && !this.world.getRigidBody(hitBody.handle);
+      if (bodyGone) s.canStick = false;
+      if (s.spec.sticks && s.canStick && !bodyGone) {
         this.stick(s, hit, hitBody);
         return;
       }
