@@ -124,6 +124,12 @@ describe("DartImpacts", () => {
     darts.fire(new THREE.Vector3(0.5, 0.25, 1), new THREE.Vector3(0, 0, -1), "suction");
     darts.fire(new THREE.Vector3(1.5, 0.25, 1), new THREE.Vector3(0, 0, -1), "suction");
     until(() => darts.stats().stuck === 2, darts, world);
+    // Let the sticks' foam debris fall well clear first: there is no floor,
+    // and a chunk in the dart's path would take the hit instead (a flake).
+    for (let i = 0; i < 60; i++) {
+      darts.update(DT);
+      world.step();
+    }
     // A standard dart carves at x 0.5. The two suction sticks already carved
     // a little on impact, so wait for the third hit, not for any carve.
     darts.fire(new THREE.Vector3(0.5, 0.25, 1.5), new THREE.Vector3(0, 0, -1), "standard");

@@ -101,6 +101,9 @@ github.com/contrapaul/dart (public), MIT licence.
   in 1.5 s settle with the cap at 16, 120 fps, worst frame 11.2 ms, search
   at most 0.8 ms. `live` briefly counts fading pieces too (no bodies).
 - Unverified: how falling pieces feel with a real mouse.
+- Fixed a GAME-02 test flake (impacts test 7 failed about 1 run in 5):
+  foam debris from the suction sticks sometimes took the standard dart's
+  hit. The test now lets the debris fall clear first; 30 runs pass.
 
 ### 2026-10-30: GAME-02 play test (Paul)
 
