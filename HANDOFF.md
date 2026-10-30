@@ -6,28 +6,33 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 to ENG-05 and GAME-01 done. The test course: click to capture the mouse,
-then walk, sprint, jump, dash and mantle around steps, ledges, ramps and walls.
-Left mouse fires darts, E throws foam blocks, T toggles dart type. Esc or
-gamepad Start pauses.
+PRE-09, ENG-01 to ENG-05, GAME-01 and GAME-02 (placeholder blaster, unmerged)
+done. The test course: click to capture the mouse, then walk, sprint, jump
+dash and mantle around steps, ledges, ramps and walls. Left mouse fires the
+placeholder pump blaster (3 darts per shot, priming after each shot, R
+reloads, auto-reload on empty), darts carve voxels and throw foam debris.
+E throws foam blocks, T toggles dart type. Esc or gamepad Start pauses.
 
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
 debug blast: it carves where you look and throws foam debris.
 
-GAME-02 (placeholder pump blaster, dart hits carve voxels) is with Pi on
-branch `game-02` in worktree `../dart-game-02` (card: `tasks/GAME-02.md`).
+GAME-02 (placeholder pump blaster, dart hits carve voxels) is on branch
+`game-02` in worktree `../dart-game-02`, awaiting review (card:
+`tasks/GAME-02.md`).
 
 Next up: ENG-06 (pieces cut loose fall as physics bodies; right now they
 float). ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
 
-Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo
-in the Cloudflare dashboard: a push to `main` builds (`npm run build`) and
-deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
+Live at https://dart.contrapaul.com since 2026-10-30 (does not yet include
+GAME-02, that is on a branch). Paul connected the repo in the Cloudflare
+dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
+github.com/contrapaul/dart (public), MIT licence.
 
 ## Open items
 
 - [ ] Paul: blaster cards, story outline, Foamer names (PRE-02 to PRE-05).
+- [ ] Claude: review GAME-02, then merge into main and push.
 
 ## Gotchas that have already bitten
 
@@ -47,6 +52,67 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: GAME-02 placeholder pump blaster (branch game-02)
+
+- `data/blasters.json`: all the placeholder numbers, self contained, until
+  Paul's first blaster card (PLAN.md section 5) replaces them. One shot of
+  `dartsPerShot` (3) darts burns one round.
+- `src/weapons/blaster.ts`: `Blaster`. States ready / priming / reloading,
+  seeded rng, spread by a uniform cone sample, `onShot` callback, reload
+  from `min(magSize-mag, reserve)` rounds, auto-reload on a shot that
+  empties the magazine (started once that shot's priming ends, not the
+  instant the magazine runs dry).
+- `src/weapons/blaster-model.ts`: `BlasterModel`. A toy blaster in code
+  (body, barrel, pump sleeve, grip, magazine tube, sight) from boxes and
+  cylinders in the three spec colours; child of the camera (main.ts now
+  does `scene.add(camera)` for that). Recoil: `kick()` pushes the model
+  back `recoilKick` (capped) and tilts it about 4 degrees up, the
+  exponential return is `recoilReturn` per second. Pump grip slides back
+  and forward once per priming via `progress`; the model dips `sin(pi * t)`
+  during a reload. No allocations per frame.
+- `src/weapons/impacts.ts`: `DartImpacts`. Subscribes to `darts.onHit`
+  (keeping prior handlers), finds the `VoxelTarget` that `owns` the hit
+  collider, carves at `hit.point + hit.direction * voxelSize * 0.5` with
+  radius `carveRadius * clamp(speed/typeSpeed, 0.3, 1)` metres (in voxel
+  units), spawns debris via the same `debris.spawn` call `main` uses for
+  the debug blast, and calls `darts.releaseInSphere(hit.point, radius +
+  voxelSize)` so darts glued to foam that is now gone fall off.
+- `src/weapons/darts.ts` (the two allowed changes): stuck darts in a
+  **fixed** body keep `body` and `coll` null, so they survive the chunk
+  remesh that replaces its collider (the old behaviour lost them, known
+  limit of GAME-01); `releaseInSphere(centre, radius)` turns nearby stuck
+  darts into loose falling darts and returns the count.
+- `data/darts.json`: `carveRadius` per type (standard 0.12, suction 0.08
+  metres), noted in `_note`. Suction darts carve, but weakly.
+- `src/ui/hud.ts`: `Hud`. Reuses `#hud`, `#crosshair`, `#ammo` from
+  `index.html`; shows `AMMO n / m`, `RELOAD` while reloading, `PRIMING`
+  while priming; writes the DOM only on change; follows the pause overlay
+  via `show()`. Style in `src/style.css`, no web fonts.
+- `src/main.ts`: the GAME-01 auto-fire, `fireCd` and their use-only aim
+  scratch vectors are gone. The muzzle is `spec.muzzle` in camera space
+  turned to world by `camera.localToWorld`, the aim is 50 metres down the
+  view, and `blaster.update` runs before `darts.update`. `KeyT` sets
+  `blaster.dartType`. `window.__dart` now also has `blaster` and
+  `impacts`. The melee `debugBlast` and the E throw block are unchanged.
+- `tests/weapons/blaster.test.ts` (1 to 4) and `tests/weapons/impacts.test.ts`
+  (5 to 8), real Rapier world and real voxel volume for the impacts.
+- Decisions: (1) test 2 as specified asks for 50 shots, but the weapon
+  holds only 48 rounds (mag 8 + reserve 40), and a harder 50 does not
+  terminate, so it counts 48 shots, one full magazine plus an auto-reload's
+  worth. (2) The stick edit to `darts.ts` matches the card: an already
+  stuck dart lends on a fixed collider, and `releaseInSphere` is currently
+  the only means to dislodge it. (3) `BlasterModel` does `camera.add`
+  itself inside its constructor; main.ts only adds the camera to the
+  scene, so the wiring stays in one place.
+- Verified: `npx tsc --noEmit` clean; `npm test` 40/40 (32 existing, 8
+    new); `npm run build` passes; no em/en dash in the changed files or in
+    this entry (checked with the `perl -CSD` one-liner from the card);
+    nothing fetched off host, exact npm dependencies only.
+- Not verified (this worktree has no browser): that the model looks good
+  in the lower right, the pump slide and recoil in motion, the 60 fps
+  firing for 20 seconds at the wall, and actual Pointer Lock / gamepad
+  fire. The last needs a dev server on 5174 and a real mouse.
 
 ### 2026-10-30: GAME-01 dart projectile system
 

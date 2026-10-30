@@ -288,6 +288,30 @@ export class DartSystem {
     if (s.pos.y < KILL_Y) this.killSlot(s);
   }
 
+  /**
+   * Every stuck dart within `radius` metres of `centre` becomes a falling
+   * non-sticking dart (the same path as the collider-removed case in
+   * stepStuck). Returns how many were released.
+   */
+  releaseInSphere(centre: THREE.Vector3, radius: number): number {
+    const r2 = radius * radius;
+    let n = 0;
+    for (const s of this.slots) {
+      if (!s.alive || s.state !== STUCK) continue;
+      if (s.pos.distanceToSquared(centre) <= r2) {
+        s.state = FLYING;
+        s.vel.set(0, 0, 0);
+        s.body = null;
+        s.coll = null;
+        s.canStick = false;
+        this.count[STUCK]--;
+        this.count[FLYING]++;
+        n++;
+      }
+    }
+    return n;
+  }
+
   // A stuck dart is glued to its body's local frame and rides along. When the
   // collider is gone the dart falls as an unstuck dart (rule 3).
   private stepStuck(s: Slot) {
@@ -318,7 +342,9 @@ export class DartSystem {
     this.count[FLYING]--;
     this.count[STUCK]++;
     const rb = hit.collider.parent();
-    if (rb) {
+    // A fixed collider is never replaced by a remesh while the dart rides
+    // with it, so keep body and coll null: the dart stays stuck in place.
+    if (rb && !rb.isFixed()) {
       const p = rb.translation();
       const r = rb.rotation();
       this._q.set(r.x, r.y, r.z, r.w);
