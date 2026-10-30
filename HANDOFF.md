@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 to ENG-06, GAME-01, GAME-02 (placeholder blaster) and
+PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
 GAME-03 (test Foamer) done. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and
 walls. Left mouse fires the placeholder pump blaster (3 darts per shot,
@@ -29,7 +29,15 @@ point farthest from the player. Suction darts stick to it and ride along
 while it walks, then drop when it pops. The bonk only logs for now; player
 health comes later.
 
-Next up: ENG-07 (foam shader). P0 prototype due 2026-11-12.
+Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
+occlusion into the vertex colours (inside corners, crater floors, the seam
+where a Foamer meets the ground read darker), and every foam surface uses
+the foam material: pore speckle, a slow tint wobble, a faint glow so
+shadows are never black, and a rim light on edges facing away from the
+camera. The course boxes, floor, blaster and darts keep their old
+materials.
+
+Next up: ENG-08. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
@@ -57,6 +65,78 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: ENG-07 foam shader and voxel ambient occlusion (Pi, Qwen 3.8-27b)
+
+- Built `data/render.json` (all the look numbers, exact values from the
+card), `src/render/foam-material.ts` (`createFoamMaterial`,
+`voxelFoamMaterial`, `patchFoamShader`, a MeshStandardMaterial with an
+onBeforeCompile patch; nine uniforms; every foam material shares the one
+"foam" program via `customProgramCacheKey`), and 10 new tests (6 mesher,
+4 material).
+- Mesher changes, as the card lists: `buildPadded` now fills the whole
+one-voxel border (the 26 added edge and corner cells are read through
+`volume.get`, so AO across chunk seams is correct), and `greedyMesh`
+bakes standard voxel corner AO into the vertex colours. The mask is a
+Uint16Array: material id in the low byte, the four corner AO values (2
+bits each) in the high byte, so a run only merges when material id and
+AO match; a flat face (all AO 3) merges exactly as before. When corner
+0 and 2 are darker than 1 and 3 the quad splits along the other diagonal;
+winding stays outward both ways (the existing winding test pattern,
+test 6).
+- Where it goes: `VolumeMesh` and `pieces.ts` share
+`voxelFoamMaterial()` (vertexColors, 3 pore cells per voxel, wrap 96 =
+CHUNK_SIZE * 3, so the pattern is seamless across the 32-voxel chunk
+jump); `debris.ts` uses its own foam material for the instanced chunks
+(3 cells per unit, no wrap); the thrown foam blocks in `main.ts` use a
+foam material per colour (3 cells per voxel / 0.1 m = 30 cells per
+metre). Course boxes, floor, blaster, darts: untouched, as specced.
+- `mesher.worker.ts` needed no change: `greedyMesh` reads the AO levels
+from `data/render.json` by default and the worker passes nothing.
+- Decisions: (1) the noise hash wraps per corner call
+(`foamCell(i, wrap)`), not once per lattice cell, because the
+neighbours `i + 1` across a wrap boundary must hash to the wrapped
+cell or the tile shows a seam; a wrap of 0 skips the mod, so the
+unwrapped debris and block materials pay nothing. (2) The second pore
+octave always passes `wrap * 2` and the tint `wrap / 8`; with wrap 0
+both degrade to plain unwrapped noise, matching the single-octave
+unwrap. (3) `uTint` scales brightness by `1 + uTint * (n*2 - 1)` as
+specified, and the same wobble drives the roughness variation so the
+pores and shine move together.
+- Remesh cost on this Mac (software renderer, idle machine, interleaved
+repeats of a full 2-chunk wall remesh): worker-side per job from the
+pool's own timings, about 0.9 to 1.4 ms before, about 1.0 to 17 ms
+after, the first two jobs of a burst taking 7.4 to 7.6 ms and the rest
+about 1 ms. In the main-thread interleaved bench the full wall went
+from about 1.7 ms to about 1.9 ms, roughly 13 percent more; the first
+jobs of a burst are slower because of mask growth from the wider key,
+and they are the ones a carve actually sends. In the browser the burst
+of remesh jobs from live carving stayed under 8 ms on this machine,
+which was the ENG-04 budget for the heaviest realistic chunk.
+- Frame rate: with 10 hand-spawned Foamers in the scene (headless
+Chromium, renderer capped at the 60 Hz refresh, window not visible so
+the numbers are software-rasterised and throttled): mean 16.67 ms /
+p95 16.7 ms / worst 16.8 ms, essentially the rAF cap; the scene before
+ENG-07 reads identically. Not a 60 fps machine measurement, which
+remains for QA-01 on the base Apple Silicon Mac.
+- A crater in the wall now reads as depth: the carved floor and the
+upper inside corners are darker than the rim, the seam darkens all the
+way around, and the pores (3 cells per 0.1 m voxel) plus the rim light
+break up the flat colour. Before, the same carving was a flat hole in a
+flat colour, no depth cue except the shadow. Along the chunk seam at
+x = 3.2 m the AO and the wrapped pore lattice are continuous, so there
+is no visible line where two wall chunks meet. Paul to confirm the
+look and the eye contrast in a real browser (`npm run dev -- --port
+5174`); nothing here was tuned by him yet.
+- Verified: `npx tsc --noEmit` clean; `npm test` 72/72 (62 existing
+unchanged, 10 new); `npm run build` passes; the headless check logged
+no console errors or shader warnings on load, in the foam-heavy scene,
+and during carving; no em or en dash in any file I wrote (the card's
+perl check, plus the new untracked files); nothing fetched off host.
+- Unverified in a real browser (needs eyes): how the pores and rim
+read at a glance, the Foamer eye contrast after the tint wobble, the
+windows-integrated-graphics frame rate, and the real 60 fps measurement
+with 10 Foamers on the target laptop.
 
 ### 2026-10-30: GAME-03 test Foamer that walks at you and pops (Pi, Qwen 3.8-27b)
 

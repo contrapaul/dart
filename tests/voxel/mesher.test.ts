@@ -76,3 +76,106 @@ describe("greedyMesh", () => {
     expect(paddedIndex(-1, -1, -1)).toBe(0);
   });
 });
+
+describe("buildPadded border", () => {
+  it("fills padded edges and corners from the volume", () => {
+    const v = new VoxelVolume(1);
+    v.set(2, 2, 2, 1); // keeps chunk (0,0,0) in the sparse map
+    v.set(-1, -1, 5, 1);
+    v.set(-1, -1, -1, 1);
+    const chunk = v.chunks.get(chunkKey(0, 0, 0))!;
+    const padded = buildPadded(v, 0, 0, 0, chunk);
+    expect(padded[paddedIndex(-1, -1, 5)]).toBe(1);
+    expect(padded[paddedIndex(-1, -1, -1)]).toBe(1);
+    expect(padded[paddedIndex(0, 0, 0)]).toBe(0);
+  });
+});
+
+describe("greedyMesh ambient occlusion", () => {
+  it("leaves a lone voxel at full brightness and six quads", () => {
+    const v = new VoxelVolume(1);
+    v.set(4, 4, 4, 1);
+    const m = meshOf(v);
+    expect(quads(m)).toBe(6);
+    for (let i = 0; i < m.colors.length; i++) {
+      expect(m.colors[i]).toBeCloseTo(colors[3 + (i % 3)], 5);
+    }
+  });
+
+  it("keeps a 4 x 1 x 4 slab's top face as one quad", () => {
+    const v = new VoxelVolume(1);
+    v.fillBox(14, 0, 14, 17, 0, 17, 1);
+    const m = meshOf(v);
+    expect(quads(m)).toBe(6);
+    let topTris = 0;
+    for (let t = 0; t < m.indices.length; t += 3) {
+      const a = m.indices[t] * 3;
+      if (m.normals[a + 1] === 1) topTris++;
+    }
+    expect(topTris).toBe(2);
+  });
+
+  it("darkens a slab top under a standing voxel, not at outer corners", () => {
+    const v = new VoxelVolume(1);
+    v.fillBox(14, 0, 14, 17, 0, 17, 1); // 4 x 1 x 4 slab
+    v.set(15, 1, 15, 1); // a voxel standing on it, in the middle
+    const m = meshOf(v);
+    let touchedVertex = false, outerVertex = false;
+    for (let i = 0; i < m.positions.length; i += 3) {
+      if (m.normals[i + 1] !== 1) continue; // top face only
+      const px = m.positions[i], py = m.positions[i + 1], pz = m.positions[i + 2];
+      if (Math.abs(py - 1) > 1e-6) continue;
+      expect(m.colors[i]).toBeLessThanOrEqual(colors[3] + 1e-6);
+      expect(m.colors[i + 1]).toBeLessThanOrEqual(colors[4] + 1e-6);
+      expect(m.colors[i + 2]).toBeLessThanOrEqual(colors[5] + 1e-6);
+      // Vertices that touch the standing voxel (it spans 15 to 16 on x and z).
+      if (px > 14 && px < 17 && pz > 14 && pz < 17) {
+        touchedVertex = true;
+        expect(m.colors[i]).toBeLessThan(colors[3]);
+      }
+      // Outer corners of the slab stay fully open.
+      if ((px <= 14 || px >= 18) && (pz <= 14 || pz >= 18)) {
+        outerVertex = true;
+        expect(m.colors[i]).toBeCloseTo(colors[3], 5);
+      }
+    }
+    expect(touchedVertex).toBe(true);
+    expect(outerVertex).toBe(true);
+  });
+
+  it("sets per-corner AO levels on an inside corner", () => {
+    const levels = [0.1, 0.2, 0.3, 1];
+    const v = new VoxelVolume(1);
+    v.set(0, 0, 0, 1);
+    v.set(1, 1, 0, 1);
+    v.set(0, 1, 1, 1);
+    const chunk = v.chunks.get(chunkKey(0, 0, 0))!;
+    const m = greedyMesh(buildPadded(v, 0, 0, 0, chunk), colors, levels);
+    // The top face of (0,0,0) is one quad at y = 1, x and z in 0..1.
+    // Vertex (1,1) has both side cells solid: aoLevels[0]. (1,0) and (0,1)
+    // have one side solid: aoLevels[2]. (0,0) has none: aoLevels[3].
+    const want: Record<string, number> = { "1,1": 0, "1,0": 2, "0,1": 2, "0,0": 3 };
+    let found = 0;
+    for (let i = 0; i < m.positions.length; i += 3) {
+      if (m.normals[i + 1] !== 1 || Math.abs(m.positions[i + 1] - 1) > 1e-6) continue;
+      const key = `${Math.round(m.positions[i])},${Math.round(m.positions[i + 2])}`;
+      const lvl = want[key];
+      if (lvl === undefined) continue;
+      found++;
+      for (let c = 0; c < 3; c++) {
+        expect(m.colors[i + c]).toBeCloseTo(colors[3 + c] * levels[lvl], 5);
+      }
+    }
+    expect(found).toBe(4);
+  });
+
+  it("keeps winding outward on quads whose diagonal flips", () => {
+    const v = new VoxelVolume(1);
+    v.set(0, 0, 0, 1);
+    v.set(1, 1, 0, 1);
+    v.set(0, 1, 1, 1);
+    const chunk = v.chunks.get(chunkKey(0, 0, 0))!;
+    const m2 = greedyMesh(buildPadded(v, 0, 0, 0, chunk), colors, [0.1, 0.2, 0.3, 1]);
+    expect(windingMatchesNormals(m2)).toBe(true);
+  });
+});

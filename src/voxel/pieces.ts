@@ -3,6 +3,7 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { CHUNK_SIZE, chunkCoords, VoxelVolume } from "./chunk";
 import { EMPTY } from "./materials";
+import { voxelFoamMaterial } from "../render/foam-material";
 import { buildPadded, type MeshData } from "./mesher";
 import { boxCover, findIslands, type Island } from "./islands";
 import type { RemovedVoxel } from "./carve";
@@ -16,7 +17,7 @@ import tuning from "../../data/destruction.json";
 
 const T = tuning.islands;
 // Same shared material settings as VolumeMesh's chunks.
-const meshMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+const meshMaterial = voxelFoamMaterial();
 
 /** The volume a carve happened in. A VolumeMesh matches this directly. */
 export interface PieceSource {

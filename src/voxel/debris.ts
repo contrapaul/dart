@@ -3,6 +3,8 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import { DEBRIS_GROUPS, type Rapier } from "../physics/world";
 import { linearColorTable } from "./materials";
 import type { RemovedVoxel } from "./carve";
+import { createFoamMaterial } from "../render/foam-material";
+import renderJson from "../../data/render.json";
 import tuning from "../../data/destruction.json";
 
 // Foam chunks thrown out by carving. A fixed ring of slots: when it is full,
@@ -32,7 +34,7 @@ export class DebrisSystem {
     this.slots = Array.from({ length: T.max }, () => ({ body: null, age: 0, size: 0 }));
     this.mesh = new THREE.InstancedMesh(
       new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial({ roughness: 1 }),
+      createFoamMaterial({ cellsPerUnit: renderJson.foam.poreCellsPerVoxel, wrapCells: 0 }),
       T.max,
     );
     this.mesh.castShadow = true;

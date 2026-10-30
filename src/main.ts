@@ -18,6 +18,8 @@ import { DebrisSystem } from "./voxel/debris";
 import { MesherPool } from "./voxel/mesher-pool";
 import { VolumeMesh } from "./voxel/volume-mesh";
 import { FallingPieces } from "./voxel/pieces";
+import { createFoamMaterial } from "./render/foam-material";
+import renderJson from "../data/render.json";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -124,10 +126,10 @@ function debugBlast() {
   pieces.afterCarve(voxelMesh, removed);
 }
 
-// Foam blocks: one shared geometry, one material per colour.
+// Foam blocks: one shared geometry, one foam material per colour.
 const blockGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
 const materials = FOAM_COLOURS.map(
-  (color) => new THREE.MeshStandardMaterial({ color, roughness: 1 }),
+  (color) => createFoamMaterial({ cellsPerUnit: renderJson.foam.poreCellsPerVoxel / VOXEL, wrapCells: 0, color }),
 );
 const blocks: { mesh: THREE.Mesh; body: ReturnType<typeof world.createRigidBody> }[] = [];
 

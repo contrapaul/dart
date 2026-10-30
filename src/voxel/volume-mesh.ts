@@ -2,13 +2,14 @@ import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { CHUNK_SIZE, chunkCoords, type VoxelVolume } from "./chunk";
+import { voxelFoamMaterial } from "../render/foam-material";
 import { buildPadded, type MeshData } from "./mesher";
 import type { Mesher } from "./pieces";
 
 // Draws a VoxelVolume and gives it collision: one mesh and one trimesh
 // collider per chunk, rebuilt in workers when chunks change.
 
-const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+const material = voxelFoamMaterial();
 
 interface ChunkView {
   mesh: THREE.Mesh | null;
