@@ -578,3 +578,4 @@ All twelve answered 2026-10-29.
 | 2026-10-29 | Blaster sound effects recorded from Paul's own blasters. | 8.3 |
 | 2026-10-30 | PRE-09 done: public repo contrapaul/dart, live at dart.contrapaul.com, push to `main` deploys. Code licence MIT (confirmed). | 7.6 |
 | 2026-10-30 | Pi runs Qwen 3.8-27b: given long tasks with detailed task cards. | 11.1 |
+| 2026-10-30 | Placeholder blaster crater size approved (standard dart carveRadius 0.12 m). Larger carve radius comes per blaster, set in blaster data at GAME-09. | 12 |

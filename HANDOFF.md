@@ -20,15 +20,13 @@ debug blast: it carves where you look and throws foam debris.
 Next up: ENG-06 (pieces cut loose fall as physics bodies; right now they
 float). ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
 
-Live at https://dart.contrapaul.com since 2026-10-30 (does not yet include
-GAME-02, that is on a branch). Paul connected the repo in the Cloudflare
+Live at https://dart.contrapaul.com since 2026-10-30, GAME-02 included. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
 github.com/contrapaul/dart (public), MIT licence.
 
 ## Open items
 
 - [ ] Paul: blaster cards, story outline, Foamer names (PRE-02 to PRE-05).
-- [ ] Claude: review GAME-02, then merge into main and push.
 
 ## Gotchas that have already bitten
 
@@ -48,6 +46,15 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: GAME-02 play test (Paul)
+
+- Paul played it: firing, priming, reload and carving all work well.
+- Crater size from the placeholder blaster is right. Bigger bites will come
+  from other blasters, so carve size needs to move from the dart type
+  (`data/darts.json` `carveRadius`) to the blaster, or a blaster multiplier,
+  when real blasters arrive (GAME-09).
+- Still unverified: gamepad, Windows integrated graphics.
 
 ### 2026-10-30: GAME-02 review and merge (Claude)
 
