@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import { DartSystem, type DartHit } from "./darts";
 import dartTuning from "../../data/darts.json";
-import { carveSphere } from "../voxel/carve";
+import { carveSphere, type RemovedVoxel } from "../voxel/carve";
 import { DebrisSystem } from "../voxel/debris";
 import type { VoxelVolume } from "../voxel/chunk";
 
@@ -21,6 +21,9 @@ const centreScratch = new THREE.Vector3();
 
 export class DartImpacts {
   readonly stats = { hits: 0, carves: 0, voxelsRemoved: 0 };
+  /** Called after each carve that removed voxels, with the removed ones.
+   *  main uses it to drop the islands (ENG-06). */
+  onCarve: (target: VoxelTarget, removed: RemovedVoxel[]) => void = () => {};
   private darts: DartSystem;
 
   constructor(darts: DartSystem, private debris: DebrisSystem, private targets: VoxelTarget[]) {
@@ -57,5 +60,6 @@ export class DartImpacts {
     this.debris.spawn(removed, centreScratch, size, (v) => target.voxelToWorld(v));
     // Darts stuck to foam that is now gone fall off as loose darts.
     this.darts.releaseInSphere(hit.point, radiusMetres + size);
+    this.onCarve(target, removed);
   }
 }

@@ -21,6 +21,14 @@ export class VolumeMesh {
   readonly group = new THREE.Group();
   readonly body: RAPIER.RigidBody;
   private views = new Map<number, ChunkView>();
+  /** Remesh jobs sent but not yet back. Decrement when they resolve,
+   *  whether or not the result is stale. */
+  private pendingJobs = 0;
+
+  /** True while the volume still has remesh work outstanding. */
+  get busy() {
+    return this.volume.dirtyCount > 0 || this.pendingJobs > 0;
+  }
 
   constructor(
     readonly volume: VoxelVolume,
@@ -61,7 +69,9 @@ export class VolumeMesh {
         continue;
       }
       const [cx, cy, cz] = chunkCoords(key);
+      this.pendingJobs++;
       this.pool.mesh(buildPadded(this.volume, cx, cy, cz, chunk)).then((data) => {
+        this.pendingJobs--;
         if (view.version === version) this.apply(key, view, data);
       });
     }

@@ -16,6 +16,7 @@ import { carveSphere } from "./voxel/carve";
 import { DebrisSystem } from "./voxel/debris";
 import { MesherPool } from "./voxel/mesher-pool";
 import { VolumeMesh } from "./voxel/volume-mesh";
+import { FallingPieces } from "./voxel/pieces";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -92,11 +93,19 @@ carveSphere(voxels, 24, 23, 3, 3);
 voxels.fillBox(0, 24, 0, 12, 27, 3, materialId("cardboard"));
 voxels.fillBox(13, 24, 0, 26, 27, 3, materialId("wood"));
 voxels.fillBox(27, 24, 0, 39, 27, 3, materialId("concrete"));
+// Test tower for ENG-06: shoot through the pillar and the top falls;
+// cut an arm at the joint and the arm falls.
+voxels.fillBox(52, 0, 0, 55, 19, 3, materialId("foam-lime"));
+voxels.fillBox(52, 0, 0, 55, 0, 3, materialId("bedrock"));
+voxels.fillBox(44, 20, 0, 63, 23, 3, materialId("foam-pink"));
 const mesherPool = new MesherPool();
 const voxelMesh = new VolumeMesh(voxels, mesherPool, rapier, world, new THREE.Vector3(-8, 0, -10));
 scene.add(voxelMesh.group);
 const debris = new DebrisSystem(rapier, world);
 scene.add(debris.mesh);
+// Loose islands cut by a carve break off and fall as their own bodies.
+const pieces = new FallingPieces(rapier, world, mesherPool, debris);
+scene.add(pieces.group);
 
 const BLAST_RADIUS_METRES = 0.35;
 const blastRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
@@ -111,6 +120,7 @@ function debugBlast() {
   const c = voxelMesh.worldToVoxel(point);
   const removed = carveSphere(voxels, c.x, c.y, c.z, BLAST_RADIUS_METRES / VOXEL);
   debris.spawn(removed, c, VOXEL, (v) => voxelMesh.voxelToWorld(v));
+  pieces.afterCarve(voxelMesh, removed);
 }
 
 // Foam blocks: one shared geometry, one material per colour.
@@ -159,6 +169,10 @@ const blasterModel = new BlasterModel(blasterSpec, camera);
 blaster.onShot = () => blasterModel.kick();
 // Dart hits on the voxel wall carve a crater and throw foam debris.
 const impacts = new DartImpacts(darts, debris, [voxelMesh]);
+// Darts stuck to a broken-off island fall off as loose darts.
+pieces.onBreak = (c, r) => darts.releaseInSphere(c, r);
+// There is one voxel volume for now, so the carve source is always it.
+impacts.onCarve = (_target, removed) => pieces.afterCarve(voxelMesh, removed);
 // KeyT toggles the dart type. A debug key read with a plain keydown listener,
 // not through data/input.json.
 window.addEventListener("keydown", (e) => {
@@ -224,6 +238,7 @@ startLoop({
         _aimDir,
       );
       debris.update(dt);
+      pieces.update(dt);
       if (player.feet < -20) player.teleport(SPAWN);
       // E throws a foam block.
       if (input.wasPressed("use")) {
@@ -237,6 +252,7 @@ startLoop({
   },
   render(_dt, alpha) {
     debris.syncRender();
+    pieces.syncRender();
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     camera.rotation.set(player.pitch, player.yaw, 0);
     blasterModel.update(_dt, blaster);
@@ -253,4 +269,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts, pieces } });

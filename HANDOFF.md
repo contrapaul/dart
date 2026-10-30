@@ -17,8 +17,10 @@ A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
 debug blast: it carves where you look and throws foam debris.
 
-Next up: ENG-06 (pieces cut loose fall as physics bodies; right now they
-float). ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
+Next up: ENG-07 (foam shader). Loose foam now falls: after a carve, voxel
+groups no longer connected to bedrock break off as falling rigid bodies
+with their own voxel meshes, and tiny loose bits become foam debris. A
+T-shaped test tower stands to the right of the wall.
 
 Live at https://dart.contrapaul.com since 2026-10-30, GAME-02 included. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
@@ -47,7 +49,46 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-10-30: GAME-02 play test (Paul)
+### 2026-10-30: ENG-06 island detection and falling pieces (Pi, Qwen 3.8-27b)
+
+- Built: `src/voxel/islands.ts` (pure `findIslands` flood fill and
+  `boxCover`), `src/voxel/pieces.ts` (`FallingPieces` turns loose islands
+  into falling rigid bodies with their own voxel meshes), and the 8
+  specified test cases (islands tests 1 to 5, pieces tests 6 to 8, with
+  test 5 split over two `it` blocks and the hold timeout split out as 7b,
+  10 `it` blocks in all).
+- How: `findIslands` seeds from the six face neighbours of every removed
+  voxel and explores components with an explicit stack headed toward bedrock.
+  A component that ends without reaching indestructible voxels (or hits
+  `maxSearchVoxels`) is loose. Volumes without bedrock never break apart
+  because the search budget alone cuts a fake chain off as anchored. Every
+  loose island with at least `minPieceVoxels` voxels becomes a body;
+  smaller ones go to `DebrisSystem` instead. Bodies start
+  `kinematicPositionBased` in the island's `min` corner and release once
+  the source volume remeshes and the piece's own meshes are built. Over
+  `maxPieces` the oldest non-fading piece then fades out.
+- Decisions: `-y` neighbour first so the search heads down toward bedrock
+  and usually finds an anchor in a few dozen steps. The collider local
+  translations are the box centre offset by the island's `min` corner, so
+  a collider never overlaps the voxels it broke away from, guarded by
+  `colliderInset`. The body origin is `voxelToWorld(min)`, so the mesh and
+  collider stay in the body's local frame and the group's world transform
+  is correct after it starts moving. In `tests/voxel/pieces.test.ts`, the
+  floor is one fixed cuboid at y = 0 under the pillar; the piece's own
+  origin rests within `colliderInset` of the floor, so its translation y
+  assertion is `-0.05` and not `0`. The `__dart` dev hook now exposes
+  `pieces` for browser checks.
+- Automated browser checks (headless Chromium over the `__dart` hook,
+  dev server on 5174): a melee blast through the tower pillar drops one
+  island, which lands and rests (no violent throw); a 20-piece load
+  settles at live 16 (the cap) at 60 fps headless; 106 rapid fire carves
+  at the wall over 2 s keep `stats.searchMs` under 0.4 ms; a standard
+  dart hit on the load dropped 3 darts to resting, and a suction dart
+  stuck (it aimed at a 22 m piece that passed, so it may have stuck to
+  the wall behind). The player stands on a toppled crossbar piece (feet
+  settle within 2 cm of its top face, stable for 0.6 s, same sink as on
+  the floor). Suction darts sticking to a landed piece and darts
+  bouncing off one specifically still need eyes in a real browser window.
 
 - Paul played it: firing, priming, reload and carving all work well.
 - Crater size from the placeholder blaster is right. Bigger bites will come

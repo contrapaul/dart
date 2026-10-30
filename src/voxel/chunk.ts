@@ -86,6 +86,11 @@ export class VoxelVolume {
         for (let x = x0; x <= x1; x++) this.set(x, y, z, m);
   }
 
+  /** Number of chunks whose mesh is out of date. */
+  get dirtyCount(): number {
+    return this.dirty.size;
+  }
+
   /** Dirty chunk keys since the last call. Keys of chunks that no longer
    *  exist are included, so their meshes can be removed. */
   takeDirty() {
