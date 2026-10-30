@@ -7,7 +7,8 @@ import { PlayerController } from "./player/controller";
 import { DartSystem } from "./weapons/darts";
 import { Blaster, type BlasterSpec } from "./weapons/blaster";
 import { BlasterModel } from "./weapons/blaster-model";
-import { DartImpacts } from "./weapons/impacts";
+import { DartImpacts, type VoxelTarget } from "./weapons/impacts";
+import { FoamerSystem } from "./foamers/foamers";
 import { Hud } from "./ui/hud";
 import blasterTuning from "../data/blasters.json";
 import { VoxelVolume } from "./voxel/chunk";
@@ -167,12 +168,23 @@ const blasterSpec = blasterTuning.placeholder as unknown as BlasterSpec;
 const blaster = new Blaster(blasterSpec, darts);
 const blasterModel = new BlasterModel(blasterSpec, camera);
 blaster.onShot = () => blasterModel.kick();
+// Voxel targets: the wall, and every live Foamer (spawn and pop keep it
+// in step). Darts carve both.
+const voxelTargets: VoxelTarget[] = [voxelMesh];
 // Dart hits on the voxel wall carve a crater and throw foam debris.
-const impacts = new DartImpacts(darts, debris, [voxelMesh]);
+const impacts = new DartImpacts(darts, debris, voxelTargets);
 // Darts stuck to a broken-off island fall off as loose darts.
 pieces.onBreak = (c, r) => darts.releaseInSphere(c, r);
-// There is one voxel volume for now, so the carve source is always it.
-impacts.onCarve = (_target, removed) => pieces.afterCarve(voxelMesh, removed);
+// Islands only form in the wall, so isolate the carve notification there.
+impacts.onCarve = (target, removed) => {
+  if (target === voxelMesh) pieces.afterCarve(voxelMesh, removed);
+};
+// Foamer system: spawn, bonk, dart damage, pop. This is the first enemy,
+// GAME-03.
+const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+scene.add(foamers.group);
+// The bonk just logs; player damage arrives in the later card.
+foamers.onBonk = () => console.info("Bonk");
 // KeyT toggles the dart type. A debug key read with a plain keydown listener,
 // not through data/input.json.
 window.addEventListener("keydown", (e) => {
@@ -187,6 +199,7 @@ const _aim = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _toMuzzle = new THREE.Vector3();
+const _playerPos = new THREE.Vector3();
 const muzzleRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
 
 let paused = true;
@@ -214,6 +227,8 @@ startLoop({
     if (input.wasPressed("pause")) setPaused(!paused);
     if (!paused) {
       player.update(dt, input);
+      // Foamer on a fixed step, before world.step().
+      foamers.update(dt, player.eye(1, _playerPos));
       if (input.wasPressed("melee")) debugBlast();
       // Blaster: muzzle from the camera, aim 50 m down the view, then the
       // blaster's fixed step, then the darts.
@@ -253,6 +268,7 @@ startLoop({
   render(_dt, alpha) {
     debris.syncRender();
     pieces.syncRender();
+    foamers.syncRender();
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     camera.rotation.set(player.pitch, player.yaw, 0);
     blasterModel.update(_dt, blaster);
@@ -269,4 +285,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts, pieces } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts, pieces, foamers } });

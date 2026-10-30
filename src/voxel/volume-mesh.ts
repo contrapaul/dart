@@ -3,7 +3,7 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { CHUNK_SIZE, chunkCoords, type VoxelVolume } from "./chunk";
 import { buildPadded, type MeshData } from "./mesher";
-import type { MesherPool } from "./mesher-pool";
+import type { Mesher } from "./pieces";
 
 // Draws a VoxelVolume and gives it collision: one mesh and one trimesh
 // collider per chunk, rebuilt in workers when chunks change.
@@ -21,6 +21,8 @@ export class VolumeMesh {
   readonly group = new THREE.Group();
   readonly body: RAPIER.RigidBody;
   private views = new Map<number, ChunkView>();
+  /** True after dispose(); remesh results that arrive after that are ignored. */
+  private dead = false;
   /** Remesh jobs sent but not yet back. Decrement when they resolve,
    *  whether or not the result is stale. */
   private pendingJobs = 0;
@@ -32,12 +34,19 @@ export class VolumeMesh {
 
   constructor(
     readonly volume: VoxelVolume,
-    private pool: MesherPool,
+    private pool: Mesher,
     private rapier: Rapier,
     private world: RAPIER.World,
     origin: THREE.Vector3,
+    body?: RAPIER.RigidBody,
   ) {
     this.group.position.copy(origin);
+    if (body) {
+      // A body of its own (kinematic Foamers): the colliders are built in
+      // its frame, so it can move without remeshing.
+      this.body = body;
+      return;
+    }
     this.body = world.createRigidBody(
       rapier.RigidBodyDesc.fixed().setTranslation(origin.x, origin.y, origin.z),
     );
@@ -57,8 +66,23 @@ export class VolumeMesh {
     return collider.parent()?.handle === this.body.handle;
   }
 
+  /** Remove every chunk mesh (and its geometry) and collider.
+   *  Remesh results that arrive afterwards are ignored. The body is not removed. */
+  dispose() {
+    this.dead = true;
+    for (const view of this.views.values()) {
+      if (view.mesh) {
+        view.mesh.geometry.dispose();
+        this.group.remove(view.mesh);
+      }
+      if (view.collider) this.world.removeCollider(view.collider, false);
+    }
+    this.views.clear();
+  }
+
   /** Call once per frame: sends dirty chunks to the workers. */
   update() {
+    if (this.dead) return;
     for (const key of this.volume.takeDirty()) {
       let view = this.views.get(key);
       if (!view) this.views.set(key, (view = { mesh: null, collider: null, version: 0 }));
@@ -72,7 +96,8 @@ export class VolumeMesh {
       this.pendingJobs++;
       this.pool.mesh(buildPadded(this.volume, cx, cy, cz, chunk)).then((data) => {
         this.pendingJobs--;
-        if (view.version === version) this.apply(key, view, data);
+        if (this.dead || view.version !== version) return;
+        this.apply(key, view, data);
       });
     }
   }

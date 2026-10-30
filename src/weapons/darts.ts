@@ -243,6 +243,11 @@ export class DartSystem {
       const t = Math.min(maxDist, hit.timeOfImpact);
       this._hp.copy(this._dn).multiplyScalar(t).add(s.pos);
       this._n3.set(hit.normal.x, hit.normal.y, hit.normal.z);
+      // The body's parent is looked up before the hit callback: a dart can
+      // pop the Foamer it hit (the system removes its body inside onHit),
+      // and a collider without a live body must not be queried.
+      const hitBody = hit.collider.parent();
+      const hitDynamic = hitBody ? hitBody.isDynamic() : false;
       this.onHit({
         point: this._hp.clone(),
         normal: this._n3.clone(),
@@ -252,17 +257,16 @@ export class DartSystem {
         collider: hit.collider,
       });
       // Push dynamic bodies along the flight direction at the impact point.
-      const rb = hit.collider.parent();
-      if (rb && rb.isDynamic()) {
+      if (hitBody && hitDynamic) {
         const k = s.spec.impulse;
-        rb.applyImpulseAtPoint(
+        hitBody.applyImpulseAtPoint(
           { x: this._dn.x * k, y: this._dn.y * k, z: this._dn.z * k },
           { x: this._hp.x, y: this._hp.y, z: this._hp.z },
           true,
         );
       }
       if (s.spec.sticks && s.canStick) {
-        this.stick(s, hit);
+        this.stick(s, hit, hitBody);
         return;
       }
       // Reflect the velocity about the surface normal, scaled by restitution.
@@ -317,10 +321,23 @@ export class DartSystem {
     return n;
   }
 
-  // A stuck dart is glued to its body's local frame and rides along. When the
-  // collider is gone the dart falls as an unstuck dart (rule 3).
+  // A stuck dart is glued to its body's local frame and rides along. When
+  // the collider, or the whole body, is gone the dart falls as an unstuck
+  // dart (rule 3).
   private stepStuck(s: Slot) {
     if (!s.body) return; // stuck to a fixed collider with no body: transform is static
+    if (!this.world.getRigidBody(s.body.handle)) {
+      // The body was removed from the world (the Foamer popped): the dart
+      // falls, exactly like the collider-removed case below.
+      s.state = FLYING;
+      s.vel.set(0, 0, 0);
+      s.body = null;
+      s.coll = null;
+      s.canStick = false;
+      this.count[STUCK]--;
+      this.count[FLYING]++;
+      return;
+    }
     if (s.coll && !this.world.getCollider(s.coll.handle)) {
       s.state = FLYING;
       s.vel.set(0, 0, 0);
@@ -338,7 +355,7 @@ export class DartSystem {
     s.quat.copy(s.lquat).premultiply(this._q);
   }
 
-  private stick(s: Slot, hit: RAPIER.RayColliderIntersection) {
+  private stick(s: Slot, hit: RAPIER.RayColliderIntersection, hitBody: RAPIER.RigidBody | null) {
     // The tip is sunk 0.3 * length into the surface, the dart points along
     // its flight direction (+Z is the tip of the geometry).
     s.pos.copy(this._hp).addScaledVector(this._n3, -SINK * s.spec.length);
@@ -346,9 +363,14 @@ export class DartSystem {
     s.state = STUCK;
     this.count[FLYING]--;
     this.count[STUCK]++;
-    const rb = hit.collider.parent();
+    const rb = hitBody;
     // A fixed collider is never replaced by a remesh while the dart rides
     // with it, so keep body and coll null: the dart stays stuck in place.
+    // A kinematic body (a Foamer) is re-meshed as it is carved, which
+    // replaces its chunk colliders, so keep the body but leave coll null:
+    // the dart rides on the body's transform alone and survives the remesh.
+    // The body is gone for good when the Foamer pops, and stepStuck drops
+    // the dart then, exactly like the collider-removed case.
     if (rb && !rb.isFixed()) {
       const p = rb.translation();
       const r = rb.rotation();
@@ -357,7 +379,7 @@ export class DartSystem {
       s.local.copy(s.pos).sub(p).applyQuaternion(this._qi);
       s.lquat.copy(this._qi).multiply(s.quat);
       s.body = rb;
-      s.coll = hit.collider;
+      s.coll = !rb.isKinematic() ? hit.collider : null;
     }
   }
 

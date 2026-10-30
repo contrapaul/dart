@@ -6,12 +6,13 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 to ENG-06, GAME-01 and GAME-02 (placeholder blaster) done.
-The test course: click to capture the mouse, then walk, sprint, jump, dash
-and mantle around steps, ledges, ramps and walls. Left mouse fires the
-placeholder pump blaster (3 darts per shot, priming after each shot, R
-reloads, auto-reload on empty), darts carve voxels and throw foam debris.
-E throws foam blocks, T toggles dart type. Esc or gamepad Start pauses.
+PRE-09, ENG-01 to ENG-06, GAME-01, GAME-02 (placeholder blaster) and
+GAME-03 (test Foamer) done. The test course: click to capture the mouse,
+then walk, sprint, jump, dash and mantle around steps, ledges, ramps and
+walls. Left mouse fires the placeholder pump blaster (3 darts per shot,
+priming after each shot, R reloads, auto-reload on empty), darts carve
+voxels and throw foam debris. E throws foam blocks, T toggles dart type.
+Esc or gamepad Start pauses.
 
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
@@ -20,8 +21,15 @@ loose from bedrock breaks off and falls as its own body (up to 16 at once);
 tiny loose bits become debris. A T-shaped test tower stands to the right
 of the wall.
 
-Next up: ENG-07 (foam shader) and GAME-03 (test Foamer). P0 prototype due
-2026-11-12.
+A test Foamer (an unnamed lime blob with two big flat eyes) approaches
+the player: it walks at you, winds up, and bonks, takes dart damage that
+carves visible chunks and lowers its health, and at zero pops into four
+bursts of foam chunks. A new one walks in about 3 s later from the spawn
+point farthest from the player. Suction darts stick to it and ride along
+while it walks, then drop when it pops. The bonk only logs for now; player
+health comes later.
+
+Next up: ENG-07 (foam shader). P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
@@ -49,6 +57,80 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: GAME-03 test Foamer that walks at you and pops (Pi, Qwen 3.8-27b)
+
+- Owned files built exactly as the card lists them:
+  `data/foamers.json` (numbers + spawner), `src/foamers/foamer-model.ts`
+  (`buildTestFoamer`: a rounded lime blob, flat bottom, one chunk, big
+  friendly eyes on the +z face, x-mirror-symmetric, looks like a
+  placeholder until Paul designs the real Foamer), `src/foamers/foamer.ts`
+  (`Foamer`), `src/foamers/foamers.ts` (`FoamerSystem`),
+  `tests/foamers/foamers.test.ts` (tests 1 to 8).
+- `Foamer`: a kinematic position-based body, its origin at the voxel
+  (0,0,0) corner; `centre` (feet centre) and `yaw` are the real state,
+  turning about the centre. Movement capsule on the same body, at the
+  model's centre in x and z, full model height. One small render group
+  per Foamer that carries the mesh group and draws the wind-up squash;
+  the body's collider is never squashed. `owns`, `worldToVoxel`,
+  `voxelToWorld`, `dispose` as specced.
+- `FoamerSystem`: one shared character controller (offset 0.02, auto-step
+  0.3 m, snap 0.3 m) with a `nonSolidCollider` that never collides with
+  its owner, chasing the player: approach (moving at `speed`), wind-up
+  (stops, `windup` s, `onBonk` if the player is within `attackRange +
+  0.3` and within 2 m vertically, then `recover` s), approach again.
+  Darts: chainer the previous `darts.onHit` (previous first); a hit whose
+  collider a live Foamer owns and speed >= `minDamageSpeed` subtracts
+  `damage[type]`. At 0, pop: collect all surviving voxels, split into
+  `popBursts` equal slices, one `debris.spawn` per slice scaled by
+  `popChunkScale` from the centre of the model, remove from `list` and
+  `targets`, `dispose` (mesh, collider, body). Spawner: keep `spawner.count`
+  alive, start the timer at `respawnDelay` so the first Foamer is
+  instant, respawn at the farthest spawn point.
+- Allowed edits, all as specced: `data/materials.json` gets foam-white
+  (7) and foam-ink (8); `VolumeMesh` gets an optional `body`, a `Mesher`
+  instead of `MesherPool`, and `dispose()` (mesh, geometry, collider away;
+  later remesh results ignored; the body is not removed); `darts.ts`
+  stuck darts on a kinematic body keep the body but leave `coll` null
+  (ride the transform, survive a remesh), and `stepStuck` frees a dart
+  as a free-falling dart if the body is no longer in the world (Foamer
+  popped); `main.ts` wires `voxelTargets` to `DartImpacts`, splits
+  `impacts.onCarve` to only islands in the wall (Foamer is never
+  island-split), constructs `FoamerSystem` and adds its group, bonk logs
+  (player health comes later), `foamers.update(dt, player.eye(1, scratch))`
+  before `world.step()`, `foamers.syncRender()` next to `pieces.syncRender()`,
+  and `foamers` on `window.__dart`.
+- Decisions: (1) the public API is as specced; I added three render
+  helpers that main.ts and the system need that sit next to the spec:
+  `Foamer.group` (the squash render group), `Foamer.vy` (vertical speed,
+  gravity owned by the system), `Foamer.applyPose()` / `Foamer.syncRender()`.
+  No change to specified members. (2) extra `darts.ts` change beyond the
+  two allowed: in `stepFlying`, capture the hit body (and `isDynamic()`)
+  before the `onHit` callback runs. Without this, a dart that pops the
+  Foamer it hit (system deletes the body inside `onHit`) then reads
+  `hit.collider.parent()` / `rb.isDynamic()`, and Rapier's WASM throws
+  `RuntimeError: unreachable` on an already-removed body. Reading the
+  parent and the flag first sidesteps it and is behaviourally identical
+  for every other body type. (3) the bonk's `onBonk` callback takes the
+  Foamer (`onBonk: (foamer: Foamer) => void`); main prints "Bonk" and
+  player health comes later.
+- Verified: `npx tsc --noEmit` clean; `npm test` 60/60 including the 8
+  new (movement, state, bonk timing, damage + carve, pop + debris, ride
+  and fall, spawn cap, static-shape count); `npm run build` passes; no
+  en-dash or em-dash in any written file (checked the card's `perl -CSD`
+  one-liner); nothing pulled from other hosts.
+- Not yet verified (needs a real browser on `npm run dev -- --port 5174`
+  with Pointer Lock; the headless CDP harness can't focus):
+  the walk + squash + "Bonk" flow in the browser, darts carving visible
+  chunks and the blow-in rebuild, suction ride and fall in the browser,
+  two standard darts popping it, a new one walking in ~3 s, the wall
+  still working, and the 10 hand-spawned Foamer 60 fps frame times. A
+  headless (swiftshader) baseline sanity sample ran: 12 hand-spawned
+  Foamers in scene, 24,864 vertices, rAF mean 17.6 ms / worst 18.9 ms /
+  p95 18.5 ms versus a fresh 16.6 ms / 17.9 ms / 17.3 ms baseline with 0
+  Foamers, zero console errors. Those are software-rasterised numbers,
+  not the integrated-GPU target the card asks for; the measurement on a
+  base laptop is still outstanding for the record.
 
 ### 2026-10-30: ENG-06 island detection and falling pieces (Pi, Qwen 3.8-27b)
 

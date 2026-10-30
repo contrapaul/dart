@@ -1,0 +1,25 @@
+{
+  "_note": "Test Foamer (GAME-03), a placeholder until Paul's Foamer cards (PLAN.md 4.2). Distances in metres, times in seconds, sizes in voxels.",
+  "test": {
+    "voxelSize": 0.05,
+    "size": [12, 26, 12],
+    "health": 6,
+    "damage": { "standard": 1, "suction": 0.5 },
+    "minDamageSpeed": 8,
+    "speed": 2.2,
+    "turnRate": 6,
+    "gravity": 22,
+    "capsuleRadius": 0.2,
+    "attackRange": 1.3,
+    "windup": 0.6,
+    "recover": 0.8,
+    "popChunkScale": 2.5,
+    "popBursts": 4
+  },
+  "spawner": {
+    "count": 1,
+    "max": 12,
+    "respawnDelay": 3,
+    "points": [[-8, 0, 8], [8, 0, 8], [0, 0, 6]]
+  }
+}
