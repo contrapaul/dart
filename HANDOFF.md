@@ -6,11 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09 and ENG-01 to ENG-05 done. GAME-01 (dart projectiles) is with Pi
-(Qwen3.8-27B on the `qwen-machine` 1Cat vLLM config) on branch `game-01` in
-worktree `../dart-game-01` (card: `tasks/GAME-01.md`); review before merging. The test course: click to capture the mouse,
+PRE-09, ENG-01 to ENG-05 and GAME-01 done. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and walls.
-Fire throws foam blocks. Esc or gamepad Start pauses.
+Left mouse fires darts, E throws foam blocks, T toggles dart type. Esc or
+gamepad Start pauses.
 
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
@@ -41,14 +40,73 @@ deploys. Repo: github.com/contrapaul/dart (public), MIT licence.
 - **The Browser pane will not grant Pointer Lock.** To test input there,
   override `document.pointerLockElement` in the console, dispatch
   `pointerlockchange`, then dispatch keyboard and mouse events.
-- **Merging game-01 will conflict in `src/player/controller.ts`.** ENG-05
-  made `collider` a public `readonly` field (the card asked Pi for a getter
-  of the same name, which TypeScript cannot have alongside a private field
-  called `collider`). Keep the public field and drop Pi's getter.
 - **The dev server is started from the workspace launch config**
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-30: GAME-01 dart projectile system
+
+- `src/weapons/darts.ts`: `DartSystem` (pool, flight, collision, sticking,
+  rendering). Darts are not Rapier bodies: at full rate up to 310 live darts
+  mean 310 thin ray casts per step, which beats 310 rigid bodies. Flight is
+  a per-step `vel.y -= 9.81*gravityScale*dt`, drag (`v *= 1-drag*dt`), then a
+  `castRayAndGetNormal` sweep from the old to the new position (solid, sensors
+  excluded, the firing player's collider excluded via the `ignore` argument).
+- `onHit` fires exactly once per impact with the hit point, normal, unit
+  flight direction, speed, type and the hit collider. A dynamic body that is
+  hit gets `impulse` (N.s) along the flight direction at the hit point via
+  `applyImpulseAtPoint`.
+- Suction darts stick, tip sunk 0.3 x length into the surface, pointing along
+  their flight. If the hit collider belongs to a rigid body, the dart's
+  position and rotation are stored in that body's local frame and recomputed
+  each step, so darts ride along with falling foam blocks. If the collider is
+  removed, the dart un-sticks and falls as a non-sticking dart.
+- Standard darts bounce: velocity reflected about the normal, scaled by
+  `restitution`. Below 1.5 m/s on a surface with normal.y > 0.7 they become
+  resting: they lie flat and stop being simulated.
+- Pooling: one `THREE.InstancedMesh` per type, sized 310 (150 + 100 + 60).
+  No vectors or meshes allocated after construction, all reusable. Caps are
+  enforced by killing the oldest dart in that state; the cap check is a while
+  loop so a batch that lands in the same step cannot exceed it. Resting darts
+  shrink to zero over 0.3 s after `lifetime` seconds and are freed.
+- `src/weapons/dart-model.ts`: dart geometry per type built in code, no model
+  files: a cylinder body plus a half-ellipsoid tip, 22% of the length, 25%
+  wider, with vertex colours blending body to tip toward the nose. Long axis
+  +Z, tip at +Z, origin at the centre. `MeshStandardMaterial` with
+  `vertexColors: true, roughness: 0.8`.
+- `src/main.ts`: dart type toggles with KeyT (a debug key, not in
+  `data/input.json`), with a `console.info` naming the new type. Fire holds
+  to auto-fire at that type's `fireInterval`; the muzzle is 0.2 m right and
+  0.15 m down from the eye, aimed at a point 50 m along the view, so the
+  darts converge on the crosshair. Foam-block throwing moved to E (`use`).
+- `src/player/controller.ts`: added a public read-only `get collider()`
+  returning the capsule, so the dart system can exclude the shooter.
+- `data/darts.json`: dart types and caps. `fireInterval` is new, the minimum
+  seconds between shots of that type (auto-fire rate limit).
+- `tests/weapons/darts.test.ts`: 7 tests against a real Rapier world. All
+  pass. Test 4 found the contact solver shoves a dynamic box that overlaps
+  a static collider (in the tests, the player capsule); the test box stands
+  off to the side now.
+- Verified: `npm test` passes (25 tests, 7 new), `npm run build` passes, no
+  extra em/en dashes in the repo (checked with a perl script because macOS
+  grep does not support -P), HEAD is a00f537+1.
+- Review and merge (Claude, 2026-10-30): stuck darts stored their rotation
+  in the wrong order (`quat * inverse(body)` instead of
+  `inverse(body) * quat`), so a dart stuck to an already rotated body
+  pointed up to 85 degrees off. Fixed, with test 8 (fails without the fix).
+  Kept main's public `collider` field instead of Pi's getter. `darts` added
+  to the `window.__dart` dev hook.
+- Verified in the browser: 1.5 s of standard then 1.5 s of suction auto-fire
+  at the voxel wall: 7 suction darts stuck where aimed, 9 standard darts
+  came to rest, E throws a block, no console errors, 120 fps (8.4 ms average
+  frame, worst 16.6 ms).
+- Known limits: a suction dart on the voxel wall falls off when its chunk is
+  remeshed, even if its own voxel survives (the chunk collider is replaced).
+  Stuck darts never expire, only the cap recycles them. Darts are small at
+  5 m; size is a tuning question for Paul's blaster cards.
+- Unverified: real Pointer Lock and gamepad fire, Windows integrated
+  graphics.
 
 ### 2026-10-30: ENG-05 carving and foam debris
 

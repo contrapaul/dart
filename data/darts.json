@@ -1,0 +1,35 @@
+{
+  "_note": "Placeholder dart types until Paul's blaster cards exist. Units: metres, seconds. drag is the fraction of speed lost per second (v *= 1 - drag * dt). gravityScale multiplies 9.81 m/s^2. impulse is in newton-seconds and is applied to a dynamic body when a dart hits it. Darts are drawn larger than real foam darts on purpose, so they read on screen. fireInterval is the minimum seconds between shots of this type.",
+  "maxLive": 150,
+  "maxStuck": 100,
+  "maxResting": 60,
+  "lifetime": 8,
+  "types": {
+    "standard": {
+      "speed": 38,
+      "gravityScale": 0.35,
+      "drag": 0.4,
+      "length": 0.16,
+      "radius": 0.018,
+      "bodyColor": "#2ec4ff",
+      "tipColor": "#ff7a1a",
+      "sticks": false,
+      "restitution": 0.35,
+      "impulse": 0.6,
+      "fireInterval": 0.16
+    },
+    "suction": {
+      "speed": 34,
+      "gravityScale": 0.4,
+      "drag": 0.45,
+      "length": 0.16,
+      "radius": 0.018,
+      "bodyColor": "#ffd23f",
+      "tipColor": "#ff4fa3",
+      "sticks": true,
+      "restitution": 0,
+      "impulse": 0.4,
+      "fireInterval": 0.22
+    }
+  }
+}
