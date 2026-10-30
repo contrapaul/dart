@@ -131,7 +131,13 @@ const blockGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
 const materials = FOAM_COLOURS.map(
   (color) => createFoamMaterial({ cellsPerUnit: renderJson.foam.poreCellsPerVoxel / VOXEL, wrapCells: 0, color }),
 );
-const blocks: { mesh: THREE.Mesh; body: ReturnType<typeof world.createRigidBody> }[] = [];
+// prevT and prevQ: the pose before the last step, for render interpolation.
+const blocks: {
+  mesh: THREE.Mesh;
+  body: ReturnType<typeof world.createRigidBody>;
+  prevT: THREE.Vector3;
+  prevQ: THREE.Quaternion;
+}[] = [];
 
 function spawnBlock(pos: THREE.Vector3, vel: THREE.Vector3) {
   if (blocks.length >= MAX_BLOCKS) {
@@ -149,7 +155,7 @@ function spawnBlock(pos: THREE.Vector3, vel: THREE.Vector3) {
       .setAngvel({ x: Math.random() * 4, y: Math.random() * 4, z: Math.random() * 4 }),
   );
   world.createCollider(rapier.ColliderDesc.cuboid(0.3, 0.3, 0.3).setRestitution(0.4), body);
-  blocks.push({ mesh, body });
+  blocks.push({ mesh, body, prevT: pos.clone(), prevQ: new THREE.Quaternion() });
 }
 
 for (let i = 0; i < 30; i++) {
@@ -202,6 +208,7 @@ const _aimDir = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _toMuzzle = new THREE.Vector3();
 const _playerPos = new THREE.Vector3();
+const _rot = new THREE.Quaternion();
 const muzzleRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
 
 let paused = true;
@@ -263,25 +270,33 @@ startLoop({
         spawnBlock(camera.position.clone().addScaledVector(dir, 0.8), dir.multiplyScalar(THROW_SPEED));
       }
       darts.update(dt);
+      for (const b of blocks) {
+        const t = b.body.translation();
+        const r = b.body.rotation();
+        b.prevT.set(t.x, t.y, t.z);
+        b.prevQ.set(r.x, r.y, r.z, r.w);
+      }
       world.step();
     }
     input.endStep();
   },
   render(_dt, alpha) {
-    debris.syncRender();
-    pieces.syncRender();
-    foamers.syncRender();
+    // Everything that moves on the fixed step is drawn alpha of the way
+    // between its last two steps, so it moves smoothly at any refresh rate.
+    debris.syncRender(alpha);
+    pieces.syncRender(alpha);
+    foamers.syncRender(alpha);
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     camera.rotation.set(player.pitch, player.yaw, 0);
     blasterModel.update(_dt, blaster);
     hud.setAmmo(blaster.mag, blaster.reserve, blaster.state);
-    for (const { mesh, body } of blocks) {
+    for (const { mesh, body, prevT, prevQ } of blocks) {
       const p = body.translation();
       const r = body.rotation();
-      mesh.position.set(p.x, p.y, p.z);
-      mesh.quaternion.set(r.x, r.y, r.z, r.w);
+      mesh.position.set(p.x, p.y, p.z).sub(prevT).multiplyScalar(alpha).add(prevT);
+      mesh.quaternion.copy(prevQ).slerp(_rot.set(r.x, r.y, r.z, r.w), alpha);
     }
-    darts.syncRender();
+    darts.syncRender(alpha);
     renderer.render(scene, camera);
   },
 });

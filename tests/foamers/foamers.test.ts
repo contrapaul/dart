@@ -265,4 +265,19 @@ describe("test Foamer (GAME-03)", () => {
       expect(drawn.distanceTo(body)).toBeLessThan(1e-4);
     }
   });
+
+  it("3c. syncRender(alpha) draws the Foamer between its last two steps", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 10);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    for (let i = 0; i < 10; i++) tick(r, player);
+    f.syncRender(0);
+    expect(f.group.position.distanceTo(f.prevCentre)).toBeLessThan(1e-6);
+    f.syncRender(0.5);
+    const mid = f.prevCentre.clone().lerp(f.centre, 0.5);
+    expect(f.group.position.distanceTo(mid)).toBeLessThan(1e-6);
+    expect(f.centre.distanceTo(f.prevCentre)).toBeGreaterThan(0.02); // it is walking
+    f.syncRender(1);
+    expect(f.group.position.distanceTo(f.centre)).toBeLessThan(1e-6);
+  });
 });

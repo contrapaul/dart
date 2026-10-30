@@ -82,8 +82,9 @@ export class FoamerSystem {
     }
   }
 
-  /** Render frame: copy transforms to the mesh groups. */
-  syncRender(): void {
+  /** Render frame: copy transforms to the mesh groups, alpha (0 to 1) of
+   *  the way between the last two steps. */
+  syncRender(alpha = 1): void {
     for (const f of this.list) {
       if (f.state === "windup") {
         // Squash the mesh a little about the feet: the bonk telegraph.
@@ -91,7 +92,7 @@ export class FoamerSystem {
       } else {
         f.squashY = 1;
       }
-      f.syncRender();
+      f.syncRender(alpha);
     }
   }
 
@@ -100,6 +101,8 @@ export class FoamerSystem {
   }
 
   private stepFoamer(f: Foamer, dt: number, player: THREE.Vector3) {
+    f.prevCentre.copy(f.centre);
+    f.prevYaw = f.yaw;
     f.stateTime += dt;
     // Face the player (+z is forward, so the wanted yaw is atan2(dx, dz)).
     const dx = player.x - f.centre.x;

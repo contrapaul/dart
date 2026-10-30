@@ -17,6 +17,9 @@ interface Slot {
   body: RAPIER.RigidBody | null;
   age: number;
   size: number;
+  /** Pose before the last step, for render interpolation. */
+  prevT: THREE.Vector3;
+  prevQ: THREE.Quaternion;
 }
 
 export class DebrisSystem {
@@ -27,11 +30,12 @@ export class DebrisSystem {
   private color = new THREE.Color();
   private m4 = new THREE.Matrix4();
   private q = new THREE.Quaternion();
+  private qNow = new THREE.Quaternion();
   private p = new THREE.Vector3();
   private s = new THREE.Vector3();
 
   constructor(private rapier: Rapier, private world: RAPIER.World) {
-    this.slots = Array.from({ length: T.max }, () => ({ body: null, age: 0, size: 0 }));
+    this.slots = Array.from({ length: T.max }, () => ({ body: null, age: 0, size: 0, prevT: new THREE.Vector3(), prevQ: new THREE.Quaternion() }));
     this.mesh = new THREE.InstancedMesh(
       new THREE.BoxGeometry(1, 1, 1),
       createFoamMaterial({ cellsPerUnit: renderJson.foam.poreCellsPerVoxel, wrapCells: 0 }),
@@ -77,24 +81,31 @@ export class DebrisSystem {
     }
   }
 
-  /** Fixed step: age chunks and free the expired ones. */
+  /** Fixed step, before world.step(): age chunks and free the expired ones. */
   update(dt: number) {
     for (const s of this.slots) {
       if (!s.body) continue;
+      const t = s.body.translation();
+      const r = s.body.rotation();
+      s.prevT.set(t.x, t.y, t.z);
+      s.prevQ.set(r.x, r.y, r.z, r.w);
       s.age += dt;
       if (s.age >= T.lifetime) this.free(s);
     }
   }
 
-  /** Render frame: copy body transforms into the instanced mesh. */
-  syncRender() {
+  /** Render frame: copy body transforms into the instanced mesh, alpha (0
+   *  to 1) of the way from the pose before the last step to the current. */
+  syncRender(alpha = 1) {
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       if (!s.body) continue;
       const t = s.body.translation();
       const r = s.body.rotation();
       const k = s.size * Math.min(1, (T.lifetime - s.age) / T.fadeTime);
-      this.m4.compose(this.p.set(t.x, t.y, t.z), this.q.set(r.x, r.y, r.z, r.w), this.s.setScalar(k));
+      this.p.set(t.x, t.y, t.z).sub(s.prevT).multiplyScalar(alpha).add(s.prevT);
+      this.q.copy(s.prevQ).slerp(this.qNow.set(r.x, r.y, r.z, r.w), alpha);
+      this.m4.compose(this.p, this.q, this.s.setScalar(k));
       this.mesh.setMatrixAt(i, this.m4);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
@@ -121,6 +132,8 @@ export class DebrisSystem {
     );
     s.age = 0;
     s.size = size;
+    s.prevT.copy(pos);
+    s.prevQ.identity();
     this.color.setRGB(this.colors[mat * 3], this.colors[mat * 3 + 1], this.colors[mat * 3 + 2]);
     this.mesh.setColorAt(i, this.color);
     this.mesh.instanceColor!.needsUpdate = true;

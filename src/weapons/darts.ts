@@ -47,6 +47,8 @@ interface Slot {
   pos: THREE.Vector3;
   vel: THREE.Vector3;
   quat: THREE.Quaternion;
+  prevPos: THREE.Vector3;  // pose before the last step, for render interpolation
+  prevQuat: THREE.Quaternion;
   scale: number;
   restT: number;         // seconds in flight, or resting, then fading
   order: number;         // allocation order, for oldest-first recycling
@@ -82,6 +84,8 @@ export class DartSystem {
   private _n3 = new THREE.Vector3();
   private _m = new THREE.Matrix4();
   private _s3 = new THREE.Vector3();
+  private _rp = new THREE.Vector3();
+  private _rq = new THREE.Quaternion();
   private _q = new THREE.Quaternion();
   private _qi = new THREE.Quaternion();
   private _po = { x: 0, y: 0, z: 0 };
@@ -112,6 +116,8 @@ export class DartSystem {
         pos: new THREE.Vector3(),
         vel: new THREE.Vector3(),
         quat: new THREE.Quaternion(),
+        prevPos: new THREE.Vector3(),
+        prevQuat: new THREE.Quaternion(),
         scale: 1,
         restT: 0,
         order: 0,
@@ -143,6 +149,8 @@ export class DartSystem {
     this._dn.normalize();
     s.vel.copy(this._dn).multiplyScalar(spec.speed);
     s.quat.setFromUnitVectors(AXIS_Z, this._dn);
+    s.prevPos.copy(s.pos);
+    s.prevQuat.copy(s.quat);
     s.scale = 1;
     s.restT = 0;
     s.order = this.seq++;
@@ -158,6 +166,8 @@ export class DartSystem {
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       if (!s.alive) continue;
+      s.prevPos.copy(s.pos);
+      s.prevQuat.copy(s.quat);
       if (s.state === STUCK) {
         this.stepStuck(s);
         continue;
@@ -185,8 +195,10 @@ export class DartSystem {
     while (this.count[RESTING] > this.capRest) this.killOldest(RESTING);
   }
 
-  /** Write instance matrices. Call once per render frame. */
-  syncRender(): void {
+  /** Write instance matrices. Call once per render frame. alpha (0 to 1)
+   *  places each dart between its last two steps, so darts move smoothly
+   *  on displays faster than the 60 Hz step. */
+  syncRender(alpha = 1): void {
     for (const type of TYPE_NAMES) {
       const mesh = this.meshes[type];
       const list = this.list[type];
@@ -195,7 +207,9 @@ export class DartSystem {
       for (let k = 0; k < count; k++) {
         const s = this.slots[list[k]];
         this._s3.setScalar(s.scale);
-        this._m.compose(s.pos, s.quat, this._s3);
+        this._rp.lerpVectors(s.prevPos, s.pos, alpha);
+        this._rq.slerpQuaternions(s.prevQuat, s.quat, alpha);
+        this._m.compose(this._rp, this._rq, this._s3);
         mesh.setMatrixAt(k, this._m);
       }
       if (count > 0) mesh.instanceMatrix.needsUpdate = true;
@@ -257,8 +271,11 @@ export class DartSystem {
         collider: hit.collider,
       });
       // Push dynamic bodies along the flight direction at the impact point.
+      // The push never changes a body's speed by more than maxPushSpeed: a
+      // foam chunk weighs a few grams, and the full impulse would fling it
+      // at hundreds of m/s.
       if (hitBody && hitDynamic) {
-        const k = s.spec.impulse;
+        const k = Math.min(s.spec.impulse, hitBody.mass() * tuning.maxPushSpeed);
         hitBody.applyImpulseAtPoint(
           { x: this._dn.x * k, y: this._dn.y * k, z: this._dn.z * k },
           { x: this._hp.x, y: this._hp.y, z: this._hp.z },

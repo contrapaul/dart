@@ -66,6 +66,30 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-10-31: Stutter and exploding foam fixes (Claude, from Paul's play test)
+
+- Paul's play test: a stutter that did not depend on hardware, maybe when
+  enemies load in, and foam blocks that sometimes fly off violently.
+- Stutter: no CPU hitch at all (8.3 ms frames on a 120 Hz display, no long
+  tasks during a pop and respawn, spawn 0.3 ms, pop 1.3 ms). The cause was
+  render aliasing: the simulation steps at 60 Hz and only the camera was
+  interpolated, so on a 120 Hz display a walking Foamer moved 37 mm, 0,
+  37 mm, 0 per frame against a smoothly moving camera. Darts, debris,
+  falling pieces, thrown blocks and Foamers now keep their pose from before
+  the last step and are drawn `alpha` of the way to the current one
+  (`syncRender(alpha)`). Measured after: the Foamer moves 18 mm every
+  frame, a dart about 30 cm every frame. Test 3c.
+- Exploding foam: a dart's push (impulse 0.6 N s) on a foam chunk of a few
+  grams set it moving at 214 m/s, the same speed every time. It showed most
+  after a pop, when the dart flies on through the new chunks. The push now
+  changes a body's speed by at most `maxPushSpeed` (4 m/s, `data/darts.json`);
+  heavy things (thrown blocks) still get the full impulse. Darts test 10.
+  Ruled out on the way: chunks spawned inside the floor (no effect without
+  the dart) and falling pieces (normal fall speeds).
+- Still a known lag, not new: a dart stuck to a walking Foamer is placed
+  from the body's pose one step old, so it trails by about 2 cm.
+- Unverified: Paul's eye on a 120 Hz and a 60 Hz display.
+
 ### 2026-10-30: ENG-07 foam shader and voxel ambient occlusion (Pi, Qwen 3.8-27b)
 
 - Review (Claude): the pore hash was linear in the cell index

@@ -36,6 +36,9 @@ export class Foamer implements VoxelTarget {
   readonly mesh: VolumeMesh;
   /** Feet centre in world space. */
   readonly centre = new THREE.Vector3();
+  /** centre and yaw before the last step, for render interpolation. */
+  readonly prevCentre = new THREE.Vector3();
+  prevYaw = 0;
   /** A render group under the system's group; it draws the mesh and the
    *  windup squash. The body's own colliders are never squashed. */
   readonly group = new THREE.Group();
@@ -54,6 +57,7 @@ export class Foamer implements VoxelTarget {
 
   constructor(rapier: Rapier, world: RAPIER.World, mesher: Mesher, spec: FoamerSpec, feet: THREE.Vector3) {
     this.centre.copy(feet);
+    this.prevCentre.copy(feet);
     this.health = spec.health;
     this.hx = (spec.size[0] * spec.voxelSize) / 2;
     this.hz = (spec.size[2] * spec.voxelSize) / 2;
@@ -119,9 +123,12 @@ export class Foamer implements VoxelTarget {
    *  outer group sits on the feet centre, unturned, so the squash scales
    *  about the feet; the mesh inside carries the corner offset and the yaw,
    *  matching the body. */
-  syncRender() {
-    const corner = cornerOffset(this.hx, this.hz, this.yaw, new THREE.Vector3());
-    this.group.position.copy(this.centre);
+  syncRender(alpha = 1) {
+    // alpha (0 to 1) of the way from the last step's pose to this one.
+    let dyaw = this.yaw - this.prevYaw;
+    dyaw -= Math.round(dyaw / (2 * Math.PI)) * 2 * Math.PI;
+    const corner = cornerOffset(this.hx, this.hz, this.prevYaw + dyaw * alpha, new THREE.Vector3());
+    this.group.position.lerpVectors(this.prevCentre, this.centre, alpha);
     const inv = 1 / Math.sqrt(this.squashY);
     this.group.scale.set(inv, this.squashY, inv);
     this.mesh.group.position.copy(corner);

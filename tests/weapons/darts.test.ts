@@ -241,4 +241,25 @@ describe("DartSystem", () => {
     }
     expect(system.stats()).toEqual({ flying: 0, stuck: 0, resting: 0 });
   });
+
+  it("10. a dart hitting a light foam chunk changes its speed by at most maxPushSpeed, and still pushes a heavy box fully", () => {
+    const { world, system } = make(RAPIER);
+    // A 0.2 m foam chunk (density 0.25: about 2 g) and a 0.6 m block at
+    // density 1 (about 0.2 kg), both floating with gravity off.
+    const chunk = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 1, -3).setGravityScale(0));
+    world.createCollider(RAPIER.ColliderDesc.cuboid(0.1, 0.1, 0.1).setDensity(0.25), chunk);
+    const block = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(3, 1, -3).setGravityScale(0));
+    world.createCollider(RAPIER.ColliderDesc.cuboid(0.3, 0.3, 0.3).setDensity(1), block);
+    world.step();
+    system.fire(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, -1), "standard");
+    system.fire(new THREE.Vector3(3, 1, 0), new THREE.Vector3(0, 0, -1), "standard");
+    for (let i = 0; i < 20; i++) {
+      system.update(DT);
+      world.step();
+    }
+    const speed = (b: RAPIER.RigidBody) => Math.hypot(b.linvel().x, b.linvel().y, b.linvel().z);
+    expect(speed(chunk)).toBeGreaterThan(0.5);
+    expect(speed(chunk)).toBeLessThanOrEqual(tuning.maxPushSpeed + 1e-3);
+    expect(speed(block)).toBeCloseTo(tuning.types.standard.impulse / block.mass(), 2);
+  });
 });

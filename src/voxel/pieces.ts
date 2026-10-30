@@ -41,6 +41,9 @@ interface Piece {
   /** Transform frozen when the body was removed for the fade. */
   lastT: THREE.Vector3;
   lastQ: THREE.Quaternion;
+  /** Body pose before the last step, for render interpolation. */
+  prevT: THREE.Vector3;
+  prevQ: THREE.Quaternion;
   held: boolean;
   holdTime: number;
   fading: boolean;
@@ -62,6 +65,7 @@ export class FallingPieces {
   private list: Piece[] = [];
   private mid = new THREE.Vector3();
   private fadeOffset = new THREE.Vector3();
+  private qNow = new THREE.Quaternion();
 
   constructor(
     private rapier: Rapier,
@@ -134,15 +138,26 @@ export class FallingPieces {
           pc.held = false;
           pc.body!.setBodyType(this.rapier.RigidBodyType.Dynamic, true);
           pc.group.visible = true;
+          this.keepPrev(pc);
         }
         continue;
       }
       if (!pc.body || pc.body.translation().y < -20) this.dispose(pc, i);
+      else this.keepPrev(pc);
     }
   }
 
-  /** Render frame: copy body transforms to the piece meshes. */
-  syncRender() {
+  /** The body's pose before this step, for render interpolation. */
+  private keepPrev(pc: Piece) {
+    const t = pc.body!.translation();
+    const r = pc.body!.rotation();
+    pc.prevT.set(t.x, t.y, t.z);
+    pc.prevQ.set(r.x, r.y, r.z, r.w);
+  }
+
+  /** Render frame: copy body transforms to the piece meshes, alpha (0 to 1)
+   *  of the way from the pose before the last step to the current. */
+  syncRender(alpha = 1) {
     for (const pc of this.list) {
       if (pc.disposed) continue;
       if (pc.fading) {
@@ -162,8 +177,8 @@ export class FallingPieces {
       if (!pc.body || pc.held) continue;
       const t = pc.body.translation();
       const r = pc.body.rotation();
-      pc.group.position.set(t.x, t.y, t.z);
-      pc.group.quaternion.set(r.x, r.y, r.z, r.w);
+      pc.group.position.set(t.x, t.y, t.z).sub(pc.prevT).multiplyScalar(alpha).add(pc.prevT);
+      pc.group.quaternion.copy(pc.prevQ).slerp(this.qNow.set(r.x, r.y, r.z, r.w), alpha);
     }
   }
 
@@ -185,6 +200,8 @@ export class FallingPieces {
       localCentre: new THREE.Vector3(),
       lastT: new THREE.Vector3(),
       lastQ: new THREE.Quaternion(),
+      prevT: origin.clone(),
+      prevQ: new THREE.Quaternion(),
       held: true,
       holdTime: 0,
       fading: false,
