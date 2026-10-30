@@ -463,7 +463,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ENG-04 | Greedy mesher in a Web Worker pool | A | ENG-03 |
 | ENG-05 | Sphere carve + debris spawning with caps | A | ENG-04 |
 | ENG-06 | Island detection and break-off rigid bodies (card: `tasks/ENG-06.md`) | Pi | ENG-05 |
-| ENG-07 | Foam shader v1 | F | ENG-04 |
+| ENG-07 | Foam shader v1 and voxel AO (card: `tasks/ENG-07.md`) | Pi | ENG-04 |
 | ENG-09 | Smoothed meshing (surface nets) for Foamer volumes, same worker pool (PLAN 7.4) | A | ENG-04 |
 | GAME-01 | Projectile system: visible darts, arc, sticking, pooling (card: `tasks/GAME-01.md`) | Pi | ENG-02 |
 | GAME-02 | One placeholder blaster (pump action) end to end (card: `tasks/GAME-02.md`) | Pi | GAME-01 |
