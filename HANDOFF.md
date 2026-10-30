@@ -15,6 +15,9 @@ A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
 debug blast: it carves where you look and throws foam debris.
 
+GAME-02 (placeholder pump blaster, dart hits carve voxels) is with Pi on
+branch `game-02` in worktree `../dart-game-02` (card: `tasks/GAME-02.md`).
+
 Next up: ENG-06 (pieces cut loose fall as physics bodies; right now they
 float). ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
 

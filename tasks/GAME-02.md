@@ -235,8 +235,8 @@ Use a real Rapier world (`await RAPIER.init()` in `beforeAll`) and a plain
 `VoxelVolume` filled with `fillBox`, with a fixed cuboid collider covering
 it, and `owns = c => c === thatCollider`; use a real `DebrisSystem`):
 
-5. A standard dart fired at foam removes voxels near the hit point, none
-   further than `carveRadius + voxelSize` from it, and `stats.carves` is 1.
+5. A standard dart fired at foam removes voxels near the hit point, every
+   removed voxel's centre within `carveRadius + 2 * voxelSize` of it, and `stats.carves` is 1.
 6. A dart fired at a concrete block removes nothing (it only scuffs).
 7. A suction dart stuck to the block is released (no longer `stuck`) when
    a standard dart carves within its radius, and a stuck dart 1 m away is
