@@ -84,6 +84,20 @@ describe("findIslands", () => {
     expect(v.get(5, 5, 5)).toBe(EMPTY);
     expect(v.get(6, 5, 5)).toBe(FOAM);
   });
+
+  it("4b: a seed that meets a stopped fill's voxels is attached, not an island", () => {
+    // A 1-wide column on bedrock with a hook at the top: (1, 11) hangs off
+    // (0, 11). Removing (1, 10) seeds (0, 10) first; that fill marks
+    // (0, 11) visited, heads down and stops at the bedrock. The hook's own
+    // fill then meets (0, 11) and must count as attached.
+    const v = new VoxelVolume(0.1);
+    v.fillBox(0, 0, 0, 0, 12, 0, FOAM);
+    v.set(0, 0, 0, BEDROCK);
+    v.set(1, 11, 0, FOAM);
+    v.set(1, 10, 0, FOAM);
+    const removed = empty(v, [{ x: 1, y: 10, z: 0 }]);
+    expect(findIslands(v, removed, 1000)).toEqual([]);
+  });
 });
 
 describe("boxCover", () => {

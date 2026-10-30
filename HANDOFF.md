@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 to ENG-05, GAME-01 and GAME-02 (placeholder blaster) done.
+PRE-09, ENG-01 to ENG-06, GAME-01 and GAME-02 (placeholder blaster) done.
 The test course: click to capture the mouse, then walk, sprint, jump, dash
 and mantle around steps, ledges, ramps and walls. Left mouse fires the
 placeholder pump blaster (3 darts per shot, priming after each shot, R
@@ -15,14 +15,15 @@ E throws foam blocks, T toggles dart type. Esc or gamepad Start pauses.
 
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
-debug blast: it carves where you look and throws foam debris.
+debug blast: it carves where you look and throws foam debris. Foam cut
+loose from bedrock breaks off and falls as its own body (up to 16 at once);
+tiny loose bits become debris. A T-shaped test tower stands to the right
+of the wall.
 
-Next up: ENG-07 (foam shader). Loose foam now falls: after a carve, voxel
-groups no longer connected to bedrock break off as falling rigid bodies
-with their own voxel meshes, and tiny loose bits become foam debris. A
-T-shaped test tower stands to the right of the wall.
+Next up: ENG-07 (foam shader) and GAME-03 (test Foamer). P0 prototype due
+2026-11-12.
 
-Live at https://dart.contrapaul.com since 2026-10-30, GAME-02 included. Paul connected the repo in the Cloudflare
+Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
 github.com/contrapaul/dart (public), MIT licence.
 
@@ -89,6 +90,19 @@ github.com/contrapaul/dart (public), MIT licence.
   settle within 2 cm of its top face, stable for 0.6 s, same sink as on
   the floor). Suction darts sticking to a landed piece and darts
   bouncing off one specifically still need eyes in a real browser window.
+- Review and merge (Claude, 2026-10-30): the card's search rule had a bug.
+  A fill that stops at bedrock leaves part of its component unvisited, so a
+  later seed in that component could run dry and be reported as a false
+  island. Pi's fix is right: a fill that meets a voxel an earlier fill
+  visited is attached. Claude made that fill stop at once, made the seed
+  list a set, and added test 4b (fails without the rule). Verified in the
+  browser: a blast through the tower pillar drops a 432-voxel piece that
+  topples and sleeps on the floor; suction darts stick to it; 23 pieces cut
+  in 1.5 s settle with the cap at 16, 120 fps, worst frame 11.2 ms, search
+  at most 0.8 ms. `live` briefly counts fading pieces too (no bodies).
+- Unverified: how falling pieces feel with a real mouse.
+
+### 2026-10-30: GAME-02 play test (Paul)
 
 - Paul played it: firing, priming, reload and carving all work well.
 - Crater size from the placeholder blaster is right. Bigger bites will come

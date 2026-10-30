@@ -52,16 +52,15 @@ export function findIslands(
   const p: [number, number, number] = [0, 0, 0];
 
   // Seeds: the six face neighbours of every removed voxel that are not empty.
-  const seeds: number[] = [];
+  const seeds = new Set<number>();
   for (const r of removed) {
     for (const [dx, dy, dz] of OTHERS) {
       if (volume.get(r.x + dx, r.y + dy, r.z + dz) === EMPTY) continue;
       const nk = vkey(r.x + dx, r.y + dy, r.z + dz);
-      if (!visited.has(nk) && !seeds.includes(nk)) seeds.push(nk);
+      seeds.add(nk);
     }
     if (volume.get(r.x, r.y - 1, r.z) !== EMPTY) {
-      const nk = vkey(r.x, r.y - 1, r.z);
-      if (!visited.has(nk) && !seeds.includes(nk)) seeds.push(nk);
+      seeds.add(vkey(r.x, r.y - 1, r.z));
     }
   }
 
@@ -85,7 +84,7 @@ export function findIslands(
     visited.add(start);
     marked.add(start);
     stack.push(start);
-    while (stack.length > 0) {
+    fill: while (stack.length > 0) {
       const key = stack.pop()!;
       decode(key, p);
       const [x, y, z] = p;
@@ -103,7 +102,10 @@ export function findIslands(
         if (volume.get(nx, ny, nz) === EMPTY) continue;
         const nk = vkey(nx, ny, nz);
         if (visited.has(nk)) {
-          if (!marked.has(nk)) attached = true;
+          if (!marked.has(nk)) {
+            attached = true;
+            break fill;
+          }
           continue;
         }
         visited.add(nk);
@@ -114,7 +116,10 @@ export function findIslands(
       if (volume.get(x, y - 1, z) !== EMPTY) {
         const nk = vkey(x, y - 1, z);
         if (visited.has(nk)) {
-          if (!marked.has(nk)) attached = true;
+          if (!marked.has(nk)) {
+            attached = true;
+            break fill;
+          }
         } else {
           visited.add(nk);
           marked.add(nk);
