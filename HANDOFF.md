@@ -6,9 +6,9 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 to ENG-05, GAME-01 and GAME-02 (placeholder blaster, unmerged)
-done. The test course: click to capture the mouse, then walk, sprint, jump
-dash and mantle around steps, ledges, ramps and walls. Left mouse fires the
+PRE-09, ENG-01 to ENG-05, GAME-01 and GAME-02 (placeholder blaster) done.
+The test course: click to capture the mouse, then walk, sprint, jump, dash
+and mantle around steps, ledges, ramps and walls. Left mouse fires the
 placeholder pump blaster (3 darts per shot, priming after each shot, R
 reloads, auto-reload on empty), darts carve voxels and throw foam debris.
 E throws foam blocks, T toggles dart type. Esc or gamepad Start pauses.
@@ -16,10 +16,6 @@ E throws foam blocks, T toggles dart type. Esc or gamepad Start pauses.
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
 debug blast: it carves where you look and throws foam debris.
-
-GAME-02 (placeholder pump blaster, dart hits carve voxels) is on branch
-`game-02` in worktree `../dart-game-02`, awaiting review (card:
-`tasks/GAME-02.md`).
 
 Next up: ENG-06 (pieces cut loose fall as physics bodies; right now they
 float). ENG-07 (foam shader) can run alongside. P0 prototype due 2026-11-12.
@@ -53,7 +49,29 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-10-30: GAME-02 placeholder pump blaster (branch game-02)
+### 2026-10-30: GAME-02 review and merge (Claude)
+
+- Resting darts stood on end: the GAME-01 "lie flat" rotation turned the
+  dart's +Z axis to +Y. They now lie flat along their flight heading. Test 6
+  checks the axis is horizontal.
+- The blaster model was too big and its barrel did not line up with the
+  muzzle in `data/blasters.json`. It is drawn at 0.6 scale and placed so the
+  barrel tip sits on `muzzle`; darts now leave the barrel.
+- Firing with your nose on a wall put the muzzle inside the wall (it is
+  0.42 m ahead, the capsule radius is 0.35 m). Those darts hung inside the
+  geometry forever and held pool slots. main.ts now pulls the muzzle back
+  to just in front of whatever is between the eye and the muzzle, and any
+  flying dart older than `lifetime` is freed. Test 9 covers the second part.
+- Verified in the browser: against the voxel wall, 2 shots carved and all 6
+  darts fell to rest (none left hanging); resting darts' axes are
+  horizontal; no console errors. 41 tests pass.
+- Tuning note for Paul: craters are small (about 3 to 4 voxels per carve;
+  most hits are bounces or slow rehits that only scuff). Raise
+  `carveRadius` in `data/darts.json` for bigger bites.
+- Unverified: real Pointer Lock and gamepad, Windows integrated graphics,
+  how the model looks on a wide screen.
+
+### 2026-10-30: GAME-02 placeholder pump blaster (Pi)
 
 - `data/blasters.json`: all the placeholder numbers, self contained, until
   Paul's first blaster card (PLAN.md section 5) replaces them. One shot of

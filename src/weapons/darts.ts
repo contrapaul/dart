@@ -35,8 +35,6 @@ const FADING = 3;
 
 const AXIS_Z = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
-const X_AXIS = new THREE.Vector3(1, 0, 0);
-const LAY_DOWN = new THREE.Quaternion().setFromAxisAngle(X_AXIS, -Math.PI / 2);
 
 const TYPE_NAMES: DartTypeName[] = ["standard", "suction"];
 
@@ -50,7 +48,7 @@ interface Slot {
   vel: THREE.Vector3;
   quat: THREE.Quaternion;
   scale: number;
-  restT: number;         // seconds spent resting, then fading
+  restT: number;         // seconds in flight, or resting, then fading
   order: number;         // allocation order, for oldest-first recycling
   body: RAPIER.RigidBody | null; // rigid body a stuck dart follows
   coll: RAPIER.Collider | null;  // collider a stuck dart is fixed to
@@ -216,6 +214,10 @@ export class DartSystem {
   // -- steps ------------------------------------------------------------
 
   private stepFlying(s: Slot, dt: number) {
+    // A dart that never lands (wedged inside geometry) is freed after the
+    // same lifetime as a resting one.
+    s.restT += dt;
+    if (s.restT >= this.life) return this.killSlot(s);
     s.vel.y -= 9.81 * s.spec.gravityScale * dt;
     const f = Math.max(0, 1 - s.spec.drag * dt);
     s.vel.x *= f;
@@ -273,10 +275,13 @@ export class DartSystem {
       // Step off the surface a touch so it does not re-hit the same face.
       s.pos.copy(this._hp).addScaledVector(n, 0.004);
       if (s.vel.length() < REST_SPEED && n.y > 0.7) {
-        // Resting: lies flat on the surface and stops being simulated.
+        // Resting: lies flat on the surface along its flight heading and
+        // stops being simulated.
         s.state = RESTING;
         s.pos.copy(this._hp).addScaledVector(UP, s.spec.radius);
-        s.quat.copy(LAY_DOWN);
+        this._s3.set(this._dn.x, 0, this._dn.z);
+        if (this._s3.lengthSq() < 1e-6) this._s3.set(0, 0, 1);
+        s.quat.setFromUnitVectors(AXIS_Z, this._s3.normalize());
         s.vel.set(0, 0, 0);
         s.restT = 0;
         this.count[FLYING]--;

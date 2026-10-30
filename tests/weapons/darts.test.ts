@@ -176,6 +176,13 @@ describe("DartSystem", () => {
     const p = firstDartPos(system, "standard");
     expect(p.y).toBeGreaterThanOrEqual(0);
     expect(p.y).toBeLessThan(0.1);
+    // Lying flat: the dart's long axis is horizontal.
+    const mesh = (system as unknown as { meshes: Record<string, THREE.InstancedMesh> }).meshes.standard;
+    const m = new THREE.Matrix4();
+    mesh.getMatrixAt(0, m);
+    const q = new THREE.Quaternion();
+    m.decompose(new THREE.Vector3(), q, new THREE.Vector3());
+    expect(Math.abs(new THREE.Vector3(0, 0, 1).applyQuaternion(q).y)).toBeLessThan(0.01);
   });
 
   it("7. the ignore collider is never hit: firing from inside the player capsule reaches the wall", () => {
@@ -221,5 +228,17 @@ describe("DartSystem", () => {
     m.decompose(new THREE.Vector3(), q, new THREE.Vector3());
     const axis = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
     expect(axis.distanceTo(new THREE.Vector3(0, 0, -1))).toBeLessThan(0.01);
+  });
+  it("9. a dart fired from inside solid geometry is freed after its lifetime", () => {
+    const { world, system } = make(RAPIER);
+    world.createCollider(RAPIER.ColliderDesc.cuboid(1, 1, 1).setTranslation(5, 1, 0));
+    world.step();
+    system.fire(new THREE.Vector3(5, 1, 0), new THREE.Vector3(0, 0, -1), "standard");
+    const steps = Math.ceil(tuning.lifetime * 60) + 2;
+    for (let i = 0; i < steps; i++) {
+      system.update(DT);
+      world.step();
+    }
+    expect(system.stats()).toEqual({ flying: 0, stuck: 0, resting: 0 });
   });
 });

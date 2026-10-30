@@ -3,14 +3,17 @@ import type { BlasterSpec } from "./blaster";
 import { Blaster } from "./blaster";
 
 // A toy-looking pump blaster built from boxes and cylinders, original shapes
-// only. About 0.45 m long, the muzzle is at -Z. It is a child of the camera
-// and drawn in the bottom-right of the view. Recoil moves it back and tilts
-// it up by about 4 degrees, then springs back exponentially. The pump grip
+// only. Modelled about 0.45 m long and drawn at 0.6 scale, muzzle at -Z.
+// It is a child of the camera, placed so the barrel tip sits on the muzzle
+// point from data/blasters.json, in the bottom-right of the view. Recoil
+// moves it back and tilts it up by about 4 degrees, then springs back
+// exponentially. The pump grip
 // slides back and forward once per priming; during a reload the model dips
 // down and returns. All scratch is allocated once at construction.
 
 const RECOIL_TILT_RAD = THREE.MathUtils.degToRad(4);
-const BASE = new THREE.Vector3(0.2, -0.22, -0.35);
+const SCALE = 0.6;         // drawn smaller than life so it sits in the corner
+const BARREL_TIP = new THREE.Vector3(0, 0.02, -0.245); // muzzle in model space
 const BASE_TILT = -THREE.MathUtils.degToRad(4); // rest, slightly below centre
 const PUMP_TRAVEL = -0.06;   // metres the pump slides back on priming
 const RELOAD_DIP = 0.06;     // metres the model dips down on reload
@@ -28,6 +31,8 @@ export class BlasterModel {
   private tz = 0;  // metres back
   private tilt = 0;  // radians up
   private specRecoilKick: number;
+  // Rest position: chosen so the barrel tip sits on spec.muzzle.
+  private base = new THREE.Vector3();
 
   constructor(spec: BlasterSpec, camera: THREE.Camera) {
     this.ret = spec.recoilReturn;
@@ -80,7 +85,9 @@ export class BlasterModel {
     cap.position.set(0, -0.02, 0.11);
     this.root.add(cap);
 
-    this.root.position.copy(BASE);
+    this.base.fromArray(spec.muzzle).addScaledVector(BARREL_TIP, -SCALE);
+    this.root.scale.setScalar(SCALE);
+    this.root.position.copy(this.base);
     this.root.rotation.x = BASE_TILT;
     this.group.add(this.root);
     camera.add(this.group);
@@ -107,7 +114,7 @@ export class BlasterModel {
     // Reload dip: down and back.
     const dip = blaster.state === "reloading" ? RELOAD_DIP * Math.sin(Math.PI * blaster.progress) : 0;
 
-    this.root.position.set(BASE.x, BASE.y - dip, BASE.z + this.tz);
+    this.root.position.set(this.base.x, this.base.y - dip, this.base.z + this.tz);
     this.root.rotation.x = BASE_TILT + this.tilt;
   }
 }
