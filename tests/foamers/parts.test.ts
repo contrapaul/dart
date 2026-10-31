@@ -110,9 +110,7 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
       const joint = parent.voxelToWorld(vj.clone());
       expect(pivot.distanceTo(joint), `${p.id} pivot at joint`).toBeLessThan(0.001);
     }
-    // The lowest *filled* voxel of the legs. F01's club corner is what
-    // touches the ground (the rig has no feet), so the legs float about
-    // 0.11 m above it: near the floor, not in it.
+    // The lowest *filled* voxel of the legs: on the floor (card test 2).
     let low = Infinity;
     for (const id of ["legL", "legR"]) {
       const leg = f.parts.get(id)!;
@@ -125,8 +123,7 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
             low = Math.min(low, leg.voxelToWorld(new THREE.Vector3(x, y, z)).y);
           }
     }
-    expect(low).toBeGreaterThan(0);
-    expect(low).toBeLessThan(0.15);
+    expect(Math.abs(low)).toBeLessThan(0.05);
   });
 
   it("3. walking for 2 s, no part rotates more than 0.35 rad in one step", () => {
