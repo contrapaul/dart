@@ -111,7 +111,7 @@ Foamers are made of foam in different colours. Colour family could signal enemy 
 ### 4.1 Damage model (Proposed)
 
 - Foamers are voxel models (section 7.3). Hits knock voxel chunks off at the impact point, so damage is *visible*: a Foamer that has taken a lot of darts is lumpy and missing pieces.
-- Weak points (for example an antenna, a backpack, a glowing core) can be shot off to change behaviour, like DOOM's destructible Mancubus cannons and Revenant jetpacks.
+- **Damage zones and handicaps (decided 2026-10-31, Paul):** a Foamer is built from parts (body, head, arms, legs, and ability parts such as a launcher, jets or a shield; section 7.3 point 6). Each part has its own health. Shooting a part wears it down visibly, and when it breaks it falls off as a foam piece and the Foamer loses what that part did: a broken leg makes it limp, both legs make it crawl, a broken arm takes away that arm's attacks, ability parts take away their ability. Breaking a part also staggers the Foamer briefly. Weak points (head, a backpack tank) take extra damage. Which parts each Foamer has, and what losing them does, is in `design/CONTENT-PLAN.md` section 3.1 for Paul to adjust. Engine task: ENG-10.
 - Stagger state: wobble + glow = finisher available.
 - Death: the whole model breaks into physics chunks, a burst of foam crumbs and a satisfying "pop" sound. Chunks bounce, then shrink and fade within a few seconds.
 
@@ -482,7 +482,8 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | GAME-08 | Ammo-for-kills tool | F | GAME-07 |
 | GAME-09 | Weapon framework from JSON data, 3 blasters from Paul's cards | F (B for data) | PRE-04 |
 | ENG-08 | AI director (attack tokens), state machine base, navmesh | A | GAME-03 |
-| GAME-10 | 3 Foamer types (fodder ranged, charger, heavy) | F | ENG-08, PRE-05 |
+| ENG-10 | Foamer parts: multi-part rig, per-part damage, break-off, handicaps (card: `tasks/ENG-10.md`) | A or Pi | GAME-03, ENG-09 |
+| GAME-10 | 3 Foamer types (fodder ranged, charger, heavy) | F | ENG-08, ENG-10, PRE-05 |
 | ART-00 | Spike: install Hunyuan3D locally on the Mac, generate one test blaster from an image, record time per model and quality. Go / no-go for the 3D route | A + P | |
 | ART-01 | Reference to design brief for 3 blasters | Vision model | PRE-03 |
 | ART-02 | Concept turnarounds for 3 blasters (code-drawn until an image tool is chosen), Paul approves | F + P | ART-01 |
@@ -582,3 +583,5 @@ All twelve answered 2026-10-29.
 | 2026-10-30 | Foam look v1 (ENG-07): voxel AO baked into vertex colours by the greedy mesher (faces merge only with equal AO), and a foam patch on MeshStandardMaterial (pores, tint, glow, rim). Pore noise is in local voxel units and wraps every chunk, so pore size follows voxel size. Tuning in `data/render.json`. | 7.4 |
 | 2026-10-31 | Smoothing (ENG-09): surface nets with relaxation for Foamers only; walls and falling pieces stay greedy blocks. Foamer painted details must be about 3 voxels wide to survive smoothing. | 7.4 |
 | 2026-10-31 | Everything that moves on the 60 Hz step is drawn interpolated between steps (fixes stutter on 120 Hz displays). A dart push changes a body's speed by at most 4 m/s. | 7.3 |
+| 2026-10-31 | Foamers have damage zones: parts (head, arms, legs, ability parts) with their own health that break off and handicap the Foamer (Paul). | 4.1 |
+| 2026-10-31 | Frames are timed from the rAF timestamp and snapped to the display refresh (Firefox's rounded timer caused a hitch about once a second). | 7.3 |

@@ -46,7 +46,7 @@ github.com/contrapaul/dart (public), MIT licence.
 ## Open items
 
 - [ ] Paul: blaster cards, story outline, Foamer names (PRE-02 to PRE-05).
-- [ ] Paul: answer decisions D1 to D10 in `design/CONTENT-PLAN.md` (game
+- [ ] Paul: answer decisions D1 to D11 in `design/CONTENT-PLAN.md` (game
   length, roster, blasters, upgrades), then fill its `[Paul]` cells. P1
   needs 3 blaster cards and 3 Foamers first.
 

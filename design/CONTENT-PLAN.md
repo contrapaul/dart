@@ -29,6 +29,7 @@ Each has a recommendation first.
 | D8 | Ammo pickups from floor darts | **A. Off by default; try it in the slice.** B. On |
 | D9 | Ammo-for-kills tool | **A. A suck-up tool: a vacuum that pulls a weakened Foamer in and spits darts out.** B. A squeeze finisher on any Foamer below a health line |
 | D10 | Difficulty presets | **A. Four: Story, Normal, Hard, Foam Fury (names [Paul])**, plus the sliders from PLAN.md 10. B. Sliders only |
+| D11 | Limb damage defaults | **A. As in section 3.1: one leg limps, both crawl, arms take attacks, head is a double-damage weak point.** B. Limbs only slow, never remove attacks |
 
 ---
 
@@ -89,6 +90,45 @@ Health is in standard-dart hits (a standard dart does 1). Attacks marked
 | BOSS 1 | Boss | [Paul] | 3 phases, weak points | Act 1 skills | Several | 300 | Boss 1 | [Paul] | [Paul] | [Paul] |
 | BOSS 2 | Boss | [Paul] | | Act 2 skills | | 500 | Boss 2 | | | |
 | BOSS 3 | Boss | [Paul] | | Everything | | 800 | Boss 3 | | | |
+
+### 3.1 Parts and handicaps (Paul asked for this, 2026-10-31)
+
+Every Foamer is built from parts that can be shot off. A part breaks when
+its own health runs out; it falls off as a foam piece and the Foamer loses
+what it did. Proposed defaults, for Paul to change per Foamer:
+
+| Part | When it breaks | Damage taken |
+|---|---|---|
+| Leg (one) | Limps: half speed, cannot leap or charge | Normal |
+| Both legs | Crawls at a quarter speed, can still attack | Normal |
+| Arm (one) | Loses that arm's attacks (throw, punch, launcher held in it) | Normal |
+| Both arms | Only a headbutt bonk left | Normal |
+| Head | Aims badly (wide spread) and turns slowly | **Double** (weak point) |
+| Ability part (launcher, jets, shield, tank, antenna) | Loses that ability (no ranged attack, cannot fly, no shield, cannot heal others) | Set per part |
+| Body | Cannot break off: when total health runs out, the Foamer pops | Normal |
+
+Any part breaking also staggers the Foamer for about half a second, which
+opens a finisher (GAME-07). Damage to a limb also counts toward total
+health, at half rate, so shooting limbs cripples first and kills second.
+
+Per Foamer (proposal, matching the roster above):
+
+| # | Parts that can break | Most useful part to break |
+|---|---|---|
+| F01 | Arms, legs, head | Legs (it is slow already: now it crawls) |
+| F02 | Throwing arm, legs, head | Throwing arm (no more foam balls) |
+| F03 | None (too small; pops in one or two hits) | |
+| F04 | Shield (carved away), arms, legs | Shield |
+| F05 | Legs, armoured front plate | Legs (no more charging) |
+| F06 | Mouth flap, fins | Fins (it sinks and floats slower) |
+| F07 | Arms, legs | Legs (no more leap slam) |
+| F08 | Two arm launchers, legs | Each launcher removes half its foam wall |
+| F09 | Gun, legs | Gun |
+| F10 | Jets, arms | Jets (it falls and walks) |
+| F11 | Shield (only by parry), arms, legs | Shield |
+| F12 | Legs | Legs (no more pouncing) |
+| F13 | Tank, arms | Tank (no more healing) |
+| Bosses | Several each, by phase | [Paul] |
 
 Cut from the template to save build time, easy to add back: the small
 flying charger (template F04), the mini-boss brawler (template F14) and the
@@ -199,5 +239,5 @@ so a thorough player maxes out in act 3 and a casual one gets most.
 - Weapons, mods, upgrades, Foamer stats and the level table all go into
   `data/` JSON, so balance changes need no code.
 - After Paul's answers: section 3 and 4 become `PLAN.md` 4.2 and 5.1, D1 to
-  D10 go into the decisions log, and new task cards are written for the
+  D11 go into the decisions log, and new task cards are written for the
   upgrade screen (UI-02) and the mod system (GAME-11).
