@@ -145,8 +145,8 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
   };
 
   // Face details, painted on the voxels of the +z surface. Eyes are at
-  // least 3 voxels wide so smoothing keeps them (ENG-09), capped at 3 so
-  // big Foamers get eyes of a readable size, not saucers.
+  // least 3 voxels wide so they read as round, capped at 3 so big Foamers
+  // get eyes of a readable size, not saucers.
   const eyes: EyeStyle | null = part.eyes === true ? "round" : part.eyes || null;
   const eyeR = Math.min(3, Math.max(1.5, Math.min(sx / 6, sy / 4))) * (eyes === "slit" ? 1.3 : 1);
   const eyeY = cy + sy * 0.12;

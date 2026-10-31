@@ -12,7 +12,7 @@ import { Burst } from "./burst";
 import rigData from "../../data/foamer-rigs.json";
 
 // Foamer sandbox (sandbox.html): every greybox rig from data/foamer-rigs.json
-// meshed with the game's own voxel, smoothing and foam code, moving with its
+// meshed with the game's own voxel and foam code, moving with its
 // movement style. Lineup shows them side by side next to the player's
 // height; Roam lets one walk a loop. For discussing shape and movement
 // before limb damage (ENG-10).
@@ -101,7 +101,6 @@ class RigView {
   feet = new THREE.Vector3();
   yaw = 0;
   phase = "";
-  smooth = true;
   health: number;
   state: "alive" | "down" | "popped" | "gone" = "alive";
   /** Seconds since it went down or popped. */
@@ -139,21 +138,19 @@ class RigView {
     scene.add(this.root);
   }
 
-  /** (Re)mesh every part, smooth or as blocks. */
-  async mesh(smooth: boolean) {
-    this.smooth = smooth;
+  /** Mesh every part. */
+  async mesh() {
     await Promise.all([...this.volumes.keys()].map((id) => this.meshPart(id)));
   }
 
   /** (Re)mesh one part after its voxels changed. */
   async meshPart(id: string) {
-    const smooth = this.smooth;
     {
       const volume = this.volumes.get(id)!;
       const g = this.parts.get(id)!;
       const jobs = [...volume.chunks].map(async ([key, chunk]) => {
         const [cx, cy, cz] = chunkCoords(key);
-        const data = await pool.mesh(buildPadded(volume, cx, cy, cz, chunk), smooth);
+        const data = await pool.mesh(buildPadded(volume, cx, cy, cz, chunk));
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.BufferAttribute(data.positions, 3));
         geo.setAttribute("normal", new THREE.BufferAttribute(data.normals, 3));
@@ -449,7 +446,6 @@ function boxVoxel(size: [number, number, number], at: [number, number, number]) 
 
 let mode: "lineup" | "roam" = "lineup";
 let selected = RIGS[0].id;
-let smooth = true;
 let playing = true;
 let speed = 1;
 let showPartLabels = false;
@@ -487,7 +483,7 @@ function build() {
   for (const v of views) {
     labelLayer.append(v.label);
     for (const l of v.partLabels.values()) labelLayer.append(l);
-    void v.mesh(smooth);
+    void v.mesh();
   }
   focus();
 }
@@ -568,13 +564,6 @@ const playBtn = document.querySelector<HTMLButtonElement>("#play")!;
 playBtn.onclick = () => {
   playing = !playing;
   playBtn.textContent = playing ? "Pause" : "Play";
-};
-const smoothBtn = document.querySelector<HTMLButtonElement>("#smooth")!;
-smoothBtn.onclick = () => {
-  smooth = !smooth;
-  smoothBtn.textContent = smooth ? "Smooth" : "Blocks";
-  burst.setSmooth(smooth);
-  for (const v of views) void v.mesh(smooth);
 };
 for (const b of document.querySelectorAll<HTMLButtonElement>("#weapons button")) {
   b.onclick = () => {
@@ -663,7 +652,7 @@ function frame(now: number) {
       views[i] = n;
       labelLayer.append(n.label);
       for (const l of n.partLabels.values()) labelLayer.append(l);
-      void n.mesh(smooth);
+      void n.mesh();
     }
   });
   burst.update(dt);

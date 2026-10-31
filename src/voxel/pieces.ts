@@ -29,7 +29,7 @@ export interface PieceSource {
 
 /** What FallingPieces needs from a MesherPool; tests pass a fake. */
 export interface Mesher {
-  mesh(padded: Uint8Array, smooth?: boolean): Promise<MeshData>;
+  mesh(padded: Uint8Array): Promise<MeshData>;
 }
 
 interface Piece {

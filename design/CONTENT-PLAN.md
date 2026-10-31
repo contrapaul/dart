@@ -213,19 +213,18 @@ proposals for Paul's looks, not designs.
 Movement no longer snaps between phases (walk to throw, coil to pounce):
 every style blends over 0.15 s, and a test checks that no joint jumps.
 
-**Smooth or blocks:** the sandbox's Smooth / Blocks button switches the
-Foamers, the wounds and the pop chunks together, so this pass is the one
-to settle it on (Paul).
+**Blocks (Paul, 2026-10-31):** Foamers, wounds and pop chunks are blocky
+voxels. Smoothing was compared in the sandbox and removed.
 
 Cut from the template to save build time, easy to add back: the small
 flying charger (template F04), the mini-boss brawler (template F14) and the
 arena-boss role (template F15, folded into the act bosses).
 
 **Design notes from the engine (for the looks):**
-- Foamers are smoothed voxels, 5 cm each (ENG-09). Painted details such as
-  eyes, stripes or a mouth need to be **about 3 voxels (15 cm) wide** or
-  smoothing blurs them. Shapes can be any size up to about 1.6 m per body
-  part; bigger Foamers are built from several parts.
+- Foamers are blocky voxels, 5 cm each. Painted details such as eyes,
+  stripes or a mouth can be as small as one voxel, though 2 to 3 voxels
+  read better at a distance. Shapes can be any size up to about 1.6 m per
+  body part; bigger Foamers are built from several parts.
 - Parts can be shot off cleanly when they are separate pieces (PLAN.md
   7.3 point 6), so weak points work best as distinct parts: an antenna, a
   backpack, an arm launcher.

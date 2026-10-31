@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-PRE-09, ENG-01 to ENG-07, ENG-09, GAME-01, GAME-02 (placeholder blaster) and
+PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
 GAME-03 (test Foamer) done. The test course: click to capture the mouse,
 then walk, sprint, jump, dash and mantle around steps, ledges, ramps and
 walls. Left mouse fires the placeholder pump blaster (3 darts per shot,
@@ -46,8 +46,6 @@ github.com/contrapaul/dart (public), MIT licence.
 ## Open items
 
 - [ ] Paul: blaster cards, story outline, Foamer names (PRE-02 to PRE-05).
-- [ ] Paul: review the menace pass and damage preview in the sandbox;
-  pick smooth or blocks.
 - [ ] Paul: answer decisions D1 to D15 in `design/CONTENT-PLAN.md` (game
   length, roster, blasters, upgrades), then fill its `[Paul]` cells. P1
   needs 3 blaster cards and 3 Foamers first.
@@ -70,6 +68,19 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-31: Foamers are blocks, smoothing removed (Claude)
+
+- Paul approved the menace pass ("These are excellent") and locked in
+  blocks, not smooth.
+- The game's Foamers mesh as greedy blocks like everything else. Surface
+  nets (ENG-09: `src/voxel/surface-nets.ts`, its tests, the `smooth` flag
+  through the worker, pool and VolumeMesh, `render.json` `smooth`) are
+  removed; git history has them. The sandbox's Smooth / Blocks button is
+  gone and pop chunks are cubes.
+- Docs: PLAN 7.4, Q6, ART-03, ENG-09 row and the decisions log; the
+  content plan's engine notes (details no longer need to be 3 voxels wide).
+- 85 tests pass (the 5 surface-nets tests went with the code).
 
 ### 2026-10-31: Foamer menace pass and damage preview (Claude)
 

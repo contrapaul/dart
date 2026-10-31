@@ -7,7 +7,7 @@ export class MesherPool {
   readonly recentMs: number[] = [];
 
   private idle: Worker[] = [];
-  private queue: { padded: Uint8Array; smooth: boolean; resolve: (m: MeshData) => void }[] = [];
+  private queue: { padded: Uint8Array; resolve: (m: MeshData) => void }[] = [];
   private pending = new Map<number, (m: MeshData) => void>();
   private nextId = 0;
 
@@ -26,11 +26,10 @@ export class MesherPool {
     }
   }
 
-  /** The padded buffer is transferred to the worker and unusable afterwards.
-   *  smooth: surface nets (Foamers) instead of greedy blocks. */
-  mesh(padded: Uint8Array, smooth = false) {
+  /** The padded buffer is transferred to the worker and unusable afterwards. */
+  mesh(padded: Uint8Array) {
     return new Promise<MeshData>((resolve) => {
-      this.queue.push({ padded, smooth, resolve });
+      this.queue.push({ padded, resolve });
       this.pump();
     });
   }
@@ -45,7 +44,7 @@ export class MesherPool {
       const job = this.queue.shift()!;
       const id = this.nextId++;
       this.pending.set(id, job.resolve);
-      w.postMessage({ id, padded: job.padded, smooth: job.smooth }, [job.padded.buffer]);
+      w.postMessage({ id, padded: job.padded }, [job.padded.buffer]);
     }
   }
 }
