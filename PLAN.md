@@ -35,12 +35,12 @@ This is a living document. Sections marked **[Paul]** are Paul's to write. Items
 
 **Target audience:** ages 10 and up, public release on the web (decided 2026-10-29). Free to play, forever.
 
-**Rating target:** equivalent to ESRB E10+ / PEGI 7. Cartoon action, no blood, no gore, no realistic weapons, no frightening imagery.
+**Rating target:** equivalent to ESRB E10+ / PEGI 7. Cartoon action, no blood, no gore, no realistic weapons, no frightening imagery. Under review since parts can come off and Foamers look menacing (2026-10-31): `design/CONTENT-PLAN.md` D13 proposes E10+ / PEGI 12.
 
 **Hard rules for every model working on this project:**
 
-- No blood, gore, dismemberment, bones, organs or corpses. Foamers burst into foam chunks, confetti, bubbles or goo-free foam crumbs, which then fade or bounce away.
-- Foamers are not scary. Big eyes, rounded shapes, bright colours, goofy sounds. Menace comes from their behaviour (speed, numbers, attacks), never from their looks.
+- No blood, bones, organs or bodies left lying around. Foamers are foam all the way through: a wound shows the foam's core colour, a part shot off falls as a foam piece, a downed Foamer topples, fizzes and dissolves within seconds, and a catastrophic hit bursts it into foam chunks that fade (Paul, 2026-10-31: "foamy gore"; `design/CONTENT-PLAN.md` 3.2). No red, no fluids, no faces in pain.
+- Foamers can look menacing, not scary (Paul, 2026-10-31): angry eyes, toothless grins, hunched postures and visible toy weapons, still foamy, rounded and brightly coloured. No teeth, no pointed claws, nothing gross or realistic. Rules in `design/CONTENT-PLAN.md` 3.3.
 - No demonic or religious imagery from the DOOM source material (no pentagrams, hell, skulls, crosses, sacrifice). The Foam dimension replaces Hell.
 - Blasters are toys. Bright plastic colours, orange tips, chunky shapes. Nothing that reads as a real firearm.
 - Language: no swearing. Taunts and barks are silly, not cruel.
@@ -586,3 +586,6 @@ All twelve answered 2026-10-29.
 | 2026-10-31 | Everything that moves on the 60 Hz step is drawn interpolated between steps (fixes stutter on 120 Hz displays). A dart push changes a body's speed by at most 4 m/s. | 7.3 |
 | 2026-10-31 | Foamers have damage zones: parts (head, arms, legs, ability parts) with their own health that break off and handicap the Foamer (Paul). | 4.1 |
 | 2026-10-31 | Frames are timed from the rAF timestamp and snapped to the display refresh (Firefox's rounded timer caused a hitch about once a second). | 7.3 |
+| 2026-10-31 | Foamers can look menacing (angry eyes, toothless grins, visible toy weapons) and take "foamy gore": wounds show a foam core colour, parts break off, most go down and dissolve, only a catastrophic hit pops them (Paul). Section 2 rewritten to match; rating target under review (CONTENT-PLAN D13). | 2 |
+| 2026-10-31 | Reference photos in `design/referenceimages/` are gitignored like `reference/`: they carry other companies' logos. | 2 |
+| 2026-10-31 | Foamer movement styles blend over 0.15 s so no joint snaps between phases; a test enforces it. | 7.3 |

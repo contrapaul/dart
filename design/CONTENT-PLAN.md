@@ -30,6 +30,10 @@ Each has a recommendation first.
 | D9 | Ammo-for-kills tool | **A. A suck-up tool: a vacuum that pulls a weakened Foamer in and spits darts out.** B. A squeeze finisher on any Foamer below a health line |
 | D10 | Difficulty presets | **A. Four: Story, Normal, Hard, Foam Fury (names [Paul])**, plus the sliders from PLAN.md 10. B. Sliders only |
 | D11 | Limb damage defaults | **A. As in section 3.1: one leg limps, both crawl, arms take attacks, head is a double-damage weak point.** B. Limbs only slow, never remove attacks |
+| D12 | How Foamers die (section 3.2) | **A. Three outcomes: most go down (topple, fizz, dissolve); a catastrophic killing hit (40% or more of max health in one hit) pops them into chunks; losing the head and an arm downs them whatever their health.** B. Pop only from explosives (B05 explosive mod, B06 every 5th, B07), never from a shotgun |
+| D13 | Rating target, now that parts come off and Foamers look menacing | **A. Aim for ESRB E10+ / PEGI 12 ("non-realistic violence towards fantasy characters").** B. Keep PEGI 7: then no parts breaking off, only wounds and pops |
+| D14 | Ammo for B06 and B07, both now on mega darts | **A. Keep five ammo types: standard, precision, mega, foam ball, and a launcher round for B07 (a mega dart with a foam warhead, its own pickup).** B. Four types: B06 and B07 share mega darts |
+| D15 | B03 fire type: "pump" and "double barrel" | **A. Break-action double barrel: each trigger pull fires one barrel, both fired means reload (the 2 in 2 / 24); mod 1 fires both at once.** B. Pump-action with a 2-shell tube |
 
 ---
 
@@ -130,6 +134,89 @@ Per Foamer (proposal, matching the roster above):
 | F13 | Tank, arms | Tank (no more healing) |
 | Bosses | Several each, by phase | [Paul] |
 
+### 3.2 Wounds, going down and popping (Paul, 2026-10-31)
+
+Paul: Foamers should not always explode when killed. Fodder especially
+should "go down" with some foamy gore when it has taken enough damage, or
+when its head and an arm are blown off. Explosive results are for
+catastrophic damage only: close-range shotguns, massive impacts.
+
+"Foamy gore" means foam, never body parts: every Foamer is foam all the way
+through, with a **core colour** (Paul picks it; the sandbox uses pale
+yellow) that shows wherever the surface is broken. No red, no fluids, no
+bones or insides, no faces in pain, and nothing lies around for long.
+
+| Stage | When | What you see |
+|---|---|---|
+| Wounded | Any hit | The hit carves a crater; the foam around it shows the core colour; a short fizz of foam bubbles from the wound |
+| Part off | A part's own health runs out (or it loses 40% of its foam) | The part falls off as one foam piece, bounces and settles; both sides of the break show a core-coloured stump that fizzes for a second. The Foamer loses what the part did (section 3.1) and staggers |
+| Goes down | Health runs out from an ordinary hit, or the head and an arm are both gone | It topples (forward on two legs, onto its side on four), limbs go limp, foam fizzes off it for about 3 s, then it sinks into the floor and is gone (about 5 s). A finisher on a downed Foamer is not needed: it is out |
+| Pops | The killing hit alone is 40% or more of the Foamer's max health | It bursts into foam chunks (15 cm), the deep ones in the core colour, thrown away from the hit. Chunks bounce, settle and shrink away within 5 s |
+
+Proposed numbers (all in `data/`, Paul to tune after trying the sandbox):
+
+- **Catastrophic hit:** 40% of max health in one hit. A point-blank B03
+  double blast or a B07 round pops fodder and most heavies; F08 (80) takes
+  a 32-damage hit, so it usually goes down instead. Shots to the head count
+  double, so a big head shot pops more often.
+- **Part health:** a share of the Foamer's health. Head 30%, legs 25%,
+  arms 20%, weapons and ability parts 25%, fins and armour details 15%
+  (minimum 2 darts). Damage to a part also counts toward total health at
+  half rate; the head at double (section 3.1).
+- **Bodies on the floor:** at most 8 downed Foamers or loose parts at once;
+  the oldest sinks early. Pop chunks share the debris cap.
+- **Finishers (GAME-07)** stay as they are: a staggered Foamer can be
+  finished, and the finisher always pops it (it is the player's choice to
+  be dramatic).
+
+Try it: the sandbox (`/sandbox`) has Dart, Heavy and Blast buttons. Click a
+Foamer to shoot it. The rules there are a preview; the game's version is
+ENG-10.
+
+### 3.3 Looks: the menace pass (Paul, 2026-10-31)
+
+Paul asked for more visible weapons on the Foamers and a general menace
+overhaul. The sandbox greyboxes now follow these rules; they are shape
+proposals for Paul's looks, not designs.
+
+- **Faces:** angry eyes (a heavy lid slanting down toward the middle),
+  slit eyes for helmeted or visored Foamers, toothless mouths (a wide grin
+  with the corners up, or a gaping hole). No teeth, no claws with points.
+- **Posture:** heads low and forward, shoulders hunched, legs bent.
+  Nothing stands up straight like a toy on a shelf.
+- **Weapons you can see:** every Foamer that attacks carries the thing it
+  attacks with, so players read the threat before it fires, and so it can
+  be shot off (section 3.1). Weapons are toy-like: tubes with orange
+  muzzles, foam clubs, foam spikes with round tips.
+- **Spikes are foam nubs:** rounded cones on backs, shoulders, maces and
+  fists.
+- **Greybox colours:** grey is foam, dark grey is gear and weapons, orange
+  marks muzzles and throwables, pale yellow is the foam core. Real colours
+  are Paul's (D5).
+
+| # | Greybox shape (sandbox) | Weapon you can see | Breakable parts |
+|---|---|---|---|
+| F01 | Hunched grunt, jutting head, long arms with elbows | Foam club in the right hand | Head, arms, club, legs |
+| F02 | Lanky, knees and elbows, satchel of balls on its back | Foam ball held ready (orange) | Head, arms, legs, satchel |
+| F03 | Small four-legged biter, spined back, gaping mouth | Its mouth | None (pops in 1 or 2 hits) |
+| F04 | Visored trooper, riot shield on the left forearm | Blaster on the right forearm, over the shield | Shield, blaster, arms, legs |
+| F05 | Low bull, head down, horns forward, armour plate, spined back | Horns | Horns, plate, legs |
+| F06 | Spiky floating ball, gaping mouth with a jaw, three tendrils | Mouth (jaw drops to spit) | Jaw, fins, tendrils |
+| F07 | Gorilla stance, tiny head sunk in the shoulders | Huge fists with knuckle nubs | Fists, arms, legs |
+| F08 | Huge, shoulder spikes, ammo drum on its back | Two launcher arms (orange muzzles) | Launchers, drum, legs |
+| F09 | Spider legs with knees, low body | Twin-barrel turret | Turret barrels, legs |
+| F10 | Visored flyer with jets and wings | Wrist launcher | Jets, wings, launcher arm |
+| F11 | **Rebuilt (Paul: "janky", wanted larger and more ominous):** a 3.4 m armoured knight. Horned helm with slit eyes, spiked pauldrons, belt, bent legs with boots, a cape | Spiked tower shield (left), spiked foam mace (right). Combo: overhead slam, sweep, then a slow high wind-up (the parry window) and a full-body slam | Shield (parry only), mace, arms, legs, helm |
+| F12 | Long low stalker, spined back, jointed legs, tail, gaping head | Its pounce | Legs, tail |
+| F13 | Hooded medic, foam tank and antenna on its back | Spray wand (core-coloured tip) | Tank, antenna, wand, arms |
+
+Movement no longer snaps between phases (walk to throw, coil to pounce):
+every style blends over 0.15 s, and a test checks that no joint jumps.
+
+**Smooth or blocks:** the sandbox's Smooth / Blocks button switches the
+Foamers, the wounds and the pop chunks together, so this pass is the one
+to settle it on (Paul).
+
 Cut from the template to save build time, easy to add back: the small
 flying charger (template F04), the mini-boss brawler (template F14) and the
 arena-boss role (template F15, folded into the act bosses).
@@ -142,8 +229,8 @@ arena-boss role (template F15, folded into the act bosses).
 - Parts can be shot off cleanly when they are separate pieces (PLAN.md
   7.3 point 6), so weak points work best as distinct parts: an antenna, a
   backpack, an arm launcher.
-- Looks stay friendly (PLAN.md section 2): big eyes, round shapes, bright
-  colours.
+- Looks stay 'foamy', but range from friendly to menacing, if not quite 'pure evil': big eyes, toothless mouths, rounded shapes combined with weapons, bright
+  colours. (Paul, 2026-10-31; section 3.3 has the rules the greyboxes follow.)
 
 ---
 
@@ -152,21 +239,46 @@ arena-boss role (template F15, folded into the act bosses).
 Eight roles that cover the classic shooter spread without two blasters
 doing the same job (D4 A). Mechanics are proposals; names, looks,
 reference images and the cards themselves are Paul's (PLAN.md section 5
-card template, `design/blasters/Bxx.md`).
+card template, `design/blasters/Bxx.md`). See design/referenceimages/ for shape inspiration, colors are flexible.
+
+The reference images are product photos with other companies' logos on
+them, so they stay on Paul's machine: `design/referenceimages/` is
+gitignored, like `reference/`. They guide feel and function (a break-action
+double barrel, a drum-fed gatling, a bipod heavy); the game's blasters
+must not copy any one product's silhouette or markings (PLAN.md section 2).
 
 | # | Role | Fire type | Ammo | Mag / reserve | Feel | Mod 1 idea | Mod 2 idea | Name | Reference |
 |---|---|---|---|---|---|---|---|---|---|
-| B01 | Starter | Pump | Standard | 8 / 40 | Punchy, priming rhythm | Charged shot (hold to prime harder) | Double pump: two darts per shot | [Paul] | [Paul] |
-| B02 | Sidearm | Semi-auto | Standard | 6 / infinite | Quick backup, never empty | Burst of 3 | Suction mode: darts stick and slow Foamers | | |
-| B03 | Spread | Pump, wide | Standard | 4 / 24 | Close-range crowd clearing | Tight choke | Bouncing darts | | |
-| B04 | Flywheel auto | Full-auto | Standard | 35 / 175 | Hose of darts, spin-up | No spin-up | Mega burst every 10th dart | | |
-| B05 | Precision | Bolt or spring | Precision dart (whistler) | 5 / 30 | Long range, weak-point killer | Zoom | Pierce: passes through one Foamer | | |
-| B06 | Heavy | Spring-loaded | Mega dart | 3 / 18 | Slow, huge carve, staggers heavies | Charge-up | Mega carve on impact | | |
-| B07 | Launcher | Launcher | Foam rocket | 1 / 8 | Area pop, blows up cover | Remote detonate | Cluster: splits into 4 | | |
-| B08 | Special | Ball blaster | Foam balls | 12 / 60 | Bouncy, chaotic, ricochets | Hopper (bigger mag) | Bouncy balls bounce more | | |
+| B01 | Starter | Pump | Standard | 8 / 40 | Punchy, 3 darts per shot | slugs- heavy single shot that can punch holes in enemies | Double pump: 6 darts per shot - changes mag to 12/40 | The Dartman | B01reference.webp |
+| B02 | Sidearm | Semi-auto | Standard | 6 / infinite | Quick backup, never empty | Burst of 3 | heavy rounds- slower firing, much larger impact and damage | Musketeer | B02reference.webp |
+| B03 | Spread | Heavy shotgun, Pump, wide | Standard | 2 / 24 | Close-range heavy/elite melting, double barrel - ammo is treated as shotgun shells, firing many darts for each expended ammo | Fire both barrels at the same time | quad barrel- adds 2 more barrels, same reload time, adding utility/effectiveness | Leviathan | B03reference.webp |
+| B04 | Flywheel auto | Full-auto | Standard | 35 / 175 | Hose of darts, high recoil increases spread and upward drift with each shot- but burts feel accurate | Recoil suppression making it feel like an *accurate* hose | Every 5th shot bounces to another target | Shredder | B04reference.webp |
+| B05 | Precision | Bolt or spring sniper, zoom | Precision dart (whistler) | 5 / 30 | Long range, weak-point kille, piercing rounds | Explosive rounds | heavier rounds which pierce through multiple enemies | Shrike | B05reference.webp |
+| B06 | Heavy | Full-auto | Mega dart | 60 / 120 | Slower rate of fire than B04, but shots are considerably more damaging | Increased rate of fire | Every 5th dart is explosive | The Standard| B06reference.webp |
+| B07 | Launcher | Pump | Mega dart | 5 / 15 | Arcing shot, area explosion, blast can push enemies | Remote detonate | Cluster: splits into 4 smaller explosions after initial blast | Collateral | B07reference.webp |
+| B08 | Gatling | Room-clearing 'final word', spins up to fire at an incredible rate | Foam balls | 120 / 240 | Massive power, recoil, chaotic, ricochets, slows movement when firing | Recoil control and reduced movement penalty | Add a second barrel for 2x fire rate | Firehose | B08reference.webp |
 
-**Ammo types (5):** standard dart, precision dart, mega dart, foam rocket,
-foam ball. Suction is a mod (B02), not its own ammo, to keep pickups simple.
+**Ammo types:** standard dart (B01 to B04), precision dart (B05), mega
+dart (B06, B07), foam ball (B08). B07 used to fire foam rockets; with
+Paul's change to mega darts, D14 decides whether its round is its own
+pickup. Suction darts are no longer a B02 mod (Paul replaced it with heavy
+rounds); the suction darts already built stay as a test dart type until
+something else uses them.
+
+**Notes on Paul's blaster changes, for the cards:**
+
+- B01 "slugs" punch holes in Foamers: a big carve radius and pierce through
+  thin parts (an arm), which ties in with parts breaking off (section 3.1).
+- B03 is now the heavy and elite killer: many darts per shell at close
+  range, which makes it the main way to pop heavies (section 3.2). Its
+  fire type is D15.
+- B04 recoil (spread and upward drift that grows during a burst) and B08
+  spin-up and movement slow are new mechanics for the blaster system
+  (GAME-09); worth testing early on B04.
+- B05, B06 and B07 all gain explosive options. Explosions should carve
+  terrain and Foamers alike and are the other main way to pop.
+- The names are Paul's. Before launch, check each one isn't another toy
+  or game company's product name.
 
 **The rest of the kit** (PLAN.md 3.2 and 3.4), all [Paul] for names and
 looks:

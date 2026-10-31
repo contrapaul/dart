@@ -10,6 +10,8 @@
     { "id": 7, "name": "foam-white", "color": "#fff6e8", "hardness": 1 },
     { "id": 8, "name": "foam-ink", "color": "#2a2340", "hardness": 1 },
     { "id": 9, "name": "greybox", "color": "#bdb5cf", "hardness": 1 },
+    { "id": 10, "name": "greybox-dark", "color": "#6f6788", "hardness": 1 },
+    { "id": 11, "name": "foam-core", "color": "#ffe9a8", "hardness": 1 },
     { "id": 20, "name": "cardboard", "color": "#c89a5b", "hardness": 0.7 },
     { "id": 21, "name": "plastic", "color": "#e8e4f0", "hardness": 1.5 },
     { "id": 22, "name": "wood", "color": "#a0673a", "hardness": 2.5 },

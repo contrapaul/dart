@@ -105,4 +105,22 @@ describe("Foamer rigs", () => {
         for (const r of f.motion.rot.values()) expect(r.every(Number.isFinite)).toBe(true);
       }
   });
+
+  it("movement never snaps: no joint or lean jumps more than 0.35 rad between 60 Hz frames", () => {
+    const dt = 1 / 60;
+    for (const rig of RIGS) {
+      let prev = rigMotion(rig, 0).motion;
+      for (let t = dt; t < 30; t += dt) {
+        const m = rigMotion(rig, t).motion;
+        const where = `${rig.id} t=${t.toFixed(2)}`;
+        expect(Math.abs(m.pitch - prev.pitch), `${where} pitch`).toBeLessThan(0.35);
+        expect(Math.abs(m.roll - prev.roll), `${where} roll`).toBeLessThan(0.35);
+        for (const p of rig.parts) {
+          const a = m.rot.get(p.id) ?? [0, 0, 0], b = prev.rot.get(p.id) ?? [0, 0, 0];
+          for (let i = 0; i < 3; i++) expect(Math.abs(a[i] - b[i]), `${where} ${p.id}[${i}]`).toBeLessThan(0.35);
+        }
+        prev = m;
+      }
+    }
+  });
 });

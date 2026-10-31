@@ -82,14 +82,17 @@ Dark Ages. Read `PLAN.md` (the plan, open questions and decisions log) and
 - **No em dash characters.** Not in the UI, comments, docs or commit
   messages. Use a comma, a full stop or a colon. Why: Paul reads them as a
   tell of AI writing.
-- **No blood, no gore, nothing scary.** Foamers burst into foam chunks. No
-  demonic or religious imagery. Blasters look like toys. The audience is 10+.
-  Full rules: PLAN.md section 2.
+- **No blood, foam only.** Foamers are foam all the way through: wounds
+  show a foam core colour, parts break off as foam, most go down and
+  dissolve, a catastrophic hit pops them into chunks. Menacing looks are
+  fine (angry eyes, toothless grins, toy weapons); horror is not (no teeth,
+  no fluids, no faces in pain). No demonic or religious imagery. Blasters
+  look like toys. The audience is 10+. Full rules: PLAN.md section 2.
 - **No trademarks.** Never use the words Nerf or DOOM in the game, and never
   copy a real blaster's design or the DOOM logo.
-- **This repo is public.** `reference/` (blaster photos) and raw audio
-  recordings are gitignored and must stay that way. Nothing copyrighted that
-  is not ours to publish.
+- **This repo is public.** `reference/` and `design/referenceimages/`
+  (blaster photos) and raw audio recordings are gitignored and must stay
+  that way. Nothing copyrighted that is not ours to publish.
 - **Paul writes the content.** Blasters, story, Foamer names and looks, and
   the logo are his. Leave `[Paul]` placeholders; never invent them.
 - **Performance is a feature.** Target: 60 fps on a mid-range laptop with

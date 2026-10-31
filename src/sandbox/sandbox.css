@@ -171,3 +171,9 @@ button.on {
   color: var(--accent);
   background: none;
 }
+
+.controls .label {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}

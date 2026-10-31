@@ -8,5 +8,6 @@ dist/
 # Reference photos of real blasters are other people's copyright. They stay
 # on Paul's machine; only the written design briefs are committed.
 reference/
+design/referenceimages/
 # Raw blaster recordings. Only edited sound files in assets/audio are published.
 audio-raw/

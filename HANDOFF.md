@@ -46,7 +46,9 @@ github.com/contrapaul/dart (public), MIT licence.
 ## Open items
 
 - [ ] Paul: blaster cards, story outline, Foamer names (PRE-02 to PRE-05).
-- [ ] Paul: answer decisions D1 to D11 in `design/CONTENT-PLAN.md` (game
+- [ ] Paul: review the menace pass and damage preview in the sandbox;
+  pick smooth or blocks.
+- [ ] Paul: answer decisions D1 to D15 in `design/CONTENT-PLAN.md` (game
   length, roster, blasters, upgrades), then fill its `[Paul]` cells. P1
   needs 3 blaster cards and 3 Foamers first.
 
@@ -68,6 +70,41 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-10-31: Foamer menace pass and damage preview (Claude)
+
+- Paul: F11 was janky and should be larger and more ominous; more visible
+  weapons and a general menace overhaul; Foamers should not always explode
+  when killed: fodder goes down with "foamy gore", explosions only for
+  catastrophic damage. He also edited the blaster table and added
+  reference photos.
+- Rigs (`data/foamer-rigs.json`, 140 parts): every Foamer rebuilt with a
+  visible weapon (clubs, launcher arms, a riot shield and blaster, fists,
+  turret barrels, a mace), angry or slit eyes, toothless mouths, foam
+  spikes, elbows and knees where they help. F11 is now a 3.4 m armoured
+  knight with a horned helm, spiked shield, spiked mace and cape. Rig
+  shapes gained `cone` and `tube`, plus `taper`, `nubs`, `eyes` styles,
+  `mouth` and `tip` (`src/foamers/rig.ts`). New materials: `greybox-dark`
+  and `foam-core` (a placeholder core colour).
+- Jank: phase changes snapped joints (walk to throw, coil to pounce, the
+  F11 combo). `rigMotion` now averages the pose over 0.15 s, and a test
+  fails if any joint moves more than 0.35 rad in one 60 Hz frame. F11's
+  combo was rewritten so each hit starts where the last ended.
+- Sandbox damage preview (`src/sandbox/main.ts`, `burst.ts`): click a
+  Foamer with Dart, Heavy or Blast. Wounds carve and show the core colour
+  with a fizz; parts with no health left (or 40% of their foam gone) fall
+  off with stumps; health out or head plus an arm lost makes it topple,
+  fizz and sink away; a killing hit of 40% of max health pops it into
+  15 cm chunks. Foamers respawn a few seconds later. The Smooth / Blocks
+  button switches chunks too.
+- Docs: CONTENT-PLAN 3.2 (death stages and numbers), 3.3 (menace rules,
+  per-Foamer weapons), notes on Paul's blaster changes, D12 to D15. PLAN
+  section 2 and CLAUDE.md rewritten for menacing looks and foam-only gore;
+  the rating target is under review (D13). `design/referenceimages/` is
+  gitignored: the photos carry other companies' logos and stay local.
+- Unverified: how it reads to Paul; frame rate with several pops at once
+  (chunks are capped at 1500 instances); the sandbox rules are a preview,
+  not the game's (ENG-10).
 
 ### 2026-10-31: Foamer sandbox (Claude)
 

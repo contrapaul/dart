@@ -8,8 +8,9 @@ import { materialId } from "../voxel/materials";
 // every part from the root and the joint rotations. Used by the sandbox
 // (sandbox.html) now and by the game's Foamers in ENG-10.
 
-export type PartShape = "ellipsoid" | "capsule" | "box" | "cylinder" | "disc";
-export type PartKind = "body" | "head" | "arm" | "leg" | "fin" | "ability";
+export type PartShape = "ellipsoid" | "capsule" | "box" | "cylinder" | "cone" | "tube" | "disc";
+export type PartKind = "body" | "head" | "arm" | "leg" | "fin" | "ability" | "weapon" | "detail";
+export type EyeStyle = "round" | "angry" | "slit";
 
 export interface PartSpec {
   id: string;
@@ -29,8 +30,21 @@ export interface PartSpec {
   rest?: [number, number, number];
   /** Flatten the bottom of an ellipsoid so it sits flat. */
   flatBottom?: boolean;
-  /** Two eyes on the +z face. */
-  eyes?: boolean;
+  /** Radius scale at the bottom and top (along y) of an ellipsoid,
+   *  capsule, cylinder, cone or tube. Default [1, 1]; a cone defaults to
+   *  [1, 0.15]. */
+  taper?: [number, number];
+  /** Rounded spikes out of an ellipsoid, one per direction (box
+   *  coordinates). The ellipsoid shrinks to make room inside the box. */
+  nubs?: [number, number, number][];
+  /** Two eyes on the +z face. true means "round". */
+  eyes?: boolean | EyeStyle;
+  /** A toothless mouth on the +z face, under the eyes: a painted grin, or
+   *  a gaping hole (ellipsoids only; others get it painted). */
+  mouth?: "grin" | "gape";
+  /** Paint the bottom `length` voxels (the muzzle of a barrel that hangs
+   *  from its pivot) another material. */
+  tip?: { material: string; length: number };
   /** Voxel material name; default from the rig. */
   material?: string;
 }
@@ -70,64 +84,119 @@ const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _v = new THREE.Vector3();
 
+/** Spikes take up the outer part of the box: the ellipsoid keeps this much. */
+const NUB_CORE = 0.55;
+
 /** Fill voxels 0..size-1 of one part. */
 export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial: string): void {
   const [sx, sy, sz] = part.size;
   const m = materialId(part.material ?? rigMaterial);
   const white = materialId("foam-white");
   const ink = materialId("foam-ink");
+  const tipMat = part.tip ? materialId(part.tip.material) : 0;
   const cx = (sx - 1) / 2, cy = (sy - 1) / 2, cz = (sz - 1) / 2;
   const rx = sx / 2, ry = sy / 2, rz = sz / 2;
-  // Eyes: two discs on the +z face, at least 3 voxels wide so smoothing
-  // keeps them (ENG-09), with a pupil half as wide.
-  // Capped at 3, so big Foamers get eyes of a readable size, not saucers.
-  const eyeR = Math.min(3, Math.max(1.5, Math.min(sx / 6, sy / 4)));
+  const taper = part.taper ?? (part.shape === "cone" ? [1, 0.15] : [1, 1]);
+  const nubs = (part.nubs ?? []).map(([a, b, c]) => {
+    const l = Math.hypot(a, b, c) || 1;
+    return [a / l, b / l, c / l];
+  });
+
+  const inside = (x: number, y: number, z: number): boolean => {
+    if (x < 0 || y < 0 || z < 0 || x >= sx || y >= sy || z >= sz) return false;
+    const dx = (x - cx) / rx, dy = (y - cy) / ry, dz = (z - cz) / rz;
+    // Radius scale along y for the round shapes that taper.
+    const ty = taper[0] + (taper[1] - taper[0]) * (sy > 1 ? y / (sy - 1) : 0);
+    switch (part.shape) {
+      case "ellipsoid": {
+        const core = nubs.length ? NUB_CORE : 1;
+        const ex = dx / ty, ez = dz / ty;
+        const d2 = ex * ex + dy * dy + ez * ez;
+        if (d2 <= core * core || (!!part.flatBottom && y < 2 && ex * ex + ez * ez <= core * core)) return true;
+        for (const [a, b, c] of nubs) {
+          const t = dx * a + dy * b + dz * c;
+          if (t <= 0 || t > 1) continue;
+          const px = dx - t * a, py = dy - t * b, pz = dz - t * c;
+          if (px * px + py * py + pz * pz <= ((1 - t) * 0.8) ** 2) return true;
+        }
+        return false;
+      }
+      case "capsule": {
+        // Along y: a cylinder with half-sphere ends of the box's radius.
+        const r = Math.min(rx, rz) * ty;
+        const ey = Math.max(0, Math.abs(y - cy) - (ry - Math.min(rx, rz)));
+        return ((x - cx) / r) ** 2 + ((z - cz) / r) ** 2 + (ey / r) ** 2 <= 1;
+      }
+      case "box":
+        return true;
+      case "cylinder":
+      case "cone":
+        return (dx / ty) ** 2 + (dz / ty) ** 2 <= 1;
+      case "tube": {
+        // A barrel along y, open at both ends, walls at least 1 voxel.
+        const d2 = (dx / ty) ** 2 + (dz / ty) ** 2;
+        const hole = 1 - Math.max(1.2, Math.min(rx, rz) * ty * 0.4) / (Math.min(rx, rz) * ty);
+        return d2 <= 1 && d2 > hole * hole;
+      }
+      case "disc":
+        // A round plate facing +z.
+        return dx * dx + dy * dy <= 1;
+    }
+  };
+
+  // Face details, painted on the voxels of the +z surface. Eyes are at
+  // least 3 voxels wide so smoothing keeps them (ENG-09), capped at 3 so
+  // big Foamers get eyes of a readable size, not saucers.
+  const eyes: EyeStyle | null = part.eyes === true ? "round" : part.eyes || null;
+  const eyeR = Math.min(3, Math.max(1.5, Math.min(sx / 6, sy / 4))) * (eyes === "slit" ? 1.3 : 1);
   const eyeY = cy + sy * 0.12;
   const eyeXs = [cx - sx * 0.2, cx + sx * 0.2];
+  const eyeAt = (x: number, y: number): number => {
+    for (const ex of eyeXs) {
+      const fy = eyes === "slit" ? 2.5 : 1;
+      const d2 = (x - ex) ** 2 + ((y - eyeY) * fy) ** 2;
+      if (d2 > eyeR * eyeR) continue;
+      // Angry: a heavy lid slanting down toward the middle of the face.
+      if (eyes === "angry") {
+        const toMid = (cx - ex) > 0 ? x - ex : ex - x;
+        if (y - eyeY > eyeR * 0.3 - toMid * 0.7) return 0;
+      }
+      const pupil = eyes === "angry" ? 0.45 : 0.5;
+      return d2 <= (eyeR * pupil) ** 2 ? ink : white;
+    }
+    return 0;
+  };
+  const mouthY = cy - sy * 0.22, mouthW = sx * 0.26, mouthH = Math.max(1.5, sy * 0.13);
+  const inMouth = (x: number, y: number): boolean => {
+    if (!part.mouth || Math.abs(x - cx) > mouthW) return false;
+    if (part.mouth === "grin") {
+      // A wide band whose corners turn up.
+      const curve = sy * 0.08 * ((x - cx) / mouthW) ** 2;
+      return Math.abs(y - (mouthY + curve)) <= 1.1;
+    }
+    return ((x - cx) / mouthW) ** 2 + ((y - mouthY) / mouthH) ** 2 <= 1;
+  };
+  const gape = part.mouth === "gape" && part.shape === "ellipsoid";
+
   for (let y = 0; y < sy; y++)
-    for (let z = 0; z < sz; z++)
-      for (let x = 0; x < sx; x++) {
-        const dx = (x - cx) / rx, dy = (y - cy) / ry, dz = (z - cz) / rz;
-        let inside = false;
-        switch (part.shape) {
-          case "ellipsoid":
-            inside = dx * dx + dy * dy + dz * dz <= 1 || (!!part.flatBottom && y < 2 && dx * dx + dz * dz <= 1);
-            break;
-          case "capsule": {
-            // Along y: a cylinder with half-sphere ends of the box's radius.
-            const r = Math.min(rx, rz);
-            const ey = Math.max(0, Math.abs(y - cy) - (ry - r));
-            inside = ((x - cx) / r) ** 2 + ((z - cz) / r) ** 2 + (ey / r) ** 2 <= 1;
-            break;
-          }
-          case "box":
-            inside = true;
-            break;
-          case "cylinder":
-            inside = dx * dx + dz * dz <= 1;
-            break;
-          case "disc":
-            // A round plate facing +z.
-            inside = dx * dx + dy * dy <= 1;
-            break;
-        }
-        if (!inside) continue;
+    for (let x = 0; x < sx; x++) {
+      // Front surface depth of this column, for the gaping mouth.
+      let zf = -1;
+      if (gape) for (let z = sz - 1; z >= 0; z--) if (inside(x, y, z)) { zf = z; break; }
+      for (let z = 0; z < sz; z++) {
+        if (!inside(x, y, z)) continue;
         let mat = m;
-        if (part.eyes && z >= cz) {
-          // Only the voxels on the front surface get painted.
-          const front = z + 1 >= sz || (() => {
-            const ndz = (z + 1 - cz) / rz;
-            return dx * dx + dy * dy + ndz * ndz > 1;
-          })();
-          if (front)
-            for (const ex of eyeXs) {
-              const d2 = (x - ex) ** 2 + (y - eyeY) ** 2;
-              if (d2 <= eyeR * eyeR) mat = white;
-              if (d2 <= (eyeR * 0.5) ** 2) mat = ink;
-            }
+        if (tipMat && y < part.tip!.length) mat = tipMat;
+        if (gape && inMouth(x, y) && z >= cz) {
+          if (z > zf - 2) continue; // the open mouth
+          if (z > zf - 4) mat = ink; // its back wall
+        } else if (z >= cz && !inside(x, y, z + 1)) {
+          if (eyes) mat = eyeAt(x, y) || mat;
+          if (part.mouth === "grin" && inMouth(x, y)) mat = ink;
         }
         volume.set(x, y, z, mat);
       }
+    }
 }
 
 /** Point on a box of `size` voxels given -1..1 coordinates, in metres from

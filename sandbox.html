@@ -12,7 +12,7 @@
     <div id="labels"></div>
     <aside id="panel">
       <h1>Foamer sandbox</h1>
-      <p class="note">Greybox stand-ins for each roster role. Shapes, sizes and movement are for discussion; names, looks and colours are Paul's.</p>
+      <p class="note">Greybox stand-ins for each roster role. Shapes, sizes and movement are for discussion; names, looks and colours are Paul's. Grey is foam, dark grey is gear and weapons, orange marks muzzles and throwables, yellow is the foam core.</p>
       <div class="row" id="modes">
         <button data-mode="lineup" class="on">Lineup</button>
         <button data-mode="roam">Roam</button>
@@ -21,13 +21,24 @@
       <section id="info"></section>
       <div class="controls">
         <label>Speed <input id="speed" type="range" min="0.1" max="2" step="0.05" value="1" /><span id="speedOut">1.00x</span></label>
+        <p class="label">Click a Foamer to shoot it with:</p>
+        <div class="row" id="weapons">
+          <button data-weapon="dart" class="on">Dart</button>
+          <button data-weapon="heavy">Heavy</button>
+          <button data-weapon="blast">Blast</button>
+        </div>
+        <div class="row">
+          <button id="down">Go down</button>
+          <button id="pop">Pop</button>
+          <button id="respawn">Respawn</button>
+        </div>
         <div class="row">
           <button id="play">Pause</button>
           <button id="smooth" class="on">Smooth</button>
           <button id="partLabels">Part labels</button>
         </div>
       </div>
-      <p class="hint">Drag to orbit, scroll to zoom, right-drag to pan. The tall clear figure is you (1.8 m).</p>
+      <p class="hint">Drag to orbit, scroll to zoom, right-drag to pan. The tall clear figure is you (1.8 m). Dart: 1 damage, small wound. Heavy: 5, big wound. Blast: 30, pops it if that kills it in one big hit. A part falls off when its own health runs out (a share of the Foamer's) or it loses 40% of its foam; losing the head and an arm downs it.</p>
     </aside>
     <script type="module" src="/src/sandbox/main.ts"></script>
   </body>

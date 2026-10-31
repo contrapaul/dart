@@ -4,6 +4,12 @@
 > the sandbox (`sandbox.html`, ENG-10a) first. The rig and pose code from
 > the sandbox (`src/foamers/rig.ts`, `rig-motion.ts`) replaces the part
 > layout below; this card is updated after the review, before Pi starts.
+>
+> **Added 2026-10-31:** the death stages (wounded, part off, goes down,
+> pops) and their numbers are now in `design/CONTENT-PLAN.md` 3.2, and the
+> sandbox has a working preview of them (`src/sandbox/main.ts`, `RigView`
+> `hit`, `breakOff`, `goDown`, `pop`). The rewrite of this card folds both
+> in.
 
 ```
 ID:          ENG-10
