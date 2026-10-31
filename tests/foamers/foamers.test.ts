@@ -144,16 +144,18 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 5);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-    // Aim at the head, above the movement capsule (which is as wide as the
-    // body and would eat a centre hit without carving).
-    const head = f.parts.get("head")!;
-    const before = head.voxelCount;
-    await settle(head.mesh, r.world);
-    r.darts.fire(new THREE.Vector3(0, 1.2, 5), new THREE.Vector3(0, 0, -1), "standard");
+    // Aim at the centre of the body part (the capsule sits inside the body's
+    // voxels, so a centre dart always finds the body).
+    const body = f.parts.get("body")!;
+    const before = body.voxelCount;
+    await settle(body.mesh, r.world);
+    const aim = body.voxelToWorld(new THREE.Vector3(
+      body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2 + 0.5));
+    r.darts.fire(new THREE.Vector3(aim.x, aim.y, aim.z + 5), new THREE.Vector3(0, 0, -1), "standard");
     for (let i = 0; i < 120 && r.foamers.stats.hits === 0; i++) tick(r, player);
     expect(r.foamers.stats.hits).toBe(1);
     expect(f.health).toBeCloseTo(f.maxHealth - SPEC.damage.standard, 5);
-    expect(head.voxelCount).toBeLessThan(before);
+    expect(body.voxelCount).toBeLessThan(before);
   });
 
   it("7. darts down to zero pop it: out of the lists, bodies gone, foam chunks flying", async () => {

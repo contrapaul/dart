@@ -192,7 +192,7 @@ impacts.onCarve = (target, removed) => {
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
 scene.add(foamers.group);
 // The bonk just logs; player damage arrives in the later card.
-foamers.onBonk = () => console.info("Bonk");
+foamers.onBonk = (_f, attack) => console.info("Bonk", attack);
 // KeyT toggles the dart type. A debug key read with a plain keydown listener,
 // not through data/input.json.
 window.addEventListener("keydown", (e) => {

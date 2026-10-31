@@ -4,7 +4,7 @@ import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
-import { restInto, walkMotion } from "./rig-states";
+import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -23,8 +23,10 @@ export type GameRig = RigSpec & { health: number };
 const _poses = new Map<string, THREE.Matrix4>();
 const _target = restMotion();
 const _quat = new THREE.Quaternion();
+const _fitV = new THREE.Vector3();
 
 export class Foamer {
+  readonly spec: FoamerSpec;
   readonly rig: GameRig;
   /** The movement capsule; parts have bodies of their own. */
   readonly root: RAPIER.RigidBody;
@@ -54,15 +56,36 @@ export class Foamer {
   readonly recentDamage: { time: number; amount: number }[] = [];
 
   private poseBlend: number;
-  private system?: { onBonk: (f: Foamer) => void; stats: { bonks: number } };
+  /** The attack chosen for the current windup/strike cycle, or null. */
+  private attackId: string | null = null;
+  attack() {
+    return this.attackId ? this.spec.attacks.find((a) => a.id === this.attackId) ?? null : null;
+  }
+  /** Choose the attack for a windup: the first whose needs are met. */
+  setAttack(id: string | null) {
+    this.attackId = id;
+  }
+  /** Record damage at time t (system clock) for the catastrophic window. */
+  addDamage(time: number, amount: number) {
+    this.recentDamage.push({ time, amount });
+  }
+  private system?: { onBonk: (f: Foamer, attack: string) => void; stats: { bonks: number } };
   /** Attach the system that owns this Foamer (set after construction). */
-  setSystem(s: { onBonk: (f: Foamer) => void; stats: { bonks: number } }): void {
+  setSystem(s: { onBonk: (f: Foamer, attack: string) => void; stats: { bonks: number } }): void {
     this.system = s;
   }
 
-  /** Ground speed in m/s. Leg handicaps apply from stage 2. */
+  /** Ground speed in m/s, with leg handicaps (some legs: 0.5, none: 0.25). */
   speed() {
+    const legs = this.legs();
+    if (legs.length === 0) return this.rig.speed * this.spec.handicaps.noLegsSpeed;
+    if (legs.length < this.startLegs().length) return this.rig.speed * this.spec.handicaps.someLegsSpeed;
     return this.rig.speed;
+  }
+
+  /** Turn rate in rad/s, with the no-head handicap. */
+  turnRate() {
+    return this.hasHead() ? this.spec.turnRate : this.spec.turnRate * this.spec.handicaps.noHeadTurnRate;
   }
 
   constructor(
@@ -73,6 +96,7 @@ export class Foamer {
     rig: GameRig,
     feet: THREE.Vector3,
   ) {
+    this.spec = spec;
     this.rig = rig;
     this.centre.copy(feet);
     this.prevCentre.copy(feet);
@@ -82,10 +106,11 @@ export class Foamer {
 
     const body = rig.parts.find((p) => p.parent === null)!;
     const vs = rig.voxelSize;
-    // Movement capsule: radius half the wider of the body part's x and z
-    // size, height the rig's height at rest, around the body centre line
-    // (the body voxel is centred on the root's origin).
-    const radius = (Math.max(body.size[0], body.size[2]) * vs) / 2;
+    // Movement capsule: radius capsuleShare times half the NARROWER of the
+    // body part's x and z size (it must sit inside the body's voxels, so
+    // darts hit the parts, not the capsule), height the rig's height, on
+    // the body centre line (the body voxel is centred on the root's origin).
+    const radius = spec.capsuleShare * (Math.min(body.size[0], body.size[2]) * vs) / 2;
     const height = rigHeight(rig);
     this.root = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased());
     this.capsule = world.createCollider(
@@ -139,8 +164,8 @@ export class Foamer {
   }
 
   /** Report a bonk that connects, and count it. */
-  bonk() {
-    this.system?.onBonk(this);
+  bonk(attack: string) {
+    this.system?.onBonk(this, attack);
     if (this.system) this.system.stats.bonks++;
   }
 
@@ -157,8 +182,14 @@ export class Foamer {
    *  part. moving: whether it walked this step. */
   poseParts(dt: number, moving: boolean) {
     const t = _target;
-    if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
+    if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
+    else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
+    else if (this.state === "stagger") staggerMotion(this.stateTime, t);
+    else if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
     else restInto(t);
+    // Missing legs: roll the body 0.15 rad toward each missing side.
+    const start = this.startLegs();
+    for (const id of start) if (!this.parts.has(id)) t.roll += id.endsWith("L") ? -0.15 : 0.15;
     const k = 1 - Math.exp(-dt / this.poseBlend);
     const m = this.motion;
     m.y += (t.y - m.y) * k;
@@ -175,6 +206,24 @@ export class Foamer {
     }
     for (const id of [...m.rot.keys()]) if (!t.rot.has(id)) m.rot.delete(id);
     solvePose(this.rig, this.centre, this.yaw, m, _poses);
+    // All legs gone: the attached parts' lowest corner (box corners move
+    // with the roll; the lowest filled voxel is close enough, the pose is
+    // axis-aligned at rest) must sit on the floor: shift the whole rig to
+    // bring it down to the ground.
+    if (this.legs().length === 0) {
+      let low = Infinity;
+      for (const [pid, pm] of _poses) {
+        if (!this.parts.has(pid)) continue;
+        const ps = this.rig.parts.find((p) => p.id === pid)!;
+        for (const cx of [0, 1]) for (const cy of [0, 1]) for (const cz of [0, 1]) {
+          _fitV.set(cx * ps.size[0], cy * ps.size[1], cz * ps.size[2])
+            .multiplyScalar(this.rig.voxelSize).applyMatrix4(pm);
+          low = Math.min(low, _fitV.y);
+        }
+      }
+      this.centre.y -= low; // a gap posts: get lower; buried: get higher
+      solvePose(this.rig, this.centre, this.yaw, m, _poses);
+    }
     for (const [id, part] of this.parts) part.setPose(_poses.get(id)!);
   }
 

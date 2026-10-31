@@ -5,28 +5,74 @@ import type { Mesher } from "../voxel/pieces";
 import type { DebrisSystem } from "../voxel/debris";
 import type { DartSystem, DartHit } from "../weapons/darts";
 import type { VoxelTarget } from "../weapons/impacts";
+import dartTuning from "../../data/darts.json";
+import { materialId, EMPTY } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
 import { Foamer, type GameRig } from "./foamer";
+import type { FoamerPart } from "./foamer-part";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 
-// Spawning, dart damage and popping for the test Foamer (rig F01). One
-// shared Rapier character controller serves every Foamer: it is stateless
-// between steps. Stage 1 of ENG-10: damage is still whole-Foamer; part
-// damage, breaking, handicaps and going down come in later stages.
+// Spawning, per-part dart damage with foam-core wounds, breaking,
+// handicaps, attacks, stagger and popping for the test Foamer (rig F01).
+// One shared Rapier character controller serves every Foamer: it is
+// stateless between steps. ENG-10 stage 2. Going down waits for stage 3:
+// at zero health the Foamer pops, as stage 1 did.
 
 const SPEC = foamerData.test;
 const SPAWNER = foamerData.spawner;
 // One source for rig shape, speed and health: data/foamer-rigs.json.
 const RIG = (rigData.rigs as unknown as GameRig[]).find((r) => r.id === SPEC.rig)!;
+const CORE = materialId("foam-core");
+
+/** One fallen piece: a part and its children. One dynamic body carries one
+ *  cuboid collider per part; each part's draw group is re-parented under
+ *  the system group. Lies for a while, then sinks through the floor. */
+interface BrokenPiece {
+  body: RAPIER.RigidBody;
+  /** Each part's draw group and the matrix that applies it under the body. */
+  groups: { part: FoamerPart; local: THREE.Matrix4 }[];
+  /** The Foamer this fell off; its movement capsule ignores it. */
+  owner: Foamer;
+  /** Body pose before the last step, for render interpolation. */
+  prevT: THREE.Vector3;
+  prevQ: THREE.Quaternion;
+  /** Lowest and top corner of the piece, relative to the body origin. */
+  bottomY: number;
+  topY: number;
+  age: number;
+  sinking: boolean;
+}
+
+// Scratch, shared by the system; only written sequentially.
+const _pm = new THREE.Matrix4();
+const _q = new THREE.Quaternion();
+const _p = new THREE.Vector3();
+const _v = new THREE.Vector3();
+const _cv = new THREE.Vector3();
+const _sc = new THREE.Vector3();
+const _one = new THREE.Vector3(1, 1, 1);
+
+/** A part and all its children (rig parent links), in break order. */
+function partAndChildren(rig: GameRig, id: string): string[] {
+  const out = [id];
+  for (let i = 0; i < out.length; i++)
+    for (const p of rig.parts) if (p.parent === out[i]!) out.push(p.id);
+  return out;
+}
 
 export class FoamerSystem {
   /** Add to the scene once. Every Foamer's part groups live under it. */
   readonly group = new THREE.Group();
   readonly list: Foamer[] = [];
-  /** Called once per bonk that connects. Player health does not exist yet. */
-  onBonk: (foamer: Foamer) => void = () => {};
+  /** Called once per bonk that connects, with the attack id. Player health
+   *  does not exist yet. */
+  onBonk: (foamer: Foamer, attack: string) => void = () => {};
   readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0 };
+  /** Fallen pieces, oldest first. Capped at brokenParts.max. */
+  readonly broken: BrokenPiece[] = [];
+  /** System clock in seconds; stamps the damage window. */
+  time = 0;
 
   private cc: RAPIER.KinematicCharacterController;
   private targets: VoxelTarget[];
@@ -45,7 +91,7 @@ export class FoamerSystem {
   ) {
     this.targets = targets;
     // Darts carve Foamers through DartImpacts (the parts are in `targets`);
-    // here we only count damage and pop at zero health.
+    // this subscription runs after it and counts per-part damage.
     const previous = darts.onHit;
     darts.onHit = (hit) => {
       previous(hit);
@@ -70,14 +116,25 @@ export class FoamerSystem {
     return f;
   }
 
-  /** Fixed step, before world.step(). `player` is the player's position;
-   *  only x and z are used for steering. */
+  /** Fixed step, before world.step(). `player` is the player's position. */
   update(dt: number, player: THREE.Vector3): void {
+    this.time += dt;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
       this.stepFoamer(f, dt, player);
       for (const part of f.parts.values()) part.mesh.update();
+      // Wear, once per step: a part below its own health, or one that has
+      // lost wearBreak of its starting voxels, breaks. The body never
+      // breaks. A dart's hit that spends a part's hp is checked in
+      // handleHit; this catches the slow wear.
+      for (const part of f.parts.values()) {
+        if (part.spec.kind === "body") continue;
+        if (part.hp <= 0 ||
+            part.voxelCount <= part.startVoxels * (1 - SPEC.partDamage.wearBreak))
+          this.breakPart(f, part);
+      }
     }
+    this.stepBroken(dt);
     // Spawner: keep spawner.count alive.
     if (this.list.length < SPAWNER.count) {
       this.respawn += dt;
@@ -94,43 +151,63 @@ export class FoamerSystem {
    *  the way between the last two steps. */
   syncRender(alpha = 1): void {
     for (const f of this.list) f.syncRender(alpha);
+    for (const p of this.broken) {
+      const t = p.body.translation();
+      const r = p.body.rotation();
+      _p.lerpVectors(p.prevT, _v.set(t.x, t.y, t.z), alpha);
+      _q.slerpQuaternions(p.prevQ, new THREE.Quaternion(r.x, r.y, r.z, r.w), alpha);
+      _pm.compose(_p, _q, _one);
+      for (const g of p.groups) g.part.group.matrix.copy(_pm).multiply(g.local);
+    }
   }
 
   get live() {
     return this.list.length;
   }
-
   private stepFoamer(f: Foamer, dt: number, player: THREE.Vector3) {
     f.prevCentre.copy(f.centre);
     f.prevYaw = f.yaw;
     f.stateTime += dt;
-    // Face the player (+z is forward, so the wanted yaw is atan2(dx, dz)).
-    const dx = player.x - f.centre.x;
-    const dz = player.z - f.centre.z;
-    const wanted = Math.atan2(dx, dz);
-    let dyaw = wanted - f.yaw;
-    while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
-    while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
-    f.yaw += THREE.MathUtils.clamp(dyaw, -SPEC.turnRate * dt, SPEC.turnRate * dt);
+    // Face the player (+z is forward, so the wanted yaw is atan2(dx, dz)),
+    // at the turn rate with the no-head handicap. Not while staggering: a
+    // stagger is stillness and wobble only.
+    if (f.state !== "stagger") {
+      const dx = player.x - f.centre.x;
+      const dz = player.z - f.centre.z;
+      const wanted = Math.atan2(dx, dz);
+      let dyaw = wanted - f.yaw;
+      while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
+      while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+      f.yaw += THREE.MathUtils.clamp(dyaw, -f.turnRate() * dt, f.turnRate() * dt);
+    }
 
-    const dist = Math.hypot(dx, dz);
-    const attack = SPEC.attacks[0]!;
-    if (f.state === "approach") {
+    const dist = Math.hypot(player.x - f.centre.x, player.z - f.centre.z);
+    if (f.state === "stagger") {
+      if (f.stateTime >= SPEC.stagger.time) {
+        f.state = "approach";
+        f.stateTime = 0;
+      }
+    } else if (f.state === "approach") {
       if (dist <= SPEC.attackRange) {
         f.state = "windup";
         f.stateTime = 0;
+        f.setAttack(this.chooseAttack(f));
       }
     } else if (f.state === "windup") {
-      if (f.stateTime >= attack.windup) {
+      const atk = f.attack();
+      if (!atk) {
+        // The attack broke away mid windup (a stagger cancelled it) or the
+        // spec has none: back to approach.
+        f.state = "approach";
+        f.stateTime = 0;
+      } else if (f.stateTime >= atk.windup) {
         const dy = Math.abs(player.y - f.centre.y);
-        if (dist <= SPEC.attackRange + 0.3 && dy < 2) {
-          f.bonk();
-        }
+        if (dist <= SPEC.attackRange + 0.3 && dy < 2) f.bonk(atk.id);
         f.state = "strike";
         f.stateTime = 0;
       }
     } else if (f.state === "strike") {
-      if (f.stateTime >= attack.strike) {
+      if (f.stateTime >= f.attack()!.strike) {
         f.state = "recover";
         f.stateTime = 0;
       }
@@ -139,30 +216,43 @@ export class FoamerSystem {
       f.stateTime = 0;
     }
 
-    // Gravity: vertical speed, reset by the ground.
+    // Gravity: vertical speed, reset by the ground. Without legs it never
+    // falls: the floor fit below holds it on the ground.
     f.vy = Math.max(f.vy - SPEC.gravity * dt, -50);
     const moving = f.state === "approach" && dist > SPEC.attackRange;
-    const speed = f.speed();
     this._wish.set(0, 0, 0);
     if (moving) {
-      this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
+      this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(f.speed() * dt);
     }
-    this._vel.set(this._wish.x, f.vy * dt, this._wish.z);
-    // The capsule must not collide with the Foamer's own part bodies.
-    this.own.clear();
-    this.own.add(f.root.handle);
-    for (const p of f.parts.values()) this.own.add(p.body.handle);
-    this.cc.computeColliderMovement(
-      f.capsule, this._vel,
-      undefined, undefined,
-      (c) => !this.own.has(c.parent()?.handle ?? -1),
-    );
-    const moved = this.cc.computedMovement();
-    if (this.cc.computedGrounded()) f.vy = 0;
-    f.centre.x += moved.x;
-    f.centre.y += moved.y;
-    f.centre.z += moved.z;
-    if (moving && Math.hypot(moved.x, moved.y, moved.z) > 1e-4) f.gait += Math.hypot(moved.x, moved.y, moved.z) * 4 / (2 * Math.PI);
+    let stepDist = 0;
+    if (f.legs().length === 0) {
+      // No legs: the body is pinned to the floor by the fit below, so the
+      // capsule would be half buried and the controller fights it. A skid
+      // is a plain ground move.
+      f.centre.add(this._wish);
+      f.vy = 0;
+      stepDist = this._wish.length();
+    } else {
+      this._vel.set(this._wish.x, f.vy * dt, this._wish.z);
+      // The capsule must not collide with the Foamer's own part bodies, nor
+      // with the pieces it has just broken off and that are falling past it.
+      this.own.clear();
+      this.own.add(f.root.handle);
+      for (const p of f.parts.values()) this.own.add(p.body.handle);
+      for (const p of this.broken) if (p.owner === f) this.own.add(p.body.handle);
+      this.cc.computeColliderMovement(
+        f.capsule, this._vel,
+        undefined, undefined,
+        (c) => !this.own.has(c.parent()?.handle ?? -1),
+      );
+      const moved = this.cc.computedMovement();
+      if (this.cc.computedGrounded()) f.vy = 0;
+      f.centre.x += moved.x;
+      f.centre.y += moved.y;
+      f.centre.z += moved.z;
+      stepDist = Math.hypot(moved.x, moved.y, moved.z);
+    }
+    if (stepDist > 1e-4) f.gait += stepDist * 4 / (2 * Math.PI);
     f.applyPose();
     f.poseParts(dt, moving);
   }
@@ -181,23 +271,240 @@ export class FoamerSystem {
     this.spawn(new THREE.Vector3(best[0], best[1], best[2]));
   }
 
+  /** The first spec attack whose needs are met (at least one of each id
+   *  still attached; needs [] always). */
+  private chooseAttack(f: Foamer): string {
+    for (const a of SPEC.attacks) {
+      if (a.needs.every((id) => f.parts.has(id))) return a.id;
+    }
+    return "headbutt";
+  }
+
+  /** Per-part damage for a dart hit. Chained after DartImpacts carved the
+   *  volume: the collider's owner is the part that was carved. A dart that
+   *  hits only the movement capsule does no damage (review note A: the
+   *  capsule sits inside the body voxels; a graze through the gaps is no
+   *  hit). */
   private handleHit(hit: DartHit) {
     if (hit.speed < SPEC.minDamageSpeed) return;
-    // The part that owns the collider (darts carving it), or the root
-    // capsule (which takes whole-Foamer damage as before until stage 2
-    // makes all damage per part).
     let f: Foamer | undefined;
+    let part: FoamerPart | undefined;
     for (const foamer of this.list) {
-      if ([...foamer.parts.values()].some((p) => p.owns(hit.collider)) ||
-          hit.collider.parent()?.handle === foamer.root.handle) {
-        f = foamer;
-        break;
+      if (hit.collider.parent()?.handle === foamer.root.handle) continue;
+      for (const p of foamer.parts.values()) {
+        if (p.owns(hit.collider)) {
+          f = foamer;
+          part = p;
+          break;
+        }
+      }
+      if (part) break;
+      // NoSuchCollider evidence: some hits miss every part and the root.
+    }
+    if (!f || !part) return;
+    const d = SPEC.damage[hit.type];
+    const kind = SPEC.partDamage.kinds[part.spec.kind];
+    // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
+    part.hp -= d * kind.hit;
+    f.health -= d * kind.hit * kind.total;
+    f.addDamage(this.time, d * kind.hit * kind.total);
+    this.stats.hits++;
+    this.paintWound(part, hit);
+    // Breaking: hp <= 0, or the carve took the part to wearBreak of its
+    // starting voxels. The body never breaks; wear from slow chipping is
+    // checked once per step in update.
+    const worn = part.voxelCount <= part.startVoxels * (1 - SPEC.partDamage.wearBreak);
+    if (f.health <= 0) {
+      // Stage 3 adds going down; for now a zero-health Foamer pops, as
+      // stage 1 did, whatever the catastrophic window says.
+      this.pop(f);
+      return;
+    }
+    if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part); // guarded
+  }
+
+  /** Paint the wound: every solid voxel of the part within the dart's carve
+   *  radius plus coreShell voxels of the hit becomes foam-core (the
+   *  card's coreShell, as RigView.carve drew it). */
+  private paintWound(part: FoamerPart, hit: DartHit) {
+    const vs = part.volume.voxelSize;
+    const scale = THREE.MathUtils.clamp(hit.speed / dartTuning.types[hit.type].speed, 0.3, 1);
+    const r = (dartTuning.types[hit.type].carveRadius * scale) / vs + SPEC.wound.coreShell;
+    // The carve centre, part-local metres, slightly inside the surface as
+    // DartImpacts placed it.
+    const c = _v.copy(hit.point).addScaledVector(hit.direction, vs * 0.5);
+    part.worldToVoxel(c);
+    const size = part.spec.size;
+    const R = Math.ceil(r);
+    const xi = Math.floor(c.x), yi = Math.floor(c.y), zi = Math.floor(c.z);
+    for (let y = Math.max(0, yi - R); y <= Math.min(size[1] - 1, yi + R); y++)
+      for (let z = Math.max(0, zi - R); z <= Math.min(size[2] - 1, zi + R); z++)
+        for (let x = Math.max(0, xi - R); x <= Math.min(size[0] - 1, xi + R); x++) {
+          const d2 = (x + 0.5 - c.x) ** 2 + (y + 0.5 - c.y) ** 2 + (z + 0.5 - c.z) ** 2;
+          if (d2 > r * r || part.volume.get(x, y, z) === EMPTY) continue;
+          part.volume.set(x, y, z, CORE);
+        }
+  }
+
+  /** Paint solid voxels of a part within r (part-local metres) of c as
+   *  foam-core. Used for the wounds and the break stumps. */
+  private paintCore(part: FoamerPart, c: THREE.Vector3, r: number) {
+    const vs = part.volume.voxelSize;
+    const cv = _cv.copy(c).divideScalar(vs); // voxel coordinates
+    const rv = r / vs;
+    const size = part.spec.size;
+    const R = Math.ceil(rv);
+    const xi = Math.floor(cv.x), yi = Math.floor(cv.y), zi = Math.floor(cv.z);
+    for (let y = Math.max(0, yi - R); y <= Math.min(size[1] - 1, yi + R); y++)
+      for (let z = Math.max(0, zi - R); z <= Math.min(size[2] - 1, zi + R); z++)
+        for (let x = Math.max(0, xi - R); x <= Math.min(size[0] - 1, xi + R); x++) {
+          const d2 = (x + 0.5 - cv.x) ** 2 + (y + 0.5 - cv.y) ** 2 + (z + 0.5 - cv.z) ** 2;
+          if (d2 > rv * rv || part.volume.get(x, y, z) === EMPTY) continue;
+          part.volume.set(x, y, z, CORE);
+        }
+  }
+
+  /** Stumps at both sides of a break: a foam-core carve of radius
+   *  stumpRadius on the parent at the joint, and the broken part's own
+   *  pivot end foam-core (as RigView.breakOff drew it). */
+  private paintStumps(f: Foamer, part: FoamerPart) {
+    const vs = part.volume.voxelSize;
+    const r = SPEC.wound.stumpRadius;
+    const parent = part.spec.parent ? f.parts.get(part.spec.parent) : undefined;
+    if (parent) {
+      const at = part.spec.at ?? [0, 0, 0];
+      this.paintCore(parent, _v.set(
+        ((at[0] + 1) / 2) * parent.spec.size[0] * vs,
+        ((at[1] + 1) / 2) * parent.spec.size[1] * vs,
+        ((at[2] + 1) / 2) * parent.spec.size[2] * vs,
+      ), r);
+    }
+    const pv = part.spec.pivot ?? [0, 1, 0];
+    this.paintCore(part, _v.set(
+      ((pv[0] + 1) / 2) * part.spec.size[0] * vs,
+      ((pv[1] + 1) / 2) * part.spec.size[1] * vs,
+      ((pv[2] + 1) / 2) * part.spec.size[2] * vs,
+    ), r);
+  }
+
+  /** Break a part (and everything parented under it). It leaves targets and
+   *  the Foamer's parts, the stump is painted, one dynamic piece falls, and
+   *  the Foamer staggers. A stagger during a windup cancels the attack. */
+  private breakPart(f: Foamer, part: FoamerPart) {
+    // A dart can hit a part that is already fallen, and a pose can move it
+    // under another: ignore the part while the system is handling it.
+    if (!f.parts.has(part.spec.id) || part.spec.kind === "body") return;
+    const rig = f.rig;
+    const ids = partAndChildren(rig, part.spec.id);
+    this.paintStumps(f, part);
+    // One dynamic body for the assembly, at the part's last pose.
+    const st2 = new THREE.Vector3();
+    const q2 = new THREE.Quaternion();
+    part.pose.decompose(st2, q2, _sc);
+    part.prevPose.decompose(_p, _q, _sc);
+    const dtPrev = 1 / 60;
+    // The part's last pose change over a step (the fling), plus 1.5 m/s
+    // outward from the Foamer and up.
+    const out2 = _v.set(st2.x - f.centre.x, 0, st2.z - f.centre.z);
+    if (out2.lengthSq() < 1e-6) out2.set(0, 0, 1);
+    out2.normalize();
+    const body = this.world.createRigidBody(
+      this.rapier.RigidBodyDesc.dynamic()
+        .setTranslation(st2.x, st2.y, st2.z)
+        .setRotation({ x: q2.x, y: q2.y, z: q2.z, w: q2.w })
+        .setAngularDamping(0.8)
+        .setLinearDamping(0.2),
+    );
+    body.setLinvel({
+      x: (st2.x - _p.x) / dtPrev + out2.x * 1.5,
+      y: (st2.y - _p.y) / dtPrev + 1.5,
+      z: (st2.z - _p.z) / dtPrev + out2.z * 1.5,
+    }, true);
+    // One cuboid collider per part: its voxel bounds, inset 0.02 m, at the
+    // part's density.
+    const groups: BrokenPiece["groups"] = [];
+    const vs = rig.voxelSize;
+    let bottom = Infinity, top = -Infinity;
+    for (const id of ids) {
+      const p = f.parts.get(id)!;
+      // Local pose under the dynamic body: the part's world pose minus the
+      // body's origin and rotation.
+      const invB = new THREE.Matrix4().makeTranslation(-st2.x, -st2.y, -st2.z)
+        .multiply(new THREE.Matrix4().makeRotationFromQuaternion(q2).invert());
+      const local = new THREE.Matrix4().copy(p.pose).premultiply(invB);
+      groups.push({ part: p, local });
+      const sz = p.spec.size;
+      const cc0 = _sc.set(sz[0] * vs / 2, sz[1] * vs / 2, sz[2] * vs / 2).applyMatrix4(local);
+      this.world.createCollider(
+        this.rapier.ColliderDesc.cuboid(
+          Math.max(0.02, sz[0] * vs / 2 - 0.02),
+          Math.max(0.02, sz[1] * vs / 2 - 0.02),
+          Math.max(0.02, sz[2] * vs / 2 - 0.02),
+        ).setTranslation(cc0.x, cc0.y, cc0.z).setDensity(SPEC.brokenParts.density),
+        body,
+      );
+      // The fallen part is still drawn as its own group, but it is moved by
+      // the piece body, not the kinematic one.
+      p.mesh.dispose();
+      this.group.add(p.group);
+      f.parts.delete(id);
+      const t = this.targets.indexOf(p);
+      if (t >= 0) this.targets.splice(t, 1);
+      for (const cx of [0, 1]) for (const cy of [0, 1]) for (const cz of [0, 1]) {
+        _v.set(cx * sz[0] * vs, cy * sz[1] * vs, cz * sz[2] * vs).applyMatrix4(local);
+        bottom = Math.min(bottom, _v.y);
+        top = Math.max(top, _v.y);
       }
     }
-    if (!f) return;
-    f.health -= SPEC.damage[hit.type];
-    this.stats.hits++;
-    if (f.health <= 0) this.pop(f);
+    // Cap at brokenParts.max, the oldest disposed first (its stuck darts
+    // drop as its bodies go away).
+    while (this.broken.length >= SPEC.brokenParts.max) this.removeBroken(0);
+    this.broken.push({
+      body, groups,
+      owner: f,
+      prevT: new THREE.Vector3(st2.x, st2.y, st2.z),
+      prevQ: new THREE.Quaternion(q2.x, q2.y, q2.z, q2.w),
+      bottomY: bottom, topY: top,
+      age: 0, sinking: false,
+    });
+    // Stagger; a stagger during a windup cancels the attack.
+    f.state = "stagger";
+    f.stateTime = 0;
+    if (f.attack()) f.setAttack(null);
+  }
+
+  /** Fall the pieces: each lies for brokenParts.lifetime, then sinks
+   *  through the floor (collisions off) at down.sinkSpeed, and is disposed
+   *  once its top corner is 0.5 m below the floor. */
+  private stepBroken(dt: number) {
+    const floor = 0; // the floor plane of the sandbox, world y = 0
+    for (let i = this.broken.length - 1; i >= 0; i--) {
+      const p = this.broken[i]!;
+      const t = p.body.translation();
+      const r = p.body.rotation();
+      p.prevT.set(t.x, t.y, t.z);
+      p.prevQ.set(r.x, r.y, r.z, r.w);
+      if (p.sinking) {
+        p.body.setTranslation({ x: t.x, y: t.y - 0.35 * dt, z: t.z }, false);
+        if (t.y + p.topY < floor - 0.5) this.removeBroken(i);
+        continue;
+      }
+      p.age += dt;
+      if (p.age < SPEC.brokenParts.lifetime) continue;
+      p.sinking = true;
+      // Sink through the floor: a fixed body does not collide at all.
+      p.body.setBodyType(this.rapier.RigidBodyType.Fixed, false);
+    }
+  }
+
+  private removeBroken(i: number) {
+    const p = this.broken[i]!;
+    for (const g of p.groups) {
+      g.part.group.removeFromParent();
+      this.world.removeRigidBody(g.part.body);
+    }
+    this.world.removeRigidBody(p.body);
+    this.broken.splice(i, 1);
   }
 
   /** The model bursts into foam debris per part and leaves the world. */

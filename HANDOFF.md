@@ -69,6 +69,46 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-10-31: ENG-10 stage 2 built (part damage, breaking, handicaps, attacks, stagger)
+
+Stage 2 of the test Foamer is committed on `eng-10`. What was built (card
+"ENG-10, The system"):
+
+- Part damage. A dart hit is owned by the part that carved it (the movement
+  capsule alone takes no damage). The part's hp falls by damage times the
+  kind's hit factor, and the Foamer's health falls by that times the kind's
+  total factor. The hit is stamped with the system time for the
+  catastrophic window (used by stage 3). The wound paints foam-core in a
+  shell around the carve crater, in the hit part only. At health 0 the
+  Foamer pops as in stage 1; going down arrives in stage 3.
+- Breaking. A part (never the body) breaks when its hp hits 0 or when it
+  has lost wearBreak of its start voxels. Both the damage case and the wear
+  case are checked on the hit and once per part in update. The part and its
+  children leave targets and parts, a foam-core stump paints on the parent,
+  and one dynamic piece falls: one Rapier body, a cuboid collider per part,
+  launched out and up from the break. Pieces are capped at brokenParts.max
+  (oldest dropped), then sit at their lifetime, then sink and are removed.
+- Handicaps. Missing legs lower speed (some-legs and no-legs factors); with
+  no legs the body is pinned to the floor and skids. A missing head halves
+  the turn rate.
+- Attacks. In range the Foamer takes the first attack whose needs are all
+  attached; an empty needs list is always ready. It winds up, strikes
+  (calling onBonk with the attack id when in range) and recovers, using
+  windupMotion and strikeMotion for the pose.
+- Stagger. A break staggers the Foamer for the stagger time (no move, no
+  facing, a wobble); a stagger that lands during a windup cancels the
+  attack.
+
+Also applied in this commit, from the stage 1 review: the movement capsule
+is now capsuleShare times half the narrower of the body's x and z size
+(capsuleShare 0.6, in foamers.json), so a capsule-only dart does no damage;
+and foamers.test.ts test 6 aims at the body again.
+
+Verified: `npx tsc --noEmit`, `npm test` (the parts suite, card tests 1 to
+11, and the stage 1 suite) and `npm run build` all pass. Not yet verified in
+a browser: the wound and stump paint, the falling pieces under the mesher
+pool, and the 10-Foamer benchmark from the card's done list.
+
 ### 2026-10-31: F01 stands on its feet (Claude)
 
 - Found while reviewing ENG-10 stage 1: at rest F01's club was its lowest

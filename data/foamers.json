@@ -11,6 +11,7 @@
     "popChunkScale": 2.5,
     "popBursts": 4,
     "poseBlend": 0.06,
+    "capsuleShare": 0.6,
     "partDamage": {
       "_note": "Per part kind. hpShare: the part's health as a share of the Foamer's (at least minHp). hit: multiplies dart damage to the part. total: share of that damage that also comes off the Foamer's health. CONTENT-PLAN 3.1 and 3.2.",
       "minHp": 2,
