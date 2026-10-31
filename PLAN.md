@@ -590,3 +590,4 @@ All twelve answered 2026-10-29.
 | 2026-10-31 | Reference photos in `design/referenceimages/` are gitignored like `reference/`: they carry other companies' logos. | 2 |
 | 2026-10-31 | Foamer movement styles blend over 0.15 s so no joint snaps between phases; a test enforces it. | 7.3 |
 | 2026-10-31 | Foamers are blocky voxels, not smoothed (Paul, after comparing both in the sandbox). Surface nets (ENG-09) removed; replaces the 2026-10-29 and ENG-09 smoothing decisions. Painted details no longer need to be 3 voxels wide. | 7.4 |
+| 2026-10-31 | The game's test Foamer is rig F01: a root body carries only the movement capsule (radius half the wider of the body part's x and z size, height the rig's, on the body centre line), and each rig part is its own voxel volume and kinematic body posed from `solvePose` (ENG-10 stage 1). A dart that hits the capsule counts whole-Foamer damage until stage 2. | 7.3 |

@@ -1,145 +1,193 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
-import { VoxelVolume } from "../voxel/chunk";
-import { VolumeMesh } from "../voxel/volume-mesh";
 import type { Mesher } from "../voxel/pieces";
-import type { VoxelTarget } from "../weapons/impacts";
 import foamerData from "../../data/foamers.json";
-import { buildTestFoamer } from "./foamer-model";
+import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
+import { restInto, walkMotion } from "./rig-states";
+import { FoamerPart } from "./foamer-part";
 
-// One test Foamer: a voxel blob on a kinematic body. The feet centre
-// (`centre`) and `yaw` are the real state, turning about the centre, not
-// the voxel corner. The body's origin is the voxel (0,0,0) corner, so the
-// mesh's colliders (built in the body's frame) line up with the voxels.
+// One test Foamer (ENG-10): a root kinematic body that carries only the
+// movement capsule, plus one FoamerPart per part of the rig it was spawned
+// from. The feet centre (`centre`) and `yaw` are the real state; every step
+// the rig is re-posed from solvePose and each part body is moved to the
+// translation and rotation of its part matrix.
 
-export type FoamerState = "approach" | "windup" | "recover";
+export type FoamerState = "approach" | "windup" | "strike" | "recover" | "stagger" | "down";
 export type FoamerSpec = typeof foamerData.test;
+/** Rigs in the data file carry `health`; the base rig type does not. */
+export type GameRig = RigSpec & { health: number };
 
 // Scratch, shared by every Foamer; only written during the system's
 // sequential update or render.
-const _q = new THREE.Quaternion();
+const _poses = new Map<string, THREE.Matrix4>();
+const _target = restMotion();
+const _quat = new THREE.Quaternion();
 
-/** The body's corner offset in world space: the negative half box turned
- *  by yaw about the +y axis, into out (out is also where the yaw
- *  quaternion lands, so callers of syncRender and friends can use _q). */
-function cornerOffset(hx: number, hz: number, yaw: number, out: THREE.Vector3) {
-  _q.set(0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2));
-  return out.set(-hx, 0, -hz).applyQuaternion(_q);
-}
-
-export class Foamer implements VoxelTarget {
-  readonly volume: VoxelVolume;
-  readonly body: RAPIER.RigidBody;
-  /** The movement capsule (also on `body`). */
+export class Foamer {
+  readonly rig: GameRig;
+  /** The movement capsule; parts have bodies of their own. */
+  readonly root: RAPIER.RigidBody;
   readonly capsule: RAPIER.Collider;
-  readonly mesh: VolumeMesh;
+  /** Attached parts, by part id. */
+  readonly parts = new Map<string, FoamerPart>();
+  /** A render group under the system's group; it draws every part group. */
+  readonly group = new THREE.Group();
   /** Feet centre in world space. */
   readonly centre = new THREE.Vector3();
   /** centre and yaw before the last step, for render interpolation. */
   readonly prevCentre = new THREE.Vector3();
   prevYaw = 0;
-  /** A render group under the system's group; it draws the mesh and the
-   *  windup squash. The body's own colliders are never squashed. */
-  readonly group = new THREE.Group();
   yaw = 0;
   health: number;
+  readonly maxHealth: number;
   state: FoamerState = "approach";
   /** Seconds spent in the current state. */
   stateTime = 0;
   /** Vertical speed (m/s); the system adds gravity and walks it. */
   vy = 0;
-  /** y scale for the windup squash; 1 is unsquashed. */
-  squashY = 1;
-  private hx: number;
-  private hz: number;
-  private halfH: number;
+  /** Walk phase; the system advances it with distance walked. */
+  gait = 0;
+  /** The eased motion, one step toward its state's target. */
+  readonly motion: RigMotion = restMotion();
+  /** Times and amounts of recent damage, for the catastrophic window. */
+  readonly recentDamage: { time: number; amount: number }[] = [];
 
-  constructor(rapier: Rapier, world: RAPIER.World, mesher: Mesher, spec: FoamerSpec, feet: THREE.Vector3) {
+  private poseBlend: number;
+  private system?: { onBonk: (f: Foamer) => void; stats: { bonks: number } };
+  /** Attach the system that owns this Foamer (set after construction). */
+  setSystem(s: { onBonk: (f: Foamer) => void; stats: { bonks: number } }): void {
+    this.system = s;
+  }
+
+  /** Ground speed in m/s. Leg handicaps apply from stage 2. */
+  speed() {
+    return this.rig.speed;
+  }
+
+  constructor(
+    rapier: Rapier,
+    world: RAPIER.World,
+    mesher: Mesher,
+    spec: FoamerSpec,
+    rig: GameRig,
+    feet: THREE.Vector3,
+  ) {
+    this.rig = rig;
     this.centre.copy(feet);
     this.prevCentre.copy(feet);
-    this.health = spec.health;
-    this.hx = (spec.size[0] * spec.voxelSize) / 2;
-    this.hz = (spec.size[2] * spec.voxelSize) / 2;
-    this.halfH = (spec.size[1] * spec.voxelSize) / 2;
+    this.maxHealth = rig.health;
+    this.health = rig.health;
+    this.poseBlend = spec.poseBlend;
 
-    this.volume = new VoxelVolume(spec.voxelSize);
-    buildTestFoamer(this.volume, spec.size as [number, number, number]);
-
-    this.body = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased());
-    // Movement capsule: full model height on the feet, at the box's centre
-    // in x and z in the body frame. Smaller than the blob, so darts usually
-    // hit the voxel colliders first.
+    const body = rig.parts.find((p) => p.parent === null)!;
+    const vs = rig.voxelSize;
+    // Movement capsule: radius half the wider of the body part's x and z
+    // size, height the rig's height at rest, around the body centre line
+    // (the body voxel is centred on the root's origin).
+    const radius = (Math.max(body.size[0], body.size[2]) * vs) / 2;
+    const height = rigHeight(rig);
+    this.root = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased());
     this.capsule = world.createCollider(
-      rapier.ColliderDesc.capsule(this.halfH - spec.capsuleRadius, spec.capsuleRadius)
-        .setTranslation(this.hx, this.halfH, this.hz),
-      this.body,
+      rapier.ColliderDesc.capsule(height / 2 - radius, radius)
+        .setTranslation(0, height / 2, 0),
+      this.root,
     );
 
-    this.mesh = new VolumeMesh(this.volume, mesher, rapier, world, new THREE.Vector3(), this.body);
-    this.group.add(this.mesh.group);
-    // Place the body once for spawn: setTranslation and setRotation in place.
-    const corner = cornerOffset(this.hx, this.hz, this.yaw, new THREE.Vector3());
-    this.body.setTranslation({ x: this.centre.x + corner.x, y: this.centre.y + corner.y, z: this.centre.z + corner.z }, true);
-    this.body.setRotation({ x: _q.x, y: _q.y, z: _q.z, w: _q.w }, true);
-    this.syncRender();
+    // One part per rig part. A part's health is a share of the Foamer's,
+    // at least minHp; the body's share is 0.
+    for (const p of rig.parts) {
+      const kind = spec.partDamage.kinds[p.kind];
+      const hp = Math.max(spec.partDamage.minHp, Math.round(rig.health * kind.hpShare));
+      const part = new FoamerPart(rapier, world, mesher, p, vs, rig.material, hp);
+      this.parts.set(p.id, part);
+      this.group.add(part.group);
+    }
+
+    // Place the root and every part body for spawn (no world.step has
+    // run yet, so set them in place).
+    _quat.set(0, Math.sin(this.yaw / 2), 0, Math.cos(this.yaw / 2));
+    this.root.setTranslation(this.centre, true);
+    this.root.setRotation({ x: _quat.x, y: _quat.y, z: _quat.z, w: _quat.w }, true);
+    solvePose(rig, this.centre, this.yaw, this.motion, _poses);
+    for (const [id, part] of this.parts) part.setInPlace(_poses.get(id)!);
   }
 
-  owns(collider: RAPIER.Collider) {
-    return collider.parent()?.handle === this.body.handle;
+  /** True while the part with this id is still attached. */
+  has(id: string) {
+    return this.parts.has(id);
   }
 
-  /** World position to voxel coordinates (in place), through the body's
-   *  current translation and rotation. */
-  worldToVoxel(v: THREE.Vector3) {
-    const t = this.body.translation();
-    const r = this.body.rotation();
-    _q.set(r.x, r.y, r.z, r.w).invert();
-    return v.set(v.x - t.x, v.y - t.y, v.z - t.z).applyQuaternion(_q).divideScalar(this.volume.voxelSize);
+  /** Attached legs (kind leg whose parent is the root part), by id. */
+  legs(): string[] {
+    const bodyId = this.rig.parts.find((p) => p.parent === null)!.id;
+    return this.rig.parts
+      .filter((p) => p.kind === "leg" && p.parent === bodyId && this.parts.has(p.id))
+      .map((p) => p.id);
   }
 
-  /** Voxel coordinates to world position (in place), through the body's
-   *  current translation and rotation. */
-  voxelToWorld(v: THREE.Vector3) {
-    const t = this.body.translation();
-    const r = this.body.rotation();
-    _q.set(r.x, r.y, r.z, r.w);
-    return v.multiplyScalar(this.volume.voxelSize).applyQuaternion(_q).add(t);
+  /** Legs before any could break, by id. */
+  startLegs(): string[] {
+    const bodyId = this.rig.parts.find((p) => p.parent === null)!.id;
+    return this.rig.parts
+      .filter((p) => p.kind === "leg" && p.parent === bodyId)
+      .map((p) => p.id);
   }
 
-  /** One full step of the body pose, in place: centre shifted to the voxel
-   *  corner, rotated yaw about the centre. */
+  hasHead() {
+    return this.has("head");
+  }
+
+  /** Report a bonk that connects, and count it. */
+  bonk() {
+    this.system?.onBonk(this);
+    if (this.system) this.system.stats.bonks++;
+  }
+
+  /** One full step of the root body, in place: the feet centre, turned by
+   *  yaw. */
   applyPose() {
-    const corner = cornerOffset(this.hx, this.hz, this.yaw, new THREE.Vector3());
-    this.body.setNextKinematicTranslation({
-      x: this.centre.x + corner.x,
-      y: this.centre.y + corner.y,
-      z: this.centre.z + corner.z,
-    });
-    this.body.setNextKinematicRotation({ x: _q.x, y: _q.y, z: _q.z, w: _q.w });
+    _quat.set(0, Math.sin(this.yaw / 2), 0, Math.cos(this.yaw / 2));
+    this.root.setNextKinematicTranslation(this.centre);
+    this.root.setNextKinematicRotation(_quat);
   }
 
-  /** Render frame: copy the pose and the windup squash to the groups. The
-   *  outer group sits on the feet centre, unturned, so the squash scales
-   *  about the feet; the mesh inside carries the corner offset and the yaw,
-   *  matching the body. */
-  syncRender(alpha = 1) {
-    // alpha (0 to 1) of the way from the last step's pose to this one.
-    let dyaw = this.yaw - this.prevYaw;
-    dyaw -= Math.round(dyaw / (2 * Math.PI)) * 2 * Math.PI;
-    const corner = cornerOffset(this.hx, this.hz, this.prevYaw + dyaw * alpha, new THREE.Vector3());
-    this.group.position.lerpVectors(this.prevCentre, this.centre, alpha);
-    const inv = 1 / Math.sqrt(this.squashY);
-    this.group.scale.set(inv, this.squashY, inv);
-    this.mesh.group.position.copy(corner);
-    this.mesh.group.quaternion.set(_q.x, _q.y, _q.z, _q.w);
+  /** Once per step, after movement: build the target motion for the state,
+   *  ease the motion toward it, solve the pose and re-pose every attached
+   *  part. moving: whether it walked this step. */
+  poseParts(dt: number, moving: boolean) {
+    const t = _target;
+    if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
+    else restInto(t);
+    const k = 1 - Math.exp(-dt / this.poseBlend);
+    const m = this.motion;
+    m.y += (t.y - m.y) * k;
+    m.pitch += (t.pitch - m.pitch) * k;
+    m.roll += (t.roll - m.roll) * k;
+    m.squash += (t.squash - m.squash) * k;
+    for (const [id, r] of t.rot) {
+      const cur = m.rot.get(id) ?? [0, 0, 0];
+      m.rot.set(id, [
+        cur[0] + (r[0] - cur[0]) * k,
+        cur[1] + (r[1] - cur[1]) * k,
+        cur[2] + (r[2] - cur[2]) * k,
+      ]);
+    }
+    for (const id of [...m.rot.keys()]) if (!t.rot.has(id)) m.rot.delete(id);
+    solvePose(this.rig, this.centre, this.yaw, m, _poses);
+    for (const [id, part] of this.parts) part.setPose(_poses.get(id)!);
   }
 
-  /** Remove the mesh, colliders and body. */
+  /** Render frame: every part draws alpha of the way from its prev pose to
+   *  its current one. */
+  syncRender(alpha: number) {
+    for (const p of this.parts.values()) p.syncRender(alpha);
+  }
+
+  /** Remove the parts, the root capsule and the bodies. */
   dispose(world: RAPIER.World) {
-    this.mesh.dispose();
+    for (const p of this.parts.values()) p.dispose(world);
     this.group.removeFromParent();
-    // The capsule and every voxel collider are gone with the body.
-    world.removeRigidBody(this.body);
+    world.removeRigidBody(this.root);
   }
 }

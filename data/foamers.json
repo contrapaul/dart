@@ -1,20 +1,41 @@
 {
-  "_note": "Test Foamer (GAME-03), a placeholder until Paul's Foamer cards (PLAN.md 4.2). Distances in metres, times in seconds, sizes in voxels.",
+  "_note": "Test Foamer (ENG-10): rig F01 from data/foamer-rigs.json, with part damage, breaking, handicaps, wounds, going down and popping. Distances in metres, times in seconds. Rig shapes, speed and health come from the rig file (one source).",
   "test": {
-    "voxelSize": 0.05,
-    "size": [12, 26, 12],
-    "health": 6,
+    "rig": "F01",
     "damage": { "standard": 1, "suction": 0.5 },
     "minDamageSpeed": 8,
-    "speed": 2.2,
     "turnRate": 6,
     "gravity": 22,
-    "capsuleRadius": 0.2,
     "attackRange": 1.3,
-    "windup": 0.6,
     "recover": 0.8,
     "popChunkScale": 2.5,
-    "popBursts": 4
+    "popBursts": 4,
+    "poseBlend": 0.06,
+    "partDamage": {
+      "_note": "Per part kind. hpShare: the part's health as a share of the Foamer's (at least minHp). hit: multiplies dart damage to the part. total: share of that damage that also comes off the Foamer's health. CONTENT-PLAN 3.1 and 3.2.",
+      "minHp": 2,
+      "kinds": {
+        "body":    { "hpShare": 0,    "hit": 1, "total": 1 },
+        "head":    { "hpShare": 0.3,  "hit": 2, "total": 1 },
+        "arm":     { "hpShare": 0.2,  "hit": 1, "total": 0.5 },
+        "leg":     { "hpShare": 0.25, "hit": 1, "total": 0.5 },
+        "weapon":  { "hpShare": 0.25, "hit": 1, "total": 0.5 },
+        "ability": { "hpShare": 0.25, "hit": 1, "total": 0.5 },
+        "fin":     { "hpShare": 0.15, "hit": 1, "total": 0.5 },
+        "detail":  { "hpShare": 0.15, "hit": 1, "total": 0.5 }
+      },
+      "wearBreak": 0.4
+    },
+    "catastrophic": { "share": 0.4, "window": 0.1 },
+    "wound": { "coreShell": 1.0, "stumpRadius": 0.12 },
+    "stagger": { "time": 0.5 },
+    "down": { "topple": 0.7, "lie": 3.5, "sinkSpeed": 0.35, "max": 8 },
+    "brokenParts": { "max": 24, "lifetime": 4, "sinkTime": 1, "density": 0.3 },
+    "handicaps": { "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5 },
+    "attacks": [
+      { "id": "bonk", "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
+      { "id": "headbutt", "needs": [], "windup": 0.9, "strike": 0.2 }
+    ]
   },
   "spawner": {
     "count": 1,

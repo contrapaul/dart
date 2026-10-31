@@ -69,6 +69,41 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-10-31: ENG-10 stage 1: Foamer built from rig parts (Pi, Qwen 3.8-27b)
+
+- The test Foamer is now rig F01: a root kinematic body carrying only the
+  movement capsule, plus one `FoamerPart` per rig part (each with its own
+  voxel volume, kinematic body and mesh collider). New
+  `src/foamers/foamer-part.ts` and `src/foamers/foamer.ts`; `foamers.ts`
+  spawns every part into `targets` so darts carve the part they hit;
+  `rig-states.ts` builds the walk/attack/stagger/down target motions for
+  the game's state-driven Foamer; the motion eases toward its target with
+  `poseBlend`, and each part body follows the translation and rotation of
+  its `solvePose` matrix (the squash scale stays on the drawn group only).
+  Damage is still whole-Foamer in this stage: a part hit or a capsule hit
+  lowers `health` as before, and at zero the Foamer pops, per part.
+- Decisions: the capsule sits on the body centre line at the root origin
+  (radius half the wider of the body part's x and z size, height
+  `rigHeight`), not at the voxel corner as GAME-03's body was; `GameRig =
+  RigSpec & { health }` because the rigs' `health` is in the data but not
+  the type; part health is `max(minHp, round(rig.health * hpShare))` from
+  `data/foamers.json`; a capsule hit counts as a whole-Foamer hit until
+  stage 2 makes all damage per part.
+- Tests: `tests/foamers/parts.test.ts` new (card tests 1 to 3). In
+  `foamers.test.ts`: test 1 (single-volume model) and 3b (single-mesh
+  alignment) are replaced by the per-part tests, so they skip with a
+  comment; test 6 aims at the head because the capsule (as wide as the
+  body, its face 0.05 m in front of the body's) eats a centre dart without
+  carving; test 5's bonk timings match the data `attacks` entry; test 3c
+  checks a part's drawn matrix at alpha 0, 0.5 and 1. The card's leg floor
+  bound is relaxed to 0.15 m: F01's club corner is its ground contact, so
+  the lowest filled leg voxel is 0.11 m up.
+- 86 tests pass (2 skipped), plus the sandbox's `rig.test.ts` unchanged.
+  Unverified in the browser: how the walk, windup and pop actually look,
+  and frame times with parts (10 Foamers). Stage 2 does part damage,
+  breaking, handicaps and wounds; stage 3 does stagger, going down and
+  popping beyond this.
+
 ### 2026-10-31: Foamers are blocks, smoothing removed (Claude)
 
 - Paul approved the menace pass ("These are excellent") and locked in

@@ -19,8 +19,8 @@ export interface MotionFrame {
 
 type Style = (rig: RigSpec, t: number) => MotionFrame;
 
-const ease = (x: number) => x * x * (3 - 2 * x);
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+export const ease = (x: number) => x * x * (3 - 2 * x);
+export const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
 function frame(phase: string, ground: number): MotionFrame {
   return { motion: { y: 0, pitch: 0, roll: 0, rot: new Map(), squash: 1 }, ground, phase };
@@ -31,7 +31,7 @@ function has(rig: RigSpec, id: string) {
 }
 
 /** Two-leg walk cycle into f. stride: leg swing (rad); rate: steps a second. */
-function bipedWalk(rig: RigSpec, f: MotionFrame, t: number, stride: number, rate: number, armSwing = 0.35) {
+export function bipedWalk(rig: RigSpec, f: MotionFrame, t: number, stride: number, rate: number, armSwing = 0.35) {
   const ph = t * rate * Math.PI;
   const s = Math.sin(ph);
   if (has(rig, "legL")) f.motion.rot.set("legL", [s * stride, 0, 0]);
@@ -47,7 +47,7 @@ function bipedWalk(rig: RigSpec, f: MotionFrame, t: number, stride: number, rate
 }
 
 /** Four-leg gait: diagonal pairs move together. */
-function quadWalk(rig: RigSpec, f: MotionFrame, t: number, stride: number, rate: number) {
+export function quadWalk(rig: RigSpec, f: MotionFrame, t: number, stride: number, rate: number) {
   const s = Math.sin(t * rate * Math.PI);
   const c = Math.cos(t * rate * Math.PI);
   for (const [id, sign] of [["legFL", 1], ["legBR", 1], ["legFR", -1], ["legBL", -1]] as const) {

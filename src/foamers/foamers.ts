@@ -6,18 +6,22 @@ import type { DebrisSystem } from "../voxel/debris";
 import type { DartSystem, DartHit } from "../weapons/darts";
 import type { VoxelTarget } from "../weapons/impacts";
 import { CHUNK_SIZE } from "../voxel/chunk";
-import { Foamer } from "./foamer";
+import { Foamer, type GameRig } from "./foamer";
 import foamerData from "../../data/foamers.json";
+import rigData from "../../data/foamer-rigs.json";
 
-// Spawning, dart damage, popping and the simple spawner for the test
-// Foamer. One shared Rapier character controller serves every Foamer: it
-// is stateless between steps.
+// Spawning, dart damage and popping for the test Foamer (rig F01). One
+// shared Rapier character controller serves every Foamer: it is stateless
+// between steps. Stage 1 of ENG-10: damage is still whole-Foamer; part
+// damage, breaking, handicaps and going down come in later stages.
 
 const SPEC = foamerData.test;
 const SPAWNER = foamerData.spawner;
+// One source for rig shape, speed and health: data/foamer-rigs.json.
+const RIG = (rigData.rigs as unknown as GameRig[]).find((r) => r.id === SPEC.rig)!;
 
 export class FoamerSystem {
-  /** Add to the scene once. Every Foamer's mesh group lives under it. */
+  /** Add to the scene once. Every Foamer's part groups live under it. */
   readonly group = new THREE.Group();
   readonly list: Foamer[] = [];
   /** Called once per bonk that connects. Player health does not exist yet. */
@@ -26,6 +30,7 @@ export class FoamerSystem {
 
   private cc: RAPIER.KinematicCharacterController;
   private targets: VoxelTarget[];
+  private own = new Set<number>(); // root and part bodies for the stepped Foamer
   private respawn = SPAWNER.respawnDelay; // start full, so the first Foamer appears straight away
   private _wish = new THREE.Vector3();
   private _vel = new THREE.Vector3();
@@ -39,7 +44,7 @@ export class FoamerSystem {
     targets: VoxelTarget[],
   ) {
     this.targets = targets;
-    // Darts carve Foamers through DartImpacts (they are in `targets`);
+    // Darts carve Foamers through DartImpacts (the parts are in `targets`);
     // here we only count damage and pop at zero health.
     const previous = darts.onHit;
     darts.onHit = (hit) => {
@@ -54,10 +59,13 @@ export class FoamerSystem {
   /** Spawn at a feet position. Returns null at the `max` cap. */
   spawn(feet: THREE.Vector3): Foamer | null {
     if (this.list.length >= SPAWNER.max) return null;
-    const f = new Foamer(this.rapier, this.world, this.mesher, SPEC, feet);
+    const f = new Foamer(this.rapier, this.world, this.mesher, SPEC, RIG, feet);
+    f.setSystem(this);
     this.group.add(f.group);
     this.list.push(f);
-    this.targets.push(f);
+    // Every part is a voxel target of its own, so darts carve the part
+    // they actually hit.
+    for (const part of f.parts.values()) this.targets.push(part);
     this.stats.spawned++;
     return f;
   }
@@ -68,7 +76,7 @@ export class FoamerSystem {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
       this.stepFoamer(f, dt, player);
-      f.mesh.update();
+      for (const part of f.parts.values()) part.mesh.update();
     }
     // Spawner: keep spawner.count alive.
     if (this.list.length < SPAWNER.count) {
@@ -82,18 +90,10 @@ export class FoamerSystem {
     }
   }
 
-  /** Render frame: copy transforms to the mesh groups, alpha (0 to 1) of
+  /** Render frame: copy transforms to the part groups, alpha (0 to 1) of
    *  the way between the last two steps. */
   syncRender(alpha = 1): void {
-    for (const f of this.list) {
-      if (f.state === "windup") {
-        // Squash the mesh a little about the feet: the bonk telegraph.
-        f.squashY = 1 - 0.12 * Math.sin(Math.PI * (f.stateTime / SPEC.windup));
-      } else {
-        f.squashY = 1;
-      }
-      f.syncRender(alpha);
-    }
+    for (const f of this.list) f.syncRender(alpha);
   }
 
   get live() {
@@ -114,18 +114,23 @@ export class FoamerSystem {
     f.yaw += THREE.MathUtils.clamp(dyaw, -SPEC.turnRate * dt, SPEC.turnRate * dt);
 
     const dist = Math.hypot(dx, dz);
+    const attack = SPEC.attacks[0]!;
     if (f.state === "approach") {
       if (dist <= SPEC.attackRange) {
         f.state = "windup";
         f.stateTime = 0;
       }
     } else if (f.state === "windup") {
-      if (f.stateTime >= SPEC.windup) {
+      if (f.stateTime >= attack.windup) {
         const dy = Math.abs(player.y - f.centre.y);
         if (dist <= SPEC.attackRange + 0.3 && dy < 2) {
-          this.onBonk(f);
-          this.stats.bonks++;
+          f.bonk();
         }
+        f.state = "strike";
+        f.stateTime = 0;
+      }
+    } else if (f.state === "strike") {
+      if (f.stateTime >= attack.strike) {
         f.state = "recover";
         f.stateTime = 0;
       }
@@ -136,24 +141,30 @@ export class FoamerSystem {
 
     // Gravity: vertical speed, reset by the ground.
     f.vy = Math.max(f.vy - SPEC.gravity * dt, -50);
+    const moving = f.state === "approach" && dist > SPEC.attackRange;
+    const speed = f.speed();
     this._wish.set(0, 0, 0);
-    if (f.state === "approach" && dist > SPEC.attackRange) {
-      this._wish.set(
-        Math.sin(f.yaw), 0, Math.cos(f.yaw),
-      ).multiplyScalar(SPEC.speed * dt);
+    if (moving) {
+      this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
     }
     this._vel.set(this._wish.x, f.vy * dt, this._wish.z);
+    // The capsule must not collide with the Foamer's own part bodies.
+    this.own.clear();
+    this.own.add(f.root.handle);
+    for (const p of f.parts.values()) this.own.add(p.body.handle);
     this.cc.computeColliderMovement(
       f.capsule, this._vel,
       undefined, undefined,
-      (c) => c.parent()?.handle !== f.body.handle,
+      (c) => !this.own.has(c.parent()?.handle ?? -1),
     );
     const moved = this.cc.computedMovement();
     if (this.cc.computedGrounded()) f.vy = 0;
     f.centre.x += moved.x;
     f.centre.y += moved.y;
     f.centre.z += moved.z;
+    if (moving && Math.hypot(moved.x, moved.y, moved.z) > 1e-4) f.gait += Math.hypot(moved.x, moved.y, moved.z) * 4 / (2 * Math.PI);
     f.applyPose();
+    f.poseParts(dt, moving);
   }
 
   private respawnSpawn(player: THREE.Vector3) {
@@ -172,39 +183,54 @@ export class FoamerSystem {
 
   private handleHit(hit: DartHit) {
     if (hit.speed < SPEC.minDamageSpeed) return;
-    const f = this.list.find((foamer) => foamer.owns(hit.collider));
+    // The part that owns the collider (darts carving it), or the root
+    // capsule (which takes whole-Foamer damage as before until stage 2
+    // makes all damage per part).
+    let f: Foamer | undefined;
+    for (const foamer of this.list) {
+      if ([...foamer.parts.values()].some((p) => p.owns(hit.collider)) ||
+          hit.collider.parent()?.handle === foamer.root.handle) {
+        f = foamer;
+        break;
+      }
+    }
     if (!f) return;
     f.health -= SPEC.damage[hit.type];
     this.stats.hits++;
     if (f.health <= 0) this.pop(f);
   }
 
-  /** The model breaks into popBursts of foam and leaves the world. */
+  /** The model bursts into foam debris per part and leaves the world. */
   private pop(f: Foamer) {
-    // Every remaining voxel, in the volume's own (non-rotated) space.
-    const voxels: { x: number; y: number; z: number; material: number }[] = [];
-    for (const chunk of f.volume.chunks.values()) {
-      for (let y = 0; y < CHUNK_SIZE; y++)
-        for (let z = 0; z < CHUNK_SIZE; z++)
-          for (let x = 0; x < CHUNK_SIZE; x++) {
-            const m = chunk.get(x, y, z);
-            if (m !== 0) voxels.push({ x, y, z, material: m });
-          }
-    }
-    // Equal slices, so each burst is one debris.spawn call.
-    const size = SPEC.size as [number, number, number];
-    const centre = { x: size[0] / 2, y: size[1] / 2, z: size[2] / 2 };
-    const slice = Math.ceil(voxels.length / SPEC.popBursts);
-    for (let i = 0; i < SPEC.popBursts; i++) {
-      const part = voxels.slice(i * slice, (i + 1) * slice);
-      if (part.length === 0) continue;
-      this.debris.spawn(part, new THREE.Vector3(centre.x, centre.y, centre.z),
-        SPEC.voxelSize * SPEC.popChunkScale, (v) => f.voxelToWorld(v));
+    for (const part of f.parts.values()) {
+      // Every remaining voxel, in the part volume's own (non-rotated) space.
+      const voxels: { x: number; y: number; z: number; material: number }[] = [];
+      for (const chunk of part.volume.chunks.values()) {
+        for (let y = 0; y < CHUNK_SIZE; y++)
+          for (let z = 0; z < CHUNK_SIZE; z++)
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+              const m = chunk.get(x, y, z);
+              if (m !== 0) voxels.push({ x, y, z, material: m });
+            }
+      }
+      if (voxels.length === 0) continue;
+      const size = part.spec.size;
+      const centre = { x: size[0] / 2, y: size[1] / 2, z: size[2] / 2 };
+      const slice = Math.ceil(voxels.length / SPEC.popBursts);
+      const vs = f.rig.voxelSize;
+      for (let i = 0; i < SPEC.popBursts; i++) {
+        const burst = voxels.slice(i * slice, (i + 1) * slice);
+        if (burst.length === 0) continue;
+        this.debris.spawn(burst, new THREE.Vector3(centre.x, centre.y, centre.z),
+          vs * SPEC.popChunkScale, (v) => part.voxelToWorld(v));
+      }
     }
     const i = this.list.indexOf(f);
     if (i >= 0) this.list.splice(i, 1);
-    const t = this.targets.indexOf(f);
-    if (t >= 0) this.targets.splice(t, 1);
+    for (const part of f.parts.values()) {
+      const t = this.targets.indexOf(part);
+      if (t >= 0) this.targets.splice(t, 1);
+    }
     f.dispose(this.world);
     this.stats.popped++;
   }
