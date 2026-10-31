@@ -69,6 +69,31 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-10-31: Foamer sandbox (Claude)
+
+- Paul asked to see the planned Foamers moving and discuss shape, movement
+  and features before limb and weak-point damage (ENG-10).
+- `sandbox.html` (live at `/sandbox.html`): every roster role from
+  `design/CONTENT-PLAN.md` as a greybox rig, meshed with the game's own
+  voxel, smoothing (ENG-09) and foam shader code. Lineup mode shows all 13
+  side by side next to a 1.8 m player; Roam mode walks one (or its pack)
+  around a loop. Speed slider, pause, smooth or blocks, part labels, and a
+  link per Foamer (`sandbox.html#F05`).
+- `src/foamers/rig.ts`: parts built from primitive shapes (ellipsoid,
+  capsule, box, cylinder, disc), eyes at least 3 voxels wide, a pose
+  solver (joint anchors as -1 to 1 points on each box, rest and animated
+  rotations, squash, feet grounded automatically). ENG-10 should build on
+  this instead of the layout in its card.
+- `src/foamers/rig-motion.ts`: 13 movement styles (shuffle, throw, scurry,
+  shieldwalk, charge, float, leap, tank, spider, fly, combo, pounce,
+  support), procedural and time-based.
+- `data/foamer-rigs.json`: the rigs. Greybox shapes only, a new neutral
+  `greybox` material (id 9). Names, looks and colours stay Paul's.
+- `vite.config.ts` builds both pages.
+- Tests: 6 in `tests/foamers/rig.test.ts` (pivots on joints through motion,
+  feet on the floor, mirrored parts, eyes, finite motion for every style).
+- Next: Paul reviews the sandbox; then update ENG-10 to use the rigs.
+
 ### 2026-10-31: Frame pacing fix for the stutter (Claude, Paul's second report)
 
 - Paul: the stutter was unchanged by render interpolation. Firefox,

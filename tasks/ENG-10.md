@@ -1,5 +1,10 @@
 # ENG-10: Foamer parts, damage zones and handicaps
 
+> **On hold (2026-10-31):** Paul is reviewing Foamer shapes and movement in
+> the sandbox (`sandbox.html`, ENG-10a) first. The rig and pose code from
+> the sandbox (`src/foamers/rig.ts`, `rig-motion.ts`) replaces the part
+> layout below; this card is updated after the review, before Pi starts.
+
 ```
 ID:          ENG-10
 Title:       Foamers built from parts (body, head, arms, legs) that take

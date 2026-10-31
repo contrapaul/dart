@@ -1,0 +1,1517 @@
+{
+ "_note": "Greybox Foamer rigs for the sandbox (sandbox.html), one per roster role in design/CONTENT-PLAN.md section 3. Shapes and proportions are placeholders for discussion, not designs: names, looks and colours are Paul's. Sizes in voxels (0.05 m). 'at' is where a part's joint sits on its parent's box and 'pivot' where it sits on the part's own box, both -1 to 1 per axis (0 centre, 1 the +x / top / front face). 'rest' is a rest rotation in radians. Feet are put on the ground automatically.",
+ "rigs": [
+  {
+   "id": "F01",
+   "label": "F01",
+   "tier": "Fodder",
+   "behaviour": "Slow, walks at you in groups. Bonks up close. Free finishers.",
+   "movement": "shuffle",
+   "speed": 1.0,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      12,
+      14,
+      10
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      10,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.85,
+      0
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      4,
+      12,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      -1.05,
+      0.45,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      4,
+      12,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      1.05,
+      0.45,
+      0
+     ]
+    },
+    {
+     "id": "legL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      5,
+      8,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      -0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "legR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      5,
+      8,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      0.45,
+      -0.75,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F02",
+   "label": "F02",
+   "tier": "Fodder",
+   "behaviour": "Agile, keeps its distance, throws slow parryable foam balls.",
+   "movement": "throw",
+   "speed": 2.6,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      11,
+      8
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      9,
+      9,
+      9
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.9,
+      0
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      3,
+      15,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      -1.05,
+      0.5,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      3,
+      15,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      1.05,
+      0.5,
+      0
+     ]
+    },
+    {
+     "id": "legL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      4,
+      10,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      -0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "legR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      4,
+      10,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      0.45,
+      -0.75,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F03",
+   "label": "F03",
+   "tier": "Fodder",
+   "behaviour": "Small and fast, comes in a pack of 4 to 6.",
+   "movement": "scurry",
+   "speed": 4.5,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      8,
+      6,
+      11
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      9,
+      7,
+      7
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.3,
+      0.95
+     ],
+     "pivot": [
+      0,
+      0,
+      -1
+     ],
+     "eyes": true
+    },
+    {
+     "id": "legFL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      2,
+      4,
+      2
+     ],
+     "parent": "body",
+     "at": [
+      -0.75,
+      -0.5,
+      0.55
+     ]
+    },
+    {
+     "id": "legFR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      2,
+      4,
+      2
+     ],
+     "parent": "body",
+     "at": [
+      0.75,
+      -0.5,
+      0.55
+     ]
+    },
+    {
+     "id": "legBL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      2,
+      4,
+      2
+     ],
+     "parent": "body",
+     "at": [
+      -0.75,
+      -0.5,
+      -0.55
+     ]
+    },
+    {
+     "id": "legBR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      2,
+      4,
+      2
+     ],
+     "parent": "body",
+     "at": [
+      0.75,
+      -0.5,
+      -0.55
+     ]
+    }
+   ],
+   "pack": 5
+  },
+  {
+   "id": "F04",
+   "label": "F04",
+   "tier": "Fodder",
+   "behaviour": "Holds a shield wall and fires over it. Flank it or shield-charge it.",
+   "movement": "shieldwalk",
+   "speed": 1.3,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      14,
+      14,
+      11
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      9,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.85,
+      0
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      5,
+      12,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      -1.05,
+      0.45,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      5,
+      12,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      1.05,
+      0.45,
+      0
+     ]
+    },
+    {
+     "id": "legL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      8,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      -0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "legR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      8,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "shield",
+     "kind": "ability",
+     "shape": "disc",
+     "size": [
+      22,
+      24,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      -0.15,
+      0.15,
+      1.2
+     ],
+     "pivot": [
+      0,
+      0,
+      -1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F05",
+   "label": "F05",
+   "tier": "Heavy",
+   "behaviour": "Charges in a straight line. Armoured front, weak back.",
+   "movement": "charge",
+   "speed": 2.0,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      18,
+      14,
+      24
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      12,
+      10,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.75,
+      0.65
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "plate",
+     "kind": "ability",
+     "shape": "box",
+     "size": [
+      18,
+      10,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      -0.15,
+      1.0
+     ],
+     "pivot": [
+      0,
+      0,
+      -1
+     ]
+    },
+    {
+     "id": "legFL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      7,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      -0.6,
+      -0.7,
+      0.6
+     ]
+    },
+    {
+     "id": "legFR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      7,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      0.6,
+      -0.7,
+      0.6
+     ]
+    },
+    {
+     "id": "legBL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      7,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      -0.6,
+      -0.7,
+      -0.6
+     ]
+    },
+    {
+     "id": "legBR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      7,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      0.6,
+      -0.7,
+      -0.6
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F06",
+   "label": "F06",
+   "tier": "Heavy",
+   "behaviour": "Floats slowly and spits bouncing blobs. Stagger it with a big hit.",
+   "movement": "float",
+   "speed": 1.2,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      26,
+      24,
+      26
+     ],
+     "parent": null,
+     "eyes": true
+    },
+    {
+     "id": "finL",
+     "kind": "fin",
+     "shape": "box",
+     "size": [
+      3,
+      8,
+      12
+     ],
+     "parent": "body",
+     "at": [
+      -1.0,
+      0,
+      0
+     ],
+     "pivot": [
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "id": "finR",
+     "kind": "fin",
+     "shape": "box",
+     "size": [
+      3,
+      8,
+      12
+     ],
+     "parent": "body",
+     "at": [
+      1.0,
+      0,
+      0
+     ],
+     "pivot": [
+      -1,
+      0,
+      0
+     ]
+    },
+    {
+     "id": "mouth",
+     "kind": "ability",
+     "shape": "box",
+     "size": [
+      10,
+      3,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      -0.4,
+      0.92
+     ],
+     "pivot": [
+      0,
+      0,
+      -1
+     ]
+    }
+   ],
+   "hover": 1.2
+  },
+  {
+   "id": "F07",
+   "label": "F07",
+   "tier": "Heavy",
+   "behaviour": "Melee brawler. Leaps and slams down with a shockwave.",
+   "movement": "leap",
+   "speed": 2.4,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      20,
+      18,
+      14
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      9,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.9,
+      0.1
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      7,
+      16,
+      7
+     ],
+     "parent": "body",
+     "at": [
+      -1.05,
+      0.5,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      7,
+      16,
+      7
+     ],
+     "parent": "body",
+     "at": [
+      1.05,
+      0.5,
+      0
+     ]
+    },
+    {
+     "id": "legL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      7,
+      10,
+      7
+     ],
+     "parent": "body",
+     "at": [
+      -0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "legR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      7,
+      10,
+      7
+     ],
+     "parent": "body",
+     "at": [
+      0.45,
+      -0.75,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F08",
+   "label": "F08",
+   "tier": "Heavy",
+   "behaviour": "Slow tank. Fires walls of foam balls with gaps to slip through. Two arm launchers.",
+   "movement": "tank",
+   "speed": 0.9,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      30,
+      24,
+      24
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      8,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.95,
+      0.3
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "cylinder",
+     "size": [
+      8,
+      16,
+      8
+     ],
+     "parent": "body",
+     "at": [
+      -1.0710000000000002,
+      0.3,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "cylinder",
+     "size": [
+      8,
+      16,
+      8
+     ],
+     "parent": "body",
+     "at": [
+      1.0710000000000002,
+      0.3,
+      0
+     ]
+    },
+    {
+     "id": "legL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      9,
+      10,
+      9
+     ],
+     "parent": "body",
+     "at": [
+      -0.5,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "legR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      9,
+      10,
+      9
+     ],
+     "parent": "body",
+     "at": [
+      0.5,
+      -0.75,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F09",
+   "label": "F09",
+   "tier": "Heavy",
+   "behaviour": "Turret walker on four legs. Sustained fire from a gun you can shoot off.",
+   "movement": "spider",
+   "speed": 1.8,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      20,
+      10,
+      20
+     ],
+     "parent": null,
+     "eyes": true
+    },
+    {
+     "id": "gun",
+     "kind": "ability",
+     "shape": "box",
+     "size": [
+      6,
+      6,
+      18
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.9,
+      0.1
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "legFL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      4,
+      14,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      -0.75,
+      -0.2,
+      0.75
+     ],
+     "rest": [
+      -0.4,
+      0,
+      -0.6
+     ]
+    },
+    {
+     "id": "legFR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      4,
+      14,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      0.75,
+      -0.2,
+      0.75
+     ],
+     "rest": [
+      -0.4,
+      0,
+      0.6
+     ]
+    },
+    {
+     "id": "legBL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      4,
+      14,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      -0.75,
+      -0.2,
+      -0.75
+     ],
+     "rest": [
+      0.4,
+      0,
+      -0.6
+     ]
+    },
+    {
+     "id": "legBR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      4,
+      14,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      0.75,
+      -0.2,
+      -0.75
+     ],
+     "rest": [
+      0.4,
+      0,
+      0.6
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F10",
+   "label": "F10",
+   "tier": "Elite",
+   "behaviour": "Flies on jets and fires homing foam. Shoot the jets and it falls.",
+   "movement": "fly",
+   "speed": 3.5,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      12,
+      14,
+      10
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      9,
+      9,
+      9
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.9,
+      0
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      3,
+      10,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      -1.05,
+      0.4,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      3,
+      10,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      1.05,
+      0.4,
+      0
+     ]
+    },
+    {
+     "id": "jetL",
+     "kind": "ability",
+     "shape": "cylinder",
+     "size": [
+      5,
+      10,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      -0.5,
+      0,
+      -1.05
+     ],
+     "pivot": [
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "id": "jetR",
+     "kind": "ability",
+     "shape": "cylinder",
+     "size": [
+      5,
+      10,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      0.5,
+      0,
+      -1.05
+     ],
+     "pivot": [
+      0,
+      0,
+      1
+     ]
+    }
+   ],
+   "hover": 1.6
+  },
+  {
+   "id": "F11",
+   "label": "F11",
+   "tier": "Elite",
+   "behaviour": "Shield only a parry can break. Combo, then a parryable finisher.",
+   "movement": "combo",
+   "speed": 1.8,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      14,
+      16,
+      10
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      10,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.9,
+      0
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      5,
+      14,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      -1.05,
+      0.5,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      5,
+      14,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      1.05,
+      0.5,
+      0
+     ]
+    },
+    {
+     "id": "legL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      11,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      -0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "legR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      6,
+      11,
+      6
+     ],
+     "parent": "body",
+     "at": [
+      0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "shield",
+     "kind": "ability",
+     "shape": "disc",
+     "size": [
+      22,
+      26,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      -0.4,
+      0.1,
+      1.2
+     ],
+     "pivot": [
+      0,
+      0,
+      -1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F12",
+   "label": "F12",
+   "tier": "Elite",
+   "behaviour": "Hides low, creeps, then pounces from cover.",
+   "movement": "pounce",
+   "speed": 3.0,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      8,
+      20
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      8,
+      7,
+      9
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.35,
+      0.95
+     ],
+     "pivot": [
+      0,
+      0,
+      -1
+     ],
+     "eyes": true
+    },
+    {
+     "id": "legFL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      3,
+      8,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      -0.75,
+      -0.55,
+      0.65
+     ]
+    },
+    {
+     "id": "legFR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      3,
+      8,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      0.75,
+      -0.55,
+      0.65
+     ]
+    },
+    {
+     "id": "legBL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      3,
+      8,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      -0.75,
+      -0.55,
+      -0.65
+     ]
+    },
+    {
+     "id": "legBR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      3,
+      8,
+      3
+     ],
+     "parent": "body",
+     "at": [
+      0.75,
+      -0.55,
+      -0.65
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F13",
+   "label": "F13",
+   "tier": "Elite",
+   "behaviour": "Support: sends foam to rebuild other Foamers. Shoot its tank first.",
+   "movement": "support",
+   "speed": 1.6,
+   "voxelSize": 0.05,
+   "material": "greybox",
+   "parts": [
+    {
+     "id": "body",
+     "kind": "body",
+     "shape": "ellipsoid",
+     "size": [
+      12,
+      14,
+      10
+     ],
+     "parent": null
+    },
+    {
+     "id": "head",
+     "kind": "head",
+     "shape": "ellipsoid",
+     "size": [
+      10,
+      10,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.85,
+      0
+     ],
+     "pivot": [
+      0,
+      -1,
+      0
+     ],
+     "eyes": true
+    },
+    {
+     "id": "armL",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      4,
+      12,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      -1.05,
+      0.45,
+      0
+     ]
+    },
+    {
+     "id": "armR",
+     "kind": "arm",
+     "shape": "capsule",
+     "size": [
+      4,
+      12,
+      4
+     ],
+     "parent": "body",
+     "at": [
+      1.05,
+      0.45,
+      0
+     ]
+    },
+    {
+     "id": "legL",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      5,
+      8,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      -0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "legR",
+     "kind": "leg",
+     "shape": "capsule",
+     "size": [
+      5,
+      8,
+      5
+     ],
+     "parent": "body",
+     "at": [
+      0.45,
+      -0.75,
+      0
+     ]
+    },
+    {
+     "id": "tank",
+     "kind": "ability",
+     "shape": "cylinder",
+     "size": [
+      10,
+      14,
+      10
+     ],
+     "parent": "body",
+     "at": [
+      0,
+      0.1,
+      -1.0
+     ],
+     "pivot": [
+      0,
+      0,
+      1
+     ]
+    }
+   ]
+  }
+ ]
+}
