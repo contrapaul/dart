@@ -212,6 +212,10 @@ const _rot = new THREE.Quaternion();
 const muzzleRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
 
 let paused = true;
+/** While paused the scene only needs redrawing for meshes that arrive and
+ *  window resizes, so it draws a few frames a second to save battery. */
+const PAUSED_FRAME = renderJson.pausedFrame;
+let pausedClock = PAUSED_FRAME;
 function setPaused(p: boolean) {
   paused = p;
   overlay.hidden = !p;
@@ -281,6 +285,11 @@ startLoop({
     input.endStep();
   },
   render(_dt, alpha) {
+    if (paused) {
+      pausedClock += _dt;
+      if (pausedClock < PAUSED_FRAME) return;
+      pausedClock = 0;
+    } else pausedClock = PAUSED_FRAME;
     // Everything that moves on the fixed step is drawn alpha of the way
     // between its last two steps, so it moves smoothly at any refresh rate.
     debris.syncRender(alpha);
