@@ -87,6 +87,9 @@ export function downMotion(rig: RigSpec, k: number, out: RigMotion) {
       p.kind === "arm" ? [0.4, 0, side * 0.7]
       : p.kind === "leg" ? [-0.25, 0, side * 0.2]
       : p.kind === "head" ? [0.5, 0, 0.3]
+      // A held weapon swings back along the arm, so it does not prop the
+      // fallen body up off the floor.
+      : p.kind === "weapon" ? [-1.5, 0, 0]
       : [0, 0, 0];
     out.rot.set(p.id, [limp[0] * e, limp[1] * e, limp[2] * e]);
   }

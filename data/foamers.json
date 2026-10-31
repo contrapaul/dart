@@ -30,7 +30,7 @@
     "catastrophic": { "share": 0.4, "window": 0.1 },
     "wound": { "coreShell": 1.0, "stumpRadius": 0.12 },
     "stagger": { "time": 0.5 },
-    "down": { "topple": 0.7, "lie": 3.5, "sinkSpeed": 1.2, "max": 8 },
+    "down": { "topple": 0.7, "lie": 3.5, "sinkSpeed": 0.35, "max": 8 },
     "brokenParts": { "max": 24, "lifetime": 4, "sinkTime": 1, "density": 0.3 },
     "handicaps": { "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5 },
     "attacks": [

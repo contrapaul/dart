@@ -359,8 +359,10 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
 
   it("6b. a broken piece keeps its mesh: the part group still has a mesh child after the mesher runs, and the part's kinematic body has no colliders", async () => {
     const r = rig();
-    const player = new THREE.Vector3(0, 1.6, 8);
-    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    // Off the origin and turned toward a player to one side, so a wrong
+    // transform order shows.
+    const player = new THREE.Vector3(9, 1.6, 2);
+    const f = r.foamers.spawn(new THREE.Vector3(5, 0, -6))!;
     r.world.step();
     await settleAll(r, f);
     const leg = f.parts.get("legL")!;
@@ -374,6 +376,18 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     const partGroup = piece.groups.find((g) => g.part === leg)!;
     expect(partGroup).toBeDefined();
     expect(countMeshes(partGroup.part.group), "piece mesh remains").toBeGreaterThan(0);
+    // And it is drawn where it broke off: the leg's centre is above the
+    // floor and near the Foamer, and on its own collider.
+    r.foamers.syncRender(1);
+    const s = leg.spec.size, vs = f.rig.voxelSize;
+    const drawn = new THREE.Vector3(s[0] / 2, s[1] / 2, s[2] / 2).multiplyScalar(vs).applyMatrix4(partGroup.part.group.matrix);
+    expect(drawn.y, "drawn above the floor").toBeGreaterThan(-0.05);
+    expect(drawn.distanceTo(f.centre), "drawn near the Foamer").toBeLessThan(2);
+    let cuboid: THREE.Vector3 | null = null;
+    r.world.forEachCollider((c) => {
+      if (c.parent()?.handle === piece.body.handle) { const t = c.translation(); cuboid = new THREE.Vector3(t.x, t.y, t.z); }
+    });
+    expect(cuboid!.distanceTo(drawn), "collider on the drawn part").toBeLessThan(0.05);
     // The part's own kinematic body carries no colliders any more.
     let partColliders = 0;
     r.world.forEachCollider((c) => {
@@ -386,6 +400,20 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
       if (c.parent()?.handle === piece.body.handle) pieceColliders++;
     });
     expect(pieceColliders, "piece body keeps its cuboids").toBeGreaterThan(0);
+  });
+
+  it("6c. a part whose child already broke off breaks cleanly (club, then the forearm holding it)", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    await breakOff(r, player, f, "club");
+    await untilApproach(r, player, f);
+    await breakOff(r, player, f, "foreArmR");
+    expect(f.has("foreArmR")).toBe(false);
+    expect(r.foamers.broken.length).toBe(2);
+    expect(r.foamers.broken[1]!.groups.map((g) => g.part.spec.id)).toEqual(["foreArmR"]);
   });
 
   it("7. one leg gone: 50% (within 15%) of intact distance over 60 steps; both gone: 25%, and its lowest part is within 0.1 m of the floor", async () => {
@@ -533,7 +561,7 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(f.centre.distanceTo(start), "moves again").toBeGreaterThan(0.001);
   });
 
-  it("12. going down: single darts at the body every ~0.2 s down it; no colliders left and no parts in targets; body pitch reaches at least 1 rad within the topple; it is disposed within topple + lie + 3 s; a stuck suction dart is no longer stuck after that", async () => {
+  it("12. going down: single darts at the body every ~0.2 s down it; no colliders left and no parts in targets; body pitch reaches at least 1 rad within the topple; it is disposed within topple + lie + 4 s; a stuck suction dart is no longer stuck after that", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 8);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
@@ -579,9 +607,9 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
       maxPitch = Math.max(maxPitch, f.motion.pitch);
     }
     expect(maxPitch, "at least 1 rad of pitch inside the topple").toBeGreaterThanOrEqual(1);
-    // Disposed within topple + lie + 3 s (the sink at down.sinkSpeed falls
-    // well inside the 3 s of slack): this Foamer's bodies leave the world.
-    const budget = Math.ceil((SPEC.down.topple + SPEC.down.lie + 3) / DT);
+    // Disposed within topple + lie + 4 s (F01 lies about 1 m high and sinks
+    // at 0.35 m/s until its top is under the floor): its bodies leave.
+    const budget = Math.ceil((SPEC.down.topple + SPEC.down.lie + 4) / DT);
     let gone = false;
     for (let i = 0; i < budget; i++) {
       if (r.world.getRigidBody(f.root.handle) === null) { gone = true; break; }

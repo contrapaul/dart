@@ -380,7 +380,7 @@ export class FoamerSystem {
     f.prevYaw = f.yaw;
     f.stateTime += dt;
     if (f.sinkingNow || f.stateTime >= SPEC.down.topple + SPEC.down.lie) {
-      if (f.sinkDepth < 0) f.sinkDepth = this.topYOf(f) + f.height;
+      if (f.sinkDepth < 0) f.sinkDepth = this.topYOf(f) + 0.05; // out of sight
       f.sinkDrop += SPEC.down.sinkSpeed * dt;
     }
     f.applyPose();
@@ -510,7 +510,8 @@ export class FoamerSystem {
     // under another: ignore the part while the system is handling it.
     if (!f.parts.has(part.spec.id) || part.spec.kind === "body") return;
     const rig = f.rig;
-    const ids = partAndChildren(rig, part.spec.id);
+    // Children that already broke off earlier are not in parts any more.
+    const ids = partAndChildren(rig, part.spec.id).filter((id) => f.parts.has(id));
     this.paintStumps(f, part);
     // One dynamic body for the assembly, at the part's last pose.
     const st2 = new THREE.Vector3();
@@ -543,8 +544,7 @@ export class FoamerSystem {
       const p = f.parts.get(id)!;
       // Local pose under the dynamic body: the part's world pose minus the
       // body's origin and rotation.
-      const invB = new THREE.Matrix4().makeTranslation(-st2.x, -st2.y, -st2.z)
-        .multiply(new THREE.Matrix4().makeRotationFromQuaternion(q2).invert());
+      const invB = new THREE.Matrix4().compose(st2, q2, _one).invert();
       const local = new THREE.Matrix4().copy(p.pose).premultiply(invB);
       groups.push({ part: p, local });
       const sz = p.spec.size;

@@ -69,6 +69,35 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ENG-10 review (Claude)
+
+Review of Pi's three ENG-10 stages; the fixes are on `eng-10`.
+
+- Broken pieces were drawn in the wrong place (up to 16 m under the
+  floor) and their cuboid colliders were offset to match: `breakPart`
+  inverted the piece body's transform in the wrong order. Fixed; test 6b
+  now spawns off the origin and checks the drawn part sits on its
+  collider near the Foamer (it passed at the origin, where the order
+  does not matter).
+- Breaking a part whose child already broke off (the club, then the
+  forearm holding it) threw and stopped the game loop. Fixed; new test 6c.
+- Downed F01 lay propped on its club about 1.3 m high: the down pose
+  left the weapon rigid. `downMotion` now swings a weapon back along the
+  arm (F01 lies about 1 m high). Other rigs' down poses are GAME-10's.
+- Sink depth: see the entry below. Pi's 1.2 m/s is back to 0.35.
+- Browser (port 5174): F01 walks with the raised club, head and club
+  shots break off pieces that fall with foam-core stumps on both sides,
+  body shots show foam-core wounds, a single-dart kill topples and
+  sinks. No console errors after the fixes.
+- 11 Foamers walking at the player on Paul's Mac in the browser pane:
+  average frame 8.3 ms, 95th percentile 9.7 ms, worst 10.8 ms (120 Hz
+  display, so at refresh); worker remesh of a part chunk about 1.0 ms
+  (max 1.1). Not measured on a base Apple Silicon Mac.
+- Unverified: a close pump blast popping a Foamer in the browser (test
+  14 covers it), crawling with both legs off, and the attacks on screen.
+  Old test 8 hit its 5 s timeout once under load; it passed every other
+  run.
+
 ### 2026-11-01: ENG-10 complete: going down, catastrophic pops, broken piece fixes (Pi, Qwen 3.8-27b)
 
 All three stages of the test Foamer are committed on `eng-10`. What was
@@ -102,10 +131,11 @@ built (card "The system"):
 
 Decisions: the pop-or-down call sits in `handleHit`, on the killing hit:
 the recent damage list keeps every hit since spawn (it is tiny: one
-entry per hit). The card's data `down.sinkSpeed` 0.35 m/s could not meet
-the card's own test 12 budget (sink depth is the lying top corner plus
-the rig height, about 2.6 m for F01: 7.5 s at 0.35 m/s, the budget is
-topple + lie + 3 s): `data/foamers.json` now has 1.2 m/s.
+entry per hit). A downed Foamer sinks at 0.35 m/s until its lying top
+corner is under the floor (about 3 s for F01, which lies about 1 m
+high; test 12's budget is topple + lie + 4 s). Pi first read the card as
+"sink a further rig height" and raised the speed to 1.2 m/s to fit test
+12; review (Claude) fixed the depth instead and kept the approved speed.
 `src/foamers/foamer-model.ts` deleted (nothing used it any more).
 
 Old tests that changed, and why: in `foamers.test.ts` old 7, 8 and 8b
