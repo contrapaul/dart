@@ -69,6 +69,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-10-31: Frame pacing fix for the stutter (Claude, Paul's second report)
+
+- Paul: the stutter was unchanged by render interpolation. Firefox,
+  worst when walking or strafing, a regular hitch about once a second.
+- Cause: the loop measured frames with `performance.now()`, which Firefox
+  rounds to about 1 ms. At 60 Hz beside a 60 Hz step, that rounding put
+  two steps in one frame and none in the next about once a second
+  (replayed: 9 of each in 10 s). Chrome's finer timer hid it, which is why
+  the Claude pane was smooth.
+- Fix (`src/core/loop.ts`): frames are timed from the rAF timestamp,
+  `createFrameClock` learns the refresh interval, snaps it to a common
+  display rate within 3% (so 60 and 120 Hz line up with the step and
+  never drift) and snaps each frame to a whole number of intervals. A
+  60 Hz display now runs exactly one step per frame. 4 tests in
+  `tests/core/loop.test.ts` replay Firefox-style rounded timestamps.
+  In the Claude pane walking now moves the camera exactly 58.3 mm every
+  frame (before: 54 to 64 mm).
+- `camera` added to the dev hook (`window.__dart`).
+- Unverified: Paul in Firefox.
+
 ### 2026-10-31: ENG-09 smoothed meshing for Foamers (Claude)
 
 - `src/voxel/surface-nets.ts`: naive surface nets with relaxation. One

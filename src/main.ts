@@ -302,4 +302,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts, pieces, foamers } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { camera, player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts, pieces, foamers } });
