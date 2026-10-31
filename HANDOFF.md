@@ -37,7 +37,7 @@ shadows are never black, and a rim light on edges facing away from the
 camera. The course boxes, floor, blaster and darts keep their old
 materials.
 
-Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
+In progress: ENG-10 (Pi, branch `eng-10`): the F01 rig in the game with part damage, going down and popping. Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:

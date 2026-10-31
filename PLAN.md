@@ -483,7 +483,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | GAME-09 | Weapon framework from JSON data, 3 blasters from Paul's cards | F (B for data) | PRE-04 |
 | ENG-08 | AI director (attack tokens), state machine base, navmesh | A | GAME-03 |
 | ENG-10a | Foamer sandbox: greybox rigs per role, movement styles, `sandbox.html` | Claude (done) | ENG-09 |
-| ENG-10 | Foamer parts: multi-part rig, per-part damage, break-off, handicaps (card: `tasks/ENG-10.md`, to update after the sandbox review) | A or Pi | ENG-10a, Paul's sandbox review |
+| ENG-10 | Foamer parts: the F01 rig in game, per-part damage, break-off, handicaps, foam-core wounds, going down and popping (card: `tasks/ENG-10.md`) | Pi (in progress) | ENG-10a |
 | GAME-10 | 3 Foamer types (fodder ranged, charger, heavy) | F | ENG-08, ENG-10, PRE-05 |
 | ART-00 | Spike: install Hunyuan3D locally on the Mac, generate one test blaster from an image, record time per model and quality. Go / no-go for the 3D route | A + P | |
 | ART-01 | Reference to design brief for 3 blasters | Vision model | PRE-03 |
