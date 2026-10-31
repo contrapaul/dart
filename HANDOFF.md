@@ -69,6 +69,15 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-10-31: F01 stands on its feet (Claude)
+
+- Found while reviewing ENG-10 stage 1: at rest F01's club was its lowest
+  point, so the rig was grounded on the club and its feet hovered 0.11 m
+  up (the forearms also reached below the feet). Forearm rest is now
+  -1.2 (was -0.5) and the club's -0.9 (was -1.3): F01 carries the club
+  raised in front, feet on the floor, club 0.22 m clear. Checked in the
+  sandbox. The ENG-10 branch picks this up when it merges main.
+
 ### 2026-10-31: Paused game draws 4 frames a second (Claude)
 
 - Paul asked to stop the game rendering in the background: an open tab
