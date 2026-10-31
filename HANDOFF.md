@@ -69,6 +69,19 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-10-31: Paused game draws 4 frames a second (Claude)
+
+- Paul asked to stop the game rendering in the background: an open tab
+  drew full frames behind the pause screen and drained his battery.
+- While paused, `src/main.ts` `render` only draws once every
+  `render.json` `pausedFrame` (0.25 s). The loop keeps running so input
+  (gamepad Start) is still read, meshes that arrive still show, and a
+  window resize is redrawn within a quarter second. Playing is unchanged.
+- Checked in the browser pane: paused, about one frame in two is drawn
+  (the hidden pane throttles rAF, so the exact rate is unmeasured);
+  playing, every frame; no console errors. Battery use on a real laptop
+  is unmeasured.
+
 ### 2026-10-31: Foamers are blocks, smoothing removed (Claude)
 
 - Paul approved the menace pass ("These are excellent") and locked in

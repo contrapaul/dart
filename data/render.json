@@ -11,6 +11,7 @@
     "rim": 0.22,
     "rimPower": 3
   },
+  "pausedFrame": 0.25,
   "ao": {
     "levels": [0.5, 0.68, 0.84, 1.0]
   }
