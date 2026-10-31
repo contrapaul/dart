@@ -169,8 +169,10 @@ health 6). Everything about how damage works lives here:
 - `attacks.needs`: part ids, at least one still attached; `[]` always.
   The first attack whose needs are met is used.
 - The capsule is no longer in data. Work it out from the rig at spawn:
-  radius half the wider of the body part's x and z size, height
-  `rigHeight(rig)`.
+  radius `capsuleShare` (0.6) times half the narrower of the body part's
+  x and z size, height `rigHeight(rig)`. It must sit inside the body's
+  voxels so darts hit the parts, not the capsule (as GAME-03's did). A
+  dart that hits only the capsule does no damage.
 
 ## `FoamerPart` (`foamer-part.ts`)
 
