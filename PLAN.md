@@ -483,7 +483,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | GAME-09 | Weapon framework from JSON data, 3 blasters from Paul's cards | F (B for data) | PRE-04 |
 | ENG-08 | AI director (attack tokens), state machine base, navmesh | A | GAME-03 |
 | ENG-10a | Foamer sandbox: greybox rigs per role, movement styles, `sandbox.html` | Claude (done) | ENG-09 |
-| ENG-10 | Foamer parts: the F01 rig in game, per-part damage, break-off, handicaps, foam-core wounds, going down and popping (card: `tasks/ENG-10.md`) | Pi (in progress) | ENG-10a |
+| ENG-10 | Foamer parts: the F01 rig in game, per-part damage, break-off, handicaps, foam-core wounds, going down and popping (card: `tasks/ENG-10.md`) | Pi (review) | ENG-10a |
 | GAME-10 | 3 Foamer types (fodder ranged, charger, heavy) | F | ENG-08, ENG-10, PRE-05 |
 | ART-00 | Spike: install Hunyuan3D locally on the Mac, generate one test blaster from an image, record time per model and quality. Go / no-go for the 3D route | A + P | |
 | ART-01 | Reference to design brief for 3 blasters | Vision model | PRE-03 |
@@ -591,3 +591,4 @@ All twelve answered 2026-10-29.
 | 2026-10-31 | Foamer movement styles blend over 0.15 s so no joint snaps between phases; a test enforces it. | 7.3 |
 | 2026-10-31 | Foamers are blocky voxels, not smoothed (Paul, after comparing both in the sandbox). Surface nets (ENG-09) removed; replaces the 2026-10-29 and ENG-09 smoothing decisions. Painted details no longer need to be 3 voxels wide. | 7.4 |
 | 2026-10-31 | The game's test Foamer is rig F01: a root body carries only the movement capsule (radius half the wider of the body part's x and z size, height the rig's, on the body centre line), and each rig part is its own voxel volume and kinematic body posed from `solvePose` (ENG-10 stage 1). A dart that hits the capsule counts whole-Foamer damage until stage 2. | 7.3 |
+| 2026-11-01 | The card's `down.sinkSpeed` 0.35 m/s could not meet the card's own test 12 budget (topple + lie + 3 s versus a 2.6 m sink for F01), so `data/foamers.json` raises it to 1.2 m/s (ENG-10 stage 3). | 4.1 |

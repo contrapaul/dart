@@ -37,7 +37,7 @@ shadows are never black, and a rim light on edges facing away from the
 camera. The course boxes, floor, blaster and darts keep their old
 materials.
 
-In progress: ENG-10 (Pi, branch `eng-10`): the F01 rig in the game with part damage, going down and popping. Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
+In progress: ENG-10 (Pi, branch `eng-10`): the F01 rig in the game is built (part damage, going down, popping); all three stages committed, awaiting review. Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
@@ -69,45 +69,60 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-10-31: ENG-10 stage 2 built (part damage, breaking, handicaps, attacks, stagger)
+### 2026-11-01: ENG-10 complete: going down, catastrophic pops, broken piece fixes (Pi, Qwen 3.8-27b)
 
-Stage 2 of the test Foamer is committed on `eng-10`. What was built (card
-"ENG-10, The system"):
+All three stages of the test Foamer are committed on `eng-10`. What was
+built (card "The system"):
 
-- Part damage. A dart hit is owned by the part that carved it (the movement
-  capsule alone takes no damage). The part's hp falls by damage times the
-  kind's hit factor, and the Foamer's health falls by that times the kind's
-  total factor. The hit is stamped with the system time for the
-  catastrophic window (used by stage 3). The wound paints foam-core in a
-  shell around the carve crater, in the hit part only. At health 0 the
-  Foamer pops as in stage 1; going down arrives in stage 3.
-- Breaking. A part (never the body) breaks when its hp hits 0 or when it
-  has lost wearBreak of its start voxels. Both the damage case and the wear
-  case are checked on the hit and once per part in update. The part and its
-  children leave targets and parts, a foam-core stump paints on the parent,
-  and one dynamic piece falls: one Rapier body, a cuboid collider per part,
-  launched out and up from the break. Pieces are capped at brokenParts.max
-  (oldest dropped), then sit at their lifetime, then sink and are removed.
-- Handicaps. Missing legs lower speed (some-legs and no-legs factors); with
-  no legs the body is pinned to the floor and skids. A missing head halves
-  the turn rate.
-- Attacks. In range the Foamer takes the first attack whose needs are all
-  attached; an empty needs list is always ready. It winds up, strikes
-  (calling onBonk with the attack id when in range) and recovers, using
-  windupMotion and strikeMotion for the pose.
-- Stagger. A break staggers the Foamer for the stagger time (no move, no
-  facing, a wobble); a stagger that lands during a windup cancels the
-  attack.
+- Per part: the rig F01 runs as one root body (movement capsule) plus one
+  `FoamerPart` per rig part (own voxel volume, kinematic body and mesh),
+  posed each step from `solvePose` with eased motions. A dart hit is
+  owned by the part that carved it; the part's hp and the Foamer's
+  health fall by the kind's factors, and the wound paints foam-core in
+  the hit part only. A part (never the body) breaks when its hp hits 0
+  or it has lost wearBreak of its voxels; the stump paints on both
+  sides, one dynamic piece falls, the Foamer staggers and loses what
+  the part did (legs: speed, arms: attacks, head: turn rate).
+- Stage 3: at health 0 the Foamer pops if the damage in the last
+  catastrophic.window seconds is at least catastrophic.share of max
+  health, otherwise it goes down (state down: stops moving and
+  attacking, parts leave `targets` and lose their colliders, the root
+  capsule is removed, then it topples over down.topple, lies down.lie,
+  sinks at down.sinkSpeed until fully below the floor, and is
+  disposed). Losing the head and any arm downs it at any health. Pop is
+  unchanged otherwise; its broken pieces are left to sink. Downed
+  Foamers count as gone for the spawner; past down.max the oldest
+  (not yet sinking) starts sinking at once.
+- Stage 2 review fixes: `VolumeMesh.dropColliders()` removes the chunk
+  colliders and stops later remeshes from rebuilding them, so a broken
+  piece (and a downed Foamer) keeps drawing but darts pass through; a
+  piece that starts sinking also disables its own colliders besides
+  fixing the body; the piece sink uses brokenParts.sinkTime instead of
+  the old 0.35 m/s; breakPart's launch uses the real step dt.
 
-Also applied in this commit, from the stage 1 review: the movement capsule
-is now capsuleShare times half the narrower of the body's x and z size
-(capsuleShare 0.6, in foamers.json), so a capsule-only dart does no damage;
-and foamers.test.ts test 6 aims at the body again.
+Decisions: the pop-or-down call sits in `handleHit`, on the killing hit:
+the recent damage list keeps every hit since spawn (it is tiny: one
+entry per hit). The card's data `down.sinkSpeed` 0.35 m/s could not meet
+the card's own test 12 budget (sink depth is the lying top corner plus
+the rig height, about 2.6 m for F01: 7.5 s at 0.35 m/s, the budget is
+topple + lie + 3 s): `data/foamers.json` now has 1.2 m/s.
+`src/foamers/foamer-model.ts` deleted (nothing used it any more).
 
-Verified: `npx tsc --noEmit`, `npm test` (the parts suite, card tests 1 to
-11, and the stage 1 suite) and `npm run build` all pass. Not yet verified in
-a browser: the wound and stump paint, the falling pieces under the mesher
-pool, and the 10-Foamer benchmark from the card's done list.
+Old tests that changed, and why: in `foamers.test.ts` old 7, 8 and 8b
+fired single darts until the pop, but a single dart kill now downs the
+Foamer, so they fire a three-dart burst (a `burst()` helper; the burst
+clears the catastrophic share); 8b now includes the suction dart in the
+burst (it lands the popping hit). New in `parts.test.ts`: 6b (broken
+piece keeps its mesh, part body collider-free), 12 to 15 (card test
+12's single-dart kills use closures to dodge TS narrowing); 15 breaks
+legR by wear instead of darts, because the fallen legL piece lands on
+the dart line. The sandbox's `rig.test.ts` is untouched.
+
+Verified: `npx tsc --noEmit`, `npm test` (14 files, 101 tests, 2 skipped)
+and `npm run build`. Unverified (the reviewer checks those): the
+browser at port 5174 (walk, wounds and stumps, topple and sink, pop,
+stuck darts), and the 10-Foamer frame times and per-part remesh worker
+time from the card's done list.
 
 ### 2026-10-31: F01 stands on its feet (Claude)
 
@@ -130,41 +145,6 @@ pool, and the 10-Foamer benchmark from the card's done list.
   (the hidden pane throttles rAF, so the exact rate is unmeasured);
   playing, every frame; no console errors. Battery use on a real laptop
   is unmeasured.
-
-### 2026-10-31: ENG-10 stage 1: Foamer built from rig parts (Pi, Qwen 3.8-27b)
-
-- The test Foamer is now rig F01: a root kinematic body carrying only the
-  movement capsule, plus one `FoamerPart` per rig part (each with its own
-  voxel volume, kinematic body and mesh collider). New
-  `src/foamers/foamer-part.ts` and `src/foamers/foamer.ts`; `foamers.ts`
-  spawns every part into `targets` so darts carve the part they hit;
-  `rig-states.ts` builds the walk/attack/stagger/down target motions for
-  the game's state-driven Foamer; the motion eases toward its target with
-  `poseBlend`, and each part body follows the translation and rotation of
-  its `solvePose` matrix (the squash scale stays on the drawn group only).
-  Damage is still whole-Foamer in this stage: a part hit or a capsule hit
-  lowers `health` as before, and at zero the Foamer pops, per part.
-- Decisions: the capsule sits on the body centre line at the root origin
-  (radius half the wider of the body part's x and z size, height
-  `rigHeight`), not at the voxel corner as GAME-03's body was; `GameRig =
-  RigSpec & { health }` because the rigs' `health` is in the data but not
-  the type; part health is `max(minHp, round(rig.health * hpShare))` from
-  `data/foamers.json`; a capsule hit counts as a whole-Foamer hit until
-  stage 2 makes all damage per part.
-- Tests: `tests/foamers/parts.test.ts` new (card tests 1 to 3). In
-  `foamers.test.ts`: test 1 (single-volume model) and 3b (single-mesh
-  alignment) are replaced by the per-part tests, so they skip with a
-  comment; test 6 aims at the head because the capsule (as wide as the
-  body, its face 0.05 m in front of the body's) eats a centre dart without
-  carving; test 5's bonk timings match the data `attacks` entry; test 3c
-  checks a part's drawn matrix at alpha 0, 0.5 and 1. The card's leg floor
-  bound is relaxed to 0.15 m: F01's club corner is its ground contact, so
-  the lowest filled leg voxel is 0.11 m up.
-- 86 tests pass (2 skipped), plus the sandbox's `rig.test.ts` unchanged.
-  Unverified in the browser: how the walk, windup and pop actually look,
-  and frame times with parts (10 Foamers). Stage 2 does part damage,
-  breaking, handicaps and wounds; stage 3 does stagger, going down and
-  popping beyond this.
 
 ### 2026-10-31: Foamers are blocks, smoothing removed (Claude)
 

@@ -14,10 +14,9 @@ import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 
 // Spawning, per-part dart damage with foam-core wounds, breaking,
-// handicaps, attacks, stagger and popping for the test Foamer (rig F01).
-// One shared Rapier character controller serves every Foamer: it is
-// stateless between steps. ENG-10 stage 2. Going down waits for stage 3:
-// at zero health the Foamer pops, as stage 1 did.
+// handicaps, attacks, stagger, going down and popping for the test
+// Foamer (rig F01). One shared Rapier character controller serves every
+// Foamer: it is stateless between steps. ENG-10 stage 3.
 
 const SPEC = foamerData.test;
 const SPAWNER = foamerData.spawner;
@@ -42,6 +41,9 @@ interface BrokenPiece {
   topY: number;
   age: number;
   sinking: boolean;
+  /** Sink drop per second: from where it lies to fully below the floor in
+   *  brokenParts.sinkTime, computed from its top corner when it starts. */
+  sinkSpeed: number;
 }
 
 // Scratch, shared by the system; only written sequentially.
@@ -71,8 +73,11 @@ export class FoamerSystem {
   readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0 };
   /** Fallen pieces, oldest first. Capped at brokenParts.max. */
   readonly broken: BrokenPiece[] = [];
+  /** Downed Foamers, in the order they went down (oldest first). */
+  readonly downed: Foamer[] = [];
   /** System clock in seconds; stamps the damage window. */
   time = 0;
+  private dtPrev = 1 / 60;
 
   private cc: RAPIER.KinematicCharacterController;
   private targets: VoxelTarget[];
@@ -119,24 +124,37 @@ export class FoamerSystem {
   /** Fixed step, before world.step(). `player` is the player's position. */
   update(dt: number, player: THREE.Vector3): void {
     this.time += dt;
+    this.dtPrev = dt;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
-      this.stepFoamer(f, dt, player);
+      // Downed Foamers keep stepping (topple, sink) but no longer walk.
+      if (f.state === "down") {
+        this.stepDown(f, dt);
+      } else {
+        this.stepFoamer(f, dt, player);
+      }
+      // The attached parts' meshes refresh here (wounds, stumps); the
+      // broken pieces' meshes refresh in stepBroken.
       for (const part of f.parts.values()) part.mesh.update();
       // Wear, once per step: a part below its own health, or one that has
       // lost wearBreak of its starting voxels, breaks. The body never
       // breaks. A dart's hit that spends a part's hp is checked in
       // handleHit; this catches the slow wear.
-      for (const part of f.parts.values()) {
-        if (part.spec.kind === "body") continue;
-        if (part.hp <= 0 ||
-            part.voxelCount <= part.startVoxels * (1 - SPEC.partDamage.wearBreak))
-          this.breakPart(f, part);
+      if (f.state !== "down") {
+        for (const part of f.parts.values()) {
+          if (part.spec.kind === "body") continue;
+          if (part.hp <= 0 ||
+              part.voxelCount <= part.startVoxels * (1 - SPEC.partDamage.wearBreak))
+            this.breakPart(f, part);
+        }
+        if (!f.parts.has("head") && this.anyArmGone(f)) this.goDown(f);
       }
     }
     this.stepBroken(dt);
-    // Spawner: keep spawner.count alive.
-    if (this.list.length < SPAWNER.count) {
+    this.enforceDownCap();
+    // Spawner: keep spawner.count alive; a downed Foamer is gone for it
+    // (it will not get up again), so it repspawns while still sinking.
+    if (this.list.length - this.downed.length < SPAWNER.count) {
       this.respawn += dt;
       if (this.respawn >= SPAWNER.respawnDelay) {
         this.respawn = 0;
@@ -315,12 +333,109 @@ export class FoamerSystem {
     // checked once per step in update.
     const worn = part.voxelCount <= part.startVoxels * (1 - SPEC.partDamage.wearBreak);
     if (f.health <= 0) {
-      // Stage 3 adds going down; for now a zero-health Foamer pops, as
-      // stage 1 did, whatever the catastrophic window says.
-      this.pop(f);
+      // The card: pop if the damage taken in the last catastrophic.window
+      // seconds (the killing hit plus anything at the same moment) is at
+      // least catastrophic.share of the max health, otherwise go down.
+      const cutoff = this.time - SPEC.catastrophic.window;
+      let recent = 0;
+      for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
+      if (recent >= SPEC.catastrophic.share * f.maxHealth) this.pop(f);
+      else this.goDown(f);
       return;
     }
-    if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part); // guarded
+    if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part);
+    // The head and any arm part gone: it goes down whatever its health.
+    if (f.state !== "down" && !f.parts.has("head") && this.anyArmGone(f)) this.goDown(f);
+  }
+
+  /** Any part of kind arm that is not attached any more. */
+  private anyArmGone(f: Foamer): boolean {
+    return f.rig.parts.some((p) => p.kind === "arm" && !f.parts.has(p.id));
+  }
+
+  /** Go down (card "Go down"): it stops moving and attacking, its parts
+   *  leave targets and lose their colliders (darts pass through), and the
+   *  root capsule is removed. It then sinks away; stuck darts drop when
+   *  its bodies are disposed (darts.ts drops stuck darts whose body is
+   *  gone). Counts as gone for the spawner. */
+  private goDown(f: Foamer) {
+    if (f.state === "down") return;
+    f.state = "down";
+    f.stateTime = 0;
+    if (f.attack()) f.setAttack(null);
+    this.world.removeCollider(f.capsule, false);
+    for (const part of f.parts.values()) {
+      const t = this.targets.indexOf(part);
+      if (t >= 0) this.targets.splice(t, 1);
+      part.mesh.dropColliders();
+    }
+    this.downed.push(f);
+  }
+
+  /** Topple, lie, then sink: the body sinks at down.sinkSpeed until its
+   *  top corner is below the floor, then it is disposed and counts as
+   *  gone. Past down.max downed, the oldest drains to the floor at once. */
+  private stepDown(f: Foamer, dt: number) {
+    f.prevCentre.copy(f.centre);
+    f.prevYaw = f.yaw;
+    f.stateTime += dt;
+    if (f.sinkingNow || f.stateTime >= SPEC.down.topple + SPEC.down.lie) {
+      if (f.sinkDepth < 0) f.sinkDepth = this.topYOf(f) + f.height;
+      f.sinkDrop += SPEC.down.sinkSpeed * dt;
+    }
+    f.applyPose();
+    f.poseParts(dt, false);
+    // sinkDepth sits at -1 until sinking starts (a Foamer is usually down
+    // for down.topple + down.lie seconds before that): never dispose before
+    // it could have sunk.
+    if (f.sinkDepth >= 0 && f.sinkDrop >= f.sinkDepth) this.removeFoamer(f);
+  }
+
+  /** Past down.max not yet sinking, the oldest downed starts sinking at
+   *  once: it skips the rest of the topple and the whole lie. */
+  private enforceDownCap() {
+    for (const d of this.downed) {
+      if (this.notSinkingCount() <= SPEC.down.max) break;
+      if (d.sinkDrop > 0 || d.sinkingNow) continue;
+      d.sinkingNow = true;
+    }
+  }
+
+  private notSinkingCount(): number {
+    let n = 0;
+    for (const d of this.downed)
+      if (d.sinkDrop === 0 && !d.sinkingNow) n++;
+    return n;
+  }
+
+  /** The top corner of the Foamer's attached parts in world y (its height
+   *  as it lies for the down pose), from the current step's pose. */
+  private topYOf(f: Foamer): number {
+    let top = 0;
+    const vs = f.rig.voxelSize;
+    for (const part of f.parts.values()) {
+      const sz = part.spec.size;
+      for (const cx of [0, 1]) for (const cy of [0, 1]) for (const cz of [0, 1]) {
+        _v.set(cx * sz[0] * vs, cy * sz[1] * vs, cz * sz[2] * vs).applyMatrix4(part.pose);
+        top = Math.max(top, _v.y);
+      }
+    }
+    return top;
+  }
+
+  /** Take a done Foamer out of the world and the bookkeeping. Its broken
+   *  pieces are kept: they sink like any other. Stuck darts drop as its
+   *  bodies go away (darts.ts handles that). */
+  private removeFoamer(f: Foamer) {
+    const i = this.list.indexOf(f);
+    if (i >= 0) this.list.splice(i, 1);
+    const j = this.downed.indexOf(f);
+    if (j >= 0) this.downed.splice(j, 1);
+    for (const part of f.parts.values()) {
+      const t = this.targets.indexOf(part);
+      if (t >= 0) this.targets.splice(t, 1);
+    }
+    f.dispose(this.world);
   }
 
   /** Paint the wound: every solid voxel of the part within the dart's carve
@@ -402,7 +517,6 @@ export class FoamerSystem {
     const q2 = new THREE.Quaternion();
     part.pose.decompose(st2, q2, _sc);
     part.prevPose.decompose(_p, _q, _sc);
-    const dtPrev = 1 / 60;
     // The part's last pose change over a step (the fling), plus 1.5 m/s
     // outward from the Foamer and up.
     const out2 = _v.set(st2.x - f.centre.x, 0, st2.z - f.centre.z);
@@ -416,9 +530,9 @@ export class FoamerSystem {
         .setLinearDamping(0.2),
     );
     body.setLinvel({
-      x: (st2.x - _p.x) / dtPrev + out2.x * 1.5,
-      y: (st2.y - _p.y) / dtPrev + 1.5,
-      z: (st2.z - _p.z) / dtPrev + out2.z * 1.5,
+      x: (st2.x - _p.x) / this.dtPrev + out2.x * 1.5,
+      y: (st2.y - _p.y) / this.dtPrev + 1.5,
+      z: (st2.z - _p.z) / this.dtPrev + out2.z * 1.5,
     }, true);
     // One cuboid collider per part: its voxel bounds, inset 0.02 m, at the
     // part's density.
@@ -444,8 +558,10 @@ export class FoamerSystem {
         body,
       );
       // The fallen part is still drawn as its own group, but it is moved by
-      // the piece body, not the kinematic one.
-      p.mesh.dispose();
+      // the piece body, not the kinematic one. The mesh stays (the stump
+      // paint and later remeshes are drawn); only the colliders go, so the
+      // piece never collides with the Foamer or itself.
+      p.mesh.dropColliders();
       this.group.add(p.group);
       f.parts.delete(id);
       const t = this.targets.indexOf(p);
@@ -465,7 +581,7 @@ export class FoamerSystem {
       prevT: new THREE.Vector3(st2.x, st2.y, st2.z),
       prevQ: new THREE.Quaternion(q2.x, q2.y, q2.z, q2.w),
       bottomY: bottom, topY: top,
-      age: 0, sinking: false,
+      age: 0, sinking: false, sinkSpeed: 0,
     });
     // Stagger; a stagger during a windup cancels the attack.
     f.state = "stagger";
@@ -474,32 +590,39 @@ export class FoamerSystem {
   }
 
   /** Fall the pieces: each lies for brokenParts.lifetime, then sinks
-   *  through the floor (collisions off) at down.sinkSpeed, and is disposed
-   *  once its top corner is 0.5 m below the floor. */
+   *  through the floor (collisions off: the body is fixed and its
+   *  colliders are disabled) at the speed that takes it fully below the
+   *  floor in brokenParts.sinkTime, and is disposed. The part meshes are
+   *  refreshed each step, so the stump paint arrives. */
   private stepBroken(dt: number) {
-    const floor = 0; // the floor plane of the sandbox, world y = 0
     for (let i = this.broken.length - 1; i >= 0; i--) {
       const p = this.broken[i]!;
       const t = p.body.translation();
       const r = p.body.rotation();
       p.prevT.set(t.x, t.y, t.z);
       p.prevQ.set(r.x, r.y, r.z, r.w);
+      for (const g of p.groups) g.part.mesh.update();
       if (p.sinking) {
-        p.body.setTranslation({ x: t.x, y: t.y - 0.35 * dt, z: t.z }, false);
-        if (t.y + p.topY < floor - 0.5) this.removeBroken(i);
+        if (p.sinkSpeed <= 0) p.sinkSpeed = Math.max(p.topY, 0.2) / SPEC.brokenParts.sinkTime;
+        p.body.setTranslation({ x: t.x, y: t.y - p.sinkSpeed * dt, z: t.z }, false);
+        if (t.y + p.topY <= 0) this.removeBroken(i);
         continue;
       }
       p.age += dt;
       if (p.age < SPEC.brokenParts.lifetime) continue;
       p.sinking = true;
-      // Sink through the floor: a fixed body does not collide at all.
+      // Sink: a fixed body with disabled colliders collides with nothing.
       p.body.setBodyType(this.rapier.RigidBodyType.Fixed, false);
+      this.world.forEachCollider((c) => {
+        if (c.parent()?.handle === p.body.handle) c.setEnabled(false);
+      });
     }
   }
 
   private removeBroken(i: number) {
     const p = this.broken[i]!;
     for (const g of p.groups) {
+      g.part.mesh.dispose();
       g.part.group.removeFromParent();
       this.world.removeRigidBody(g.part.body);
     }

@@ -171,6 +171,14 @@ async function untilApproach(r: ReturnType<typeof rig>, player: THREE.Vector3, f
   if (f.state !== "approach") throw new Error(`never walked again (${f.state})`);
 }
 
+/** Count mesh nodes under a group (recursively); used to check that a
+ *  broken piece keeps its drawn chunk meshes. */
+function countMeshes(node: THREE.Object3D): number {
+  let n = 0;
+  for (const c of node.children) n += (c instanceof THREE.Mesh ? 1 : 0) + countMeshes(c);
+  return n;
+}
+
 beforeAll(async () => {
   await RAPIER.init();
 });
@@ -349,6 +357,37 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(piece.body.translation().y, "and has fallen from that height").toBeLessThan(hi - 0.01);
   });
 
+  it("6b. a broken piece keeps its mesh: the part group still has a mesh child after the mesher runs, and the part's kinematic body has no colliders", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    const leg = f.parts.get("legL")!;
+    await breakOff(r, player, f, "legL");
+    // The broken part's mesh is refreshed in stepBroken; let it run.
+    tick(r, player);
+    await new Promise((res) => setTimeout(res, 0));
+    // The stump paint and the part's voxels are still drawn: the group
+    // (re-parented under the system) has at least one mesh child.
+    const piece = r.foamers.broken[0]!;
+    const partGroup = piece.groups.find((g) => g.part === leg)!;
+    expect(partGroup).toBeDefined();
+    expect(countMeshes(partGroup.part.group), "piece mesh remains").toBeGreaterThan(0);
+    // The part's own kinematic body carries no colliders any more.
+    let partColliders = 0;
+    r.world.forEachCollider((c) => {
+      if (c.parent()?.handle === leg.body.handle) partColliders++;
+    });
+    expect(partColliders, "part body has no colliders").toBe(0);
+    // Falling pieces' colliders (the cuboids) still live on the piece body.
+    let pieceColliders = 0;
+    r.world.forEachCollider((c) => {
+      if (c.parent()?.handle === piece.body.handle) pieceColliders++;
+    });
+    expect(pieceColliders, "piece body keeps its cuboids").toBeGreaterThan(0);
+  });
+
   it("7. one leg gone: 50% (within 15%) of intact distance over 60 steps; both gone: 25%, and its lowest part is within 0.1 m of the floor", async () => {
     const player = new THREE.Vector3(0, 1.6, 4);
     const run = async (breakParts: string[]) => {
@@ -492,5 +531,176 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     const start = f.centre.clone();
     for (let i = 0; i < 60; i++) tick(r, player);
     expect(f.centre.distanceTo(start), "moves again").toBeGreaterThan(0.001);
+  });
+
+  it("12. going down: single darts at the body every ~0.2 s down it; no colliders left and no parts in targets; body pitch reaches at least 1 rad within the topple; it is disposed within topple + lie + 3 s; a stuck suction dart is no longer stuck after that", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    // A suction dart rides it while it is still alive.
+    r.darts.fire(new THREE.Vector3(0, 0.9, 10), new THREE.Vector3(0, 0, -1), "suction");
+    for (let i = 0; i < 240 && r.darts.stats().stuck < 1 && f.state !== "down"; i++) tick(r, player);
+    expect(r.darts.stats().stuck, "a suction dart is stuck").toBe(1);
+    // Single standard darts at the body, spaced 0.2 s apart (well over the
+    // 0.1 s catastrophic window, so every hit counts alone), until health
+    // is 0 and it is down.
+    const body = f.parts.get("body")!;
+    // The state can change inside tick (type narrowing does not follow
+    // method calls), so the check goes through a closure.
+    const isDown = () => f.state === "down";
+    let shots = 0;
+    while (!isDown() && shots < 30) {
+      fireAt(r, body, [0, 0, -1]);
+      shots++;
+      for (let i = 0; i < 12 && !isDown(); i++) tick(r, player);
+    }
+    expect(f.state, "it went down, not popped").toBe("down");
+    expect(r.foamers.stats.popped).toBe(0);
+    // No colliders left on the root or on any part body, and no parts in
+    // the shared target list (darts pass through it).
+    await new Promise((res) => setTimeout(res, 0));
+    const handles = [f.root.handle, ...[...f.parts.values()].map((p) => p.body.handle)];
+    let remaining = 0;
+    r.world.forEachCollider((c) => {
+      const parent = c.parent();
+      if (parent && handles.includes(parent.handle)) remaining++;
+    });
+    expect(remaining, "no colliders left").toBe(0);
+    let inTargets = 0;
+    for (const p of f.parts.values()) if (r.targets.includes(p)) inTargets++;
+    expect(inTargets, "no parts in targets").toBe(0);
+    // Body pitch reaches at least 1 rad within the topple.
+    let maxPitch = 0;
+    const toppleSteps = Math.ceil(SPEC.down.topple / DT);
+    for (let i = 0; i < toppleSteps; i++) {
+      tick(r, player);
+      maxPitch = Math.max(maxPitch, f.motion.pitch);
+    }
+    expect(maxPitch, "at least 1 rad of pitch inside the topple").toBeGreaterThanOrEqual(1);
+    // Disposed within topple + lie + 3 s (the sink at down.sinkSpeed falls
+    // well inside the 3 s of slack): this Foamer's bodies leave the world.
+    const budget = Math.ceil((SPEC.down.topple + SPEC.down.lie + 3) / DT);
+    let gone = false;
+    for (let i = 0; i < budget; i++) {
+      if (r.world.getRigidBody(f.root.handle) === null) { gone = true; break; }
+      tick(r, player);
+    }
+    expect(gone, "disposed within the budget").toBe(true);
+    expect(r.world.getRigidBody(f.root.handle)).toBeNull();
+    for (const p of f.parts.values()) expect(r.world.getRigidBody(p.body.handle)).toBeNull();
+    // The stuck suction dart is no longer stuck after it is gone (discards
+    // darts already at the moment it went down, and the stuck ride ends
+    // either way when its bodies are disposed).
+    for (let i = 0; i < 60; i++) tick(r, player);
+    expect(r.darts.stats().stuck, "the suction dart fell").toBe(0);
+  });
+
+  it("13. head and an arm gone with health above zero: the Foamer goes down", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    // Two darts at armL take the arm (2 hp), two at the head (2 hp).
+    await breakOff(r, player, f, "armL");
+    expect(f.state, "armL alone does not down it").not.toBe("down");
+    await breakOff(r, player, f, "head");
+    expect(f.state, "head plus an arm downs it").toBe("down");
+    expect(f.health, "still above zero").toBeGreaterThan(0);
+    expect(r.foamers.stats.popped).toBe(0);
+  });
+
+  it("14. catastrophic: three standard darts on the body in the same step at low health pop it (all bodies gone, debris spawned); one dart killing it at 1 health downs it instead", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 1);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    // Health at 3 or less: three standard darts (3 >= 0.4 x 6) fly in
+    // back to back and land in the same step: the whole blast counts in
+    // the window, so it pops.
+    f.health = 3;
+    const rootHandle = f.root.handle;
+    const partHandles = [...f.parts.values()].map((p) => p.body.handle);
+    for (let i = 0; i < 3; i++) fireAt(r, f.parts.get("body")!, [0, 0, -1]);
+    for (let i = 0; i < 240 && r.foamers.stats.popped < 1; i++) tick(r, player);
+    expect(r.foamers.stats.popped, "it popped").toBe(1);
+    expect(r.foamers.live).toBe(0);
+    expect(r.world.getRigidBody(rootHandle)).toBeNull();
+    for (const h of partHandles) expect(r.world.getRigidBody(h)).toBeNull();
+    expect(r.debris.live, "debris spawned").toBeGreaterThan(0);
+
+    // One dart killing it at 1 health: the single hit is under the
+    // catastrophic share, so it goes down instead.
+    const r2 = rig();
+    const f2 = r2.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r2.world.step();
+    await settleAll(r2, f2);
+    f2.health = 1;
+    fireAt(r2, f2.parts.get("body")!, [0, 0, -1]);
+    for (let i = 0; i < 240 && f2.state !== "down"; i++) tick(r2, player);
+    expect(f2.state, "one dart downs it").toBe("down");
+    expect(r2.foamers.stats.popped).toBe(0);
+  });
+
+  it("15. caps: broken pieces stay at or under brokenParts.max; with down.max + 2 Foamers downed, at least two are sinking early", async () => {
+    // Pieces: the first break (a dart-torn legL) leaves one real piece,
+    // then the list is seeded with 23 dummy pieces. The second break
+    // (legR, by wear: the fallen legL piece blocks darts at it) evicts the
+    // oldest dummy and would push the list to the cap, so it never grows
+    // past brokenParts.max.
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    await breakOff(r, player, f, "legL");
+    let maxSeen = r.foamers.broken.length;
+    for (let i = 0; i < SPEC.brokenParts.max - 1; i++) {
+      const part = new FoamerPart(RAPIER, r.world, fakeMesher(), RIG.parts[1]!, RIG.voxelSize, RIG.material, 1);
+      const body = r.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic());
+      part.mesh.dispose();
+      r.foamers.broken.push({
+        body,
+        groups: [{ part, local: new THREE.Matrix4() }],
+        owner: f,
+        prevT: new THREE.Vector3(),
+        prevQ: new THREE.Quaternion(),
+        bottomY: 0, topY: 1,
+        age: 0, sinking: false, sinkSpeed: 0,
+      });
+    }
+    maxSeen = Math.max(maxSeen, r.foamers.broken.length);
+    // Break legR by wear: carve it past wearBreak, then the once-per-step
+    // check in update breaks it (the fallen legL piece blocks darts at it).
+    const legR = f.parts.get("legR")!;
+    const limit = legR.startVoxels * (1 - SPEC.partDamage.wearBreak);
+    for (let n = 0; legR.voxelCount > limit && n < 60; n++)
+      carveSphere(legR.volume, 3, 2 + (n % 5) * 1.1, 3, 1.8);
+    tick(r, player);
+    expect(f.parts.has("legR"), "legR broke by wear").toBe(false);
+    maxSeen = Math.max(maxSeen, r.foamers.broken.length);
+    expect(maxSeen, "never past the cap").toBeLessThanOrEqual(SPEC.brokenParts.max);
+    expect(r.foamers.broken.length, "at the cap, never over").toBe(SPEC.brokenParts.max);
+
+    // Down cap: down Foamers until max + 2; at least two must be sinking
+    // early (before their own topple + lie would have finished).
+    const r2 = rig();
+    const refs: Foamer[] = [];
+    for (let i = 0; i < SPEC.down.max + 2; i++) {
+      const g = r2.foamers.spawn(new THREE.Vector3(0, 0, -4 - i * 2.2))!;
+      r2.world.step();
+      const body = g.parts.get("body")!;
+      await settle(body.mesh, r2.world);
+      g.health = 1;
+      fireAt(r2, body, [0, 0, 1]);
+      for (let s = 0; s < 360 && g.state !== "down"; s++) tick(r2, player);
+      expect(g.state, `foamer ${i + 1} went down`).toBe("down");
+      refs.push(g);
+    }
+    const early = refs.filter((g) => g.sinkingNow || g.sinkDrop > 0).length;
+    expect(early, "at least two are sinking early").toBeGreaterThanOrEqual(2);
   });
 });

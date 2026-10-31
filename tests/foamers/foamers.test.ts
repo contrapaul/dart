@@ -71,6 +71,17 @@ function shapesOf(world: RAPIER.World, handle: number) {
   };
 }
 
+/** Fire a three-dart burst at the current body front. A single dart kill
+ *  now goes down, only a burst pops (stage 3), so the pop tests kill with
+ *  bursts instead of one dart at a time. */
+function burst(r: ReturnType<typeof rig>, f: NonNullable<ReturnType<FoamerSystem["spawn"]>>) {
+  const body = f.parts.get("body")!;
+  const c = body.voxelToWorld(new THREE.Vector3(
+    body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
+  for (const off of [-0.2, 0, 0.2])
+    r.darts.fire(new THREE.Vector3(c.x + off, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "standard");
+}
+
 beforeAll(async () => {
   await RAPIER.init();
 });
@@ -158,7 +169,7 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     expect(body.voxelCount).toBeLessThan(before);
   });
 
-  it("7. darts down to zero pop it: out of the lists, bodies gone, foam chunks flying", async () => {
+  it("7. a burst kills and pops it: out of the lists, bodies gone, foam chunks flying", async () => {
     const r = rig();
     // The player stands one metre from the Foamer, in reach of its bonk,
     // so it holds still through the fight.
@@ -169,8 +180,15 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     // The body part must be meshed, so its trimesh collider exists: the
     // darts carve the part, not the root capsule.
     await settle(f.parts.get("body")!.mesh, r.world);
-    while (r.foamers.stats.popped === 0) {
+    // A single dart that takes the health to 0 now downs the Foamer
+    // (it only pops when the killing damage is a burst, ENG-10 stage 3),
+    // so each round fires three darts close together: they land in the
+    // same step, count as one blast and clear the catastrophic share.
+    let rounds = 0;
+    while (r.foamers.stats.popped === 0 && rounds++ < 20) {
       r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+      r.darts.fire(new THREE.Vector3(0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+      r.darts.fire(new THREE.Vector3(-0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
       for (let i = 0; i < 120 && r.foamers.stats.popped === 0 && f.health > 0; i++) {
         tick(r, player);
       }
@@ -209,13 +227,13 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     const moved = f.centre.clone().sub(start);
     expect(dart1.distanceTo(dart0.add(moved))).toBeLessThan(0.05);
     expect(r.darts.stats().stuck).toBe(1);
+    // A single dart kill now goes down; only a burst pops (stage 3), so
+    // each round fires three darts at the body front (test 7's method).
+    let rounds = 0;
     while (r.foamers.stats.popped === 0) {
-      const aim = f.centre.clone().setY(1.18);
-      const dir = aim.clone().sub(new THREE.Vector3(0, 0.4, 3)).normalize();
-      r.darts.fire(new THREE.Vector3(0, 0.4, 3), dir, "standard");
-      for (let i = 0; i < 120 && r.foamers.stats.popped === 0 && f.health > 0; i++) {
-        tick(r, player);
-      }
+      expect(rounds++, "popped within 20 rounds").toBeLessThan(20);
+      burst(r, f);
+      for (let i = 0; i < 120 && r.foamers.stats.popped === 0; i++) tick(r, player);
     }
     expect(r.foamers.stats.popped).toBe(1);
     expect(r.world.getRigidBody(rootHandle)).toBeNull();
@@ -223,14 +241,21 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     expect(r.darts.stats().stuck).toBe(0);
   });
 
-  it("8b. a suction dart that lands the popping hit falls clear instead of sticking to the removed body", async () => {
+  it("8b. darts that land the popping hit fall clear instead of sticking to the removed body", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 1);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     await settle(f.parts.get("body")!.mesh, r.world);
-    f.health = SPEC.damage.suction;
-    r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "suction");
-    for (let i = 0; i < 120 && r.foamers.stats.popped === 0; i++) tick(r, player);
+    // The suction dart flies first and starts the burst; the two
+    // standards behind it follow (all in the window), and the last one
+    // kills.
+    f.health = 3;
+    const body = f.parts.get("body")!;
+    const c = body.voxelToWorld(new THREE.Vector3(
+      body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
+    r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "suction");
+    burst(r, f);
+    for (let i = 0; i < 240 && r.foamers.stats.popped === 0; i++) tick(r, player);
     expect(r.foamers.stats.popped).toBe(1);
     for (let i = 0; i < 30; i++) tick(r, player);
     expect(r.darts.stats().stuck).toBe(0);

@@ -4,7 +4,7 @@ import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
-import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion } from "./rig-states";
+import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, downMotion } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -48,6 +48,16 @@ export class Foamer {
   stateTime = 0;
   /** Vertical speed (m/s); the system adds gravity and walks it. */
   vy = 0;
+  /** Going down (ENG-10 stage 3): the body sits sinkDrop (m) below the
+   *  floor; sinkDepth is the drop that takes it to fully below the floor
+   *  (computed at the first sink step, from its lying pose); sinkingNow is
+   *  the immediate over-cap sink (down.max). */
+  sinkDrop = 0;
+  sinkDepth = -1;
+  sinkingNow = false;
+  /** The rig's height (m): the top corner must sink below the floor by this
+   *  much before the body is disposed. */
+  height = 0;
   /** Walk phase; the system advances it with distance walked. */
   gait = 0;
   /** The eased motion, one step toward its state's target. */
@@ -102,6 +112,7 @@ export class Foamer {
     this.prevCentre.copy(feet);
     this.maxHealth = rig.health;
     this.health = rig.health;
+    this.height = rigHeight(rig);
     this.poseBlend = spec.poseBlend;
 
     const body = rig.parts.find((p) => p.parent === null)!;
@@ -185,6 +196,7 @@ export class Foamer {
     if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
     else if (this.state === "stagger") staggerMotion(this.stateTime, t);
+    else if (this.state === "down") downMotion(this.rig, THREE.MathUtils.clamp(this.stateTime / this.spec.down.topple, 0, 1), t);
     else if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
     else restInto(t);
     // Missing legs: roll the body 0.15 rad toward each missing side.
@@ -206,11 +218,10 @@ export class Foamer {
     }
     for (const id of [...m.rot.keys()]) if (!t.rot.has(id)) m.rot.delete(id);
     solvePose(this.rig, this.centre, this.yaw, m, _poses);
-    // All legs gone: the attached parts' lowest corner (box corners move
-    // with the roll; the lowest filled voxel is close enough, the pose is
-    // axis-aligned at rest) must sit on the floor: shift the whole rig to
-    // bring it down to the ground.
-    if (this.legs().length === 0) {
+    // All legs gone, or down: the attached parts' lowest corner (box
+    // corners move with the roll) must sit on the floor (a downed body
+    // shifted down by its sinkDrop): bring the whole rig to the ground.
+    if (this.legs().length === 0 || this.state === "down") {
       let low = Infinity;
       for (const [pid, pm] of _poses) {
         if (!this.parts.has(pid)) continue;
@@ -221,7 +232,7 @@ export class Foamer {
           low = Math.min(low, _fitV.y);
         }
       }
-      this.centre.y -= low; // a gap posts: get lower; buried: get higher
+      this.centre.y -= low + (this.state === "down" ? this.sinkDrop : 0); // a gap posts: get lower; buried: get higher
       solvePose(this.rig, this.centre, this.yaw, m, _poses);
     }
     for (const [id, part] of this.parts) part.setPose(_poses.get(id)!);
