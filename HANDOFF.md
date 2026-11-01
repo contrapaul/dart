@@ -39,6 +39,8 @@ materials.
 
 ENG-10 done and deployed 2026-11-01: the test Foamer is rig F01 with part damage, break-off, foam-core wounds, crawling, going down and popping. Paul's play test notes are in the log (stutter still there, one blast pops, canned topple). Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
 
+ENG-11 done and deployed 2026-11-01: `range.html` is a plain test range with a frame-time graph (back-quote), switches, a test panel and a Benchmark button whose report can be copied. Next: Paul runs the Benchmark in his own browser to find the stutter.
+
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
 github.com/contrapaul/dart (public), MIT licence.
