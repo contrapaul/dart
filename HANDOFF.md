@@ -71,6 +71,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-00 round 4: B01 guard clearance (Kimi via Pi)
+
+- Moved B01's guard and trigger forward by 0.025 m and pulled the grip's top
+  front edge back to Y 0, so the full guard opening and yellow blade are
+  visible from the side without grip overlap.
+- Moved the magazine and receiver seating forward by the same amount. The
+  guard-to-magazine gap remains 0.045 m and the magazine is 0.065 m clear of
+  the pump. Added a 512 x 512 trigger close-up to the build script.
+- All five renders were inspected after both builds. Every contract check
+  passes, including trigger pull direction: 17,284 triangles, 747,800 bytes
+  and six materials. Two consecutive GLB exports were byte-identical with
+  SHA-256
+  `de36d1a2e80cc92a6c15d25ac9e5ee70b2ab1212ce6a7385390ee06abe34aaf8`.
+- Unverified: Paul's visual approval and in-game animation.
+
 ### 2026-11-01: ART-00 round 3: B01 trigger and magazine (Kimi via Pi)
 
 - Replaced B01's wire trigger with a 3 cm flat yellow blade with a concave

@@ -1,4 +1,4 @@
-"""Build B01 from the approved written brief, export GLB, render four views."""
+"""Build B01 from the approved written brief, export GLB, render five views."""
 from pathlib import Path
 import math
 import bpy
@@ -54,10 +54,10 @@ GRIP_H, GRIP_W = 0.11, 0.03
 GRIP_RIBS = 6
 GUARD_W = 0.024
 TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.03, 0.012, 0.008
-TRIGGER_ORIGIN = (0.0, 0.026, 0.047)
+TRIGGER_ORIGIN = (0.0, 0.051, 0.047)
 
 MAG_H, MAG_D, MAG_W = 0.13, 0.06, 0.022
-MAG_Y, MAG_Z = 0.115, 0.005
+MAG_Y, MAG_Z = 0.140, 0.005
 DART_COUNT, DART_L, DART_R = 8, 0.045, 0.004
 DART_TIP_L, DART_Z0, DART_Z_STEP = 0.009, -0.043, 0.012
 
@@ -212,9 +212,9 @@ def build_model():
     body_points = [
         (body_back, body_bottom + 0.01),
         (body_back + 0.007, body_bottom),
-        (0.095, body_bottom),
-        (0.105, body_bottom - 0.01),
-        (0.135, body_bottom - 0.01),
+        (0.120, body_bottom),
+        (0.130, body_bottom - 0.01),
+        (0.160, body_bottom - 0.01),
         (body_front, body_bottom + 0.03),
         (body_front, body_top - 0.025),
         (body_front - 0.03, body_top),
@@ -301,18 +301,18 @@ def build_model():
                            (x, MUZZLE_Y - TIP_L / 2, z), TIP_OUTER,
                            BARREL_INNER, TIP_L, orange))
 
-    grip_points = [(0.025, 0.045), (-0.025, 0.045),
+    grip_points = [(0.0, 0.045), (-0.025, 0.045),
                    (-0.055, 0.045 - GRIP_H), (-0.015, 0.045 - GRIP_H)]
     static.append(profile("Angled grip", grip_points, GRIP_W, charcoal))
     for i in range(GRIP_RIBS):
         static.append(box("Grip rib", (0, -0.004 - i * 0.005, 0.025 - i * 0.014),
                           (GRIP_W + 0.003, 0.032, 0.003), charcoal, SMALL_BEVEL))
-    guard_outer = [(-0.019, 0.018), (-0.005, 0.002), (0.025, 0.002),
-                   (0.038, 0.018), (0.04, 0.039), (0.034, 0.049),
-                   (-0.014, 0.047)]
-    guard_inner = [(-0.009, 0.022), (0.001, 0.01), (0.028, 0.01),
-                   (0.036, 0.022), (0.036, 0.032), (0.034, 0.041),
-                   (-0.005, 0.039)]
+    guard_outer = [(0.006, 0.018), (0.020, 0.002), (0.050, 0.002),
+                   (0.063, 0.018), (0.065, 0.039), (0.059, 0.049),
+                   (0.011, 0.047)]
+    guard_inner = [(0.016, 0.022), (0.026, 0.01), (0.053, 0.01),
+                   (0.061, 0.022), (0.061, 0.032), (0.059, 0.041),
+                   (0.020, 0.039)]
     guard = profile("Trigger guard", guard_outer, GUARD_W, charcoal)
     cutter = profile("Guard opening", guard_inner, GUARD_W + 0.02, charcoal, 0)
     mod = guard.modifiers.new("Moulded guard opening", "BOOLEAN")
@@ -483,6 +483,15 @@ def render_views():
         scene.render.filepath = str(RENDER_DIR / (name + ".png"))
         bpy.ops.render.render(write_still=True)
         print("Rendered", scene.render.filepath)
+
+    closeup = add_camera("Trigger closeup camera", (1.2, 0.035, 0.025),
+                         (0, 0.035, 0.025))
+    closeup.data.ortho_scale = 0.105
+    scene.camera = closeup
+    scene.render.resolution_x, scene.render.resolution_y = (512, 512)
+    scene.render.filepath = str(RENDER_DIR / "trigger-closeup.png")
+    bpy.ops.render.render(write_still=True)
+    print("Rendered", scene.render.filepath)
 
 
 def main():

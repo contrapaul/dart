@@ -99,3 +99,32 @@ trigger pull-direction rule. Two consecutive exports were byte-identical,
 both with SHA-256
 `d4da3a16ca2baca7756fed78aa113485fdaccf7f79be448e1f39e65d55d8a489`.
 Paul's visual approval and in-game animation remain unverified.
+
+## Round 4
+
+Start: 2026-11-01 19:35:02 CST (`date`).
+End: 2026-11-01 19:37:06 CST (`date`).
+Elapsed: about 2 minutes.
+
+Moved the trigger guard and trigger forward by 0.025 m. The `trigger` origin
+is now (0, 0.051, 0.047) m. Pulled the grip's top front edge back from
+Y 0.025 m to Y 0 so the whole guard opening, Y 0.016 to 0.061 m, is in front
+of the grip. The front of the grip ribs is at Y 0.012 m, leaving a 0.004 m
+gap behind the opening. The side and close-up views show the full opening,
+with the yellow blade hanging clear of the grip and space around its sides
+and bottom.
+
+Moved the magazine and its receiver seating forward by the same 0.025 m.
+The `mag` origin is now (0, 0.140, 0.005) m. The guard front is at Y 0.065 m
+and the magazine back at Y 0.110 m, preserving the 0.045 m gap. The magazine
+front is at Y 0.170 m and the pump back at Y 0.235 m, leaving 0.065 m clear.
+
+Added a 512 x 512 side close-up at `renders/trigger-closeup.png`. All four
+turnaround renders and the close-up were inspected after each of two builds.
+`check_glb.py` passes every rule, including the trigger pull-direction check,
+which still measures -0.00787 m at +15 degrees. The export remains 0.650 m
+long, 0.062 m wide and 0.266 m high, with 17,284 triangles, 747,800 bytes
+and six materials. Two consecutive exports were byte-identical, both with
+SHA-256
+`de36d1a2e80cc92a6c15d25ac9e5ee70b2ab1212ce6a7385390ee06abe34aaf8`.
+Paul's visual approval and in-game animation remain unverified.
