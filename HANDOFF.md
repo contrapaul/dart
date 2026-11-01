@@ -71,6 +71,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: Starter darts no longer pop Foamers (Claude)
+
+- Paul's play test: one close blast from the placeholder blaster popped
+  F01, and the starter blaster unmodified should not have that power.
+- `data/foamers.json` `catastrophic.popTypes`: the dart types whose
+  damage counts toward a pop. Empty for now, so standard and suction
+  darts always down a Foamer, however close. Heavier darts and blaster
+  mods (CONTENT-PLAN D12 option B: explosive mod, every 5th round, B07)
+  add their type here when they exist. Nothing in the game pops until
+  then.
+- Tests: the pop tests in `foamers.test.ts` and `parts.test.ts` allow
+  standard darts to pop for their file. New `parts.test.ts` 14b: with
+  the shipped list, a three-dart burst that kills downs it.
+- D12 is still Paul's to settle: this matches option B.
+
 ### 2026-11-01: Movement hitch fixed (Claude, from Paul's range test)
 
 - Paul, on the range: the Benchmark reports were clean, but moving (not

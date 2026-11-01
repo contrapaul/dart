@@ -20,6 +20,8 @@ import rigData from "../../data/foamer-rigs.json";
 
 const SPEC = foamerData.test;
 const SPAWNER = foamerData.spawner;
+/** Dart types whose damage can pop a Foamer (none of the starter types). */
+const POP_TYPES: string[] = SPEC.catastrophic.popTypes;
 // One source for rig shape, speed and health: data/foamer-rigs.json.
 const RIG = (rigData.rigs as unknown as GameRig[]).find((r) => r.id === SPEC.rig)!;
 const CORE = materialId("foam-core");
@@ -332,7 +334,8 @@ export class FoamerSystem {
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= d * kind.hit;
     f.health -= d * kind.hit * kind.total;
-    f.addDamage(this.time, d * kind.hit * kind.total);
+    // Only dart types that can pop count toward a catastrophic hit.
+    if (POP_TYPES.includes(hit.type)) f.addDamage(this.time, d * kind.hit * kind.total);
     this.stats.hits++;
     this.paintWound(part, hit);
     // Breaking: hp <= 0, or the carve took the part to wearBreak of its
@@ -343,6 +346,7 @@ export class FoamerSystem {
       // The card: pop if the damage taken in the last catastrophic.window
       // seconds (the killing hit plus anything at the same moment) is at
       // least catastrophic.share of the max health, otherwise go down.
+      // Only popTypes damage is in recentDamage.
       const cutoff = this.time - SPEC.catastrophic.window;
       let recent = 0;
       for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;

@@ -180,6 +180,9 @@ function countMeshes(node: THREE.Object3D): number {
 }
 
 beforeAll(async () => {
+  // The pop tests use standard darts; in the game no starter type pops
+  // (catastrophic.popTypes is empty), so allow it for this file.
+  (foamerData.test.catastrophic.popTypes as string[]).push("standard");
   await RAPIER.init();
 });
 
@@ -671,6 +674,25 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     for (let i = 0; i < 240 && f2.state !== "down"; i++) tick(r2, player);
     expect(f2.state, "one dart downs it").toBe("down");
     expect(r2.foamers.stats.popped).toBe(0);
+  });
+
+  it("14b. no starter dart pops: with the shipped popTypes, the same three-dart burst downs it (Paul, 2026-11-01)", async () => {
+    const popTypes = foamerData.test.catastrophic.popTypes as string[];
+    const allowed = popTypes.splice(0); // the shipped list, as the game has it
+    try {
+      const r = rig();
+      const player = new THREE.Vector3(0, 1.6, 1);
+      const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+      r.world.step();
+      await settleAll(r, f);
+      f.health = 3;
+      for (let i = 0; i < 3; i++) fireAt(r, f.parts.get("body")!, [0, 0, -1]);
+      for (let i = 0; i < 240 && f.state !== "down"; i++) tick(r, player);
+      expect(f.state, "the burst downs it").toBe("down");
+      expect(r.foamers.stats.popped).toBe(0);
+    } finally {
+      popTypes.push(...allowed);
+    }
   });
 
   it("15. caps: broken pieces stay at or under brokenParts.max; with down.max + 2 Foamers downed, at least two are sinking early", async () => {

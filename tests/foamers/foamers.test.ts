@@ -83,6 +83,9 @@ function burst(r: ReturnType<typeof rig>, f: NonNullable<ReturnType<FoamerSystem
 }
 
 beforeAll(async () => {
+  // The pop tests use standard darts; in the game no starter type pops
+  // (catastrophic.popTypes is empty), so allow it for this file.
+  (foamerData.test.catastrophic.popTypes as string[]).push("standard");
   await RAPIER.init();
 });
 
