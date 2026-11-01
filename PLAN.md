@@ -150,12 +150,12 @@ Verify the Dark Ages-specific roster names against a reference before relying on
 
 ## 5. Blasters
 
-**[Paul]** will detail every blaster. Reference images go in `reference/blasters/` (one folder per blaster), and each blaster gets a card in `design/blasters/<id>.md` using this template:
+Paul's blaster details (roles, fire types, ammo, mods, names) are in `design/CONTENT-PLAN.md` section 4, and his reference images are in `design/referenceimages/` (`B01reference.webp` to `B08reference*.webp`, plus `generalcolorreference.webp`; gitignored, product photos). Each blaster gets a card in `design/blasters/<id>.md` (ART-01) using this template:
 
 ```
 ID:            B01
 Name:          [Paul]
-Reference:     reference/blasters/B01/ (list images)
+Reference:     design/referenceimages/B01reference.webp (local only)
 Role:          [starter / crowd control / precision / heavy / launcher / ...]
 Fire type:     [pump / semi / flywheel auto / spring heavy / launcher]
 Ammo:          [dart type] , magazine size, reserve max
@@ -173,26 +173,70 @@ Unlock point:  [level]
 
 ### 5.1 Arsenal overview
 
-| ID | Name | Role | Ammo | Reference images | Status |
-|---|---|---|---|---|---|
-| B01 | [Paul] | Starter | | | Not started |
-| B02 | | | | | |
-| B03 | | | | | |
-| B04 | | | | | |
-| B05 | | | | | |
-| B06 | | | | | |
-| B07 | | | | | |
-| B08 | | | | | |
+| ID | Name | Role | Ammo | Status |
+|---|---|---|---|---|
+| B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Details in CONTENT-PLAN 4; card and model not started |
+| B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Details in CONTENT-PLAN 4; card and model not started |
+| B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Details in CONTENT-PLAN 4; card and model not started |
+| B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Details in CONTENT-PLAN 4; card and model not started |
+| B05 | Shrike | Precision, zoom, piercing | Precision dart | Details in CONTENT-PLAN 4; card and model not started |
+| B06 | The Standard | Heavy full-auto | Mega dart | Details in CONTENT-PLAN 4; card and model not started |
+| B07 | Collateral | Launcher, arcing, explosive | Mega dart | Details in CONTENT-PLAN 4; card and model not started |
+| B08 | Firehose | Gatling, spin-up, ricochets | Foam ball | Details in CONTENT-PLAN 4; card and model not started |
+
+Names are Paul's; check each is not another company's product name before launch.
 
 ### 5.2 From reference image to in-game blaster (pipeline)
 
-1. Paul collects photos/renders in `reference/blasters/Bxx/`.
-2. A vision-capable model writes a **design brief**: silhouette, key parts (priming handle, flywheel cage, magazine, tactical rail), proportions, colour breakdown, and what to change so it is original (section 2 IP rule).
-3. An image model makes **concept art**: side view, three-quarter view, first-person view.
-4. Paul approves or redirects.
-5. A 3D generation model produces a **base mesh** from the approved concept art (section 8.2).
-6. Cleanup: decimate, fix normals, separate moving parts (slide, priming handle, trigger, magazine, flywheel cage) so they can animate, set the origin and a muzzle socket. Export glTF (`.glb`).
-7. Code-generated first-person animations (recoil, priming, reload) using the separated parts. Procedural animation is cheaper than hand animation and easier for models to tune.
+Updated 2026-11-01: Paul added Kimi K3.1 Pro to Pi and installed Blender
+(5.2.3 LTS, through Steam), so blasters are **modelled by a script in
+Blender**, the same way Foamers are built by code. This replaces the image
+model and Hunyuan3D route (Proposed until the ART-00 spike passes).
+
+1. **Reference (Paul, done).** Details in CONTENT-PLAN section 4, photos in
+   `design/referenceimages/` (local only).
+2. **Card and brief (ART-01, Claude).** `design/blasters/Bxx.md`: the card
+   above, filled from CONTENT-PLAN, plus a written design brief from the
+   photo: silhouette, a part list with rough sizes in centimetres, which
+   parts move and how, a colour scheme (from `generalcolorreference.webp`,
+   colours are flexible), and an **originality list**: no logos, text or
+   decals; at least three clear silhouette changes from the photo; our own
+   colours. Paul approves the brief.
+3. **Model (ART-04, Kimi K3.1 Pro in Pi, Blender headless).** Kimi writes
+   `art/blasters/Bxx/build.py`, a Blender Python script that builds the
+   blaster from bevelled primitives, booleans and curves with toy plastic
+   materials (flat colours, a translucent magazine where the brief has
+   one) and exports `public/models/blasters/Bxx.glb`. It runs with
+   `Blender --background --python art/blasters/Bxx/build.py`. The script
+   is the source and is reviewed like code; the `.glb` is committed too,
+   because the Cloudflare build has no Blender. Kimi works from the
+   brief, not the photo, so the model is ours.
+4. **Renders (same script).** A turnaround (side, three-quarter, top,
+   first-person view) to `art/blasters/Bxx/renders/`. Kimi reads its own
+   renders against the brief and iterates; Paul approves or redirects
+   from them ("longer barrel, chunkier pump" is a script edit).
+5. **Review (Claude).** The `.glb` contract below, originality against the
+   photo, size budget, and the script runs clean from scratch.
+6. **In game (GAME-09, ART-05).** Three.js `GLTFLoader` (bundled, no
+   outside host) loads the viewmodel; code animates the named parts
+   (recoil, pumping, reload, spin-up).
+
+**The `.glb` contract** (every blaster):
+
+- Metres at true size (a 45 cm blaster is 0.45 m long); +Y up; the
+  muzzle points along -Z in glTF (the script handles Blender's axes).
+- Origin at the trigger-hand grip, so the game can place every blaster
+  the same way.
+- Named nodes: `body` (everything that does not move); one empty per
+  barrel tip, `muzzle_1` to `muzzle_n` (where darts leave); each moving
+  part where the blaster has it, with its origin on its pivot and moving
+  along or about its own axes: `pump`, `trigger`, `mag`, `bolt`, `breach`
+  (break action), `barrels` (spins about local Z), `drum`, `crank`,
+  `flywheel_cage`. Mods that add geometry are their own nodes,
+  `mod_<name>`, hidden by default (B03 quad barrels, B08 second barrel).
+- Budget: at most 20,000 triangles, 1.5 MB, 8 materials, no image
+  textures (flat colours; a decal sheet later if needed).
+- No text, logos or real product markings anywhere.
 
 ---
 
@@ -343,7 +387,7 @@ If any are added later, use Paul's existing pattern: Cloudflare (static assets f
 
 | Asset type | Method (Proposed) | Output |
 |---|---|---|
-| Blasters (first person, high detail) | Reference images, then concept art (image model), then image-to-3D model, then cleanup and part separation | `.glb`, separated moving parts |
+| Blasters (first person, high detail) | Written brief from Paul's reference, then a Blender Python script by Kimi K3.1 Pro (section 5.2), renders for approval | `.glb` with named moving parts, plus the script |
 | Foamers | Concept art (image model), then either: (a) voxel models authored by code (an LLM writes a generator script per Foamer) or (b) image-to-3D mesh, voxelized by our tool | `.vox` or our own voxel JSON/binary |
 | Destructible props (crates, cover, furniture) | Voxels generated by code, or meshes voxelized | voxel volumes |
 | Level shell | Modular kit pieces (meshes) generated by image-to-3D or by code, assembled in a level tool | `.glb` + level JSON |
@@ -354,7 +398,7 @@ Notes:
 
 - **Code-generated voxel models** suit this project unusually well: a Foamer is simple rounded shapes, and an LLM can write and iterate a script ("make the eyes bigger, add a second antenna") faster than any 3D tool. Recommend trying this first for Foamers (task ART-03).
 - Every generated asset gets a row in `assets/MANIFEST.md`: source tool/model, prompt, date, licence terms of the tool. DART is free forever (Q8), but the repo is public, so each tool's terms must still allow public release and redistribution of its output.
-- **Tool access (Q9, 2026-10-29):** Paul currently has coding agents only, no image, 3D or audio generation tools. Until that changes, the default is **assets generated by code**: voxel Foamers and props from generator scripts, blasters built from code-generated primitives (rounded boxes, cylinders, lathe and extrude shapes), procedural textures in shaders, and procedural sound effects synthesized with Web Audio. Image-to-3D and AI audio are added later if Paul picks tools (see 11.1).
+- **Tool access (Q9, 2026-10-29):** Paul currently has coding agents only, no image, 3D or audio generation tools. Until that changes, the default is **assets generated by code**: voxel Foamers and props from generator scripts, blasters built from code-generated primitives (rounded boxes, cylinders, lathe and extrude shapes), procedural textures in shaders, and procedural sound effects synthesized with Web Audio. Image-to-3D and AI audio are added later if Paul picks tools (see 11.1). **Update 2026-11-01:** blasters are modelled by scripts in Blender (Kimi K3.1 Pro through Pi), section 5.2; Blender's output under a script we wrote is ours to publish, and Moonshot's terms for Kimi output are to be checked and noted in `assets/MANIFEST.md` before the first model ships.
 - **Reference images stay out of the public repo.** Product photos of real blasters are other people's copyright, so `reference/` is listed in `.gitignore` and kept locally. Design briefs written from them (text) are committed.
 - Asset size budgets: blaster under 1.5 MB, Foamer under 300 KB, prop under 100 KB (compressed). Use meshopt/Draco compression and KTX2 textures.
 
@@ -400,8 +444,8 @@ The project uses a range of models. Each task in section 12 names an owner. The 
 | [Paul to assign] | Claude Fable 5.1 | [Paul: for example story drafts, barks, codex entries in Paul's voice] |
 | Long-task implementer and reviewer | Pi coding agent running Qwen 3.8-27b (Q14) | Long coding tasks from a clear, detailed task card (strong at this); parallel feature work on separate modules; independent review of other models' code. Task cards for Pi spell out files, interfaces and "done when" exactly |
 | Vision / reference analysis | A vision-capable model (Claude, or another) | Reference image to design brief |
-| Concept art | None yet (Q9). Fallback: code-drawn SVG/canvas turnarounds from the design brief | Blaster and Foamer concepts |
-| Image to 3D | **Hunyuan3D, run locally (Q15).** Open weights, no outside service. Must first be proven to run on Paul's Mac (task ART-00); fallback is blasters modelled in code | Blaster and prop meshes |
+| Concept art | None yet (Q9). For blasters, the Blender renders are the concept (section 5.2) | Blaster turnarounds for approval |
+| 3D modelling | **Kimi K3.1 Pro through Pi (`--provider moonshotai --model kimi-k3.1-pro`) writing Blender Python scripts, Blender 5.2.3 run headless** (2026-11-01). Kimi reads images, so it checks its own renders. Proven by spike ART-00. Hunyuan3D is parked | Blaster meshes, later props and level kit pieces |
 | Sound effects | **Recordings of Paul's own foam blasters (Q16)**, edited and layered, plus procedural Web Audio for non-blaster sounds (pops, parry, UI) | sfx |
 | Music | None yet (Q9). [Paul: AI music tool, commission, or licensed tracks] | Dynamic music layers |
 | Voice | [Paul] | Player and guide lines |
@@ -480,17 +524,19 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | GAME-06 | Melee weapon + charges | F | GAME-04 |
 | GAME-07 | Stagger + Pop finishers + health drops | F | GAME-03 |
 | GAME-08 | Ammo-for-kills tool | F | GAME-07 |
-| GAME-09 | Weapon framework from JSON data, 3 blasters from Paul's cards | F (B for data) | PRE-04 |
+| GAME-09 | Weapon framework from JSON data: per-blaster data from the cards, fire types (pump, semi, full-auto with growing recoil, spin-up, break-action double), new dart types (precision, mega, foam ball, slug), `popTypes` per type, a `.glb` viewmodel from the named nodes; the 3 slice blasters (Proposed: B01, B03, B04), tested on the range | Pi + Claude review | ART-04 for the models (placeholder models until then) |
+| GAME-09b | Explosions: an area blast that carves terrain and Foamers, pushes and can pop (B05 and B06 mods, B07) | Pi + Claude review | GAME-09 |
 | ENG-08 | AI director (attack tokens), state machine base, navmesh | A | GAME-03 |
 | ENG-10a | Foamer sandbox: greybox rigs per role, movement styles, `sandbox.html` | Claude (done) | ENG-09 |
 | ENG-10 | Foamer parts: the F01 rig in game, per-part damage, break-off, handicaps, foam-core wounds, going down and popping (card: `tasks/ENG-10.md`) | Pi (done) | ENG-10a |
 | ENG-11 | Test range page `range.html`: plain level, frame-time graph, system switches, test panel for darts and Foamers (card: `tasks/ENG-11.md`) | Pi (done) | ENG-10 |
+| ENG-12 | Foamers go limp when killed: a jointed ragdoll pushed by the killing hit, then lie and sink (card: `tasks/ENG-12.md`) | Pi | ENG-10, ENG-11 |
 | GAME-10 | 3 Foamer types (fodder ranged, charger, heavy) | F | ENG-08, ENG-10, PRE-05 |
-| ART-00 | Spike: install Hunyuan3D locally on the Mac, generate one test blaster from an image, record time per model and quality. Go / no-go for the 3D route | A + P | |
-| ART-01 | Reference to design brief for 3 blasters | Vision model | PRE-03 |
-| ART-02 | Concept turnarounds for 3 blasters (code-drawn until an image tool is chosen), Paul approves | F + P | ART-01 |
+| ART-00 | Spike: Kimi K3.1 Pro through Pi builds B01 in Blender from its brief (script, `.glb`, renders) to the section 5.2 contract; record time, cost and quality. Go / no-go for the Blender route (was: Hunyuan3D) | A + P | |
+| ART-01 | Cards and design briefs for all 8 blasters (`design/blasters/Bxx.md`) from CONTENT-PLAN 4 and the reference photos, Paul approves | Claude + P | |
+| ART-02 | Folded into ART-04: the Blender renders are the turnarounds Paul approves | | |
 | ART-03 | Code-generated blocky voxel Foamers (3 types), Paul approves | F | PRE-05 |
-| ART-04 | 3 blasters with separate moving parts, exported to `.glb`: Hunyuan3D base mesh plus cleanup if ART-00 passed, otherwise modelled in code | A/F | ART-00, ART-02 |
+| ART-04 | The 3 slice blasters modelled in Blender by script (Kimi), named moving parts, to the section 5.2 contract; the other 5 in Phase 3 | Kimi via Pi + Claude review + P | ART-00, ART-01 |
 | ART-05 | Procedural first person animations | F | ART-04 |
 | LVL-01 | One arena blockout with destructible cover and a lock-in | F + P | ENG-06 |
 | AUD-00 | Record Paul's blasters (session list in 8.3) | P | |
@@ -553,7 +599,7 @@ All twelve answered 2026-10-29.
 |---|---|---|
 | Q13 | Which laptop is the benchmark machine? | A base Apple Silicon Mac; plus a Windows iGPU check (Proposed) |
 | Q14 | Which other coding agents do you use, so section 11.1 can assign them? | Pi |
-| Q15 | Do you want to try an image or 3D tool later (for example Hunyuan3D run locally), or stay all-code for assets? | Try Hunyuan3D locally (spike ART-00) |
+| Q15 | Do you want to try an image or 3D tool later (for example Hunyuan3D run locally), or stay all-code for assets? | Try Hunyuan3D locally (spike ART-00) ; replaced 2026-11-01 by Kimi K3.1 Pro writing Blender scripts, section 5.2 |
 | Q16 | Do you own any real foam blasters we could record for sound effects? | Yes, several |
 
 ---
@@ -595,3 +641,4 @@ All twelve answered 2026-10-29.
 | 2026-11-01 | A downed Foamer sinks at `down.sinkSpeed` (0.35 m/s) only until its top is under the floor, not a further rig height, so it is gone in about 2 s after lying (ENG-10 review). | 4.1 |
 | 2026-11-01 | The player asks for no downward move while grounded; snap-to-ground holds it to the floor. Pressing into the floor made Rapier stall the whole move now and then (Paul's movement hitch). | 7.3 |
 | 2026-11-01 | Only dart types listed in `catastrophic.popTypes` can pop a Foamer; none of the starter types are listed (Paul: the starter blaster should not pop). | 4.1 |
+| 2026-11-01 | Blasters are modelled by Blender Python scripts written by Kimi K3.1 Pro through Pi, from a written brief (not the photo), to a `.glb` contract with named moving parts (Paul added Kimi and Blender). Replaces the image model and Hunyuan3D route, pending spike ART-00. | 5.2, 8.2, 11.1 |

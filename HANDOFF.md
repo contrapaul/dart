@@ -71,6 +71,30 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ENG-12 card and the blaster pipeline (Claude)
+
+- `tasks/ENG-12.md`: ragdolls for downed Foamers (Paul: go limp, not a
+  canned topple). Every attached part becomes a dynamic body joined to
+  its parent by a hinge with limits (Rapier 0.21's JavaScript API can only
+  limit hinge and slider joints, not ball joints), the killing dart
+  pushes the part it hit, darts and the player pass through, then it lies
+  and sinks as before. Replaces `downMotion`. For Pi.
+- Blasters: Paul added Kimi K3.1 Pro to Pi (provider `moonshotai`) and
+  installed Blender 5.2.3 LTS (Steam:
+  `~/Library/Application Support/Steam/steamapps/common/Blender/Blender.app/Contents/MacOS/Blender`,
+  runs headless), and filled in CONTENT-PLAN section 4 (names, roles,
+  mods) with reference photos in `design/referenceimages/` (gitignored).
+  PLAN 5.2 is rewritten: a written brief per blaster (ART-01, Claude),
+  then Kimi writes a Blender Python script that builds the model, exports
+  a `.glb` with named moving parts and renders a turnaround (ART-04),
+  Paul approves from the renders, GAME-09 loads it. The `.glb` contract
+  (scale, axes, origin, node names, budget) is in 5.2. ART-00 is now a
+  spike of that route on B01; Hunyuan3D is parked. GAME-09 is spelled
+  out (fire types, new dart types, popTypes, viewmodel) with explosions
+  split off as GAME-09b. Proposed slice blasters: B01, B03, B04.
+- Open for Paul: the slice blasters, D14 (B07's round) and D15 (B03's
+  fire type), and checking Moonshot's terms for publishing Kimi output.
+
 ### 2026-11-01: Starter darts no longer pop Foamers (Claude)
 
 - Paul's play test: one close blast from the placeholder blaster popped
