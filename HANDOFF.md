@@ -71,6 +71,12 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-04: B03 in Blender (Kimi via Pi)
+
+- Built B03 from Paul's approved brief in `art/blasters/B03/build.py` and exported `public/models/blasters/B03.glb`: 0.80 m long, 16,520 triangles, 7 materials and one 926-byte grip normal texture.
+- Added all four turnaround renders, a trigger close-up and two 40 degree open-action views. The barrels, fore-end, shells and muzzles move with `breach`; the exported parenting and motion directions pass `art/blasters/B03/check.py`, and the shared GLB checker passes unchanged.
+- Positive trigger local X pulls toward the wrist, negative breach local X opens, and positive latch glTF local Y turns right. For the quad upgrade, hide `fore-end` before showing `mod_quad` and its children. Two consecutive exports are byte-identical. Paul's visual approval and in-game animation remain unverified. Details and round notes: `art/blasters/B03/NOTES.md`.
+
 ### 2026-11-01: B04 and B03 cards and briefs (Claude)
 
 - `design/blasters/B04.md` (Shredder, level 2) and `B03.md` (Leviathan,
