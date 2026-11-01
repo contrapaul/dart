@@ -1,7 +1,6 @@
-/** ENG-12 stage 1: a downed Foamer is a jointed physics ragdoll that falls
- *  the way the killing hit pushes it. Tests 1 to 6, 9 and 10 for this
- *  stage; the through-ray and the sink-and-cap checks (7 and 8) are stage
- *  2. Rig F01, the fake mesher, and a standard dart to kill (standard darts
+/** ENG-12: a downed Foamer is a jointed physics ragdoll that falls the way
+ *  the killing hit pushes it, lies still, then sinks away. All the card's
+ *  tests. Rig F01, the fake mesher, a standard dart to kill (standard darts
  *  down, never pop).
  */
 import { beforeAll, describe, expect, it } from "vitest";
@@ -19,6 +18,7 @@ import type { GameRig } from "../../src/foamers/foamer";
 import { FoamerPart } from "../../src/foamers/foamer-part";
 import rigData from "../../data/foamer-rigs.json";
 import foamerData from "../../data/foamers.json";
+import { SOLID_QUERY_GROUPS, groups } from "../../src/physics/world";
 
 const DT = 1 / 60;
 const SPEC = foamerData.test;
@@ -116,10 +116,17 @@ describe("Foamer ragdoll (ENG-12, rig F01)", () => {
     // leaves every part attached.)
     const parts = [...f.parts.values()];
     expect(parts.length, "all parts still attached").toBe(RIG.parts.length);
+    // The kill's shock phase: for the first few steps of the fall every
+    // body damps hard, so the flail of the strike loses its energy while
+    // the corpse barely travels; after that the soft damping takes over.
+    const rag = SPEC.down.ragdoll as { shockTime: number; shockLinearDamping: number; shockAngularDamping: number };
+    const shock = f.stateTime <= rag.shockTime;
+    const expLin = shock ? rag.shockLinearDamping : SPEC.down.ragdoll.linearDamping;
+    const expAng = shock ? rag.shockAngularDamping : SPEC.down.ragdoll.angularDamping;
     for (const p of parts) {
       expect(p.body.isDynamic(), `${p.spec.id} dynamic`).toBe(true);
-      expect(p.body.linearDamping(), `${p.spec.id} linear damping`).toBeCloseTo(SPEC.down.ragdoll.linearDamping, 5);
-      expect(p.body.angularDamping(), `${p.spec.id} angular damping`).toBeCloseTo(SPEC.down.ragdoll.angularDamping, 5);
+      expect(p.body.linearDamping(), `${p.spec.id} linear damping (shock=${shock})`).toBeCloseTo(expLin, 5);
+      expect(p.body.angularDamping(), `${p.spec.id} angular damping (shock=${shock})`).toBeCloseTo(expAng, 5);
     }
     const withParent = parts.filter((p) => p.spec.parent !== null);
     expect(f.ragdoll.length, "one hinge per attached part with a parent").toBe(withParent.length);
@@ -261,6 +268,104 @@ describe("Foamer ragdoll (ENG-12, rig F01)", () => {
     }
   });
 
+  it("7. pass through: a ray in SOLID_QUERY_GROUPS through a lying ragdoll hits nothing of it, and a dart fired through it does not count a hit", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    await kill(r, f, f.parts.get("body")!, new THREE.Vector3(0, 0, -1), player);
+    for (let i = 0; i < 120; i++) tick(r, player); // it lies down
+    // Both casts start inside the body's own box, so a query that could
+    // see the ragdoll would hit it for sure.
+    const c = centreOf(f.parts.get("body")!);
+    const ray = new RAPIER.Ray(
+      { x: c.x, y: c.y, z: c.z }, { x: 0, y: 0, z: 1 });
+    const anyHit = r.world.castRayAndGetNormal(
+      ray, 10, true, 8, groups(0xffff, 0xffffffff), undefined, undefined,
+      undefined);
+    expect(anyHit, "a plain ray from inside the box hits the ragdoll")
+      .not.toBeNull();
+    const solidHit = r.world.castRayAndGetNormal(
+      ray, 10, true, 8, SOLID_QUERY_GROUPS, undefined, undefined, undefined);
+    expect(solidHit, "SOLID_QUERY_GROUPS sees nothing of the ragdoll")
+      .toBeNull();
+    // The dart: count only hits attributed to the corpse's own parts
+    // (the kill carve left debris behind, and darts do collide with
+    // debris; that is not a hit on the ragdoll).
+    const owns = (col: RAPIER.Collider) =>
+      [...f.parts.values()].some((p) => p.owns(col));
+    let hits = 0;
+    const prev = r.darts.onHit;
+    r.darts.onHit = (h) => { if (owns(h.collider)) hits++; prev(h); };
+    r.darts.fire(
+      new THREE.Vector3(c.x, c.y, c.z - 1.5), new THREE.Vector3(0, 0, 1),
+      "standard");
+    for (let i = 0; i < 120; i++) tick(r, player);
+    r.darts.onHit = prev;
+    expect(hits, "the dart did not hit the lying ragdoll").toBe(0);
+  });
+
+  it("8. sinking and caps: after lie, no hinges, colliders disabled, the parts sink and are disposed; with down.max + 2 downed, the oldest two are already sinking", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    await kill(r, f, f.parts.get("body")!, new THREE.Vector3(0, 0, -1), player);
+    // While it lies, the ragdoll is alive: hinges, dynamic bodies.
+    for (let i = 0; i < Math.round((SPEC.down.lie - 0.2) * 60); i++)
+      tick(r, player);
+    expect(f.ragdoll.length, "hinges while lying").toBeGreaterThan(0);
+    for (const p of f.parts.values())
+      expect(p.body.isDynamic(), `${p.spec.id} dynamic while lying`)
+        .toBe(true);
+    // Past the lie the first sink step locks everything.
+    for (let i = 0; i < 30; i++) tick(r, player);
+    expect(f.ragdoll.length, "hinges removed at the sink lock").toBe(0);
+    const handles = [...f.parts.values()].map((p) => p.body.handle);
+    for (const p of f.parts.values()) {
+      expect(p.body.isDynamic(), `${p.spec.id} kinematic at the sink`)
+        .toBe(false);
+      expect(r.world.getRigidBody(p.body.handle),
+        `${p.spec.id} still present while sinking`).not.toBeNull();
+    }
+    let enabled = 0;
+    r.world.forEachCollider((col) => {
+      const parent = col.parent();
+      if (parent && handles.includes(parent.handle) && col.isEnabled())
+        enabled++;
+    });
+    expect(enabled, "every part collider disabled at the sink").toBe(0);
+    const bodyP = f.parts.get("body")!;
+    const y0 = bodyP.body.translation().y;
+    for (let i = 0; i < 30; i++) tick(r, player);
+    expect(bodyP.body.translation().y, "sinking where it lay")
+      .toBeLessThan(y0);
+    // At sinkSpeed the top is below the floor well inside 10 s of the
+    // lie, and the Foamer is gone by then.
+    for (let i = 0; i < 600; i++) tick(r, player);
+    for (const p of f.parts.values()) {
+      expect(r.world.getRigidBody(p.body.handle), `${p.spec.id} disposed`)
+        .toBeNull();
+    }
+    // The cap: down.max + 2 down at once, and the oldest two are already
+    // sinking while the rest are still in their lie.
+    const r2 = rig();
+    const refs: Foamer[] = [];
+    for (let i = 0; i < (SPEC.down as { max: number }).max + 2; i++) {
+      const g = r2.foamers.spawn(new THREE.Vector3(0, 0, -2 - i * 2.4))!;
+      r2.world.step();
+      await settleAll(r2, g);
+      await kill(r2, g, g.parts.get("body")!, new THREE.Vector3(0, 0, -1),
+        player);
+      refs.push(g);
+    }
+    const early = refs.filter((g) => g.sinkingNow || g.sinkDrop > 0).length;
+    expect(early, "the oldest two are already sinking")
+      .toBeGreaterThanOrEqual(2);
+  });
+
   it("9. broken first: a Foamer that lost legL and then dies ragdolls with the parts it has left (no joint to the missing leg, no crash)", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 8);
@@ -310,19 +415,47 @@ describe("Foamer ragdoll (ENG-12, rig F01)", () => {
     expect(Number.isFinite(lv.x) && Number.isFinite(lv.y) && Number.isFinite(lv.z), "body position finite").toBe(true);
   });
 
-  it("10. settles: 5 s after a kill, every part's speed is under 0.05 m/s and no position is NaN", async () => {
+  it("10. settles: 3 s after a kill every part's speed is under 0.05 m/s, and no position is NaN. The measurement is at 3 s, while the corpse is still lying: by 5 s the kinetic sink has begun and a kinematic body reports its sink speed rather than its settled speed.", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 8);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     r.world.step();
     await settleAll(r, f);
     await kill(r, f, f.parts.get("body")!, new THREE.Vector3(0, 0, -1), player);
-    for (let i = 0; i < 300; i++) tick(r, player);
+    for (let i = 0; i < 180; i++) tick(r, player);
     for (const p of f.parts.values()) {
       const t = p.body.translation();
       expect(Number.isFinite(t.x) && Number.isFinite(t.y) && Number.isFinite(t.z), `${p.spec.id} position finite`).toBe(true);
       const v = p.body.linvel();
       expect(Math.hypot(v.x, v.y, v.z), `${p.spec.id} speed under 0.05`).toBeLessThan(0.05);
+    }
+  });
+
+  it("11. no throw: in the first 0.5 s after a kill, no part's centre rises more than 0.15 m or moves more than 1.5 m, whatever the shot's direction", async () => {
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const dirs = [
+      new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, 1),
+    ];
+    for (const dir of dirs) {
+      const r = rig();
+      const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+      r.world.step();
+      await settleAll(r, f);
+      await kill(r, f, f.parts.get("body")!, dir, player);
+      const base = new Map<string, THREE.Vector3>();
+      for (const p of f.parts.values()) base.set(p.spec.id, centreOf(p).clone());
+      for (let i = 0; i < 30; i++) {
+        tick(r, player);
+        for (const p of f.parts.values()) {
+          if (r.world.getRigidBody(p.body.handle) === null) continue;
+          const b = base.get(p.spec.id)!;
+          const n = centreOf(p);
+          const tag = `${dir.x + dir.z === 0 ? (dir.x >= 0 ? "+x" : "-x") : (dir.z < 0 ? "-z" : "+z")} ${p.spec.id}`;
+          expect(n.y - b.y, `${tag} rises no more than 0.15 m in 0.5 s`).toBeLessThanOrEqual(0.15);
+          expect(n.distanceTo(b), `${tag} moves no more than 1.5 m in 0.5 s`).toBeLessThanOrEqual(1.5);
+        }
+      }
     }
   });
 });

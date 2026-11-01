@@ -59,6 +59,9 @@ const _topP = new THREE.Vector3();
 const _topQ = new THREE.Quaternion();
 const _topV = new THREE.Vector3();
 const _sc = new THREE.Vector3();
+const _kbB = new THREE.Vector3(); // kill push: body part's origin
+const _kbQ = new THREE.Quaternion(); // kill push: body part's rotation
+const _kbV = new THREE.Vector3(); // kill push: hit point in the body's frame
 const _one = new THREE.Vector3(1, 1, 1);
 
 /** A part and all its children (rig parent links), in break order. */
@@ -145,7 +148,7 @@ export class FoamerSystem {
     this.dtPrev = dt;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
-      // Downed Foamers keep stepping (topple, sink) but no longer walk.
+      // Downed Foamers keep stepping (lie, sink) but no longer walk.
       if (f.state === "down") {
         this.stepDown(f, dt);
       } else {
@@ -404,13 +407,17 @@ export class FoamerSystem {
    *  local x (the axis the rig's walk swings about), limits from
    *  down.ragdoll.limits (negative bends forward) measured from the angle
    *  the joint had when it went down, contacts off so the pair never
-   *  grinds. The killing hit adds down.ragdoll.killPush (N s) along the
-   *  dart's travel to the part it hit. Runs once per death, so it
-   *  allocates freely rather than reusing the per-step scratch. */
+   *  grinds. The killing hit changes the whole ragdoll's speed along the
+   *  dart's travel by down.ragdoll.killSpeed (m/s), applied as one
+   *  impulse on the body part (not the small part that was hit) at the
+   *  hit's height clamped inside the body's box, so a high hit tips it
+   *  over away from the shooter. Runs once per death, so it allocates
+   *  freely rather than reusing the per-step scratch. */
   private buildRagdoll(f: Foamer, hit?: DartHit) {
-    const rag = SPEC.down.ragdoll;
+    const rag = SPEC.down.ragdoll as { density: number; linearDamping: number; angularDamping: number; keepStride: number; killSpeed: number; shockTime: number; shockLinearDamping: number; shockAngularDamping: number; limits: Record<string, number[]> };
     const vs = f.rig.voxelSize;
     const dt = Math.max(this.dtPrev, 1 / 240);
+    let ragdollMass = 0;
     for (const part of f.parts.values()) {
       const body = part.body;
       body.setBodyType(this.rapier.RigidBodyType.Dynamic, true);
@@ -434,21 +441,23 @@ export class FoamerSystem {
         body,
       );
       // Velocity it had on its last step (pose change / dt), linear and
-      // angular, so a walking Foamer falls with its stride. A cap keeps a
-      // kill on a very early step (a fresh part's first pose is written
-      // against the previous step's origin) from seeding a garbage
-      // velocity: a real stride is a few m/s at most.
-      const dq = qPrev.clone().invert().multiply(q2).normalize();
-      const s = Math.sqrt(Math.max(0, 1 - dq.w * dq.w));
-      const w = (2 * Math.acos(THREE.MathUtils.clamp(dq.w, -1, 1))) / dt;
-      let lvx = (p2.x - pPrev.x) / dt, lvY = (p2.y - pPrev.y) / dt, lvz = (p2.z - pPrev.z) / dt;
-      const lm = Math.hypot(lvx, lvY, lvz);
-      if (lm > FoamerSystem.VMAX) { lvx = (lvx / lm) * FoamerSystem.VMAX; lvY = (lvY / lm) * FoamerSystem.VMAX; lvz = (lvz / lm) * FoamerSystem.VMAX; }
-      body.setLinvel({ x: lvx, y: lvY, z: lvz }, true);
-      let ax = (s > 1e-6 ? dq.x / s : 0) * w, ay = (s > 1e-6 ? dq.y / s : 0) * w, az = (s > 1e-6 ? dq.z / s : 0) * w;
-      const am = Math.hypot(ax, ay, az);
-      if (am > FoamerSystem.WMAX) { ax = (ax / am) * FoamerSystem.WMAX; ay = (ay / am) * FoamerSystem.WMAX; az = (az / am) * FoamerSystem.WMAX; }
-      body.setAngvel({ x: ax, y: ay, z: az }, true);
+      // angular, scaled by keepStride: the stride feeds the fall without
+      // deciding where it lands (F01 walks forward when it is shot). A
+      // cap keeps a kill on a very early step (a fresh part's first pose
+      // is written against the previous step's origin) from seeding a
+      // garbage velocity: a real stride is a few m/s at most.
+      const lvx0 = (p2.x - pPrev.x) / dt, lvY0 = (p2.y - pPrev.y) / dt, lvz0 = (p2.z - pPrev.z) / dt;
+      const lm = Math.hypot(lvx0, lvY0, lvz0);
+      const k = lm > FoamerSystem.VMAX ? FoamerSystem.VMAX / lm : 1;
+      // The walk's horizontal momentum lingers, scaled by keepStride, so
+      // the walk feeds the fall without overriding the shot (F01 walks
+      // forward when it is shot). What dies at once: the vertical part
+      // of it (a rising limb was being raised, it does not keep rising)
+      // and every rotation (the last swing's wind-up must not start the
+      // fall).
+      body.setLinvel({ x: lvx0 * k * rag.keepStride, y: 0, z: lvz0 * k * rag.keepStride }, true);
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      ragdollMass += body.mass();
     }
     // One hinge per attached part with a parent. Rapier initialises a new
     // impulse joint at the current relative pose, so its free angle reads
@@ -509,17 +518,46 @@ export class FoamerSystem {
         neutralAxisWorld: axisWorld,
       });
     }
-    // The kill push (card step 5), on top of the dart's own capped push.
+    // The kill push (card step 5, redesigned after the range review):
+    // the whole ragdoll's speed changes along the dart's travel by
+    // killSpeed (m/s). One impulse of the ragdoll's total mass times
+    // killSpeed on the BODY part (not the small part that was hit), at
+    // the height of the hit clamped inside the body's box, so a high hit
+    // tips the corpse over away from the shooter; a hit on the head or
+    // an arm uses the top of the body's box.
     if (hit) {
+      let bodyPart: FoamerPart | undefined;
       let hitPart: FoamerPart | undefined;
-      for (const part of f.parts.values()) if (part.owns(hit.collider)) { hitPart = part; break; }
-      if (hitPart)
-        hitPart.body.applyImpulseAtPoint(
-          { x: hit.direction.x * rag.killPush, y: hit.direction.y * rag.killPush, z: hit.direction.z * rag.killPush },
-          { x: hit.point.x, y: hit.point.y, z: hit.point.z },
+      for (const part of f.parts.values()) {
+        if (part.spec.parent === null) bodyPart = part;
+        if (part.owns(hit.collider)) hitPart = part;
+      }
+      if (bodyPart && hitPart) {
+        const bs = bodyPart.spec.size;
+        const bt = bodyPart.body.translation();
+        const bq = bodyPart.body.rotation();
+        _kbB.set(bt.x, bt.y, bt.z);
+        _kbQ.set(bq.x, bq.y, bq.z, bq.w);
+        // Clamped inside the body's box: a head or an arm hit reaches the
+        // top of the box (the tall end), a body hit its own height.
+        const local = _kbV.set(
+          hit.point.x - _kbB.x, hit.point.y - _kbB.y, hit.point.z - _kbB.z,
+        ).applyQuaternion(_kbQ.clone().invert());
+        local.x = THREE.MathUtils.clamp(local.x, 0.02, bs[0] * vs - 0.02);
+        local.z = THREE.MathUtils.clamp(local.z, 0.02, bs[2] * vs - 0.02);
+        local.y = (hitPart.spec.kind === "head" || hitPart.spec.kind === "arm")
+          ? bs[1] * vs - 0.02
+          : THREE.MathUtils.clamp(local.y, 0.02, bs[1] * vs - 0.02);
+        bodyPart.body.applyImpulseAtPoint(
+          { x: hit.direction.x * ragdollMass * rag.killSpeed,
+            y: hit.direction.y * ragdollMass * rag.killSpeed,
+            z: hit.direction.z * ragdollMass * rag.killSpeed },
+          local.applyQuaternion(_kbQ).add(_kbB),
           true,
         );
+      }
     }
+
     for (const part of f.parts.values()) {
       const t = part.body.translation();
       const r = part.body.rotation();
@@ -541,6 +579,18 @@ export class FoamerSystem {
     f.prevCentre.copy(f.centre);
     f.prevYaw = f.yaw;
     f.stateTime += dt;
+    // The kill's shock: for the first down.ragdoll.shockTime seconds every
+    // body damps hard, so the limbs flail once and stop while the corpse
+    // barely travels (a strike stuns it); after that the ragdoll's slow
+    // damping returns and the corpse settles slowly.
+    {
+      const rag = SPEC.down.ragdoll as { shockTime: number; shockLinearDamping: number; shockAngularDamping: number; linearDamping: number; angularDamping: number };
+      const shock = f.stateTime <= rag.shockTime;
+      for (const part of f.parts.values()) {
+        part.body.setLinearDamping(shock ? rag.shockLinearDamping : rag.linearDamping);
+        part.body.setAngularDamping(shock ? rag.shockAngularDamping : rag.angularDamping);
+      }
+    }
     // Render interpolation: each part body remembers its pose at the
     // start of the step; the frame lerps to where physics leaves it.
     for (const part of f.parts.values()) {
@@ -558,7 +608,7 @@ export class FoamerSystem {
       const drop = SPEC.down.sinkSpeed * dt;
       for (const part of f.parts.values()) {
         const t = part.body.translation();
-        part.body.setTranslation({ x: t.x, y: t.y - drop, z: t.z }, false);
+        part.body.setNextKinematicTranslation({ x: t.x, y: t.y - drop, z: t.z });
       }
       f.sinkDrop += drop;
     }

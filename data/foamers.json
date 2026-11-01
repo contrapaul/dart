@@ -2,7 +2,10 @@
   "_note": "Test Foamer (ENG-10): rig F01 from data/foamer-rigs.json, with part damage, breaking, handicaps, wounds, going down and popping. Distances in metres, times in seconds. Rig shapes, speed and health come from the rig file (one source).",
   "test": {
     "rig": "F01",
-    "damage": { "standard": 1, "suction": 0.5 },
+    "damage": {
+      "standard": 1,
+      "suction": 0.5
+    },
     "minDamageSpeed": 8,
     "turnRate": 6,
     "gravity": 22,
@@ -16,50 +19,158 @@
       "_note": "Per part kind. hpShare: the part's health as a share of the Foamer's (at least minHp). hit: multiplies dart damage to the part. total: share of that damage that also comes off the Foamer's health. CONTENT-PLAN 3.1 and 3.2.",
       "minHp": 2,
       "kinds": {
-        "body":    { "hpShare": 0,    "hit": 1, "total": 1 },
-        "head":    { "hpShare": 0.3,  "hit": 2, "total": 1 },
-        "arm":     { "hpShare": 0.2,  "hit": 1, "total": 0.5 },
-        "leg":     { "hpShare": 0.25, "hit": 1, "total": 0.5 },
-        "weapon":  { "hpShare": 0.25, "hit": 1, "total": 0.5 },
-        "ability": { "hpShare": 0.25, "hit": 1, "total": 0.5 },
-        "fin":     { "hpShare": 0.15, "hit": 1, "total": 0.5 },
-        "detail":  { "hpShare": 0.15, "hit": 1, "total": 0.5 }
+        "body": {
+          "hpShare": 0,
+          "hit": 1,
+          "total": 1
+        },
+        "head": {
+          "hpShare": 0.3,
+          "hit": 2,
+          "total": 1
+        },
+        "arm": {
+          "hpShare": 0.2,
+          "hit": 1,
+          "total": 0.5
+        },
+        "leg": {
+          "hpShare": 0.25,
+          "hit": 1,
+          "total": 0.5
+        },
+        "weapon": {
+          "hpShare": 0.25,
+          "hit": 1,
+          "total": 0.5
+        },
+        "ability": {
+          "hpShare": 0.25,
+          "hit": 1,
+          "total": 0.5
+        },
+        "fin": {
+          "hpShare": 0.15,
+          "hit": 1,
+          "total": 0.5
+        },
+        "detail": {
+          "hpShare": 0.15,
+          "hit": 1,
+          "total": 0.5
+        }
       },
       "wearBreak": 0.4
     },
-    "catastrophic": { "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.", "share": 0.4, "window": 0.1, "popTypes": [] },
-    "wound": { "coreShell": 1.0, "stumpRadius": 0.12 },
-    "stagger": { "time": 0.5 },
+    "catastrophic": {
+      "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.",
+      "share": 0.4,
+      "window": 0.1,
+      "popTypes": []
+    },
+    "wound": {
+      "coreShell": 1.0,
+      "stumpRadius": 0.12
+    },
+    "stagger": {
+      "time": 0.5
+    },
     "down": {
-      "lie": 3.5, "sinkSpeed": 0.35, "max": 8,
+      "lie": 3.5,
+      "sinkSpeed": 0.35,
+      "max": 8,
       "ragdoll": {
-        "_note": "ENG-12. density in kg/m^3 for the part cuboids. damping slows the fall to a limp, heavy foam feel. killPush: impulse in N s added to the killed part along the dart's travel, on top of the dart's own capped push. limits: hinge range in radians about the part's local x axis, per part kind, measured from the pose it had when it went down (negative bends forward).",
+        "_note": "ENG-12. density in kg/m^3 for the part cuboids. damping slows the fall to a limp, heavy foam feel. keepStride: the velocity a walking Foamer had when it died is scaled by this before it becomes the ragdoll's starting velocity, so the stride feeds the fall without overriding the shot. killSpeed: the change in the whole ragdoll's speed in m/s along the dart's travel, applied at once as an impulse (the total mass of all remaining parts times killSpeed) to the body part, at the height of the hit clamped inside the body's box, so a high hit tips the corpse over away from the shooter; a hit on the head or an arm uses the top of the box. shockTime, shockLinearDamping, shockAngularDamping: for the first shockTime seconds after going down every body runs at these higher damping values, so the limbs flail once and the corpse barely travels (a killing strike stuns it), then the soft damping takes over and it settles slowly.",
         "density": 60,
-        "linearDamping": 0.4,
-        "angularDamping": 1.5,
-        "killPush": 2.5,
+        "linearDamping": 0.8,
+        "angularDamping": 6,
+        "keepStride": 0.4,
+        "killSpeed": 3.0,
         "limits": {
-          "head": [-0.7, 0.7],
-          "arm": [-2.4, 0.4],
-          "leg": [-1.8, 0.3],
-          "weapon": [-1.5, 1.5],
-          "fin": [-0.5, 0.5],
-          "ability": [-0.5, 0.5],
-          "detail": [-0.3, 0.3]
-        }
+          "head": [
+            -0.45,
+            0.3
+          ],
+          "arm": [
+            -0.55,
+            0.2
+          ],
+          "leg": [
+            -0.7,
+            0.3
+          ],
+          "weapon": [
+            -0.5,
+            0.5
+          ],
+          "fin": [
+            -0.2,
+            0.2
+          ],
+          "ability": [
+            -0.2,
+            0.2
+          ],
+          "detail": [
+            -0.3,
+            0.3
+          ]
+        },
+        "shockTime": 0.2,
+        "shockLinearDamping": 1.2,
+        "shockAngularDamping": 20,
+        "tip": 2.0
       }
     },
-    "brokenParts": { "max": 24, "lifetime": 4, "sinkTime": 1, "density": 0.3 },
-    "handicaps": { "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5 },
+    "brokenParts": {
+      "max": 24,
+      "lifetime": 4,
+      "sinkTime": 1,
+      "density": 0.3
+    },
+    "handicaps": {
+      "someLegsSpeed": 0.5,
+      "noLegsSpeed": 0.25,
+      "noHeadTurnRate": 0.5
+    },
     "attacks": [
-      { "id": "bonk", "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
-      { "id": "headbutt", "needs": [], "windup": 0.9, "strike": 0.2 }
+      {
+        "id": "bonk",
+        "needs": [
+          "foreArmL",
+          "foreArmR"
+        ],
+        "windup": 0.6,
+        "strike": 0.2
+      },
+      {
+        "id": "headbutt",
+        "needs": [],
+        "windup": 0.9,
+        "strike": 0.2
+      }
     ]
   },
   "spawner": {
     "count": 1,
     "max": 12,
     "respawnDelay": 3,
-    "points": [[-8, 0, 8], [8, 0, 8], [0, 0, 6]]
+    "points": [
+      [
+        -8,
+        0,
+        8
+      ],
+      [
+        8,
+        0,
+        8
+      ],
+      [
+        0,
+        0,
+        6
+      ]
+    ]
   }
 }
