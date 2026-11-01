@@ -26,7 +26,6 @@ BODY_L, BODY_H, BODY_W = 0.30, 0.08, 0.06
 BODY_Y, BODY_Z = 0.05, 0.10
 HOUSING_L, HOUSING_H, HOUSING_W = 0.10, 0.07, 0.08
 HOUSING_Y, HOUSING_Z = 0.135, 0.09
-WINDOW_L, WINDOW_H = 0.072, 0.050
 WHEEL_R, WHEEL_DEPTH = 0.020, 0.015
 WHEEL_Z = HOUSING_Z
 WHEEL_CENTRES = {
@@ -359,25 +358,8 @@ def build_model():
                           (HOUSING_W - 0.012, HOUSING_L - 0.018,
                            HOUSING_H - 0.014), lime, 0.008)
     cut(receiver, receiver_cavity, "Open receiver wheel cavity")
-    window_cutter = box("Right window cutter",
-                        (HOUSING_W / 2, HOUSING_Y, HOUSING_Z),
-                        (0.04, WINDOW_L, WINDOW_H), lime, 0.007)
-    cut(housing, window_cutter, "Open right window")
-    receiver_window = box("Receiver right window",
-                          (HOUSING_W / 2, HOUSING_Y, HOUSING_Z),
-                          (0.04, WINDOW_L, WINDOW_H), lime, 0.007)
-    cut(receiver, receiver_window, "Open receiver right window")
     bevel(housing, 0.0006, 2)
     static.append(housing)
-
-    frame = box("Purple window frame",
-                (HOUSING_W / 2 + 0.001, HOUSING_Y, HOUSING_Z),
-                (0.004, WINDOW_L + 0.012, WINDOW_H + 0.012), purple, 0.006)
-    frame_inner = box("Frame opening",
-                      (HOUSING_W / 2 + 0.001, HOUSING_Y, HOUSING_Z),
-                      (0.012, WINDOW_L, WINDOW_H), purple, 0.005)
-    cut(frame, frame_inner, "Window frame opening")
-    static.append(frame)
 
     wheels = []
     for name, centre in WHEEL_CENTRES.items():
@@ -578,7 +560,7 @@ def area_light(name, loc, energy, target):
     point_at(obj, target)
 
 
-def render_views(wheels):
+def render_views():
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
     scene.render.resolution_x, scene.render.resolution_y = RESOLUTION
@@ -623,13 +605,12 @@ def render_views(wheels):
     bpy.ops.render.render(write_still=True)
     print("Rendered", scene.render.filepath)
 
-    for wheel, sign in zip(wheels, (1, -1)):
-        wheel.rotation_euler.z = sign * math.radians(45)
-    wheel_camera = add_camera("Flywheel closeup camera", (0.65, 0.135, 0.30),
-                              (0, HOUSING_Y, HOUSING_Z))
-    wheel_camera.data.ortho_scale = 0.125
-    scene.camera = wheel_camera
-    scene.render.filepath = str(RENDER_DIR / "flywheel-closeup.png")
+    housing_camera = add_camera("Closed housing closeup camera",
+                                (0.65, HOUSING_Y, HOUSING_Z),
+                                (0, HOUSING_Y, HOUSING_Z))
+    housing_camera.data.ortho_scale = 0.125
+    scene.camera = housing_camera
+    scene.render.filepath = str(RENDER_DIR / "housing-closeup.png")
     bpy.ops.render.render(write_still=True)
     print("Rendered", scene.render.filepath)
 
@@ -664,7 +645,7 @@ def main():
         use_renderable=False,
     )
     print("Exported", GLB_PATH)
-    render_views(wheels)
+    render_views()
 
 
 if __name__ == "__main__":

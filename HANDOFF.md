@@ -79,6 +79,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: ART-04 B04 round 3: closed flywheel housing (Kimi via Pi)
+
+- Removed the right-window cutters from the housing and receiver and removed
+  the purple frame. The existing cavity and both named flywheel nodes remain
+  unchanged inside a closed rounded lime shell. Purple remains on the trigger
+  and sights.
+- `art/blasters/B04/check.py` casts left, right, top and front rays at each
+  wheel centre and requires `body` to be hit first. The old GLB fails both
+  right-side checks; the new GLB passes all eight and the shared checker.
+- Replaced the flywheel close-up with a right-side closed-housing close-up.
+  All six renders were inspected after both final builds and no wheel shows.
+  Final model: 16,016 triangles, 800,296 bytes, eight materials. Consecutive
+  exports are byte-identical. Details and the hash are in B04 `NOTES.md`.
+- Unverified: Paul's visual approval and in-game animation.
+
 ### 2026-11-02: GAME-09 stage 2c and review (Pi, Claude)
 
 - Pi wrote the viewmodel animation (`Viewmodel.animate`, called per render

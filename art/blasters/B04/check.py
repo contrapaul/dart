@@ -4,6 +4,7 @@ import math
 import sys
 import bpy
 from mathutils import Matrix, Vector
+from mathutils.bvhtree import BVHTree
 
 REQUIRED = {"body", "trigger", "mag", "flywheel_l", "flywheel_r", "muzzle_1"}
 MOVING = ("trigger", "mag", "flywheel_l", "flywheel_r")
@@ -21,6 +22,12 @@ def world_bounds(obj):
     low = Vector(tuple(min(point[i] for point in points) for i in range(3)))
     high = Vector(tuple(max(point[i] for point in points) for i in range(3)))
     return low, high
+
+
+def world_bvh(obj):
+    vertices = [obj.matrix_world @ vertex.co for vertex in obj.data.vertices]
+    faces = [tuple(face.vertices) for face in obj.data.polygons]
+    return BVHTree.FromPolygons(vertices, faces)
 
 
 def main():
@@ -70,8 +77,15 @@ def main():
           near(0.160 - low.z, 0.26, 0.015),
           "{:.3f} m".format(0.160 - low.z))
     check("Flywheel housing about 8 cm wide", near(size.x, 0.08, 0.006),
-          "{:.3f} m including window frame".format(size.x))
+          "{:.3f} m".format(size.x))
 
+    body_tree = world_bvh(body) if body is not None else None
+    ray_directions = (
+        ("left", (-0.5, 0.0, 0.0), (1.0, 0.0, 0.0)),
+        ("right", (0.5, 0.0, 0.0), (-1.0, 0.0, 0.0)),
+        ("top", (0.0, 0.0, 0.5), (0.0, 0.0, -1.0)),
+        ("front", (0.0, 0.5, 0.0), (0.0, -1.0, 0.0)),
+    )
     for name in ("flywheel_l", "flywheel_r"):
         wheel = bpy.data.objects.get(name)
         if wheel is None:
@@ -91,6 +105,26 @@ def main():
         centre.z = wheel.matrix_world.translation.z
         check(name + " origin at wheel centre",
               (centre - wheel.matrix_world.translation).length < 0.001)
+
+        if body_tree is not None:
+            wheel_tree = world_bvh(wheel)
+            wheel_centre = wheel.matrix_world.translation.copy()
+            for side, offset, direction in ray_directions:
+                ray_origin = wheel_centre + Vector(offset)
+                ray_direction = Vector(direction)
+                body_hit = body_tree.ray_cast(ray_origin, ray_direction, 0.5)
+                wheel_hit = wheel_tree.ray_cast(ray_origin, ray_direction, 0.5)
+                body_distance = body_hit[3] if body_hit[0] is not None else None
+                wheel_distance = wheel_hit[3] if wheel_hit[0] is not None else None
+                covered = (body_distance is not None
+                           and (wheel_distance is None
+                                or body_distance < wheel_distance))
+                detail = "body {}, wheel {} along ray".format(
+                    "no hit" if body_distance is None
+                    else "{:.1f} mm".format(body_distance * 1000),
+                    "no hit" if wheel_distance is None
+                    else "{:.1f} mm".format(wheel_distance * 1000))
+                check(name + " covered from " + side, covered, detail)
 
     trigger = bpy.data.objects.get("trigger")
     if trigger is not None:
