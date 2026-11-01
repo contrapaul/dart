@@ -71,6 +71,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: B03 approved and merged; the three slice blasters are done (Claude)
+
+- Paul approved B03 "Leviathan" after 2 Kimi rounds (about 70 minutes,
+  most of it round 1's break action). Round 2 joined the fore-ends and the
+  trigger guard (four gap checks in `build.py`, all 0.000 mm), rounded the
+  stock and replaced the plate at the front of the action with a recess
+  and a flush hinge pin.
+- For GAME-09: `breach` opens with negative local X (-40 degrees open);
+  `latch` turns with positive local Y; shells and muzzles are children of
+  `breach`; hide `fore-end` and show `mod_quad` for the quad mod. Signs
+  in `art/blasters/B03/NOTES.md`.
+- B01, B04 and B03 are all on main (`public/models/blasters/`). Next for
+  blasters: GAME-09 (load them in the game with their fire types).
+- B03 is 19,372 triangles, close to the 20,000 budget.
+
 ### 2026-11-01: B04 approved and merged (Claude)
 
 - Paul approved B04 "Shredder" after 2 Kimi rounds (about 28 minutes):
@@ -111,6 +126,18 @@ github.com/contrapaul/dart (public), MIT licence.
   readable within the material budget.
 - Paul's visual approval, Claude's review and in-game animation remain
   unverified.
+
+### 2026-11-01: ART-04 B03 round 2 review fixes (Kimi via Pi)
+
+- Joined the normal and quad fore-ends into their barrel rows, rebuilt the stock with rounded cross sections, removed the breech plate in favour of blind chamber recesses, made the hinge pin flush, and joined the guard to the wrist and action. Hinge motion, trigger, shells, parenting, mod swap, colours and deterministic export remain unchanged.
+- Added four 0.5 mm surface gap checks to `art/blasters/B03/build.py`; all measured 0.000 mm. All seven renders were inspected after each of two builds, including the clear -40 degree open pose.
+- Final GLB: 19,372 triangles, 733,808 bytes and 7 materials. Two exports were byte-identical with SHA-256 `510942e298f0b7ff86fe6ac1139d75e662b5397e1dceb9b43d2c5e698662b434`; shared and B03 checkers pass. Paul's round 2 visual approval and in-game animation remain unverified.
+
+### 2026-11-01: ART-04: B03 in Blender (Kimi via Pi)
+
+- Built B03 from Paul's approved brief in `art/blasters/B03/build.py` and exported `public/models/blasters/B03.glb`: 0.80 m long, 16,520 triangles, 7 materials and one 926-byte grip normal texture.
+- Added all four turnaround renders, a trigger close-up and two 40 degree open-action views. The barrels, fore-end, shells and muzzles move with `breach`; the exported parenting and motion directions pass `art/blasters/B03/check.py`, and the shared GLB checker passes unchanged.
+- Positive trigger local X pulls toward the wrist, negative breach local X opens, and positive latch glTF local Y turns right. For the quad upgrade, hide `fore-end` before showing `mod_quad` and its children. Two consecutive exports are byte-identical. Paul's visual approval and in-game animation remain unverified. Details and round notes: `art/blasters/B03/NOTES.md`.
 
 ### 2026-11-01: B04 and B03 cards and briefs (Claude)
 
