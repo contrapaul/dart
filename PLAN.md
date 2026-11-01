@@ -175,7 +175,7 @@ Unlock point:  [level]
 
 | ID | Name | Role | Ammo | Status |
 |---|---|---|---|---|
-| B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Brief approved (`design/blasters/B01.md`); model in ART-00 |
+| B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Model approved 2026-11-01 (`public/models/blasters/B01.glb`, built by `art/blasters/B01/build.py`); in game with GAME-09 |
 | B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Details in CONTENT-PLAN 4; card and model not started |
 | B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Details in CONTENT-PLAN 4; card and model not started |
 | B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Details in CONTENT-PLAN 4; card and model not started |
@@ -536,7 +536,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ENG-11 | Test range page `range.html`: plain level, frame-time graph, system switches, test panel for darts and Foamers (card: `tasks/ENG-11.md`) | Pi (done) | ENG-10 |
 | ENG-12 | Foamers go limp when killed: a jointed ragdoll pushed by the killing hit, then lie and sink (card: `tasks/ENG-12.md`) | Pi | ENG-10, ENG-11 |
 | GAME-10 | 3 Foamer types (fodder ranged, charger, heavy) | F | ENG-08, ENG-10, PRE-05 |
-| ART-00 | (card: `tasks/ART-00.md`) Spike: Kimi K3.1 Pro through Pi builds B01 in Blender from its brief (script, `.glb`, renders) to the section 5.2 contract; record time, cost and quality. Go / no-go for the Blender route (was: Hunyuan3D) | A + P | |
+| ART-00 | (card: `tasks/ART-00.md`) Spike: Kimi K3.1 Pro through Pi builds B01 in Blender from its brief (script, `.glb`, renders) to the section 5.2 contract; record time, cost and quality. Go / no-go for the Blender route (was: Hunyuan3D) | Kimi via Pi (done 2026-11-01: go) | |
 | ART-01 | Cards and design briefs for all 8 blasters (`design/blasters/Bxx.md`) from CONTENT-PLAN 4 and the reference photos, Paul approves | Claude + P | |
 | ART-02 | Folded into ART-04: the Blender renders are the turnarounds Paul approves | | |
 | ART-03 | Code-generated blocky voxel Foamers (3 types), Paul approves | F | PRE-05 |
@@ -646,6 +646,7 @@ All twelve answered 2026-10-29.
 | 2026-11-01 | The player asks for no downward move while grounded; snap-to-ground holds it to the floor. Pressing into the floor made Rapier stall the whole move now and then (Paul's movement hitch). | 7.3 |
 | 2026-11-01 | Only dart types listed in `catastrophic.popTypes` can pop a Foamer; none of the starter types are listed (Paul: the starter blaster should not pop). | 4.1 |
 | 2026-11-01 | Blasters are modelled by Blender Python scripts written by Kimi K3.1 Pro through Pi, from a written brief (not the photo), to a `.glb` contract with named moving parts (Paul added Kimi and Blender). Replaces the image model and Hunyuan3D route, pending spike ART-00. | 5.2, 8.2, 11.1 |
+| 2026-11-01 | ART-00 passed: the Blender script route is adopted for every blaster. B01 took 5 rounds, about 50 minutes of Kimi time and $2.34. Every build also renders a close-up of fiddly parts (the trigger), and grip texture is a small normal map, not modelled ribs (Paul). | 5.2, 8.2 |
 | 2026-11-01 | D1: 3 acts x 4 levels, about 4 hours; new blasters in the first 7 levels, the last 5 are about challenge and story (Paul). | CONTENT-PLAN 1A |
 | 2026-11-01 | D2: a boss per act plus mid-act mini-bosses; colour variants promote enemies (D5) (Paul). | CONTENT-PLAN 1A |
 | 2026-11-01 | D3: 12 Foamer types plus 3 bosses (Paul). | CONTENT-PLAN 1A |

@@ -71,6 +71,28 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-00 merged, B01 approved (Claude)
+
+- Paul approved B01 "The Dartman" after 5 Kimi rounds: about 50 minutes
+  of Kimi time and $2.34 in tokens in all. The Blender route is a go
+  for every blaster (PLAN 5.2).
+- Files: `art/blasters/B01/build.py` (the source; run it with Blender
+  headless, see `tasks/ART-00.md`), `art/blasters/check_glb.py` (the
+  contract checker, reused for every blaster),
+  `public/models/blasters/B01.glb`, renders and `NOTES.md` in
+  `art/blasters/B01/`. Rebuilds are byte-identical.
+- For the game (GAME-09): positive rotation of `trigger` about its local
+  X pulls it back toward the grip; `mod_double` is hidden by default
+  (glTF extras); muzzles `muzzle_1` to `muzzle_3`.
+- Lessons for the next blasters: Kimi built exactly what the brief said,
+  including my mistake (the trigger's finger face curved the wrong way),
+  so briefs must describe how a part is used, not only its shape. A
+  side close-up of small parts caught what the turnaround hid (the grip
+  covering the trigger). Paul wants hand-held parts simple and
+  comfortable, with surface detail as texture.
+- Unverified: the model in the game (GAME-09). Still open: Moonshot's
+  terms for publishing Kimi output, for `assets/MANIFEST.md`.
+
 ### 2026-11-01: ART-00 round 5: B01 trigger and smooth grip (Kimi via Pi)
 
 - Moved B01's trigger pivot to Y 0.013 m, rebuilt it as a 0.025 m forward-concave
