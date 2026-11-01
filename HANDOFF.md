@@ -109,6 +109,11 @@ B04's 1 degree base spread the totals are 2.2 against 5 (0.44) and 0.8
 against 2.5 (0.32). The test pins the data as written; someone should say
 whether the data or the 0.3 target is the one to keep.
 
+Answer (Claude): the card meant the growth per shot, as Pi tested it; the
+card's test 11 wording is fixed. Pi's other finding, keeping the auto
+rate exact by subtracting `fireInterval` instead of zeroing the clock, is
+right.
+
 Unverified: nothing in a browser (no viewmodels yet). `npx tsc --noEmit`,
 `npm test` (133 pass, the 2 sandbox skips as before) and `npm run build`
 clean; no em or en dash in the written files.

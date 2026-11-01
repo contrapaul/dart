@@ -214,7 +214,8 @@ and fixed muzzle points:
    press is ignored.
 10. Mods: B01 `double` gives 6 darts per shot, magSize 12, muzzles 1 to 6;
     B01 `slug` fires one `slug` dart.
-11. B04 `suppress`: after 10 shots the spread and climb are 0.3 of test 7.
+11. B04 `suppress`: after 10 shots the growth in spread and climb is
+    about 0.3 of test 7's (the per-shot growth is cut, not the base spread).
 12. B03 `both`: one press fires 16 darts (8 per muzzle); `quad`: magSize 4,
     four muzzles.
 13. Models: for every blaster in `blasters.json`, read its `.glb` from
@@ -231,7 +232,7 @@ and fixed muzzle points:
 - [ ] `npm test` passes (all existing tests, the 14 above).
 - [ ] `npx tsc --noEmit` and `npm run build` pass.
 - [ ] No em or en dashes anywhere you wrote (check with
-      `perl -CSD -ne 'print "$ARGV:$.\n" if /\x{2014}|\x{2013}/' $(git ls-files)`).
+      `perl -CSD -ne 'print "$ARGV:$.\n" if /\x{2014}|\x{2013}/' $(git ls-files | grep -vE '\.(png|glb|webp|jpg)$')`).
 - [ ] A dated `HANDOFF.md` log entry (`date +%F`): what was built,
       decisions and why, which old tests changed, what is unverified. Do
       not delete or rewrite other entries. Set the GAME-09 row in
