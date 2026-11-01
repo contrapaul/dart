@@ -416,6 +416,8 @@ Notes:
 | Music | [Paul: AI music generation, commissioned, or licensed] |
 | Voice | [Paul: AI voice, own recordings, students?] |
 
+The full list of sounds, with IDs, takes and delivery format, is `design/SOUNDS.md`.
+
 ---
 
 ## 9. Level design

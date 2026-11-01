@@ -1,0 +1,323 @@
+# DART sound list
+
+Every sound the game needs, for Paul to record or source. 2026-11-02.
+
+**Slice** marks what the vertical slice (P1, due 2026-11-29) needs: B01,
+B03, B04, the F01, F02 and F05 Foamers, the player, the shield and the
+basics. Everything else can come later. **Takes** is how many different
+versions to record, so repeated sounds do not sound identical.
+
+**Suggested source**:
+- **Blaster**: record your own foam blasters (PLAN.md 8.3).
+- **Foley**: record everyday things (ideas given).
+- **Library**: source it.
+- **Code**: can be made in Web Audio if you would rather not record it.
+  You only need to record these if you want something better.
+
+Names in [brackets] are yours to choose (Foamers, the shield, melee weapons
+and the tool are unnamed so far).
+
+## 1. How to deliver
+
+- **Recordings:** WAV, 48 kHz, 24 bit, mono. Microphone 20 to 30 cm away,
+  quiet room, no music or voices. One second of silence before and after.
+  Record a few more takes than the list asks for; I pick the best.
+- **Where:** put raw files in `audio-raw/` in the repo folder. It is
+  gitignored, so raw recordings never go public. I edit, layer and loop
+  them, and only the finished files go into `assets/audio/`.
+- **File names:** the sound's ID plus a take number, for example
+  `B01-fire-03.wav`. A whole session in one long file is fine too; then
+  say out loud which sound is next.
+- **Sourced sounds:** CC0 is best. CC BY is fine (credited in
+  `assets/MANIFEST.md`). No "non-commercial", "no derivatives" or
+  "personal use" licences, because the repo is public and the files are
+  redistributed. Keep the page link and licence name for each one.
+- **No trademarks:** nothing with a brand jingle or a recognisable sound
+  from another game.
+
+## 2. Blasters
+
+### 2.1 Shared by every blaster
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| BX-draw | Blaster raised into view after a switch (plastic rattle, grip slap) | Yes | 3 | Blaster: shake and grab one |
+| BX-holster | Blaster lowered | Yes | 2 | Blaster |
+| BX-dry | Trigger pulled with an empty magazine (dry click) | Yes | 3 | Blaster: per blaster if they sound different |
+| BX-mod-on | Mod attached on the range or at a station (snap, click) | Yes | 2 | Foley: click a plastic part on |
+| BX-mod-off | Mod removed | Yes | 2 | Foley |
+| BX-pickup | Picking up a new blaster (bigger than ammo) | Yes | 2 | Foley plus a short sting (Code) |
+
+### 2.2 B01 The Dartman (pump, 3 darts a shot)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B01-fire | Shot: spring release, air puff, three darts leaving | Yes | 6 | Blaster |
+| B01-pump-back | Pump pulled back | Yes | 4 | Blaster |
+| B01-pump-fwd | Pump pushed home (the satisfying clack) | Yes | 4 | Blaster |
+| B01-mag-out | Magazine out | Yes | 3 | Blaster |
+| B01-mag-in | Magazine in, click | Yes | 3 | Blaster |
+| B01-slug-fire | Slug mod shot: heavier, deeper thump | Yes | 4 | Blaster: fire with a heavy dart, or layer |
+| B01-double-fire | Double pump mod shot: six darts, bigger | Later | 4 | Blaster: layered from B01-fire |
+
+### 2.3 B02 Musketeer (semi-auto sidearm, never empty)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B02-fire | Light, quick shot | Later | 6 | Blaster |
+| B02-slide | Slide or prime after each shot, if it has one | Later | 4 | Blaster |
+| B02-mag-out | Magazine out | Later | 3 | Blaster |
+| B02-mag-in | Magazine in | Later | 3 | Blaster |
+| B02-burst | Burst mod: three quick shots as one sound | Later | 3 | Blaster: layered |
+| B02-heavy-fire | Heavy rounds mod: slow, big thud | Later | 4 | Blaster |
+
+### 2.4 B03 Leviathan (break-action double barrel)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B03-fire | One barrel: a big spread of darts, deep boom | Yes | 6 | Blaster |
+| B03-fire-both | Both barrels at once (mod 1) | Yes | 4 | Blaster: layered |
+| B03-latch | Latch turned to open | Yes | 3 | Blaster or Foley: a heavy switch |
+| B03-break-open | Barrels drop open | Yes | 3 | Blaster or Foley: a hinge |
+| B03-eject | Spent shells thrown out | Yes | 3 | Foley: two plastic tubes flicked out |
+| B03-shell-drop | A shell hitting the floor | Yes | 4 | Foley: drop a plastic tube |
+| B03-load | Shells pushed in | Yes | 4 | Foley |
+| B03-close | Barrels snapped shut | Yes | 4 | Blaster or Foley |
+| B03-quad-fire | Quad barrel mod shot | Later | 4 | Blaster: layered |
+
+### 2.5 B04 Shredder (flywheel full-auto)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B04-rev-up | Flywheels spinning up (rising whine) | Yes | 3 | Blaster: rev it |
+| B04-rev-loop | Flywheels at full speed, steady (I loop it) | Yes | 2 long (5 s) | Blaster |
+| B04-rev-down | Flywheels spinning down | Yes | 3 | Blaster |
+| B04-fire | One dart through the wheels (played on each shot over the loop) | Yes | 8 | Blaster: single shots |
+| B04-burst | A full-auto burst, for reference | Yes | 3 | Blaster: hold the trigger |
+| B04-mag-out | Magazine out | Yes | 3 | Blaster |
+| B04-mag-in | Magazine in | Yes | 3 | Blaster |
+| B04-bounce | Bounce mod: dart ricochets to another target (a springy zip) | Later | 4 | Code or Foley |
+
+### 2.6 B05 Shrike (precision, zoom)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B05-fire | Strong spring shot, sharp | Later | 6 | Blaster: a spring blaster |
+| B05-bolt-back | Bolt or prime back | Later | 3 | Blaster |
+| B05-bolt-fwd | Bolt or prime forward | Later | 3 | Blaster |
+| B05-zoom-in | Scope zoom in | Later | 2 | Foley: a lens twist or click |
+| B05-zoom-out | Scope zoom out | Later | 2 | Foley |
+| B05-mag-out | Magazine out | Later | 3 | Blaster |
+| B05-mag-in | Magazine in | Later | 3 | Blaster |
+| B05-whistle | Precision dart in flight (whistler) | Later | 3 | Blaster: a whistler dart, or Code |
+| B05-pierce | Heavy round passing through a Foamer | Later | 4 | Foley: a punch through foam |
+
+### 2.7 B06 The Standard (heavy full-auto, mega darts)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B06-rev-up | Motor spin-up, deeper than B04 | Later | 3 | Blaster |
+| B06-rev-loop | Motor at speed (loop) | Later | 2 long | Blaster |
+| B06-rev-down | Spin-down | Later | 3 | Blaster |
+| B06-fire | One mega dart, heavy | Later | 8 | Blaster: mega darts |
+| B06-belt | Drum or belt feeding (loop under fire) | Later | 2 long | Foley: a ratchet |
+| B06-reload | Drum or box out and in | Later | 3 each | Blaster |
+| B06-bipod | Bipod down, bipod up | Later | 2 each | Foley |
+
+### 2.8 B07 Collateral (launcher)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B07-fire | Launch: big air thump | Later | 5 | Blaster: a mega dart blaster, layered |
+| B07-pump | Pump back and forward | Later | 3 each | Blaster |
+| B07-load | A round pushed in | Later | 3 | Foley |
+| B07-flight | Round in flight (loop) | Later | 2 | Code or Foley: a whoosh |
+| B07-detonate-click | Remote detonate mod: the button | Later | 2 | Foley: a clicker |
+
+### 2.9 B08 Firehose (gatling, foam balls)
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| B08-spin-up | Barrels spinning up | Later | 3 | Blaster or Foley: a hand drill with a rattle |
+| B08-spin-loop | Barrels at speed (loop) | Later | 2 long | Blaster or Foley |
+| B08-spin-down | Spin-down | Later | 3 | Blaster or Foley |
+| B08-fire | One foam ball shot (played fast over the loop) | Later | 8 | Blaster: a ball blaster |
+| B08-reload | Hopper or drum refill (balls pouring) | Later | 3 | Foley: pour foam balls into a box |
+
+## 3. Darts, impacts and explosions
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| DT-whiz | Dart flying past close to the player | Yes | 4 | Foley: flick a dart past the mic |
+| DT-hit-foamer | Dart hitting a Foamer (soft thwap) | Yes | 6 | Foley: dart into a foam block |
+| DT-hit-hard | Dart hitting concrete or brick (tick and bounce) | Yes | 6 | Foley: dart at a wall |
+| DT-hit-wood | Dart hitting wood | Yes | 4 | Foley |
+| DT-hit-cardboard | Dart hitting cardboard | Yes | 4 | Foley: dart at a box |
+| DT-hit-plastic | Dart hitting plastic | Yes | 4 | Foley |
+| DT-carve | Surface crumbling where a dart carves it | Yes | 6 | Foley: crumble styrofoam or dry sponge |
+| DT-floor | Spent dart landing and rolling on the floor | Yes | 6 | Foley: drop darts |
+| DT-stick | Suction dart sticking (thwop) | Later | 4 | Foley: a suction dart on glass |
+| DT-slug-hit | Slug hit: heavy thud | Yes | 4 | Foley: a heavy foam hit |
+| DT-mega-hit | Mega dart hit | Later | 4 | Foley |
+| DT-ball-hit | Foam ball hitting and bouncing | Later | 6 | Foley: foam balls at a wall |
+| EX-small | Small explosion (B05 explosive round, B06 every 5th dart): a foam pop with a puff | Later | 4 | Code plus Foley: pop a balloon full of foam bits |
+| EX-big | Big blast (B07): deep foam boom | Later | 4 | Library plus Foley layer |
+| EX-cluster | Cluster bomblets, four small pops | Later | 3 | Layered from EX-small |
+| EX-debris | Voxel chunks raining down after a blast | Later | 4 | Foley: crumbled foam dropped on a board |
+
+## 4. Foamers
+
+Foamers are foam and toothless. Their voices (if they have any) should be
+grumbly, squeaky or bubbly, never screams or pain. **Do they have voices at
+all?** That is your call; the vocal rows below are marked "Optional".
+
+### 4.1 Shared by every Foamer
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| FX-step-small | Footstep, small Foamer (squishy) | Yes | 6 | Foley: squeeze a wet sponge |
+| FX-step-medium | Footstep, person sized | Yes | 6 | Foley: a foam block on the floor |
+| FX-step-heavy | Footstep, big Foamer (deep squish thud) | Yes | 6 | Foley: a big cushion dropped |
+| FX-wound | Fizz of foam bubbles from a wound | Yes | 6 | Foley: shaving foam, or a fizzing tablet |
+| FX-part-off | A part breaking off (rip of foam) | Yes | 6 | Foley: tear a foam sponge |
+| FX-part-land | The broken part bouncing on the floor | Yes | 6 | Foley: drop foam pieces |
+| FX-stagger | Staggered, finisher ready (wobbly jelly sound) | Yes | 3 | Foley or Code |
+| FX-topple | Going down, body hitting the floor | Yes | 4 | Foley: drop a cushion |
+| FX-fizz-out | Downed Foamer fizzing away (loop, about 3 s) | Yes | 3 | Foley: fizzing tablet in water |
+| FX-sink | Sinking into the floor (soft slurp) | Yes | 3 | Foley |
+| FX-pop | Catastrophic pop into chunks (the big satisfying one) | Yes | 6 | Foley: balloon pop layered with foam tearing |
+| FX-chunk | Pop chunks bouncing | Yes | 6 | Foley: foam bits thrown on a floor |
+| FX-crawl | Crawling after losing a leg (drag loop) | Later | 2 | Foley: drag a foam block |
+| FX-spawn | Foamer coming out of a Foam rift | Yes | 4 | Foley plus Code |
+| FX-alert | Spots the player (Optional vocal) | Yes | 4 | Your voice through a filter, or Code |
+
+### 4.2 Per Foamer
+
+Optional vocals are a short grunt or squeak per type, a few takes each, if
+Foamers have voices.
+
+| ID | Foamer | Sounds | Slice | Suggested source |
+|---|---|---|---|---|
+| F01 | Fodder grunt with a club | Club swing (whoosh), club bonk on the player | Yes | Foley: swing a pool noodle |
+| F02 | Lanky ball thrower | Throw grunt or wind-up, foam ball in flight (loop), ball hit on the player | Yes | Foley |
+| F03 | Small fast biter (packs) | Skittering steps (loop), nibble attack, a tiny pop | Later | Foley |
+| F04 | Shield trooper | Volley fire, dart hitting its shield, shield carved away | Later | Blaster plus Foley |
+| F05 | Charging bull | Charge wind-up (snort), charge run (loop), wall or player impact, stun | Yes | Foley: your voice for the snort |
+| F06 | Floating ball | Float hum (loop), jaw open, blob spit, blob bounce, big blob | Later | Foley plus Code |
+| F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |
+| F08 | Huge tank | Heavy steps, launcher volley, foam wall of balls | Later | Blaster plus Foley |
+| F09 | Spider turret | Leg clicks (loop), turret spin, pellet stream (loop) | Later | Foley plus Blaster |
+| F10 | Flyer with jets | Jet loop, homing shot, jets breaking (falls) | Later | Foley plus Code |
+| F11 | Armoured knight | Heavy armoured steps, mace swings, overhead slam, sweep, the slow parry wind-up (must be easy to hear), shield hits | Later | Foley |
+| F12 | Ambusher in foam growths | Rustle in a growth, pounce, landing | Later | Foley |
+| F13 | Medic | Spray wand (loop), healing sparkle on another Foamer, tank breaking | Later | Foley: spray bottle |
+| BOSS 1 to 3 | Bosses | Written when you design them | Later | |
+
+## 5. Player
+
+### 5.1 Movement and health
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| PL-step-hard | Footstep on concrete or brick | Yes | 8 | Foley: trainers on concrete |
+| PL-step-wood | Footstep on wood | Yes | 8 | Foley |
+| PL-step-foam | Footstep on foam growth | Later | 8 | Foley: walk on a foam mat |
+| PL-jump | Jump push-off | Yes | 4 | Foley |
+| PL-land-soft | Small landing | Yes | 4 | Foley |
+| PL-land-hard | Landing from high up | Yes | 4 | Foley |
+| PL-dash | Dash (quick whoosh) | Yes | 4 | Foley: swing a towel, or Code |
+| PL-dash-ready | Dash charge back | Yes | 2 | Code |
+| PL-mantle | Grabbing a ledge and climbing up | Yes | 4 | Foley: hands slap a table edge |
+| PL-hurt | Player hit by a Foamer attack (foam thump, not pain) | Yes | 6 | Foley |
+| PL-armour-hit | Hit while armour soaks it | Yes | 4 | Foley: hit a padded jacket |
+| PL-low-health | Low health warning | Yes | 1 loop | Code |
+| PL-death | Player out | Yes | 2 | Foley plus Code |
+| PL-respawn | Back at a checkpoint | Yes | 2 | Code |
+
+### 5.2 Shield, melee, finishers, tool
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| SH-raise | [Shield] raised | Yes | 3 | Foley: a plastic disc |
+| SH-block | Attack blocked | Yes | 6 | Foley: hit the disc with foam |
+| SH-parry | Parry (the "boing") | Yes | 4 | Foley: a spring or ruler twang, or Code |
+| SH-parry-return | Parried shot flying back | Yes | 3 | Code |
+| SH-throw | Shield thrown (frisbee whoosh) | Later | 4 | Foley: throw a frisbee |
+| SH-ricochet | Thrown shield bouncing off a Foamer | Later | 6 | Foley |
+| SH-catch | Shield caught back on the arm | Later | 3 | Foley |
+| SH-charge | Shield charge rush and impact | Later | 3 each | Foley |
+| ML1-swing, ML1-hit | [Melee 1], fast and light: swing, hit | Later | 6 each | Foley: a pool noodle |
+| ML2-swing, ML2-hit | [Melee 2], slow and big: swing, hit | Later | 4 each | Foley |
+| ML3-charge, ML3-slam | [Melee 3]: charging, the slam | Later | 3 each | Foley |
+| ML-empty | Melee out of charges | Later | 2 | Code |
+| FN-finisher | Finisher: squeeze, wring out, pop | Later | 3 per finisher | Foley: wring a wet sponge |
+| VC-start | [Vacuum] switching on | Later | 2 | Foley: a hand vacuum |
+| VC-loop | Sucking loop | Later | 2 long | Foley |
+| VC-extract | Pulling the Foamer in, darts spat out | Later | 3 | Foley plus a dart rattle |
+| VC-empty | Tool not ready | Later | 2 | Code |
+
+### 5.3 Pickups
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| PU-health | Health [Fizz] picked up | Yes | 3 | Foley plus Code |
+| PU-armour | Armour [Padding] picked up | Yes | 3 | Foley: pat a cushion |
+| PU-ammo | Darts picked up (rattle) | Yes | 4 | Foley: shake a box of darts |
+| PU-token | Upgrade token found | Later | 2 | Code |
+| PU-toy | Collectible toy found | Later | 2 | Code plus Foley: a squeaky toy |
+
+## 6. Levels and world
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| LV-arena-lock | Arena seals (doors slam, a sting) | Yes | 2 | Foley plus Code |
+| LV-rift-open | Foam rift opening for a wave | Yes | 3 | Foley plus Code |
+| LV-wave | Next wave starting | Yes | 2 | Code |
+| LV-arena-clear | Arena cleared, doors open | Yes | 2 | Code plus Foley |
+| LV-door | Door opening and closing | Yes | 2 each | Foley |
+| LV-switch | Switch or button | Yes | 3 | Foley |
+| LV-key | Key picked up | Later | 2 | Code |
+| LV-secret | Secret found | Later | 1 | Code |
+| LV-wall-break | Wall blasted through to a secret | Later | 3 | Foley: crumble a big polystyrene sheet |
+| LV-growth-break | Foam growth destroyed | Later | 4 | Foley |
+| LV-station | Upgrade station used | Later | 2 | Code |
+| LV-checkpoint | Checkpoint reached | Yes | 1 | Code |
+| LV-exit | Level exit | Yes | 1 | Code |
+| AMB-level | Ambience loop per setting (room tone, distant hum) | Yes | 1 per setting, 30 s | Foley: a quiet building |
+| AMB-foam | Foam dimension ambience (bubbling, fizzing) | Later | 30 s | Foley |
+
+## 7. Menus and HUD
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| UI-move | Moving between menu items | Yes | 1 | Code |
+| UI-select | Select | Yes | 1 | Code |
+| UI-back | Back | Yes | 1 | Code |
+| UI-pause | Pause and resume | Yes | 1 each | Code |
+| UI-buy | Upgrade bought | Later | 1 | Code |
+| UI-no | Cannot afford, not allowed | Later | 1 | Code |
+| HUD-hitmark | Hit confirm tick (optional) | Yes | 1 | Code |
+| HUD-kill | Pop confirm (optional) | Yes | 1 | Code |
+| HUD-low-ammo | Low ammo click | Yes | 1 | Code |
+
+## 8. Music
+
+Direction: pop-punk, metal lite (PLAN.md 7.7). Each track is two layers
+that play in sync: a calm exploration layer and a combat layer that comes
+in when an arena locks. Same tempo and key for both layers; stems as
+separate WAV files.
+
+| ID | Track | Slice |
+|---|---|---|
+| MU-menu | Title and menu | Yes |
+| MU-act1 | Act 1: exploration and combat layers | Yes |
+| MU-act2 | Act 2: exploration and combat layers | Later |
+| MU-act3 | Act 3: exploration and combat layers | Later |
+| MU-boss1 to 3 | One per boss | Later |
+| MU-clear | Short sting when an arena clears | Yes |
+| MU-credits | End credits | Later |
+
+## 9. Voice
+
+None planned. If there is a narrator or a player voice later, it goes here
+(PLAN.md 8.3, [Paul]).

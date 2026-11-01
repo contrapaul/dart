@@ -79,6 +79,17 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: Sound list for Paul (Claude)
+
+- `design/SOUNDS.md` lists every sound the game needs, for Paul to record
+  or source: blasters B01 to B08, darts, impacts and explosions, Foamers
+  (shared and per type), the player, shield, melee, tool, pickups, levels,
+  menus, music and voice. Each row has an ID (the file name), whether the
+  slice needs it, how many takes, and a suggested source. It also says how
+  to deliver: WAV in the gitignored `audio-raw/`, CC0 or CC BY only for
+  sourced sounds.
+- Open for Paul: whether Foamers have voices (rows marked Optional).
+
 ### 2026-11-02: ART-04 B04 round 3: closed flywheel housing (Kimi via Pi)
 
 - Removed the right-window cutters from the housing and receiver and removed
