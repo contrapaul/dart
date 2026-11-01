@@ -71,6 +71,65 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-00 round 5: B01 trigger and smooth grip (Kimi via Pi)
+
+- Moved B01's trigger pivot to Y 0.013 m, rebuilt it as a 0.025 m forward-concave
+  blade with a forward-curling tip, and retained a 0.045 x 0.025 m guard opening
+  with finger space ahead. Positive local X rotation still pulls toward the grip.
+- Replaced the grip and all modelled ribs with one smooth rounded 0.10 m mesh.
+  Its own charcoal material has explicit UVs and a generated, embedded 128 x 128
+  horizontal-rib normal map. The checker now enforces the new texture budget.
+- All five renders were inspected after each of four builds. Every contract check
+  passes: 17,388 triangles, 852,376 bytes and seven materials. Two consecutive
+  final GLB exports were byte-identical with SHA-256
+  `2a4990f909de0ab639b69473e1791c4d6e8afdf3dda0ee8e715ad00f0f743ef5`.
+- Unverified: Paul's visual approval and in-game animation.
+
+### 2026-11-01: ART-00 round 4: B01 guard clearance (Kimi via Pi)
+
+- Moved B01's guard and trigger forward by 0.025 m and pulled the grip's top
+  front edge back to Y 0, so the full guard opening and yellow blade are
+  visible from the side without grip overlap.
+- Moved the magazine and receiver seating forward by the same amount. The
+  guard-to-magazine gap remains 0.045 m and the magazine is 0.065 m clear of
+  the pump. Added a 512 x 512 trigger close-up to the build script.
+- All five renders were inspected after both builds. Every contract check
+  passes, including trigger pull direction: 17,284 triangles, 747,800 bytes
+  and six materials. Two consecutive GLB exports were byte-identical with
+  SHA-256
+  `de36d1a2e80cc92a6c15d25ac9e5ee70b2ab1212ce6a7385390ee06abe34aaf8`.
+- Unverified: Paul's visual approval and in-game animation.
+
+### 2026-11-01: ART-00 round 3: B01 trigger and magazine (Kimi via Pi)
+
+- Replaced B01's wire trigger with a 3 cm flat yellow blade with a concave
+  rear finger face, enlarged the guard opening, and moved the magazine and
+  its receiver seating forward to leave a 0.045 m gap behind it.
+- Positive `trigger` rotation about local X pulls toward the grip.
+  `art/blasters/check_glb.py` now verifies this at +15 degrees after import.
+- All four renders were inspected after both builds. Every contract check
+  passes: 17,264 triangles, 746,432 bytes and six materials. Two consecutive
+  GLB exports were byte-identical with SHA-256
+  `d4da3a16ca2baca7756fed78aa113485fdaccf7f79be448e1f39e65d55d8a489`.
+- Unverified: Paul's visual approval and in-game animation.
+
+### 2026-11-01: ART-00: B01 in Blender (Kimi via Pi)
+
+- `art/blasters/B01/build.py` builds B01 from the written brief, exports
+  `public/models/blasters/B01.glb` and renders the four 1024 x 768 Eevee views.
+  Three inspected render rounds produced the final toy-plastic finish.
+- `art/blasters/check_glb.py` is the reusable Blender contract checker. B01
+  passes every rule: 0.620 m long, 15,318 triangles, 757,696 bytes, six
+  materials, no image textures, correct moving-part pivots and muzzle nodes.
+- The double pump mod uses `hidden: true` in glTF extras because glTF has no
+  standard visibility flag. It is included in the export but not the renders.
+  Hex colours are converted to linear values so the exported materials match
+  the brief. No reference image was used.
+- Round 2 refined the receiver, shroud, grooved pump, solid guard, stock and
+  longer barrels, and reframed the first-person view.
+- Unverified: Claude's review, Paul's approval from the renders, and in-game
+  loading and animation in GAME-09 and ART-05.
+
 ### 2026-11-01: ENG-12 card and the blaster pipeline (Claude)
 
 - `tasks/ENG-12.md`: ragdolls for downed Foamers (Paul: go limp, not a

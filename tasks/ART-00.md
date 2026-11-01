@@ -70,8 +70,11 @@ Create:
   `muzzle_6` under `mod_double`), pointing forward.
 - Export glTF binary with +Y up; the barrels point along -Z in the glTF
   (check with `check_glb.py`). Origin of the whole model at the grip.
-- Budget: at most 20,000 triangles, 1.5 MB, 8 materials, no image
-  textures.
+- Budget: at most 20,000 triangles, 1.5 MB, 8 materials. Colours are
+  flat; image textures only for small surface detail such as grip
+  texture (a tiling normal map), each at most 256 x 256 and embedded,
+  all together at most 200 KB (Paul, 2026-11-01: grip ribs are
+  textured, not modelled).
 
 ## How to work
 

@@ -234,8 +234,11 @@ model and Hunyuan3D route (Proposed until the ART-00 spike passes).
   (break action), `barrels` (spins about local Z), `drum`, `crank`,
   `flywheel_cage`. Mods that add geometry are their own nodes,
   `mod_<name>`, hidden by default (B03 quad barrels, B08 second barrel).
-- Budget: at most 20,000 triangles, 1.5 MB, 8 materials, no image
-  textures (flat colours; a decal sheet later if needed).
+- Budget: at most 20,000 triangles, 1.5 MB, 8 materials. Colours are
+  flat; image textures only for small surface detail such as grip
+  texture (a tiling normal map), each at most 256 x 256 and embedded,
+  all together at most 200 KB (Paul, 2026-11-01: grip ribs are
+  textured, not modelled).
 - No text, logos or real product markings anywhere.
 
 ---
