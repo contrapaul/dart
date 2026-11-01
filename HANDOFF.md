@@ -69,9 +69,12 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-01: ENG-11 stage 1 (Pi)
+### 2026-11-01: ENG-11: test range page (Pi)
 
-No page, the parts behind it. Stage 2 is the range page, the graph drawing, and the panel.
+Plain level, frame-time graph and the panel: `range.html` next to the
+game and the sandbox. Stage 1 built the parts behind it:
+
+
 
 - `data/range.json` exactly as the card gives it.
 - `src/core/loop.ts`: an optional `stats` hook called after render with one reused `FrameStats` (`raw`, `dt`, `steps`, `work`, `updateWork`; `raw` is the unsnapped rAF interval in ms, 0 on the first frame), `createFrameClock` takes a snap option and exposes the raw last interval, and `startLoop` returns `{ setSnap }`. The existing loop tests pass unchanged.
@@ -81,13 +84,60 @@ No page, the parts behind it. Stage 2 is the range page, the graph drawing, and 
 - `spawn` gained an optional `facing` (it sets the initial yaw). That is the `spawnAt` from the card but folded into `spawn`, nothing new to learn on the range page and one less API method.
 - Tests 1 to 10 are in `tests/core/loop-stats.test.ts`, `tests/ui/frame-log.test.ts` and `tests/foamers/range-api.test.ts`. All pass, the old ones unchanged.
 
-Not verified: nothing game-play-visible this stage, aim helper and clear() need eyes in the browser in stage 2 (the reviewer ran the range).
+Stage 2:
+
+- `vite.config.ts`: range.html as a third input; the build puts
+  `dist/range.html` out.
+- `range.html`, `src/range/range.css`: canvas, HUD, a `#graphbox` (text
+  line + 480x120 canvas) top left, the pause overlay holding the panel with
+  the sandbox look.
+- `src/range/main.ts`: the card's range. Same structure as the game page
+  without the voxel wall, FallingPieces, the foam blocks, the melee debug
+  blast and the thrown blocks; the only voxel targets are the Foamers'
+  parts. Level from `data/range.json`: 60 m floor, 4 m walls, the three
+  cover boxes, thin 5 m markers (no collider) along the spawn line,
+  player at playerSpawn facing -z. The spawner uses range.json's points
+  and count (0 at start). Every frame goes into a FrameLog through the
+  loop's stats hook, with heap MB from `performance.memory` guarded
+  (Firefox has none) and the paused flag. No new objects per frame or per
+  step: all scratch vectors are module-scope, strafe writes one reused
+  object, the loop reuses its one FrameStats.
+- `FrameGraph` in `src/ui/frame-graph.ts`: bars of raw with the work part
+  in orange, lines at one refresh and the hitch threshold, a tick under
+  each step hitch (the graph and summary share the rule through the new
+  `FrameLog.isStepHitch`), a dot at each heap drop, a heap line where
+  available, and the text line from summary() at most 4 times a second.
+  Back-quote toggles it (plain keydown, so it works paused); it starts
+  shown. `FrameLog` gained `reset()`, `peek` and `heapAt` for the graph
+  and the panel.
+- The panel: Foamers (off clears them), shadows (the directional light
+  and the flag), pixel ratio (device or 1 through setPixelRatio), frame
+  clock snap (setSnap), auto strafe (the player wanders sideways, turning
+  every bench.strafePeriod), dart type buttons from data/darts.json,
+  infinite ammo (the magazine refills after every shot, keeping the
+  model's recoil hook), spawn a Foamer at 5/10/20/30 m ahead, keep alive
+  0/1/4/10 (the spawner count), Clear Foamers, Benchmark (20 s unpaused
+  with auto strafe, log cleared at the start, unlocks and writes the
+  report), Report and Copy (the clipboard API) and Clear log.
+- Auto-strafe needed one addition to Input: a public `moveOverride`
+  ({x,y}|null) that move() returns in place of the computed move when set.
+  Nothing else in Input changes; the game page never sets it.
+- Dev hook: `window.__range` with log, foamers, darts, blaster, player,
+  camera and the loop controls (setSnap) when DEV.
+
+Verified: `npx tsc --noEmit` clean, `npm test` 111 pass (101 from stage 1
+on and 10 new from the card, all old ones unchanged), `npm run build`
+passes, dist/ has range.html, the card's perl check finds no em or en dash
+in the written files. Unverified (the reviewer runs them): the range in a
+real browser, the switches, the benchmark, the pointer lock and the
+back-quote toggle, and whether the stutter shows there.
 
 Review (Claude): the card's step rule was wrong for 120 Hz displays, where
 frames normally alternate 0 and 1 steps; "not 1 step" would have flagged
 every other frame. A frame is now a step hitch only when its step count is
 outside what the refresh rate explains (60 Hz: 1; 120 Hz: 0 or 1; 30 Hz:
 2). New test for 120 Hz; the card is corrected.
+
 
 ### 2026-11-01: Paul's play test of ENG-10 (notes, nothing changed yet)
 
