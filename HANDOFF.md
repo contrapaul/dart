@@ -71,6 +71,19 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-00 round 3: B01 trigger and magazine (Kimi via Pi)
+
+- Replaced B01's wire trigger with a 3 cm flat yellow blade with a concave
+  rear finger face, enlarged the guard opening, and moved the magazine and
+  its receiver seating forward to leave a 0.045 m gap behind it.
+- Positive `trigger` rotation about local X pulls toward the grip.
+  `art/blasters/check_glb.py` now verifies this at +15 degrees after import.
+- All four renders were inspected after both builds. Every contract check
+  passes: 17,264 triangles, 746,432 bytes and six materials. Two consecutive
+  GLB exports were byte-identical with SHA-256
+  `d4da3a16ca2baca7756fed78aa113485fdaccf7f79be448e1f39e65d55d8a489`.
+- Unverified: Paul's visual approval and in-game animation.
+
 ### 2026-11-01: ART-00: B01 in Blender (Kimi via Pi)
 
 - `art/blasters/B01/build.py` builds B01 from the written brief, exports

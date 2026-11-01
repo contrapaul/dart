@@ -1,9 +1,10 @@
 """Import a blaster GLB in Blender and report the PLAN 5.2 contract checks."""
 from pathlib import Path
+import math
 import re
 import sys
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 MAX_TRIANGLES = 20000
 MAX_BYTES = int(1.5 * 1024 * 1024)
@@ -105,9 +106,21 @@ def main():
         check("Magazine origin at rest centre", centre_error(mag) < 0.005)
     trigger = bpy.data.objects.get("trigger")
     if trigger:
+        rest_matrix = trigger.matrix_world.copy()
         _, trigger_high = world_bounds([trigger])
-        error = abs(trigger_high.z - trigger.matrix_world.translation.z)
+        error = abs(trigger_high.z - rest_matrix.translation.z)
         check("Trigger origin at top pivot", error < 0.006)
+        rest_points = [rest_matrix @ vertex.co for vertex in trigger.data.vertices]
+        rest_lowest = min(rest_points, key=lambda point: point.z)
+        trigger.matrix_world = rest_matrix @ Matrix.Rotation(math.radians(15), 4, "X")
+        bpy.context.view_layer.update()
+        pulled_points = [trigger.matrix_world @ vertex.co
+                         for vertex in trigger.data.vertices]
+        pulled_lowest = min(pulled_points, key=lambda point: point.z)
+        movement = pulled_lowest.y - rest_lowest.y
+        check("Positive local X pulls trigger toward grip", movement < -0.001,
+              "lowest point Blender Y change {:.5f} m at +15 degrees".format(movement))
+        trigger.matrix_world = rest_matrix
     for obj in objects:
         if obj.name.startswith("mod_"):
             check(obj.name + " hidden by default", obj.get("hidden", False) is True)

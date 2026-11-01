@@ -53,11 +53,11 @@ PUMP_CHANNEL_W = 0.052
 GRIP_H, GRIP_W = 0.11, 0.03
 GRIP_RIBS = 6
 GUARD_W = 0.024
-TRIGGER_L, TRIGGER_RADIUS = 0.025, 0.004
+TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.03, 0.012, 0.008
 TRIGGER_ORIGIN = (0.0, 0.026, 0.047)
 
 MAG_H, MAG_D, MAG_W = 0.13, 0.06, 0.022
-MAG_Y, MAG_Z = 0.068, 0.005
+MAG_Y, MAG_Z = 0.115, 0.005
 DART_COUNT, DART_L, DART_R = 8, 0.045, 0.004
 DART_TIP_L, DART_Z0, DART_Z_STEP = 0.009, -0.043, 0.012
 
@@ -175,27 +175,6 @@ def tube(name, loc, outer, inner, depth, mat, segments=16):
     for face in obj.data.polygons:
         face.use_smooth = face.index % 4 < 2
     return bevel(obj, SMALL_BEVEL, 2)
-
-
-def curve_tube(name, points, radius, mat, cyclic=False):
-    curve = bpy.data.curves.new(name + " curve", "CURVE")
-    curve.dimensions = "3D"
-    curve.resolution_u = 8
-    curve.bevel_depth = radius
-    curve.bevel_resolution = 3
-    spline = curve.splines.new("BEZIER")
-    spline.bezier_points.add(len(points) - 1)
-    for point, co in zip(spline.bezier_points, points):
-        point.co = co
-        point.handle_left_type = "AUTO"
-        point.handle_right_type = "AUTO"
-    spline.use_cyclic_u = cyclic
-    obj = bpy.data.objects.new(name, curve)
-    bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(mat)
-    activate(obj)
-    bpy.ops.object.convert(target="MESH")
-    return bpy.context.object
 
 
 def join_at(objects, name, origin):
@@ -331,9 +310,9 @@ def build_model():
     guard_outer = [(-0.019, 0.018), (-0.005, 0.002), (0.025, 0.002),
                    (0.038, 0.018), (0.04, 0.039), (0.034, 0.049),
                    (-0.014, 0.047)]
-    guard_inner = [(-0.009, 0.022), (0.001, 0.012), (0.019, 0.012),
-                   (0.029, 0.022), (0.031, 0.032), (0.027, 0.039),
-                   (-0.005, 0.037)]
+    guard_inner = [(-0.009, 0.022), (0.001, 0.01), (0.028, 0.01),
+                   (0.036, 0.022), (0.036, 0.032), (0.034, 0.041),
+                   (-0.005, 0.039)]
     guard = profile("Trigger guard", guard_outer, GUARD_W, charcoal)
     cutter = profile("Guard opening", guard_inner, GUARD_W + 0.02, charcoal, 0)
     mod = guard.modifiers.new("Moulded guard opening", "BOOLEAN")
@@ -343,10 +322,18 @@ def build_model():
     bpy.data.objects.remove(cutter, do_unlink=True)
     bevel(guard, 0.0006, 2)
     static.append(guard)
-    trigger = curve_tube("Trigger", [(0, 0, 0), (0, 0.005, -0.012),
-                                    (0, 0.001, -TRIGGER_L)], TRIGGER_RADIUS, yellow)
+    trigger_points = [(-TRIGGER_D / 2, 0), (TRIGGER_D / 2, 0),
+                      (TRIGGER_D / 2, TRIGGER_H * 0.65),
+                      (TRIGGER_D / 3, TRIGGER_H), (-TRIGGER_D / 3, TRIGGER_H)]
+    for i in range(1, 6):
+        z = TRIGGER_H * (1 - i / 6)
+        y = (-TRIGGER_D / 3 - TRIGGER_D / 6 * z / TRIGGER_H
+             + 0.004 * math.sin(math.pi * z / TRIGGER_H))
+        trigger_points.append((y, z))
+    trigger = profile("trigger", trigger_points, TRIGGER_W, yellow, SMALL_BEVEL)
     trigger.location = TRIGGER_ORIGIN
-    trigger.name = "trigger"
+    # Local X points left, so positive glTF local X rotation pulls rearward.
+    trigger.rotation_euler.y = math.pi
 
     pump = box("Chunky pump forend", (0, PUMP_Y, PUMP_Z),
                (PUMP_W, PUMP_L, PUMP_H), charcoal)

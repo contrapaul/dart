@@ -65,3 +65,37 @@ so the script removes UV layers before export. Two consecutive final exports
 were byte-identical, both with SHA-256
 `39fffb24a40bf78427c2e5b7b3e4658aec7e63df264792cdff20aa75103f4da1`.
 Paul's approval of the revised shapes is still pending.
+
+## Round 3
+
+Start: 2026-11-01 19:24:31 CST (`date`).
+End: 2026-11-01 19:30:19 CST (`date`).
+Elapsed: about 6 minutes.
+
+Replaced the wire hook with a yellow flat trigger blade, 3 cm tall, 1.2 cm
+deep at the top finger face and 0.8 cm thick. Its rear finger face curves
+concave toward the grip. The `trigger` origin remains on the top pivot at
+(0, 0.026, 0.047) m. Enlarged the guard opening so the blade is surrounded
+by visible space. The existing lighting shows it clearly, so no fill light
+was added.
+
+For game code, a positive rotation of `trigger` about its local X axis pulls
+it toward the grip. The node's local X points to the model's left. The new
+checker rotates the imported node by +15 degrees and measures its lowest
+point moving 0.00787 m toward the grip, along Blender -Y.
+
+Moved the magazine and its receiver seating forward by 0.047 m. The `mag`
+origin is now (0, 0.115, 0.005) m, still at its rest centre. The guard front
+is at Y 0.040 m and the magazine back at Y 0.085 m, giving a clear 0.045 m
+gap. The magazine remains seated in the receiver and clear of the pump.
+
+All four renders were inspected after each of two builds. The side view
+shows the blade and open guard clearly, and the side and three-quarter views
+show the requested magazine gap. The top and first-person views retain the
+same framing and all other shapes and colours are unchanged. The export is
+0.650 m long, 0.062 m wide and 0.266 m high, with 17,264 triangles, 746,432
+bytes and six materials. `check_glb.py` passes every rule, including the new
+trigger pull-direction rule. Two consecutive exports were byte-identical,
+both with SHA-256
+`d4da3a16ca2baca7756fed78aa113485fdaccf7f79be448e1f39e65d55d8a489`.
+Paul's visual approval and in-game animation remain unverified.
