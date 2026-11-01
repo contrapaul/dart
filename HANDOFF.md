@@ -138,6 +138,30 @@ every other frame. A frame is now a step hitch only when its step count is
 outside what the refresh rate explains (60 Hz: 1; 120 Hz: 0 or 1; 30 Hz:
 2). New test for 120 Hz; the card is corrected.
 
+Stage 2 review (Claude), in the Claude pane (Chrome, 120 Hz):
+- Range loads with no console errors; graph, switches, spawn, keep
+  alive, clear, dart types all work. Single darts down a Foamer on the
+  range; Clear removes live, downed and broken ones.
+- 15 s of auto-strafe with 4 Foamers: 0 hitches, frames 8.3 ms average,
+  9.4 ms worst, game work 1.0 ms average, 3.2 ms worst. So in Chrome the
+  range has no stutter; Paul's run in his own browser is the real test.
+- Chrome's `performance.memory` stayed at one value for the whole run: it
+  is rounded and rarely updated unless Chrome starts with
+  `--enable-precise-memory-info`, so garbage collections cannot be seen
+  that way. The report and graph now say "not measurable" when the heap
+  reading never changes, instead of "GC drops 0".
+- "Pacing" hitches also include browser pauses outside the game's code
+  (garbage collection between frames, the compositor), since those show
+  as a late frame with little game work. The report and the panel note
+  say so; the graph text wraps instead of being cut off.
+- Toggling shadows recompiles every material: one frame of about 300 ms.
+  Expected; clear the log after changing switches.
+- Not reproduced: Pi saw `foamers.test.ts` test 8 fail once with a Rapier
+  "unreachable" in `FoamerPart.voxelToWorld` (a freed body). 8 runs
+  since, all pass; every path that frees a part body takes it out of the
+  dart targets first. Watch for it.
+- Not checked: the Benchmark button with a real pointer lock (the pane
+  cannot capture the mouse), Firefox, the deployed build.
 
 ### 2026-11-01: Paul's play test of ENG-10 (notes, nothing changed yet)
 

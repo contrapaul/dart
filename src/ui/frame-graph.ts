@@ -190,7 +190,10 @@ export class FrameLog {
       `raw ${f(s.rawAvg)} avg / ${f(s.rawP95)} p95 / ${f(s.rawWorst)} worst ms`,
       `work ${f(s.workAvg)} avg / ${f(s.workP95)} p95 / ${f(s.workWorst)} worst ms`,
       `hitches ${s.hitches.total} (long ${s.hitches.long}, pacing ${s.hitches.pacing})`,
-      `GC drops ${s.heapDrops}`,
+      "  long: the game's own work ran over; pacing: the frame was shown late",
+      "  while the game was idle (frame timing, or a browser pause outside the",
+      "  game's code, such as garbage collection or the compositor)",
+      this.heapMeasurable() ? `GC drops ${s.heapDrops}` : "GC drops: not measurable in this browser",
     ];
     if (s.recentHitches.length > 0) {
       lines.push("last hitches:");
@@ -238,6 +241,21 @@ export class FrameLog {
   /** Heap MB at position i, oldest-to-newest (NaN where absent). */
   heapAt(i: number): number {
     return this.at(this.heap, i);
+  }
+
+  /** Whether the heap reading changed at all in the buffer. Chrome rounds
+   *  and rarely updates performance.memory unless started with
+   *  --enable-precise-memory-info, so a flat reading means no garbage
+   *  collection can be seen, not that none happened. */
+  heapMeasurable(): boolean {
+    let first = NaN;
+    for (let i = 0; i < this.count; i++) {
+      const h = this.at(this.heap, i);
+      if (!Number.isFinite(h)) continue;
+      if (Number.isNaN(first)) first = h;
+      else if (h !== first) return true;
+    }
+    return false;
   }
 
   /** The field at position i in oldest-to-newest order. */
@@ -299,7 +317,7 @@ export class FrameGraph {
       + `raw ${s.rawAvg.toFixed(1)} / ${s.rawP95.toFixed(1)} / ${s.rawWorst.toFixed(1)} ms | `
       + `work ${s.workAvg.toFixed(1)} / ${s.workP95.toFixed(1)} / ${s.workWorst.toFixed(1)} ms | `
       + `hitches ${s.hitches.total} (long ${s.hitches.long}, pacing ${s.hitches.pacing}) | `
-      + `GC drops ${s.heapDrops}`;
+      + (this.log.heapMeasurable() ? `GC drops ${s.heapDrops}` : "GC n/a");
     if (t !== this.lastText) {
       this.textEl.textContent = t;
       this.lastText = t;

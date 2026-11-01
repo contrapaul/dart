@@ -80,9 +80,7 @@ body {
   margin: 0 0 6px;
   font-size: 12px;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 480px;
 }
 
 #graphCanvas {

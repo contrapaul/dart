@@ -14,7 +14,7 @@
     <div id="overlay">
       <aside id="panel">
         <h1>Test range</h1>
-        <p class="note">Frame data and switch state in `data/range.json`. A hitch is a frame over hitchFactor times the median, or one whose step count the refresh rate does not explain. Long means the game work was heavy, pacing means the frame was shown at the wrong moment.</p>
+        <p class="note">The graph shows one bar per frame: its height is the time since the last frame, the orange part is the game's own work. A hitch is a frame much longer than the display's refresh, or one that ran the wrong number of physics steps. Long: the game worked too long. Pacing: the frame came late while the game was idle (frame timing, or a browser pause such as garbage collection). Back-quote hides the graph.</p>
         <div class="row"><button id="play">Play</button></div>
         <p class="label">Switches</p>
         <label class="ctl">Foamers
