@@ -71,6 +71,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-04: B04 in Blender (Kimi via Pi)
+
+- Built B04 from its approved brief: `art/blasters/B04/build.py`,
+  `public/models/blasters/B04.glb`, six renders and B04-specific
+  `art/blasters/B04/check.py`. The shared checker is unchanged.
+- The model has both visible flywheels, a curved translucent magazine, the
+  correct concave trigger and smooth textured grips. Both checkers pass:
+  16,628 triangles, 838,280 bytes and eight materials. Two final exports
+  were byte-identical.
+- Decisions and rotation signs are in `art/blasters/B04/NOTES.md`. The right
+  window is a clear open aperture so both vertical-axle wheels remain
+  readable within the material budget.
+- Paul's visual approval, Claude's review and in-game animation remain
+  unverified.
+
 ### 2026-11-01: B04 and B03 cards and briefs (Claude)
 
 - `design/blasters/B04.md` (Shredder, level 2) and `B03.md` (Leviathan,
