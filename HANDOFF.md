@@ -7,12 +7,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 ## Status
 
 PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
-GAME-03 (test Foamer) done. The test course: click to capture the mouse,
-then walk, sprint, jump, dash and mantle around steps, ledges, ramps and
-walls. Left mouse fires the placeholder pump blaster (3 darts per shot,
-priming after each shot, R reloads, auto-reload on empty), darts carve
-voxels and throw foam debris. E throws foam blocks, T toggles dart type.
-Esc or gamepad Start pauses.
+GAME-03 (test Foamer) done. GAME-09 stage 1 and 2b done: the three blasters
+(B01 pump, B04 full-auto, B03 break action) are in the game through
+`Loadout`; switching is keys 1 to 3 or the mouse wheel, the HUD shows
+blaster name, magazine, reserve and B03 shell pips, and the range panel
+has blaster selection and per-mod toggles. Stage 2c (viewmodel animation)
+is still to do.
+
+A test course: click to capture the mouse, then walk, sprint, jump, dash
+and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
+the wheel switch blasters. Darts carve voxels and throw foam debris. E
+throws foam blocks. Esc or gamepad Start pauses.
 
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
@@ -72,6 +77,140 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-02: GAME-09 stage 2c and review (Pi, Claude)
+
+- Pi wrote the viewmodel animation (`Viewmodel.animate`, called per render
+  frame through the Loadout) and a test with a fake node tree; its run
+  stopped before committing, so the review commits it.
+- Review fixes:
+  - Triggers pulled the wrong way: each part was turned by adding to its
+    rest Euler angles, which turns it about the parent's axis. The
+    triggers rest at 180 degrees about Z (all three models), which flips
+    X, so a "positive local X" pull swung them forward. Rotations now
+    apply about the node's own axis from its rest quaternion. New test:
+    a trigger at that rest rotation swings its tip toward the grip.
+  - The pump moved along local -Y (sideways in the model) and went past
+    rest the wrong way (`sin(2 pi p)`); it now slides back along +Z (toward
+    the grip; the B01 brief's axis wording is corrected) and home
+    (`sin(pi p)`). The test watches Z and asks for the full travel.
+  - Every shot kicked twice (the shot hook and `animate` both added it).
+  - B03 shells: a fired shell vanished at once and never flew out. A
+    fired barrel now keeps its spent shell until the reload opens the
+    breach, then it flies up and back and hides; new shells show when
+    loaded.
+- Placement tuned by eye on the range (`viewmodel` in
+  `data/blasters.json`): low right, barrels toward the crosshair, stock
+  off the bottom-right corner; B01 at scale 0.85, B04 and B03 at 0.75.
+- Seen in the browser: switching, B01 pump (6 cm back and home within the
+  priming), B03 reload (latch turns, barrels drop, spent shells rise out),
+  HUD and pips, the main course and the range, no console errors.
+- Not seen: B04's flywheel window is on the blaster's right side, facing
+  away from the player, so the spinning wheels do not show in first
+  person (a design point for Paul). Mods' look in first person. Sounds.
+
+### 2026-11-02: GAME-09 stage 2b (Pi)
+Loadout, switching, HUD and range panel. Stage 1 (data) and 2a (viewmodel,
+committed earlier) are the foundation; stage 2c (animation) is next.
+
+Built:
+
+- `src/weapons/loadout.ts`: the `Loadout` owns three Blaster+Viewmodel
+  pairs (B01, B04, B03 in data order), the active index, per-blaster mod
+  lists, and the switch state. `setMod(i, id, on)` re-resolves the spec,
+  rebuilds the Blaster with a full magazine and the same reserve, and
+  calls `viewmodel.setMods`. `select`, `next`, `prev` switch with
+  `switchTime` from the data; no firing while switching; the old viewmodel
+  hides at the halfway point and the new one shows. `update(dt, controls,
+  aimDir)` delegates to the active Blaster and allocates nothing. The
+  `LoadoutViewmodel` interface lets tests inject fakes without
+  `GLTFLoader`. `Loadout.load(camera, darts, world, playerCollider)` loads
+  all three via `Viewmodel.load`.
+- `src/ui/hud.ts`: `setAmmo` now takes `(activeBlaster, state)` and shows
+  the blaster name, magazine, reserve and B03 shell pips (one pip per
+  barrel, filled when loaded).
+- `src/main.ts`: replaced `Blaster` + `BlasterModel` with `Loadout`.
+  Keys `weapon1` to `weapon3` and the wheel switch blasters. The active
+  blaster's `climb` (radians) is added to the camera pitch every frame.
+  `KeyT` removed.
+- `src/range/main.ts`: replaced `Blaster` with `Loadout`. Range panel
+  blaster selector and mod toggles generated from the data. Infinite ammo
+  hooks are re-applied after `setMod` replaces a blaster. Report includes
+  the active blaster id and mods.
+- `range.html`: blaster and mod rows added to the test panel.
+- `src/weapons/blaster-model.ts`: deleted (nothing used it).
+- `tests/weapons/loadout.test.ts`: test 14 (two subtests) using a
+  `Loadout` constructed directly with fake blasters and viewmodels.
+  Checks no firing during a switch, per-blaster ammo, and the viewmodel
+  swap at the halfway point; checks a second request mid-switch is
+  ignored and the order of `next` and `prev`.
+- `data/blasters.json`: `switchTime` 0.35 is used.
+
+The viewmodels sit at their placement (no animation in this run;
+stage 2c will add it).
+
+Unverified: nothing in a browser yet. `npx tsc --noEmit`, `npm test`
+(135 pass, 2 sandbox skips) and `npm run build` clean; no em or en dash.
+
+Review (Claude), in the browser:
+- Darts left from camera-space muzzle points used as world points, so every
+  dart started near the map origin under the floor. `Loadout.muzzleToWorld`
+  now turns each muzzle's camera point into a world point; both pages set
+  it to run `updateAim` (which also pulls a muzzle out of a wall).
+- Break action: firing cleared `loaded` but never lowered `mag`, so R on
+  B03 after a shot did nothing (only the automatic reload on empty
+  worked). `mag` now counts the loaded shells, reload fills only the empty
+  barrels, and `Blaster.refill()` serves the range's infinite ammo. New
+  test 8b.
+- Seen working: the models load and show, 1 to 3 switch with their own
+  ammo, B01 fires three darts, B04 fires while held, B03 one barrel per
+  press, HUD name and ammo, no console errors. Placement is too close and
+  too big (the stock fills the bottom right); tuned after stage 2C.
+
+### 2026-11-02: GAME-09 stage 1 (Pi)
+All of GAME-09 that can be tested without the page. Stage 2 (viewmodels
+from the .glb, mod show/hide, animation, page buttons for blasters and
+mods, KeyT removed) still to do.
+
+Built:
+
+- `data/blasters.json`: `order` B01/B04/B03, `switchTime` 0.35, and the
+  three blasters exactly as the card gives them (the placeholder blaster's
+  numbers became B01's). `data/darts.json`: the slug type. `data/foamers.json`:
+  slug damage 6.
+- `src/weapons/dart-model.ts`: dart types are data; `DART_TYPES` comes from
+  the JSON and `DartTypeName` is checked against its keys.
+- `src/weapons/blaster.ts` rewritten: `resolveSpec(blasterId, activeMods)`
+  merges mods over the base data, the fire modes (pump with prime, auto with
+  spin-up and growing recoil, break with shells), the muzzle provider and
+  `onShot(muzzleIndex)`. The update step allocates nothing.
+- Both pages now build B01 through `resolveSpec` and the new API; the old
+  `BlasterModel` still draws (it no longer takes numbers from the data, its
+  colours and muzzle point are fixed for now).
+- Tests 1 to 12 of the card in `tests/weapons/blaster.test.ts` (rewritten
+  for the new API), test 13 in a new `tests/weapons/models.test.ts` that
+  reads the .glb JSON chunk and checks every node each blaster's data and
+  animation needs (node signs are in the three NOTES.md files for stage 2).
+
+Old tests changed: the four old placeholder tests became the new tests 1 to
+4 (fire interval, spread, auto-reload, invalid reload) through the new API;
+all other test files are untouched.
+
+Open question: card test 11 says B04 suppress gives 0.3 of test 7's spread
+and climb after 10 shots. The data only does so for the added recoil
+(spreadPerShot 0.12 is 0.3 of 0.4; climb 0.08 is 0.32 of 0.25). Including
+B04's 1 degree base spread the totals are 2.2 against 5 (0.44) and 0.8
+against 2.5 (0.32). The test pins the data as written; someone should say
+whether the data or the 0.3 target is the one to keep.
+
+Answer (Claude): the card meant the growth per shot, as Pi tested it; the
+card's test 11 wording is fixed. Pi's other finding, keeping the auto
+rate exact by subtracting `fireInterval` instead of zeroing the clock, is
+right.
+
+Unverified: nothing in a browser (no viewmodels yet). `npx tsc --noEmit`,
+`npm test` (133 pass, the 2 sandbox skips as before) and `npm run build`
+clean; no em or en dash in the written files.
 
 ### 2026-11-02: ENG-12 merged (Claude)
 

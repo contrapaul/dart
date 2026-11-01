@@ -33,6 +33,20 @@
       "impulse": 0.4,
       "fireInterval": 0.22,
       "carveRadius": 0.08
+    },
+    "slug": {
+      "speed": 34,
+      "gravityScale": 0.5,
+      "drag": 0.4,
+      "length": 0.2,
+      "radius": 0.03,
+      "bodyColor": "#9b5cff",
+      "tipColor": "#fff6e8",
+      "sticks": false,
+      "restitution": 0.35,
+      "impulse": 1.5,
+      "fireInterval": 0.3,
+      "carveRadius": 0.25
     }
   }
 }

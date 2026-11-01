@@ -5,13 +5,11 @@ import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
 import { DartSystem } from "./weapons/darts";
-import { Blaster, type BlasterSpec } from "./weapons/blaster";
-import { BlasterModel } from "./weapons/blaster-model";
+import { Loadout } from "./weapons/loadout";
 import { updateAim } from "./weapons/aim";
 import { DartImpacts, type VoxelTarget } from "./weapons/impacts";
 import { FoamerSystem } from "./foamers/foamers";
 import { Hud } from "./ui/hud";
-import blasterTuning from "../data/blasters.json";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";
 import { carveSphere } from "./voxel/carve";
@@ -171,12 +169,16 @@ const eye = new THREE.Vector3();
 
 // Darts: one pooled system, excluding the player's own capsule from hits.
 const darts = new DartSystem(scene, world, rapier, player.collider);
-// The placeholder pump blaster: ammo, priming, reload. Numbers in
-// data/blasters.json.
-const blasterSpec = blasterTuning.placeholder as unknown as BlasterSpec;
-const blaster = new Blaster(blasterSpec, darts);
-const blasterModel = new BlasterModel(blasterSpec, camera);
-blaster.onShot = () => blasterModel.kick();
+// The loadout: all three blasters and their viewmodels, driven by data in
+// data/blasters.json. Loads before the start overlay can resolve, so by
+// the time the player can act every viewmodel is on screen.
+const loadout = await Loadout.load(camera, darts);
+// Darts leave from the active muzzle's world point, pulled out of walls.
+const _aimUnused = new THREE.Vector3();
+Loadout.muzzleToWorld = (camPoint, out) => {
+  updateAim(camera, world, player.collider, camPoint, out, _aimUnused);
+  return out;
+};
 // Voxel targets: the wall, and every live Foamer (spawn and pop keep it
 // in step). Darts carve both.
 const voxelTargets: VoxelTarget[] = [voxelMesh];
@@ -194,16 +196,9 @@ const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxel
 scene.add(foamers.group);
 // The bonk just logs; player damage arrives in the later card.
 foamers.onBonk = (_f, attack) => console.info("Bonk", attack);
-// KeyT toggles the dart type. A debug key read with a plain keydown listener,
-// not through data/input.json.
-window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyT" && !e.repeat) {
-    blaster.dartType = blaster.dartType === "standard" ? "suction" : "standard";
-    console.info("Dart type: " + blaster.dartType);
-  }
-});
 // Scratch vectors for the aim math; allocated once (aim.ts carries its
 // own).
+const _muzzleCam = new THREE.Vector3();
 const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _playerPos = new THREE.Vector3();
@@ -241,13 +236,24 @@ startLoop({
       // Foamer on a fixed step, before world.step().
       foamers.update(dt, player.eye(1, _playerPos));
       if (input.wasPressed("melee")) debugBlast();
-      // Blaster: muzzle from the camera, aim 50 m down the view, then the
-      // blaster's fixed step, then the darts.
-      updateAim(camera, world, player.collider, blasterSpec.muzzle, _muzzle, _aimDir);
-      blaster.update(
+      // Blaster: switch first (wheel down is next, up is prev), then the
+      // muzzle from the active viewmodel, the aim 50 m down the view, and
+      // the loadout's fixed step, then the darts.
+      for (let i = 0; i < loadout.ids.length; i++) {
+        const key = ["weapon1", "weapon2", "weapon3"][i];
+        if (input.wasPressed(key as "weapon1")) loadout.select(i);
+      }
+      if (input.wasPressed("weaponNext")) loadout.next();
+      if (input.wasPressed("weaponPrev")) loadout.prev();
+      loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
+      updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+      loadout.update(
         dt,
-        { firePressed: input.wasPressed("fire"), reloadPressed: input.wasPressed("reload") },
-        _muzzle,
+        {
+          fireHeld: input.isDown("fire"),
+          firePressed: input.wasPressed("fire"),
+          reloadPressed: input.wasPressed("reload"),
+        },
         _aimDir,
       );
       debris.update(dt);
@@ -281,9 +287,13 @@ startLoop({
     pieces.syncRender(alpha);
     foamers.syncRender(alpha);
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
-    camera.rotation.set(player.pitch, player.yaw, 0);
-    blasterModel.update(_dt, blaster);
-    hud.setAmmo(blaster.mag, blaster.reserve, blaster.state);
+    // The active blaster's recoil climb tilts the view up (the player's own
+    // pitch is unchanged, so releasing the trigger brings the view back up).
+    const climb = loadout.active.climb;
+    camera.rotation.set(player.pitch + climb, player.yaw, 0);
+    // The active blaster's viewmodel animates once per render frame.
+    loadout.render(_dt, input.isDown("fire"));
+    hud.setAmmo(loadout.active, loadout.active.state);
     for (const { mesh, body, prevT, prevQ } of blocks) {
       const p = body.translation();
       const r = body.rotation();
@@ -296,4 +306,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { camera, player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, blaster, impacts, pieces, foamers } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { camera, player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, loadout, impacts, pieces, foamers } });

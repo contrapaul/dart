@@ -197,3 +197,23 @@ button.on {
 #report:empty {
   display: none;
 }
+
+#ammo {
+  white-space: pre;
+}
+#ammo .pips {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+  justify-content: flex-end;
+}
+#ammo .pips i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  display: inline-block;
+  background: rgb(255 246 232 / 25%);
+}
+#ammo .pips i.full {
+  background: #ff7a1a;
+}
