@@ -91,6 +91,10 @@ github.com/contrapaul/dart (public), MIT licence.
   blocks at the start and no destructible terrain, to see whether the
   stutter follows the Foamers and blasters or the current course, and to
   build out blasters and Foamers.
+- Card written: `tasks/ENG-11.md` (Pi). The range page has a frame-time
+  graph that splits each hitch into a long frame or a pacing fault and
+  marks garbage collections, switches to turn systems off, a benchmark
+  that strafes on its own, and a report to paste back.
 
 ### 2026-11-01: ENG-10 review (Claude)
 
