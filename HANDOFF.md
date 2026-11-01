@@ -83,6 +83,8 @@ github.com/contrapaul/dart (public), MIT licence.
   standard visibility flag. It is included in the export but not the renders.
   Hex colours are converted to linear values so the exported materials match
   the brief. No reference image was used.
+- Round 2 refined the receiver, shroud, grooved pump, solid guard, stock and
+  longer barrels, and reframed the first-person view.
 - Unverified: Claude's review, Paul's approval from the renders, and in-game
   loading and animation in GAME-09 and ART-05.
 

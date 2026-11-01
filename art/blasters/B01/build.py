@@ -26,30 +26,33 @@ BODY_Y, BODY_Z = 0.085, 0.09
 PANEL_L, PANEL_H, PANEL_DEPTH = 0.18, 0.045, 0.004
 RIB_L, RIB_H, RIB_DEPTH = 0.15, 0.004, 0.003
 RAIL_L, RAIL_H, RAIL_W = 0.22, 0.015, 0.03
-RAIL_Y, RAIL_Z, RAIL_RIBS = BODY_Y, 0.1425, 10
+RAIL_Y, RAIL_Z, RAIL_RIBS = BODY_Y, 0.1545, 10
 RAIL_RIB_W, RAIL_RIB_L = 0.034, 0.008
+RECEIVER_TOP_H, RECEIVER_TOP_W = 0.018, 0.046
 RING_OUTER, RING_INNER, RING_DEPTH = 0.015, 0.011, 0.006
-RING_Y, RING_Z = -0.005, 0.174
+RING_Y, RING_Z = -0.005, 0.186
 RING_POST_H, RING_POST_W = 0.018, 0.008
 
 SHROUD_L, SHROUD_H, SHROUD_W = 0.20, 0.07, 0.05
+SHROUD_NOSE_L, SHROUD_NOSE_TAPER = 0.035, 0.006
 SHROUD_Y, SHROUD_Z = 0.305, 0.09
 VENT_RADIUS, VENT_DEPTH = 0.004, 0.07
 VENT_ROWS, VENT_COLS = 3, 5
 VENT_Y0, VENT_Y_STEP = 0.235, 0.035
 VENT_Z0, VENT_Z_STEP = 0.07, 0.02
-BARREL_L, BARREL_OUTER, BARREL_INNER = 0.06, 0.011, 0.008
-BARREL_Y, TIP_L = 0.415, 0.012
+BARREL_L, BARREL_OUTER, BARREL_INNER = 0.09, 0.011, 0.008
+BARREL_Y, TIP_L, TIP_OUTER = 0.43, 0.014, 0.0135
 BARREL_TRIPLE = ((0.0, 0.105), (-0.013, 0.083), (0.013, 0.083))
 MUZZLE_Y = BARREL_Y + BARREL_L / 2
 MOD_Z_STEP = 0.032
 
-PUMP_L, PUMP_H, PUMP_W = 0.12, 0.04, 0.05
-PUMP_Y, PUMP_Z = 0.295, 0.035
-PUMP_RIBS, PUMP_RIB_L = 6, 0.006
+PUMP_L, PUMP_H, PUMP_W = 0.12, 0.064, 0.062
+PUMP_Y, PUMP_Z = 0.295, 0.04
+PUMP_GROOVES, PUMP_GROOVE_L, PUMP_GROOVE_DEPTH = 6, 0.006, 0.0035
+PUMP_CHANNEL_W = 0.052
 GRIP_H, GRIP_W = 0.11, 0.03
 GRIP_RIBS = 6
-GUARD_RADIUS = 0.003
+GUARD_W = 0.024
 TRIGGER_L, TRIGGER_RADIUS = 0.025, 0.004
 TRIGGER_ORIGIN = (0.0, 0.026, 0.047)
 
@@ -60,11 +63,11 @@ DART_TIP_L, DART_Z0, DART_Z_STEP = 0.009, -0.043, 0.012
 
 STOCK_L, STOCK_H, STOCK_W = 0.16, 0.09, 0.03
 STOCK_Y, STOCK_TOP_Z, STOCK_BOTTOM_Z = -0.095, 0.12, 0.035
-STOCK_BAR_H, STOCK_BUTT_L = 0.015, 0.018
+STOCK_BAR_H, STOCK_BUTT_L = 0.018, 0.022
 
 RESOLUTION = (1024, 768)
 ORTHO_SCALE = 0.76
-EYE_CAMERA_LOC = (-0.14, -0.32, 0.23)
+EYE_CAMERA_LOC = (-0.26, -0.62, 0.16)
 EYE_CAMERA_LENS = 40
 LIGHT_ENERGY = (25.0, 18.0, 22.0)
 LIGHT_SIZE = 0.8
@@ -134,13 +137,13 @@ def box(name, loc, dims, mat, edge=BEVEL):
     return bevel(obj, edge)
 
 
-def profile(name, points, width, mat):
+def profile(name, points, width, mat, edge=BEVEL):
     count = len(points)
     vertices = [(x, y, z) for x in (-width / 2, width / 2) for y, z in points]
     faces = [tuple(reversed(range(count))), tuple(range(count, count * 2))]
     faces += [(i, (i + 1) % count, (i + 1) % count + count, i + count)
               for i in range(count)]
-    return bevel(mesh_object(name, vertices, faces, mat))
+    return bevel(mesh_object(name, vertices, faces, mat), edge)
 
 
 def cylinder(name, loc, radius, depth, mat, vertices=24, edge=SMALL_BEVEL):
@@ -223,15 +226,27 @@ def build_model():
     pink = material("Clear pink", PINK, MAG_ALPHA)
     static = []
 
+    body_back = BODY_Y - BODY_L / 2
+    body_front = BODY_Y + BODY_L / 2
+    body_bottom = BODY_Z - BODY_H / 2
+    body_top = BODY_Z + BODY_H / 2
     body_points = [
-        (BODY_Y - BODY_L / 2, BODY_Z - BODY_H / 2),
-        (BODY_Y + BODY_L / 2, BODY_Z - BODY_H / 2),
-        (BODY_Y + BODY_L / 2, BODY_Z + BODY_H / 2 - 0.025),
-        (BODY_Y + BODY_L / 2 - 0.03, BODY_Z + BODY_H / 2),
-        (BODY_Y - BODY_L / 2, BODY_Z + BODY_H / 2),
+        (body_back, body_bottom + 0.01),
+        (body_back + 0.007, body_bottom),
+        (0.095, body_bottom),
+        (0.105, body_bottom - 0.01),
+        (0.135, body_bottom - 0.01),
+        (body_front, body_bottom + 0.03),
+        (body_front, body_top - 0.025),
+        (body_front - 0.03, body_top),
+        (body_back + 0.007, body_top),
+        (body_back, body_top - 0.007),
     ]
     receiver = profile("Receiver", body_points, BODY_W, blue)
     static.append(receiver)
+    static.append(box("Raised receiver top",
+                      (0, BODY_Y, body_top + RECEIVER_TOP_H / 2),
+                      (RECEIVER_TOP_W, RAIL_L, RECEIVER_TOP_H), blue))
     for side in (-1, 1):
         cutter = box("Panel recess", (side * BODY_W / 2, BODY_Y, BODY_Z),
                      (PANEL_DEPTH * 2, PANEL_L, PANEL_H), blue, 0)
@@ -263,8 +278,26 @@ def build_model():
     static.append(tube("Ring sight", (0, RING_Y, RING_Z), RING_OUTER,
                        RING_INNER, RING_DEPTH, yellow))
 
-    shroud = box("Vented shroud", (0, SHROUD_Y, SHROUD_Z),
-                 (SHROUD_W, SHROUD_L, SHROUD_H), blue)
+    shroud_sections = [
+        (SHROUD_Y - SHROUD_L / 2, SHROUD_W / 2, SHROUD_H / 2),
+        (SHROUD_Y + SHROUD_L / 2 - SHROUD_NOSE_L, SHROUD_W / 2, SHROUD_H / 2),
+        (SHROUD_Y + SHROUD_L / 2, SHROUD_W / 2 - SHROUD_NOSE_TAPER,
+         SHROUD_H / 2 - SHROUD_NOSE_TAPER),
+    ]
+    vertices = []
+    for y, half_w, half_h in shroud_sections:
+        vertices += [(-half_w, y, SHROUD_Z - half_h),
+                     (half_w, y, SHROUD_Z - half_h),
+                     (half_w, y, SHROUD_Z + half_h),
+                     (-half_w, y, SHROUD_Z + half_h)]
+    faces = [tuple(range(4))]
+    for section in range(2):
+        for i in range(4):
+            j = (i + 1) % 4
+            a = section * 4
+            faces.append((a + i, a + i + 4, a + j + 4, a + j))
+    faces.append(tuple(reversed(range(8, 12))))
+    shroud = bevel(mesh_object("Vented shroud", vertices, faces, blue))
     cutters = []
     for row in range(VENT_ROWS):
         for col in range(VENT_COLS):
@@ -286,7 +319,7 @@ def build_model():
         static.append(tube("Barrel " + str(index), (x, BARREL_Y, z),
                            BARREL_OUTER, BARREL_INNER, BARREL_L, blue))
         static.append(tube("Orange tip " + str(index),
-                           (x, MUZZLE_Y - TIP_L / 2, z), BARREL_OUTER,
+                           (x, MUZZLE_Y - TIP_L / 2, z), TIP_OUTER,
                            BARREL_INNER, TIP_L, orange))
 
     grip_points = [(0.025, 0.045), (-0.025, 0.045),
@@ -295,23 +328,54 @@ def build_model():
     for i in range(GRIP_RIBS):
         static.append(box("Grip rib", (0, -0.004 - i * 0.005, 0.025 - i * 0.014),
                           (GRIP_W + 0.003, 0.032, 0.003), charcoal, SMALL_BEVEL))
-    guard_points = [(-0.005, 0.022, 0.045), (0.005, 0.058, 0.045),
-                    (0.008, 0.063, 0.012), (-0.006, 0.012, 0.005),
-                    (-0.008, -0.006, 0.018)]
-    static.append(curve_tube("Trigger guard", guard_points, GUARD_RADIUS,
-                             charcoal, True))
+    guard_outer = [(-0.019, 0.018), (-0.005, 0.002), (0.025, 0.002),
+                   (0.038, 0.018), (0.04, 0.039), (0.034, 0.049),
+                   (-0.014, 0.047)]
+    guard_inner = [(-0.009, 0.022), (0.001, 0.012), (0.019, 0.012),
+                   (0.029, 0.022), (0.031, 0.032), (0.027, 0.039),
+                   (-0.005, 0.037)]
+    guard = profile("Trigger guard", guard_outer, GUARD_W, charcoal)
+    cutter = profile("Guard opening", guard_inner, GUARD_W + 0.02, charcoal, 0)
+    mod = guard.modifiers.new("Moulded guard opening", "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = cutter
+    apply_modifier(guard, mod)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    bevel(guard, 0.0006, 2)
+    static.append(guard)
     trigger = curve_tube("Trigger", [(0, 0, 0), (0, 0.005, -0.012),
                                     (0, 0.001, -TRIGGER_L)], TRIGGER_RADIUS, yellow)
     trigger.location = TRIGGER_ORIGIN
     trigger.name = "trigger"
 
-    pump_parts = [box("Pump core", (0, PUMP_Y, PUMP_Z),
-                      (PUMP_W - 0.006, PUMP_L, PUMP_H - 0.006), blue)]
-    for i in range(PUMP_RIBS):
-        y = PUMP_Y - PUMP_L / 2 + 0.009 + i * (PUMP_L - 0.018) / (PUMP_RIBS - 1)
-        pump_parts.append(box("Pump rib", (0, y, PUMP_Z),
-                              (PUMP_W, PUMP_RIB_L, PUMP_H), charcoal, SMALL_BEVEL))
-    pump = join_at(pump_parts, "pump", (0, PUMP_Y, PUMP_Z))
+    pump = box("Chunky pump forend", (0, PUMP_Y, PUMP_Z),
+               (PUMP_W, PUMP_L, PUMP_H), charcoal)
+    cutters = [box("Pump wrap channel", (0, PUMP_Y, PUMP_Z + PUMP_H / 2),
+                   (PUMP_CHANNEL_W, PUMP_L + 0.02, 0.04), charcoal, 0)]
+    for i in range(PUMP_GROOVES):
+        y = (PUMP_Y - PUMP_L / 2 + 0.009
+             + i * (PUMP_L - 0.018) / (PUMP_GROOVES - 1))
+        for side in (-1, 1):
+            cutters.append(box(
+                "Pump side groove",
+                (side * (PUMP_W / 2 - PUMP_GROOVE_DEPTH / 2), y, PUMP_Z - 0.005),
+                (PUMP_GROOVE_DEPTH * 2, PUMP_GROOVE_L, PUMP_H - 0.014),
+                charcoal, 0))
+        cutters.append(box("Pump bottom groove",
+                           (0, y, PUMP_Z - PUMP_H / 2),
+                           (PUMP_W - 0.008, PUMP_GROOVE_L, PUMP_GROOVE_DEPTH * 2),
+                           charcoal, 0))
+    cutter = join_at(cutters, "Pump groove cutters", (0, 0, 0))
+    mod = pump.modifiers.new("Cut grip grooves", "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = cutter
+    apply_modifier(pump, mod)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    bevel(pump, 0.0015, 2)
+    pump.name = "pump"
+    bpy.context.scene.cursor.location = (0, PUMP_Y, PUMP_Z)
+    activate(pump)
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
 
     mag_parts = [box("Magazine shell", (0, MAG_Y, MAG_Z),
                      (MAG_W, MAG_D, MAG_H), pink, 0.002)]
@@ -328,9 +392,11 @@ def build_model():
                       (STOCK_W, STOCK_L, STOCK_BAR_H), charcoal))
     static.append(box("Stock bottom", (0, STOCK_Y, STOCK_BOTTOM_Z),
                       (STOCK_W, STOCK_L, STOCK_BAR_H), charcoal))
-    static.append(box("Stock butt", (0, STOCK_Y - STOCK_L / 2 + STOCK_BUTT_L / 2,
-                                      (STOCK_TOP_Z + STOCK_BOTTOM_Z) / 2),
-                      (STOCK_W + 0.005, STOCK_BUTT_L, STOCK_H), charcoal))
+    static.append(box("Rounded stock butt pad",
+                      (0, STOCK_Y - STOCK_L / 2 + STOCK_BUTT_L / 2,
+                       (STOCK_TOP_Z + STOCK_BOTTOM_Z) / 2),
+                      (STOCK_W + 0.008, STOCK_BUTT_L, STOCK_H + 0.006),
+                      charcoal, 0.006))
     body = join_at(static, "body", (0, 0, 0))
 
     for index, (x, z) in enumerate(BARREL_TRIPLE, 1):
@@ -347,7 +413,7 @@ def build_model():
                               BARREL_INNER, BARREL_L, blue))
         mod_parts.append(tube("Double tip " + str(index),
                               (x, MUZZLE_Y - TIP_L / 2, z + MOD_Z_STEP),
-                              BARREL_OUTER, BARREL_INNER, TIP_L, orange))
+                              TIP_OUTER, BARREL_INNER, TIP_L, orange))
     mod_double = join_at(mod_parts, "mod_double", (0, BARREL_Y, 0.105 + MOD_Z_STEP))
     mod_double["hidden"] = True
     for index, (x, z) in enumerate(BARREL_TRIPLE, 4):
@@ -423,7 +489,7 @@ def render_views():
     ]
     views[2][1].rotation_euler.z = math.pi / 2
     eye = add_camera("First person camera", EYE_CAMERA_LOC, ortho=False)
-    point_at(eye, (-0.03, 0.60, 0.15))
+    point_at(eye, (-0.04, 0.55, 0.18))
     views.append(("first-person", eye))
     for name, camera in views:
         scene.camera = camera
@@ -444,6 +510,10 @@ def main():
     unapplied = [obj.name for obj in bpy.data.objects if obj.modifiers]
     if unapplied:
         raise RuntimeError("Unapplied modifiers: " + ", ".join(unapplied))
+    # Flat materials need no UVs, and generated UVs vary slightly between runs.
+    for mesh in bpy.data.meshes:
+        while mesh.uv_layers:
+            mesh.uv_layers.remove(mesh.uv_layers[0])
     bpy.ops.export_scene.gltf(
         filepath=str(GLB_PATH),
         export_format="GLB",

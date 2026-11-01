@@ -37,3 +37,31 @@ and the brief's colours. There is no text, logo, decal or pattern.
 
 No brief item was omitted. Claude's review and Paul's visual approval are still
 pending. In-game loading, placement and animation are outside ART-00.
+
+## Round 2
+
+Start: 2026-11-01 18:59:09 CST (`date`).
+End: 2026-11-01 19:12:25 CST (`date`).
+Elapsed: about 13 minutes.
+
+Three refinement build and render rounds replaced the separate pump fins with
+one charcoal wraparound forend with six boolean-cut grooves, lengthened the
+barrels by 3 cm, added wider orange collars and a tapered shroud nose, and made
+the trigger guard a solid moulded loop. The receiver gained a raised top, a
+stepped and angled lower front, and a chamfered stock joint. The stock bars are
+now 1.8 cm thick and the butt pad is larger and more rounded. The first-person
+camera moved back and down to show the whole front half low on the right.
+
+All four renders were inspected after each refinement round. The final views
+show one grooved grip rather than a comb, a visible open guard and trigger, the
+shaped receiver and nose, and all three longer barrels. The required nodes,
+origins, muzzles, hidden double mod, colours and originality features remain.
+The final export is 0.650 m long, 0.062 m wide and 0.266 m high, with 17,372
+triangles, 741,444 bytes and six materials. `check_glb.py` passes every rule.
+
+For reproducibility, two baseline exports had identical JSON but 11 differing
+bytes in generated VEC2 UV coordinates. The flat-colour model does not use UVs,
+so the script removes UV layers before export. Two consecutive final exports
+were byte-identical, both with SHA-256
+`39fffb24a40bf78427c2e5b7b3e4658aec7e63df264792cdff20aa75103f4da1`.
+Paul's approval of the revised shapes is still pending.
