@@ -121,9 +121,8 @@ github.com/contrapaul/dart (public), MIT licence.
 - Seen in the browser: switching, B01 pump (6 cm back and home within the
   priming), B03 reload (latch turns, barrels drop, spent shells rise out),
   HUD and pips, the main course and the range, no console errors.
-- Not seen: B04's flywheel window is on the blaster's right side, facing
-  away from the player, so the spinning wheels do not show in first
-  person (a design point for Paul). Mods' look in first person. Sounds.
+- Not seen: mods' look in first person. Sounds. (B04's flywheel window
+  was later closed: the wheels are internal, ART-04 B04 round 3.)
 
 ### 2026-11-02: GAME-09 stage 2b (Pi)
 Loadout, switching, HUD and range panel. Stage 1 (data) and 2a (viewmodel,
