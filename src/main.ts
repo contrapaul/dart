@@ -291,6 +291,8 @@ startLoop({
     // pitch is unchanged, so releasing the trigger brings the view back up).
     const climb = loadout.active.climb;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
+    // The active blaster's viewmodel animates once per render frame.
+    loadout.render(_dt, input.isDown("fire"));
     hud.setAmmo(loadout.active, loadout.active.state);
     for (const { mesh, body, prevT, prevQ } of blocks) {
       const p = body.translation();

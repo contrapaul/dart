@@ -173,4 +173,36 @@ export class Loadout {
     }
     this.blasters[this.idx].update(dt, controls, aimDir);
   }
+
+  /** Called once per render frame (from the loop's render hook): animate
+   *  the active viewmodel and apply the switch dip. The dip moves the
+   *  whole viewmodel group down out of view for the falling blaster and
+   *  uses the Loadout's switch progress: the old blaster dips down over
+   *  the first half of the switch, the new one rises in over the second
+   *  half. Only the active viewmodel animates; the others sit at rest.
+   *  The Loadout's render dep applies the dip to every viewmodel so the
+   *  switch is visible from the moment it starts. */
+  render(dt: number, fireHeld: boolean): void {
+    const t = this.switchTimer >= 0 ? this.switchTimer / this.switchTime : -1;
+    for (let i = 0; i < this.viewmodels.length; i++) {
+      const vm = this.viewmodels[i];
+      let dip = 0;
+      if (t >= 0) {
+        if (i === this.switchFrom) {
+          // falling: 0 to -0.3 over the first half of the switch
+          dip = -0.3 * Math.sin(Math.min(1, t / 0.5) * Math.PI / 2);
+        } else if (i === this.switchTo) {
+          // rising: starts at -0.3 and goes to 0 over the second half
+          const u = Math.min(1, Math.max(0, (t - 0.5) / 0.5));
+          dip = -0.3 * (1 - Math.sin(u * Math.PI / 2));
+        }
+      }
+      const withDip = vm as Partial<typeof vm> & { setDip?(y: number): void };
+      if (withDip.setDip) withDip.setDip(dip);
+      if (i === this.idx) {
+        const withAnim = vm as typeof vm & { animate?(dt: number, b: Blaster, fh: boolean): void };
+        if (withAnim.animate) withAnim.animate(dt, this.blasters[i], fireHeld);
+      }
+    }
+  }
 }

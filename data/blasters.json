@@ -8,7 +8,7 @@
     "magSize": 8, "reserveMax": 40, "reserveStart": 40,
     "primeTime": 0.45, "reloadTime": 1.4, "autoReload": true,
     "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3"],
-    "viewmodel": { "position": [0.16, -0.17, -0.32], "rotationDeg": [0, 0, 0], "scale": 0.6 },
+    "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.04, "tiltDeg": 5, "return": 12, "triggerDeg": 15, "pumpTravel": 0.06, "magDrop": 0.15 },
     "mods": {
       "slug": { "dartType": "slug", "dartsPerShot": 1, "spreadDeg": 0 },
@@ -22,7 +22,7 @@
     "fireInterval": 0.1, "spinUp": 0.15, "spinDown": 1.0, "reloadTime": 1.8, "autoReload": true,
     "recoil": { "spreadPerShot": 0.4, "spreadMax": 6, "climbDegPerShot": 0.25, "climbDegMax": 4, "recover": 0.4 },
     "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.15, -0.18, -0.34], "rotationDeg": [0, 0, 0], "scale": 0.55 },
+    "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.75 },
     "motion": { "kick": 0.01, "tiltDeg": 1, "return": 18, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.18 },
     "mods": {
       "suppress": { "recoil": { "spreadPerShot": 0.12, "climbDegPerShot": 0.08 } },
@@ -35,7 +35,7 @@
     "magSize": 2, "reserveMax": 24, "reserveStart": 12,
     "fireInterval": 0.25, "reloadTime": 1.6, "autoReload": true,
     "muzzles": ["muzzle_1", "muzzle_2"],
-    "viewmodel": { "position": [0.15, -0.17, -0.36], "rotationDeg": [0, 0, 0], "scale": 0.55 },
+    "viewmodel": { "position": [0.2, -0.24, -0.38], "rotationDeg": [2, 5, 0], "scale": 0.75 },
     "motion": { "kick": 0.06, "tiltDeg": 8, "return": 8, "triggerDeg": 15, "breachOpenDeg": -40, "latchDeg": 30 },
     "mods": {
       "both": { "bothBarrels": true },

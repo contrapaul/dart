@@ -78,6 +78,37 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: GAME-09 stage 2c and review (Pi, Claude)
+
+- Pi wrote the viewmodel animation (`Viewmodel.animate`, called per render
+  frame through the Loadout) and a test with a fake node tree; its run
+  stopped before committing, so the review commits it.
+- Review fixes:
+  - Triggers pulled the wrong way: each part was turned by adding to its
+    rest Euler angles, which turns it about the parent's axis. The
+    triggers rest at 180 degrees about Z (all three models), which flips
+    X, so a "positive local X" pull swung them forward. Rotations now
+    apply about the node's own axis from its rest quaternion. New test:
+    a trigger at that rest rotation swings its tip toward the grip.
+  - The pump moved along local -Y (sideways in the model) and went past
+    rest the wrong way (`sin(2 pi p)`); it now slides back along +Z (toward
+    the grip; the B01 brief's axis wording is corrected) and home
+    (`sin(pi p)`). The test watches Z and asks for the full travel.
+  - Every shot kicked twice (the shot hook and `animate` both added it).
+  - B03 shells: a fired shell vanished at once and never flew out. A
+    fired barrel now keeps its spent shell until the reload opens the
+    breach, then it flies up and back and hides; new shells show when
+    loaded.
+- Placement tuned by eye on the range (`viewmodel` in
+  `data/blasters.json`): low right, barrels toward the crosshair, stock
+  off the bottom-right corner; B01 at scale 0.85, B04 and B03 at 0.75.
+- Seen in the browser: switching, B01 pump (6 cm back and home within the
+  priming), B03 reload (latch turns, barrels drop, spent shells rise out),
+  HUD and pips, the main course and the range, no console errors.
+- Not seen: B04's flywheel window is on the blaster's right side, facing
+  away from the player, so the spinning wheels do not show in first
+  person (a design point for Paul). Mods' look in first person. Sounds.
+
 ### 2026-11-02: GAME-09 stage 2b (Pi)
 Loadout, switching, HUD and range panel. Stage 1 (data) and 2a (viewmodel,
 committed earlier) are the foundation; stage 2c (animation) is next.
