@@ -71,6 +71,30 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: Movement hitch fixed (Claude, from Paul's range test)
+
+- Paul, on the range: the Benchmark reports were clean, but moving (not
+  looking, not Foamers) caught for a moment every couple of seconds, as
+  if direction input dropped out. Frame times never showed it.
+- Cause: on flat ground the controller still asked Rapier's character
+  controller to move down a little each step (gravity). About once a
+  second Rapier stopped the whole move against the floor after 1 to 2 mm
+  instead of sliding along it, and the controller sets its speed from
+  what actually moved, so speed went from 7 m/s to 0 in one step and
+  took about 0.1 s to build up again. Measured on the range with
+  auto-strafe: 7 m/s to 0 in a step about once a second.
+- Fix (`src/player/controller.ts`): while grounded and not rising, ask
+  for no downward move; snap-to-ground (0.3 m) keeps the capsule on the
+  floor, on ramps and down steps. After: 0 stalls in 720 steps of
+  auto-strafe; walking off the 2.4 m ledge still falls and lands, the
+  25 degree ramp and the stairs work both ways.
+- New test `tests/player/controller.test.ts`: 7 s of strafing on a flat
+  floor, no step below walking speed once at speed (38 stalled steps
+  before the fix).
+- The frame graph could not see this: the frames were on time, the
+  player just did not move in them. Unverified: Paul's feel in his
+  browser.
+
 ### 2026-11-01: ENG-11: test range page (Pi)
 
 Plain level, frame-time graph and the panel: `range.html` next to the

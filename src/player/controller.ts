@@ -115,7 +115,12 @@ export class PlayerController {
 
     if (m.y > 0.5 && !this.grounded && this.tryMantle()) return this.stepMantle(dt);
 
-    const desired = { x: this.vel.x * dt, y: this.vel.y * dt, z: this.vel.z * dt };
+    // On the ground, ask for no downward move: snap-to-ground keeps the
+    // capsule on the floor. Pressing into the floor every step made Rapier
+    // now and then stop the whole move against it after a millimetre or
+    // two, which set the speed to zero: the hitch Paul felt while moving.
+    const down = this.grounded && this.vel.y <= 0 ? 0 : this.vel.y * dt;
+    const desired = { x: this.vel.x * dt, y: down, z: this.vel.z * dt };
     this.cc.computeColliderMovement(this.collider, desired, undefined, SOLID_QUERY_GROUPS);
     const moved = this.cc.computedMovement();
     this.grounded = this.cc.computedGrounded();
