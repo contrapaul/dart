@@ -1,5 +1,33 @@
 # ART-04 notes: B04
 
+## Round 3
+
+Start: 2026-11-02 05:51:44 CST (`date`).
+End: 2026-11-02 05:58:39 CST (`date`).
+Elapsed: about 7 minutes.
+
+Removed the housing and receiver right-window cutters and the purple window
+frame. The enclosed wheel cavity remains, so both sides of the flywheel housing
+are closed rounded lime bulges. The `flywheel_l` and `flywheel_r` nodes, origins,
+materials and parenting are unchanged; they remain inside the shell for the game
+to spin. The purple material still serves the trigger and sights.
+
+`check.py` builds world-space BVH trees for `body` and each wheel. From 0.5 m
+to the left, right, top and front of each wheel centre, it casts a ray toward
+that centre. Each of the eight rays passes only if it hits `body` before the
+wheel, or hits `body` without reaching the wheel. The Round 2 GLB failed both
+right-side rays; all eight pass on the closed model.
+
+The right-side closed-housing close-up replaces the flywheel close-up. All six
+renders were inspected after each of two consecutive builds, and no wheel shows
+through any gap. Both checkers pass: 16,016 triangles, 800,296 bytes, eight
+materials and the same embedded 926-byte grip texture. The two exports were
+byte-identical with SHA-256
+`9bba7e20907d02326a80ac8a8c88cfa4b68d983b5d9f6f0331a462641d3de53f`.
+An independent reviewer found no issues in the build and check changes.
+
+Paul's visual approval and in-game animation remain unverified.
+
 ## Round 2
 
 Start: 2026-11-01 20:55:34 CST (`date`).
@@ -35,8 +63,9 @@ Elapsed: about 22 minutes.
 
 Built only from `design/blasters/B04.md`, with no reference images. The script
 starts from an empty scene, builds the model, exports the GLB and renders the
-four turnaround views plus the trigger and flywheel close-ups. All six PNGs
-were inspected after every successful build.
+four turnaround views plus two close-ups. Round 2 used trigger and flywheel
+close-ups; Round 3 replaced the latter with the closed-housing view. All six
+PNGs were inspected after every successful build.
 
 Final export: 0.758 m long, 0.083 m wide and 0.283 m high including the
 sights. Rail top to magazine bottom is 0.265 m. It has 16,628 triangles,
@@ -70,8 +99,8 @@ build.
 6. The ray trace showed that the original receiver slab still filled the
    housing and blocked the far wheel. Cut the wheel cavity and right window
    through the receiver as well as the outer housing. Restored the 4 cm
-   non-overlapping wheel spacing and elevated camera. Both yellow wheels,
-   purple hubs and rotated face markers are now clearly visible.
+   non-overlapping wheel spacing and elevated camera. At the end of Round 2,
+   both yellow wheels, purple hubs and rotated face markers were clearly visible.
 
 The unchanged seventh build produced the byte-identical export described
 above, and all six renders were inspected again.
@@ -85,16 +114,15 @@ oval cut-out, rounded butt pad, smooth pistol grip, 30 degree forward-raked
 foregrip, and curved translucent orange magazine with ten blue and orange
 darts visible. There is no text, logo, decal or printed pattern.
 
-The right window is a clear open aperture, 7.2 by 5 cm, rather than a separate
-glass pane. This keeps both vertical-axle wheels readable and stays within the
-eight-material budget. The opening is larger than the brief's approximate
-6 by 4 cm so both 4 cm wheels fit the view. No other brief item was omitted.
+Round 2 used a clear open right aperture, 7.2 by 5 cm, rather than a separate
+glass pane. Round 3 removed that opening and its frame to close the housing as
+Paul directed. No other brief item was omitted.
 
 Both hand-held grips use the generated tiling normal map on `Grip charcoal`.
 Their explicit UVs are retained when the static meshes join into `body`.
 Every other exported mesh has no UV layer. Colours are converted from sRGB to
-linear values, all modifiers are applied, and the GLB is exported before the
-45 degree wheel pose used only for the close-up.
+linear values and all modifiers are applied. The wheels remain at rest in the
+GLB and all Round 3 renders.
 
 ## Motion signs for game code
 
@@ -117,8 +145,8 @@ vertical and the muzzle points along negative Z.
   along glTF negative Z.
 
 All moving parts and `muzzle_1` are children of `body`, whose origin is the
-trigger-hand grip. The flywheel close-up uses +45 degrees on the left wheel
-and -45 degrees on the right wheel. The exported nodes remain at rest.
+trigger-hand grip. All Round 3 renders and the exported nodes keep the wheels
+at rest.
 
 ## Unverified
 
