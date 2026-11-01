@@ -2,7 +2,7 @@
   "_note": "Test Foamer (ENG-10): rig F01 from data/foamer-rigs.json, with part damage, breaking, handicaps, wounds, going down and popping. Distances in metres, times in seconds. Rig shapes, speed and health come from the rig file (one source).",
   "test": {
     "rig": "F01",
-    "damage": { "standard": 1, "suction": 0.5 },
+    "damage": { "standard": 1, "suction": 0.5, "slug": 6 },
     "minDamageSpeed": 8,
     "turnRate": 6,
     "gravity": 22,

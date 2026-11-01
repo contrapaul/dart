@@ -4,6 +4,7 @@ import type { Rapier } from "../physics/world";
 import tuning from "../../data/darts.json";
 import { buildDartGeometry } from "./dart-model";
 import type { DartTypeSpec, DartTypeName } from "./dart-model";
+import { DART_TYPES } from "./dart-model";
 import { RAGDOLL_GROUPS } from "../physics/world";
 
 export type { DartTypeName } from "./dart-model";
@@ -37,7 +38,8 @@ const FADING = 3;
 const AXIS_Z = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
 
-const TYPE_NAMES: DartTypeName[] = ["standard", "suction"];
+// Dart types come from data/darts.json (GAME-09), not a hard-coded list.
+const TYPE_NAMES: DartTypeName[] = DART_TYPES;
 
 interface Slot {
   alive: boolean;
@@ -73,7 +75,7 @@ export class DartSystem {
 
   private slots: Slot[] = [];
   private free: number[] = [];
-  private list: Record<DartTypeName, number[]> = { standard: [], suction: [] };
+  private list = {} as Record<DartTypeName, number[]>;
   private count: Record<number, number> = { [FLYING]: 0, [STUCK]: 0, [RESTING]: 0, [FADING]: 0 };
   private meshes: Record<DartTypeName, THREE.InstancedMesh> =
     {} as Record<DartTypeName, THREE.InstancedMesh>;
@@ -98,6 +100,7 @@ export class DartSystem {
     this.ignore = ignore;
     const n = TUNE.maxLive + TUNE.maxStuck + TUNE.maxResting;
     for (const type of TYPE_NAMES) {
+      this.list[type] = [];
       const geo = buildDartGeometry(TUNE.types[type]);
       const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
       const inst = new THREE.InstancedMesh(geo, mat, n);
@@ -111,8 +114,8 @@ export class DartSystem {
       this.slots.push({
         alive: false,
         state: FLYING,
-        type: "standard",
-        spec: TUNE.types.standard,
+        type: DART_TYPES[0],
+        spec: TUNE.types[DART_TYPES[0]],
         canStick: true,
         pos: new THREE.Vector3(),
         vel: new THREE.Vector3(),

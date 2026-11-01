@@ -5,13 +5,12 @@ import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
 import { DartSystem } from "./weapons/darts";
-import { Blaster, type BlasterSpec } from "./weapons/blaster";
+import { Blaster, resolveSpec } from "./weapons/blaster";
 import { BlasterModel } from "./weapons/blaster-model";
 import { updateAim } from "./weapons/aim";
 import { DartImpacts, type VoxelTarget } from "./weapons/impacts";
 import { FoamerSystem } from "./foamers/foamers";
 import { Hud } from "./ui/hud";
-import blasterTuning from "../data/blasters.json";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";
 import { carveSphere } from "./voxel/carve";
@@ -173,9 +172,11 @@ const eye = new THREE.Vector3();
 const darts = new DartSystem(scene, world, rapier, player.collider);
 // The placeholder pump blaster: ammo, priming, reload. Numbers in
 // data/blasters.json.
-const blasterSpec = blasterTuning.placeholder as unknown as BlasterSpec;
-const blaster = new Blaster(blasterSpec, darts);
-const blasterModel = new BlasterModel(blasterSpec, camera);
+// The Dartman (B01) until the viewmodel switches in (GAME-09 stage 2); the
+// old box model still draws. Its muzzle comes from the placeholder point.
+const blasterSpec = resolveSpec("B01");
+const blasterModel = new BlasterModel(camera);
+const blaster = new Blaster(blasterSpec, darts, () => _muzzle);
 blaster.onShot = () => blasterModel.kick();
 // Voxel targets: the wall, and every live Foamer (spawn and pop keep it
 // in step). Darts carve both.
@@ -243,11 +244,14 @@ startLoop({
       if (input.wasPressed("melee")) debugBlast();
       // Blaster: muzzle from the camera, aim 50 m down the view, then the
       // blaster's fixed step, then the darts.
-      updateAim(camera, world, player.collider, blasterSpec.muzzle, _muzzle, _aimDir);
+      updateAim(camera, world, player.collider, blasterModel.muzzle, _muzzle, _aimDir);
       blaster.update(
         dt,
-        { firePressed: input.wasPressed("fire"), reloadPressed: input.wasPressed("reload") },
-        _muzzle,
+        {
+          fireHeld: input.isDown("fire"),
+          firePressed: input.wasPressed("fire"),
+          reloadPressed: input.wasPressed("reload"),
+        },
         _aimDir,
       );
       debris.update(dt);

@@ -1,8 +1,11 @@
 import * as THREE from "three";
-import type tuning from "../../data/darts.json";
+import tuning from "../../data/darts.json";
 
-export type DartTypeName = "standard" | "suction";
-export type DartTypeSpec = (typeof tuning.types)["standard"];
+// Dart types are data (GAME-09): the list comes from data/darts.json, and a
+// name is a string type checked against it (the slug type is added there).
+export type DartTypeName = keyof typeof tuning.types;
+export type DartTypeSpec = (typeof tuning.types)[DartTypeName];
+export const DART_TYPES: DartTypeName[] = Object.keys(tuning.types) as DartTypeName[];
 
 // Builds one dart geometry per type from code. The long axis is +Z with the
 // rounded tip at +Z and the origin at the centre, so the dart flies along +Z.

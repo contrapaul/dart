@@ -73,6 +73,46 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: GAME-09 stage 1 (Pi)
+All of GAME-09 that can be tested without the page. Stage 2 (viewmodels
+from the .glb, mod show/hide, animation, page buttons for blasters and
+mods, KeyT removed) still to do.
+
+Built:
+
+- `data/blasters.json`: `order` B01/B04/B03, `switchTime` 0.35, and the
+  three blasters exactly as the card gives them (the placeholder blaster's
+  numbers became B01's). `data/darts.json`: the slug type. `data/foamers.json`:
+  slug damage 6.
+- `src/weapons/dart-model.ts`: dart types are data; `DART_TYPES` comes from
+  the JSON and `DartTypeName` is checked against its keys.
+- `src/weapons/blaster.ts` rewritten: `resolveSpec(blasterId, activeMods)`
+  merges mods over the base data, the fire modes (pump with prime, auto with
+  spin-up and growing recoil, break with shells), the muzzle provider and
+  `onShot(muzzleIndex)`. The update step allocates nothing.
+- Both pages now build B01 through `resolveSpec` and the new API; the old
+  `BlasterModel` still draws (it no longer takes numbers from the data, its
+  colours and muzzle point are fixed for now).
+- Tests 1 to 12 of the card in `tests/weapons/blaster.test.ts` (rewritten
+  for the new API), test 13 in a new `tests/weapons/models.test.ts` that
+  reads the .glb JSON chunk and checks every node each blaster's data and
+  animation needs (node signs are in the three NOTES.md files for stage 2).
+
+Old tests changed: the four old placeholder tests became the new tests 1 to
+4 (fire interval, spread, auto-reload, invalid reload) through the new API;
+all other test files are untouched.
+
+Open question: card test 11 says B04 suppress gives 0.3 of test 7's spread
+and climb after 10 shots. The data only does so for the added recoil
+(spreadPerShot 0.12 is 0.3 of 0.4; climb 0.08 is 0.32 of 0.25). Including
+B04's 1 degree base spread the totals are 2.2 against 5 (0.44) and 0.8
+against 2.5 (0.32). The test pins the data as written; someone should say
+whether the data or the 0.3 target is the one to keep.
+
+Unverified: nothing in a browser (no viewmodels yet). `npx tsc --noEmit`,
+`npm test` (133 pass, the 2 sandbox skips as before) and `npm run build`
+clean; no em or en dash in the written files.
+
 ### 2026-11-02: ENG-12 merged (Claude)
 
 - Paul: "Fix and merge". Ragdolls are on main. Next: GAME-09 (Pi), from

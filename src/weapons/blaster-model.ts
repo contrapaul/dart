@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import type { BlasterSpec } from "./blaster";
-import { Blaster } from "./blaster";
+import type { Blaster } from "./blaster";
 
 // A toy-looking pump blaster built from boxes and cylinders, original shapes
 // only. Modelled about 0.45 m long and drawn at 0.6 scale, muzzle at -Z.
@@ -27,19 +26,19 @@ export class BlasterModel {
   readonly group = new THREE.Group();
   private root = new THREE.Group();
   private pump = new THREE.Group();
-  private ret = 0;   // exponential return rate, 1/s
+  private ret = 12;        // exponential return rate, 1/s
   private tz = 0;  // metres back
   private tilt = 0;  // radians up
-  private specRecoilKick: number;
-  // Rest position: chosen so the barrel tip sits on spec.muzzle.
+  private specRecoilKick = 0.05;
+  // Rest position: the barrel tip sits on the old placeholder muzzle from
+  // the camera, until the viewmodel replaces this blaster (GAME-09).
+  readonly muzzle: [number, number, number] = [0.16, -0.13, -0.42];
   private base = new THREE.Vector3();
 
-  constructor(spec: BlasterSpec, camera: THREE.Camera) {
-    this.ret = spec.recoilReturn;
-    this.specRecoilKick = spec.recoilKick;
-    const body = mat(spec.bodyColor);
-    const accent = mat(spec.accentColor);
-    const trim = mat(spec.trimColor);
+  constructor(camera: THREE.Camera) {
+    const body = mat("#ff7a1a");
+    const accent = mat("#2ec4ff");
+    const trim = mat("#fff6e8");
 
     // Main body: a box from the grip to under the barrel.
     const bodyBox = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.09, 0.34), body);
@@ -85,7 +84,7 @@ export class BlasterModel {
     cap.position.set(0, -0.02, 0.11);
     this.root.add(cap);
 
-    this.base.fromArray(spec.muzzle).addScaledVector(BARREL_TIP, -SCALE);
+    this.base.fromArray(this.muzzle).addScaledVector(BARREL_TIP, -SCALE);
     this.root.scale.setScalar(SCALE);
     this.root.position.copy(this.base);
     this.root.rotation.x = BASE_TILT;

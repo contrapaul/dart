@@ -11,7 +11,7 @@ import { startLoop, type FrameStats } from "../core/loop";
 import { Input } from "../core/input";
 import { PlayerController } from "../player/controller";
 import { DartSystem } from "../weapons/darts";
-import { Blaster, type BlasterSpec } from "../weapons/blaster";
+import { Blaster, resolveSpec } from "../weapons/blaster";
 import { BlasterModel } from "../weapons/blaster-model";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
@@ -21,7 +21,6 @@ import { FrameLog, FrameGraph } from "../ui/frame-graph";
 import { DebrisSystem } from "../voxel/debris";
 import { MesherPool } from "../voxel/mesher-pool";
 import rangeJson from "../../data/range.json";
-import blasterTuning from "../../data/blasters.json";
 import dartsJson from "../../data/darts.json";
 import renderJson from "../../data/render.json";
 
@@ -88,9 +87,12 @@ for (let m = 5; m <= 30; m += 5)
 
 const player = new PlayerController(rapier, world, SPAWN_POSE);
 const darts = new DartSystem(scene, world, rapier, player.collider);
-const blasterSpec = blasterTuning.placeholder as unknown as BlasterSpec;
-const blaster = new Blaster(blasterSpec, darts);
-const blasterModel = new BlasterModel(blasterSpec, camera);
+// B01 for now, the box model still drawing; the viewmodel replaces both in
+// stage 2. The reports and blaster/mod panels need it, so we keep the spec.
+const blasterSpec = resolveSpec("B01");
+const blasterModel = new BlasterModel(camera);
+const _rangeMuzzle = new THREE.Vector3();
+const blaster = new Blaster(blasterSpec, darts, () => _rangeMuzzle);
 // Only the Foamers' parts are voxel targets on this page, and the system
 // pushes each part in and out as Foamers spawn and go.
 const voxelTargets: VoxelTarget[] = [];
@@ -299,11 +301,15 @@ loopCtl = startLoop({
     if (!paused) {
       player.update(dt, input);
       if (switches.foamers) foamers.update(dt, player.eye(1, _eye));
-      updateAim(camera, world, player.collider, blasterSpec.muzzle, _muzzle, _aimDir);
+      updateAim(camera, world, player.collider, blasterModel.muzzle, _muzzle, _aimDir);
+      _rangeMuzzle.copy(_muzzle);
       blaster.update(
         dt,
-        { firePressed: input.wasPressed("fire"), reloadPressed: input.wasPressed("reload") },
-        _muzzle,
+        {
+          fireHeld: input.isDown("fire"),
+          firePressed: input.wasPressed("fire"),
+          reloadPressed: input.wasPressed("reload"),
+        },
         _aimDir,
       );
       debris.update(dt);
