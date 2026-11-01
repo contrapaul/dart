@@ -7,12 +7,13 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 ## Status
 
 PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
-GAME-03 (test Foamer) done. GAME-09 stage 1 and 2b done: the three blasters
-(B01 pump, B04 full-auto, B03 break action) are in the game through
-`Loadout`; switching is keys 1 to 3 or the mouse wheel, the HUD shows
-blaster name, magazine, reserve and B03 shell pips, and the range panel
-has blaster selection and per-mod toggles. Stage 2c (viewmodel animation)
-is still to do.
+GAME-03 (test Foamer) done. GAME-09 done (merged 2026-11-02): the three
+blasters (B01 pump, B04 full-auto, B03 break action) are in the game
+through `Loadout` as animated first person viewmodels; switching is keys 1
+to 3 or the mouse wheel, the HUD shows blaster name, magazine, reserve and
+B03 shell pips, and the range panel has blaster selection and per-mod
+toggles. Mods are not checked by eye in first person yet, and there are no
+sounds.
 
 A test course: click to capture the mouse, then walk, sprint, jump, dash
 and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
