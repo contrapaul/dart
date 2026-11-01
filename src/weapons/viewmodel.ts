@@ -89,9 +89,11 @@ export class Viewmodel {
   }
 
   private applyMods(show: string[], hide: string[]): void {
+    // Back to the model's defaults first, so switching a mod off undoes
+    // what it showed or hid.
     const hideSet = new Set(hide);
-    for (const name of this.nodeByName.keys()) {
-      if (hideSet.has(name)) this.nodeByName.get(name)!.visible = false;
+    for (const [name, o] of this.nodeByName) {
+      o.visible = !this.baseHidden.has(name) && !hideSet.has(name);
     }
     for (const name of show) {
       const o = this.nodeByName.get(name);
