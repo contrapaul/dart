@@ -204,7 +204,7 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     expect(r.debris.live).toBeLessThanOrEqual(DEBRIS_CAP);
   });
 
-  it("8. a stuck suction dart rides a walking Foamer, and drops when it pops", async () => {
+  it("8. a stuck suction dart rides a walking Foamer, and drops when it pops or goes down", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 10);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
@@ -228,15 +228,18 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     expect(dart1.distanceTo(dart0.add(moved))).toBeLessThan(0.05);
     expect(r.darts.stats().stuck).toBe(1);
     // A single dart kill now goes down; only a burst pops (stage 3), so
-    // each round fires three darts at the body front (test 7's method).
+    // each round fires three darts at the body front (test 7's method). A
+    // burst that only partly lands downs it instead, and a downed Foamer
+    // sinks and is freed: stop then, or the next burst reads a freed body.
+    // Stuck darts drop either way.
+    const out = () => r.foamers.stats.popped > 0 || r.foamers.downed.includes(f);
     let rounds = 0;
-    while (r.foamers.stats.popped === 0) {
-      expect(rounds++, "popped within 20 rounds").toBeLessThan(20);
+    while (!out()) {
+      expect(rounds++, "popped or down within 20 rounds").toBeLessThan(20);
       burst(r, f);
-      for (let i = 0; i < 120 && r.foamers.stats.popped === 0; i++) tick(r, player);
+      for (let i = 0; i < 120 && !out(); i++) tick(r, player);
     }
-    expect(r.foamers.stats.popped).toBe(1);
-    expect(r.world.getRigidBody(rootHandle)).toBeNull();
+    if (r.foamers.stats.popped > 0) expect(r.world.getRigidBody(rootHandle)).toBeNull();
     for (let i = 0; i < 30; i++) tick(r, player);
     expect(r.darts.stats().stuck).toBe(0);
   });

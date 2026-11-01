@@ -158,10 +158,12 @@ Stage 2 review (Claude), in the Claude pane (Chrome, 120 Hz):
   say so; the graph text wraps instead of being cut off.
 - Toggling shadows recompiles every material: one frame of about 300 ms.
   Expected; clear the log after changing switches.
-- Not reproduced: Pi saw `foamers.test.ts` test 8 fail once with a Rapier
-  "unreachable" in `FoamerPart.voxelToWorld` (a freed body). 8 runs
-  since, all pass; every path that frees a part body takes it out of the
-  dart targets first. Watch for it.
+- Fixed after the merge: `foamers.test.ts` test 8 sometimes crashed Rapier
+  ("unreachable" in `FoamerPart.voxelToWorld`). A test bug, not the game:
+  when a burst only partly landed, the Foamer went down instead of popping,
+  and the loop kept aiming bursts at it; once it had sunk and been freed,
+  the next aim read the freed body. The loop now stops when the Foamer
+  pops or goes down (stuck darts drop either way).
 - Not checked: the Benchmark button with a real pointer lock (the pane
   cannot capture the mouse), Firefox, the deployed build.
 
