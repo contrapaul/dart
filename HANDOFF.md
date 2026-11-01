@@ -71,6 +71,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: B04 and B03 cards and briefs (Claude)
+
+- `design/blasters/B04.md` (Shredder, level 2) and `B03.md` (Leviathan,
+  level 3): cards from CONTENT-PLAN 4 and D15, and briefs from Paul's
+  photos, for Paul's approval before Kimi models them.
+- Written with ART-00's lessons: each part says how it is used, the
+  trigger and grip rows repeat B01's approved trigger and simple
+  textured grip, and each brief lists extra close-up renders (B04's
+  flywheel window, B03 with the barrels open).
+- New node names in PLAN 5.2: `flywheel_l`, `flywheel_r`, `latch`,
+  `shell_1` to `shell_n`; parts that move with another part are its
+  children (B03's barrels carry their muzzles, shells and quad mod).
+- Numbers that are first guesses for the range (B04 fire rate and
+  recoil growth, B03 darts per shell and spread) are marked to tune.
+
 ### 2026-11-01: ART-00 merged, B01 approved (Claude)
 
 - Paul approved B01 "The Dartman" after 5 Kimi rounds: about 50 minutes

@@ -177,8 +177,8 @@ Unlock point:  [level]
 |---|---|---|---|---|
 | B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Model approved 2026-11-01 (`public/models/blasters/B01.glb`, built by `art/blasters/B01/build.py`); in game with GAME-09 |
 | B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Details in CONTENT-PLAN 4; card and model not started |
-| B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Details in CONTENT-PLAN 4; card and model not started |
-| B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Details in CONTENT-PLAN 4; card and model not started |
+| B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Card and brief drafted (`design/blasters/B03.md`), awaiting Paul |
+| B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Card and brief drafted (`design/blasters/B04.md`), awaiting Paul |
 | B05 | Shrike | Precision, zoom, piercing | Precision dart | Details in CONTENT-PLAN 4; card and model not started |
 | B06 | The Standard | Heavy full-auto | Mega dart | Details in CONTENT-PLAN 4; card and model not started |
 | B07 | Collateral | Launcher, arcing, explosive | Mega dart | Details in CONTENT-PLAN 4; card and model not started |
@@ -232,7 +232,10 @@ model and Hunyuan3D route (Proposed until the ART-00 spike passes).
   part where the blaster has it, with its origin on its pivot and moving
   along or about its own axes: `pump`, `trigger`, `mag`, `bolt`, `breach`
   (break action), `barrels` (spins about local Z), `drum`, `crank`,
-  `flywheel_cage`. Mods that add geometry are their own nodes,
+  `flywheel_l` and `flywheel_r` (visible spinning wheels), `latch`,
+  `shell_1` to `shell_n` (shells in a break action). Parts that move
+  with another part are its children (B03's muzzles, shells and quad mod
+  under `breach`). Mods that add geometry are their own nodes,
   `mod_<name>`, hidden by default (B03 quad barrels, B08 second barrel).
 - Budget: at most 20,000 triangles, 1.5 MB, 8 materials. Colours are
   flat; image textures only for small surface detail such as grip
