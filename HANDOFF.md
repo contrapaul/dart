@@ -69,6 +69,22 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ENG-11 stage 1 (Pi)
+
+No page, the parts behind it. Stage 2 is the range page, the graph drawing, and the panel.
+
+- `data/range.json` exactly as the card gives it.
+- `src/core/loop.ts`: an optional `stats` hook called after render with one reused `FrameStats` (`raw`, `dt`, `steps`, `work`, `updateWork`; `raw` is the unsnapped rAF interval in ms, 0 on the first frame), `createFrameClock` takes a snap option and exposes the raw last interval, and `startLoop` returns `{ setSnap }`. The existing loop tests pass unchanged.
+- `src/ui/frame-graph.ts`: `FrameLog` only (FrameGraph comes in stage 2). Ring buffers of `Float32Array` for the last 600 frames, `push` allocates nothing, `refreshMs()` is the median of `raw`, hitch is `raw > 1.5x` the median or a frame that ran non-1 steps while not paused (set to that because test 5 needs 2 steps to count as pacing, but the card text says "0 or more than 2" and the graph spec says "0 or 2+"), long when `work > 0.75x` median else pacing, a heap drop is a fall of more than 1 MB from the previous frame, `summary()` and `report(extra)` as on the card.
+- `src/weapons/aim.ts`: the muzzle and aim block out of `src/main.ts`, one function, module-scope scratch vectors and one shared ray, no allocation per step. The game page calls it; behaviour is the same (same ray, same exclude flags, same pull-back).
+- `src/foamers/foamers.ts`: public `spawnCount` and `spawnPoints` (defaults from the data file, the spawner uses them), and `clear()` which takes every live, downed and broken Foamer out: lists, parts, voxel targets, bodies and colliders, scene groups. Darts stuck to a body drop when the body goes, already.
+- `spawn` gained an optional `facing` (it sets the initial yaw). That is the `spawnAt` from the card but folded into `spawn`, nothing new to learn on the range page and one less API method.
+- Tests 1 to 10 are in `tests/core/loop-stats.test.ts`, `tests/ui/frame-log.test.ts` and `tests/foamers/range-api.test.ts`. All pass, the old ones unchanged.
+
+Not verified: nothing game-play-visible this stage, aim helper and clear() need eyes in the browser in stage 2 (the reviewer ran the range).
+
+Unclear, recorded rather than guessed: the card's tests section and the graph section do not agree on a 2-steps frame ("0 steps or more than 2" vs "0 or 2+" vs pacing in test 5); `FrameLog` treats any number of steps not equal to 1 as a hitch, because the test doesn't have a 3-step frame.
+
 ### 2026-11-01: Paul's play test of ENG-10 (notes, nothing changed yet)
 
 - Stutter: still there, a regular pause. Two fixes so far (render

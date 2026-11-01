@@ -77,6 +77,11 @@ export class FoamerSystem {
   readonly downed: Foamer[] = [];
   /** System clock in seconds; stamps the damage window. */
   time = 0;
+  /** How many Foamers the spawner keeps alive. Default is the data file's
+   *  count; the range page sets its own (0 until the panel adds them). */
+  spawnCount = SPAWNER.count;
+  /** Where the spawner picks from, in feet metres. */
+  spawnPoints: [number, number, number][] = SPAWNER.points.map((p) => [p[0], p[1], p[2]]);
   private dtPrev = 1 / 60;
 
   private cc: RAPIER.KinematicCharacterController;
@@ -107,10 +112,13 @@ export class FoamerSystem {
     this.cc.enableSnapToGround(0.3);
   }
 
-  /** Spawn at a feet position. Returns null at the `max` cap. */
-  spawn(feet: THREE.Vector3): Foamer | null {
+  /** Spawn at a feet position facing a target. Returns null at the `max`
+   *  cap. The requested facing comes from `facing` (a world direction the
+   *  Foamer turns toward at its turn rate, as usual). */
+  spawn(feet: THREE.Vector3, facing?: THREE.Vector3): Foamer | null {
     if (this.list.length >= SPAWNER.max) return null;
     const f = new Foamer(this.rapier, this.world, this.mesher, SPEC, RIG, feet);
+    if (facing) f.yaw = Math.atan2(facing.x - feet.x, facing.z - feet.z);
     f.setSystem(this);
     this.group.add(f.group);
     this.list.push(f);
@@ -152,9 +160,9 @@ export class FoamerSystem {
     }
     this.stepBroken(dt);
     this.enforceDownCap();
-    // Spawner: keep spawner.count alive; a downed Foamer is gone for it
+    // Spawner: keep spawnCount alive; a downed Foamer is gone for it
     // (it will not get up again), so it repspawns while still sinking.
-    if (this.list.length - this.downed.length < SPAWNER.count) {
+    if (this.list.length - this.downed.length < this.spawnCount) {
       this.respawn += dt;
       if (this.respawn >= SPAWNER.respawnDelay) {
         this.respawn = 0;
@@ -277,9 +285,9 @@ export class FoamerSystem {
 
   private respawnSpawn(player: THREE.Vector3) {
     // The spawn point farthest from the player.
-    let best = SPAWNER.points[0]!;
+    let best = this.spawnPoints[0]!;
     let bestD = -1;
-    for (const p of SPAWNER.points) {
+    for (const p of this.spawnPoints) {
       const d = (p[0] - player.x) ** 2 + (p[2] - player.z) ** 2;
       if (d > bestD) {
         bestD = d;
@@ -628,6 +636,16 @@ export class FoamerSystem {
     }
     this.world.removeRigidBody(p.body);
     this.broken.splice(i, 1);
+  }
+
+  /** Take every live, downed and broken Foamer out of the scene: their
+   *  bodies, colliders, part meshes and voxel targets go, and any dart
+   *  stuck to one of them drops when its body is disposed (darts.ts). The
+   *  spawner count is not touched, so it respawns if it wants to. */
+  clear(): void {
+    for (let i = this.downed.length - 1; i >= 0; i--) this.removeFoamer(this.downed[i]!);
+    for (let i = this.list.length - 1; i >= 0; i--) this.removeFoamer(this.list[i]!);
+    for (let i = this.broken.length - 1; i >= 0; i--) this.removeBroken(i);
   }
 
   /** The model bursts into foam debris per part and leaves the world. */
