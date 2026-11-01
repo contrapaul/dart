@@ -37,7 +37,7 @@ shadows are never black, and a rim light on edges facing away from the
 camera. The course boxes, floor, blaster and darts keep their old
 materials.
 
-In progress: ENG-10 (Pi, branch `eng-10`): the F01 rig in the game is built (part damage, going down, popping); all three stages committed, awaiting review. Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
+ENG-10 done and deployed 2026-11-01: the test Foamer is rig F01 with part damage, break-off, foam-core wounds, crawling, going down and popping. Paul's play test notes are in the log (stutter still there, one blast pops, canned topple). Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
@@ -68,6 +68,29 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-01: Paul's play test of ENG-10 (notes, nothing changed yet)
+
+- Stutter: still there, a regular pause. Two fixes so far (render
+  interpolation, rAF frame clock; entries of 2026-10-31) have not cured
+  it. Not yet known whether it is a long frame (CPU, garbage collection,
+  a remesh) or frame pacing. A regular pause fits a garbage collection
+  cycle: the game allocates on every step in places (for example a
+  `new THREE.Matrix4` in `breakPart`, and per-step vectors).
+- Crawling after both legs are shot off works.
+- One blast popped a Foamer. Cause: F01 has 6 health and pops when the
+  damage in 0.1 s reaches 0.4 of that (2.4); the placeholder blaster
+  fires 3 darts of 1 damage at once, so any close shot that lands all
+  three pops it. Paul: the starter blaster unmodified should not have
+  that power.
+- Body damage on the base Foamer works well.
+- Going down: every Foamer falls forward the same way, and the arms hold
+  the body up off the floor. Paul wants them to go limp when killed (a
+  physics ragdoll) rather than play a canned topple.
+- Proposed next: a new test range page with no voxel walls, no thrown
+  blocks at the start and no destructible terrain, to see whether the
+  stutter follows the Foamers and blasters or the current course, and to
+  build out blasters and Foamers.
 
 ### 2026-11-01: ENG-10 review (Claude)
 
