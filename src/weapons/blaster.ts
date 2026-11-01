@@ -261,6 +261,12 @@ export class Blaster {
     return this.st;
   }
 
+  /** Auto recoil, aim climb in radians (the page adds it to the camera
+   *  pitch it draws). 0 for pump and break. */
+  get climb(): number {
+    return THREE.MathUtils.degToRad(this.climbDegNow);
+  }
+
   /** 0 to 1 progress through the current priming or reload; 1 when ready. */
   get progress(): number {
     if (this.st === "ready") return 1;
@@ -313,6 +319,13 @@ export class Blaster {
     }
   }
 
+  /** Fill the magazine (or every barrel) without touching the reserve:
+   *  the range's infinite ammo switch. */
+  refill(): void {
+    this.mag = this.spec.magSize;
+    this.loaded.fill(true);
+  }
+
   private magEmpty(): boolean {
     return this.spec.mode === "break"
       ? !this.loaded.some(Boolean)
@@ -333,9 +346,15 @@ export class Blaster {
   private finishReload(): void {
     const s = this.spec;
     if (s.mode === "break") {
-      const take = Math.min(s.magSize, this.reserve);
+      // Only the empty barrels take a shell.
+      let take = Math.min(s.magSize - this.mag, this.reserve);
       this.reserve -= take;
-      for (let i = 0; i < take && i < this.loaded.length; i++) this.loaded[i] = true;
+      for (let i = 0; i < this.loaded.length && take > 0; i++) {
+        if (this.loaded[i]) continue;
+        this.loaded[i] = true;
+        this.mag += 1;
+        take -= 1;
+      }
     } else {
       const take = Math.min(s.magSize - this.mag, this.reserve);
       this.mag += take;
@@ -435,6 +454,7 @@ export class Blaster {
     const fire = (i: number) => {
       for (let k = 0; k < s.dartsPerShot; k++) this.fireDart(i, s.spreadDeg);
       this.loaded[i] = false;
+      this.mag -= 1; // mag counts the loaded shells
     };
     if (s.bothBarrels) {
       for (let i = 0; i < n; i++) if (this.loaded[i]) fire(i);

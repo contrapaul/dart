@@ -7,12 +7,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 ## Status
 
 PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
-GAME-03 (test Foamer) done. The test course: click to capture the mouse,
-then walk, sprint, jump, dash and mantle around steps, ledges, ramps and
-walls. Left mouse fires the placeholder pump blaster (3 darts per shot,
-priming after each shot, R reloads, auto-reload on empty), darts carve
-voxels and throw foam debris. E throws foam blocks, T toggles dart type.
-Esc or gamepad Start pauses.
+GAME-03 (test Foamer) done. GAME-09 stage 1 and 2b done: the three blasters
+(B01 pump, B04 full-auto, B03 break action) are in the game through
+`Loadout`; switching is keys 1 to 3 or the mouse wheel, the HUD shows
+blaster name, magazine, reserve and B03 shell pips, and the range panel
+has blaster selection and per-mod toggles. Stage 2c (viewmodel animation)
+is still to do.
+
+A test course: click to capture the mouse, then walk, sprint, jump, dash
+and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
+the wheel switch blasters. Darts carve voxels and throw foam debris. E
+throws foam blocks. Esc or gamepad Start pauses.
 
 A striped 4 m foam wall made of 0.1 m voxels stands in the course, topped
 with cardboard, wood and concrete. Melee (F / middle mouse) is a temporary
@@ -72,6 +77,64 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-02: GAME-09 stage 2b (Pi)
+Loadout, switching, HUD and range panel. Stage 1 (data) and 2a (viewmodel,
+committed earlier) are the foundation; stage 2c (animation) is next.
+
+Built:
+
+- `src/weapons/loadout.ts`: the `Loadout` owns three Blaster+Viewmodel
+  pairs (B01, B04, B03 in data order), the active index, per-blaster mod
+  lists, and the switch state. `setMod(i, id, on)` re-resolves the spec,
+  rebuilds the Blaster with a full magazine and the same reserve, and
+  calls `viewmodel.setMods`. `select`, `next`, `prev` switch with
+  `switchTime` from the data; no firing while switching; the old viewmodel
+  hides at the halfway point and the new one shows. `update(dt, controls,
+  aimDir)` delegates to the active Blaster and allocates nothing. The
+  `LoadoutViewmodel` interface lets tests inject fakes without
+  `GLTFLoader`. `Loadout.load(camera, darts, world, playerCollider)` loads
+  all three via `Viewmodel.load`.
+- `src/ui/hud.ts`: `setAmmo` now takes `(activeBlaster, state)` and shows
+  the blaster name, magazine, reserve and B03 shell pips (one pip per
+  barrel, filled when loaded).
+- `src/main.ts`: replaced `Blaster` + `BlasterModel` with `Loadout`.
+  Keys `weapon1` to `weapon3` and the wheel switch blasters. The active
+  blaster's `climb` (radians) is added to the camera pitch every frame.
+  `KeyT` removed.
+- `src/range/main.ts`: replaced `Blaster` with `Loadout`. Range panel
+  blaster selector and mod toggles generated from the data. Infinite ammo
+  hooks are re-applied after `setMod` replaces a blaster. Report includes
+  the active blaster id and mods.
+- `range.html`: blaster and mod rows added to the test panel.
+- `src/weapons/blaster-model.ts`: deleted (nothing used it).
+- `tests/weapons/loadout.test.ts`: test 14 (two subtests) using a
+  `Loadout` constructed directly with fake blasters and viewmodels.
+  Checks no firing during a switch, per-blaster ammo, and the viewmodel
+  swap at the halfway point; checks a second request mid-switch is
+  ignored and the order of `next` and `prev`.
+- `data/blasters.json`: `switchTime` 0.35 is used.
+
+The viewmodels sit at their placement (no animation in this run;
+stage 2c will add it).
+
+Unverified: nothing in a browser yet. `npx tsc --noEmit`, `npm test`
+(135 pass, 2 sandbox skips) and `npm run build` clean; no em or en dash.
+
+Review (Claude), in the browser:
+- Darts left from camera-space muzzle points used as world points, so every
+  dart started near the map origin under the floor. `Loadout.muzzleToWorld`
+  now turns each muzzle's camera point into a world point; both pages set
+  it to run `updateAim` (which also pulls a muzzle out of a wall).
+- Break action: firing cleared `loaded` but never lowered `mag`, so R on
+  B03 after a shot did nothing (only the automatic reload on empty
+  worked). `mag` now counts the loaded shells, reload fills only the empty
+  barrels, and `Blaster.refill()` serves the range's infinite ammo. New
+  test 8b.
+- Seen working: the models load and show, 1 to 3 switch with their own
+  ammo, B01 fires three darts, B04 fires while held, B03 one barrel per
+  press, HUD name and ammo, no console errors. Placement is too close and
+  too big (the stock fills the bottom right); tuned after stage 2C.
 
 ### 2026-11-02: GAME-09 stage 1 (Pi)
 All of GAME-09 that can be tested without the page. Stage 2 (viewmodels

@@ -19,6 +19,9 @@ export class Viewmodel {
   private root: THREE.Object3D;
   private baseHidden = new Set<string>();
   private nodeByName = new Map<string, THREE.Object3D>();
+  /** Called once per dart that leaves a muzzle, with the muzzle index,
+   *  for the viewmodel's own reanimation (stage 2C wires it). */
+  onShot: (muzzleIndex: number) => void = () => {};
 
   private _w = new THREE.Vector3();
 

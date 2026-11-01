@@ -232,6 +232,20 @@ describe("GAME-09 fire modes, mods, reload rules", () => {
     expect(b.reserve).toBe(s.reserveStart - 2);
   });
 
+  it("8b. break: after one shot, R reloads just the empty barrel (one shell from the reserve); mag counts the loaded shells", () => {
+    const { b } = make("B03");
+    const s = b.spec;
+    step(b, PRESS);
+    expect(b.mag).toBe(1);
+    expect(b.loaded).toEqual([false, true]);
+    step(b, { ...NO, reloadPressed: true });
+    expect(b.state).toBe("reloading");
+    until(b, "ready");
+    expect(b.loaded).toEqual([true, true]);
+    expect(b.mag).toBe(2);
+    expect(b.reserve).toBe(s.reserveStart - 1);
+  });
+
   it("9. break: two presses 0.1 s apart fire one shell; the second press is ignored until the interval passes", () => {
     const { b, darts } = make("B03");
     const s = b.spec;

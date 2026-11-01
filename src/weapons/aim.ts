@@ -33,12 +33,12 @@ export function updateAim(
   camera: THREE.Camera,
   world: RAPIER.World,
   playerCollider: RAPIER.Collider,
-  muzzleSpec: [number, number, number],
+  muzzleCam: THREE.Vector3,
   muzzle: THREE.Vector3,
   aimDir: THREE.Vector3,
 ): void {
   camera.updateMatrixWorld();
-  muzzle.set(muzzleSpec[0], muzzleSpec[1], muzzleSpec[2]);
+  muzzle.copy(muzzleCam);
   camera.localToWorld(muzzle);
   _toMuzzle.subVectors(muzzle, camera.position);
   const muzzleDist = _toMuzzle.length();

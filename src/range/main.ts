@@ -11,8 +11,7 @@ import { startLoop, type FrameStats } from "../core/loop";
 import { Input } from "../core/input";
 import { PlayerController } from "../player/controller";
 import { DartSystem } from "../weapons/darts";
-import { Blaster, resolveSpec } from "../weapons/blaster";
-import { BlasterModel } from "../weapons/blaster-model";
+import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
@@ -87,12 +86,16 @@ for (let m = 5; m <= 30; m += 5)
 
 const player = new PlayerController(rapier, world, SPAWN_POSE);
 const darts = new DartSystem(scene, world, rapier, player.collider);
-// B01 for now, the box model still drawing; the viewmodel replaces both in
-// stage 2. The reports and blaster/mod panels need it, so we keep the spec.
-const blasterSpec = resolveSpec("B01");
-const blasterModel = new BlasterModel(camera);
-const _rangeMuzzle = new THREE.Vector3();
-const blaster = new Blaster(blasterSpec, darts, () => _rangeMuzzle);
+// The loadout loads all three blasters and their GLTF viewmodels before the
+// start overlay can resolve. The panel's blaster and mod rows drive this;
+// the dart type buttons set the active blaster's dart type.
+const loadout = await Loadout.load(camera, darts);
+// Darts leave from the active muzzle's world point, pulled out of walls.
+const _aimUnused = new THREE.Vector3();
+Loadout.muzzleToWorld = (camPoint, out) => {
+  updateAim(camera, world, player.collider, camPoint, out, _aimUnused);
+  return out;
+};
 // Only the Foamers' parts are voxel targets on this page, and the system
 // pushes each part in and out as Foamers spawn and go.
 const voxelTargets: VoxelTarget[] = [];
@@ -104,17 +107,60 @@ foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
 scene.add(foamers.group);
 foamers.onBonk = () => {};
 
+// Blaster and mod panel rows, built after the loadout resolves. The mod
+// row is rebuilt whenever the active blaster changes or a mod is toggled.
+const blasterRow = document.querySelector<HTMLDivElement>("#blasterSelect")!;
+const modRow = document.querySelector<HTMLDivElement>("#modToggles")!;
+function renderBlasterRow() {
+  blasterRow.textContent = "";
+  loadout.ids.forEach((id, i) => {
+    const b = document.createElement("button");
+    b.textContent = id;
+    b.addEventListener("click", () => {
+      loadout.select(i);
+      renderBlasterRow();
+      renderModRow();
+    });
+    if (i === loadout.activeIndex) b.classList.add("on");
+    blasterRow.appendChild(b);
+  });
+}
+function renderModRow() {
+  modRow.textContent = "";
+  const i = loadout.activeIndex;
+  for (const mod of modIds(loadout.ids[i])) {
+    const b = document.createElement("button");
+    b.textContent = mod;
+    const on = loadout.modsOf(i).includes(mod);
+    if (on) b.classList.add("on");
+    b.addEventListener("click", () => {
+      loadout.setMod(i, mod, !on);
+      applyInfiniteAmmoHooks();
+      renderModRow();
+    });
+    modRow.appendChild(b);
+  }
+}
+renderBlasterRow();
+renderModRow();
+
 // Switches, each listed in the report.
 const switches = {
   foamers: true, shadows: true, pixelRatio: true, snap: true,
   strafe: false, infiniteAmmo: false,
 };
-// Infinite ammo refills the magazine after every shot; the model's recoil
-// stays on the same hook.
-blaster.onShot = () => {
-  blasterModel.kick();
-  if (switches.infiniteAmmo) blaster.mag = blasterSpec.magSize;
-};
+// Infinite ammo refills the active blaster's magazine after every shot.
+function applyInfiniteAmmoHooks() {
+  for (const b of loadout.blasters) {
+    b.onShot = (muzzleIndex: number) => {
+      // Call the viewmodel's original hook first.
+      loadout.viewmodels[loadout.blasters.indexOf(b)]
+        .onShot(muzzleIndex);
+      if (switches.infiniteAmmo) b.refill();
+    };
+  }
+}
+applyInfiniteAmmoHooks();
 // Auto-strafe: a sideways walk that turns around every BENCH.strafePeriod
 // seconds, written into one reused object the Input reads instead of the
 // keys.
@@ -171,18 +217,23 @@ for (const k of Object.keys(switches) as (keyof typeof switches)[])
   document.querySelectorAll<HTMLButtonElement>(`button[data-switch="${k}"]`).forEach((b) =>
     b.classList.toggle("on", b.dataset.on === "1" ? !!switches[k] : !switches[k]));
 
-// One dart type button per entry in data/darts.json.
+// One dart type button per entry in data/darts.json, for the active blaster.
 const dartRow = document.querySelector<HTMLDivElement>("#dartTypes")!;
-for (const t of Object.keys((dartsJson as { types: object }).types)) {
-  const b = document.createElement("button");
-  b.textContent = t;
-  b.addEventListener("click", () => {
-    blaster.dartType = t as Blaster["dartType"];
-    dartRow.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
-  });
-  if (t === blaster.dartType) b.classList.add("on");
-  dartRow.appendChild(b);
+function renderDartRow() {
+  dartRow.textContent = "";
+  const activeType = loadout.active.dartType;
+  for (const t of Object.keys((dartsJson as { types: object }).types)) {
+    const b = document.createElement("button");
+    b.textContent = t;
+    b.addEventListener("click", () => {
+      loadout.setDartType(loadout.activeIndex, t as typeof activeType);
+      renderDartRow();
+    });
+    if (t === activeType) b.classList.add("on");
+    dartRow.appendChild(b);
+  }
 }
+renderDartRow();
 // Keep alive: 0, 1, 4 or 10 steady.
 const keepRow = document.querySelector<HTMLDivElement>("#keepAlive")!;
 for (const k of [0, 1, 4, 10]) {
@@ -212,6 +263,7 @@ document.querySelector<HTMLButtonElement>("#clearFoamers")!.addEventListener("cl
 // Report and copy.
 const reportEl = document.querySelector<HTMLPreElement>("#report")!;
 function reportText(): string {
+  const mods = loadout.modsOf(loadout.activeIndex);
   const extra: Record<string, string | number> = {
     foamers: switches.foamers ? "on" : "off",
     shadows: switches.shadows ? "on" : "off",
@@ -220,7 +272,9 @@ function reportText(): string {
     autoStrafe: switches.strafe ? "on" : "off",
     infiniteAmmo: switches.infiniteAmmo ? "on" : "off",
     keepAlive: foamers.spawnCount,
-    dartType: blaster.dartType,
+    blaster: loadout.activeId(),
+    dartType: loadout.active.dartType,
+    mods: mods.length ? mods.join(",") : "none",
     userAgent: navigator.userAgent,
     devicePixelRatio: window.devicePixelRatio,
     screen: window.screen.width + "x" + window.screen.height,
@@ -279,10 +333,12 @@ function pushStats(s: FrameStats) {
 }
 
 // Scratch vectors, all reused so the steps and render allocate nothing.
+const _muzzleCam = new THREE.Vector3();
 const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _eye = new THREE.Vector3();
 const eye = new THREE.Vector3();
+const WEAPON_KEYS = ["weapon1", "weapon2", "weapon3"] as const;
 
 const PAUSED_FRAME_MS = renderJson.pausedFrame * 1000;
 let pausedClock = PAUSED_FRAME_MS;
@@ -301,9 +357,16 @@ loopCtl = startLoop({
     if (!paused) {
       player.update(dt, input);
       if (switches.foamers) foamers.update(dt, player.eye(1, _eye));
-      updateAim(camera, world, player.collider, blasterModel.muzzle, _muzzle, _aimDir);
-      _rangeMuzzle.copy(_muzzle);
-      blaster.update(
+      // Switch: wheel down is next, up is prev; keys 1 to 3 select directly.
+      for (let i = 0; i < WEAPON_KEYS.length; i++)
+        if (input.wasPressed(WEAPON_KEYS[i])) loadout.select(i);
+      if (input.wasPressed("weaponNext")) loadout.next();
+      if (input.wasPressed("weaponPrev")) loadout.prev();
+      // Muzzle from the active viewmodel, then aim through the world,
+      // then the loadout's fixed step, then the darts.
+      loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
+      updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+      loadout.update(
         dt,
         {
           fireHeld: input.isDown("fire"),
@@ -331,13 +394,15 @@ loopCtl = startLoop({
     if (switches.foamers) foamers.syncRender(alpha);
     darts.syncRender(alpha);
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
-    camera.rotation.set(player.pitch, player.yaw, 0);
-    blasterModel.update(dt, blaster);
-    hud.setAmmo(blaster.mag, blaster.reserve, blaster.state);
+    // The active blaster's recoil climb tilts the view up (the player's own
+    // pitch is unchanged, so releasing the trigger brings the view back).
+    const climb = loadout.active.climb;
+    camera.rotation.set(player.pitch + climb, player.yaw, 0);
+    hud.setAmmo(loadout.active, loadout.active.state);
     renderer.render(scene, camera);
   },
   stats: pushStats,
 });
 
 // Dev-only hook for automated checks in the browser.
-if (import.meta.env.DEV) Object.assign(window, { __range: { log, foamers, darts, blaster, player, camera, loop: loopCtl } });
+if (import.meta.env.DEV) Object.assign(window, { __range: { log, foamers, darts, loadout, player, camera, loop: loopCtl } });
