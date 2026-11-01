@@ -1,5 +1,32 @@
 # ART-04 notes: B04
 
+## Round 2
+
+Start: 2026-11-01 20:55:34 CST (`date`).
+End: 2026-11-01 21:01:21 CST (`date`).
+Elapsed: about 6 minutes.
+
+Extended only the guard's outer profile so its rear overlaps the front of the
+pistol grip and its top overlaps the receiver underside at both ends of the
+opening. The opening profile is unchanged at 4.5 cm long and about 2.5 cm tall.
+The trigger, its pivot and pull, the rounded grip and its texture are unchanged.
+
+`check_guard_joins` runs before the static meshes are joined. It builds BVH trees
+from world-space mesh triangles. Intersecting triangles report a zero gap;
+otherwise it measures the nearest vertex-to-surface distance in both directions.
+It fails the build above 0.5 mm. Both guard-to-grip and guard-to-receiver measured
+0.000 mm on both final builds.
+
+All six renders were inspected after each successful build. The trigger close-up
+shows no gap or seam at the grip, and the three-quarter view reads as one moulded
+part. Both checkers pass: 16,590 triangles, 835,684 bytes, eight materials and
+one embedded 926-byte grip texture. Two consecutive exports were byte-identical
+with SHA-256
+`920307fe77b041684d41e41c2a9aa7d46dba82a2ee82f2ab518dc27c1c929940`.
+An independent reviewer found no issues in the Round 2 diff.
+
+Paul's visual approval and in-game animation remain unverified.
+
 Start: 2026-11-01 20:25:06 CST (`date`).
 End: 2026-11-01 20:47:08 CST (`date`).
 Elapsed: about 22 minutes.

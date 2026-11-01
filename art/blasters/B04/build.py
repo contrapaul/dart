@@ -3,6 +3,7 @@ from pathlib import Path
 import math
 import bpy
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 ROOT = Path(__file__).resolve().parents[3]
 OUT_DIR = ROOT / "public" / "models" / "blasters"
@@ -304,6 +305,35 @@ def cut(obj, cutter, name):
     bpy.data.objects.remove(cutter, do_unlink=True)
 
 
+def mesh_gap(obj_a, obj_b):
+    """Return world-space surface separation, or zero where meshes intersect."""
+    bpy.context.view_layer.update()
+
+    def world_mesh(obj):
+        vertices = [obj.matrix_world @ vertex.co for vertex in obj.data.vertices]
+        faces = [tuple(face.vertices) for face in obj.data.polygons]
+        return vertices, BVHTree.FromPolygons(vertices, faces)
+
+    vertices_a, tree_a = world_mesh(obj_a)
+    vertices_b, tree_b = world_mesh(obj_b)
+    if tree_a.overlap(tree_b):
+        return 0.0
+    distances = [tree_a.find_nearest(point)[3] for point in vertices_b]
+    distances += [tree_b.find_nearest(point)[3] for point in vertices_a]
+    return min(distances)
+
+
+def check_guard_joins(guard, pistol, receiver):
+    gaps = {
+        "grip": mesh_gap(guard, pistol),
+        "receiver": mesh_gap(guard, receiver),
+    }
+    for part, gap in gaps.items():
+        print("Guard to {} surface gap: {:.3f} mm".format(part, gap * 1000))
+        if gap > 0.0005:
+            raise RuntimeError("Guard to {} gap exceeds 0.5 mm".format(part))
+
+
 def build_model():
     lime = material("Foam lime", LIME)
     charcoal = material("Charcoal", CHARCOAL)
@@ -402,9 +432,9 @@ def build_model():
                           GRIP_H, GRIP_D, GRIP_W, GRIP_TOP_Z,
                           -GRIP_ANGLE, GRIP_CORNER, -GRIP_D / 2)
     static.append(pistol)
-    guard_outer = [(-0.006, 0.018), (0.008, 0.007), (0.038, 0.007),
-                   (0.053, 0.018), (0.053, 0.046), (0.047, 0.058),
-                   (-0.001, 0.058)]
+    guard_outer = [(-0.014, 0.018), (0.008, 0.007), (0.038, 0.007),
+                   (0.053, 0.018), (0.053, 0.046), (0.047, 0.064),
+                   (-0.012, 0.064)]
     guard_inner = [(0.004, 0.023), (0.014, 0.015), (0.041, 0.015),
                    (0.049, 0.023), (0.049, 0.034), (0.047, 0.041),
                    (0.008, 0.041)]
@@ -412,6 +442,7 @@ def build_model():
     cutter = profile("Guard opening", guard_inner, GUARD_W + 0.02, charcoal, 0)
     cut(guard, cutter, "Moulded guard opening")
     bevel(guard, 0.0006, 2)
+    check_guard_joins(guard, pistol, receiver)
     static.append(guard)
 
     trigger_points = []
