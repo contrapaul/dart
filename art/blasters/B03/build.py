@@ -5,6 +5,7 @@ import math
 import struct
 import bpy
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 ROOT = Path(__file__).resolve().parents[3]
 OUT_DIR = ROOT / "public" / "models" / "blasters"
@@ -27,10 +28,9 @@ BODY_L, BODY_H, BODY_W = 0.14, 0.07, 0.055
 BODY_Y, BODY_Z = 0.04, 0.07
 PANEL_L, PANEL_H, PANEL_DEPTH = 0.085, 0.034, 0.003
 HINGE_ORIGIN = (0.0, 0.105, 0.04)
-HINGE_RADIUS, HINGE_W = 0.009, 0.065
+HINGE_RADIUS, HINGE_W = 0.006, BODY_W + 0.0004
 
-STOCK_BACK, STOCK_FRONT = -0.34, -0.018
-STOCK_TOP, STOCK_BOTTOM, STOCK_W = 0.07, -0.07, 0.045
+STOCK_BACK = -0.34
 BUTT_L, BUTT_H, BUTT_W = 0.022, 0.145, 0.052
 GRIP_H, GRIP_D, GRIP_W = 0.10, 0.045, 0.035
 GRIP_TOP, GRIP_ANGLE = 0.04, math.radians(15)
@@ -48,7 +48,7 @@ BARREL_OUTER, BARREL_INNER = 0.017, 0.0153
 TIP_L, TIP_OUTER = 0.02, 0.019
 RIB_W, RIB_H = 0.012, 0.004
 FORE_L, FORE_H, FORE_W = 0.16, 0.04, 0.06
-FORE_Y, FORE_Z = 0.24, 0.052
+FORE_Y, FORE_Z = 0.24, 0.058
 QUAD_Z = BARREL_Z - 0.038
 
 SHELL_L, SHELL_OUTER, SHELL_INNER = 0.07, 0.0148, 0.0132
@@ -347,13 +347,88 @@ def oval_panel(name, loc, mat):
     return obj
 
 
+def rounded_stock(mat):
+    ring_specs = [
+        (-0.318, 0.034, 0.104, 0.000),
+        (-0.316, 0.042, 0.116, 0.000),
+        (-0.308, 0.045, 0.124, 0.000),
+        (-0.285, 0.045, 0.124, 0.001),
+        (-0.240, 0.045, 0.111, 0.004),
+        (-0.180, 0.044, 0.094, 0.008),
+        (-0.120, 0.042, 0.078, 0.010),
+        (-0.075, 0.040, 0.070, 0.011),
+        (-0.055, 0.038, 0.068, 0.011),
+        (-0.048, 0.034, 0.060, 0.011),
+        (-0.045, 0.028, 0.052, 0.011),
+    ]
+    corner_segments = 8
+    count = corner_segments * 4
+    vertices = []
+    for y, width, height, centre_z in ring_specs:
+        half_x, half_z = width / 2, height / 2
+        radius = min(0.016, half_x * 0.65, half_z * 0.65)
+        corners = [
+            (half_x - radius, half_z - radius, 0),
+            (-half_x + radius, half_z - radius, 90),
+            (-half_x + radius, -half_z + radius, 180),
+            (half_x - radius, -half_z + radius, 270),
+        ]
+        for cx, cz, start in corners:
+            for i in range(corner_segments):
+                angle = math.radians(start + 90 * i / corner_segments)
+                vertices.append((cx + radius * math.cos(angle), y,
+                                 centre_z + cz + radius * math.sin(angle)))
+    faces = [tuple(reversed(range(count)))]
+    for ring in range(len(ring_specs) - 1):
+        for i in range(count):
+            j = (i + 1) % count
+            a, b = ring * count, (ring + 1) * count
+            faces.append((a + i, a + j, b + j, b + i))
+    faces.append(tuple(range((len(ring_specs) - 1) * count,
+                             len(ring_specs) * count)))
+    obj = mesh_object("Rounded shoulder stock", vertices, faces, mat)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
+def mesh_gap(obj_a, obj_b):
+    """Return world-space surface separation, or zero where meshes intersect."""
+    bpy.context.view_layer.update()
+
+    def world_mesh(obj):
+        vertices = [obj.matrix_world @ vertex.co for vertex in obj.data.vertices]
+        faces = [tuple(face.vertices) for face in obj.data.polygons]
+        return vertices, BVHTree.FromPolygons(vertices, faces)
+
+    vertices_a, tree_a = world_mesh(obj_a)
+    vertices_b, tree_b = world_mesh(obj_b)
+    if tree_a.overlap(tree_b):
+        return 0.0
+    distances = [tree_a.find_nearest(point)[3] for point in vertices_b]
+    distances += [tree_b.find_nearest(point)[3] for point in vertices_a]
+    return min(distances)
+
+
+def check_surface_gap(label, obj_a, obj_b):
+    gap = mesh_gap(obj_a, obj_b)
+    print("{} surface gap: {:.3f} mm".format(label, gap * 1000))
+    if gap > 0.0005:
+        raise RuntimeError("{} gap exceeds 0.5 mm".format(label))
+
+
+def check_guard_joins(guard, pistol, receiver):
+    check_surface_gap("Guard to wrist", guard, pistol)
+    check_surface_gap("Guard to action", guard, receiver)
+
+
 def build_static(purple, charcoal, grip_charcoal, yellow):
     static = []
     receiver = box("Rounded action", (0, BODY_Y, BODY_Z),
                    (BODY_W, BODY_L, BODY_H), purple, 0.006, 3)
     cutters = [cylinder("Chamber channel " + str(index),
-                        (side * BARREL_X, 0.07, z),
-                        BARREL_OUTER + 0.0008, 0.10, purple, 24, 0)
+                        (side * BARREL_X, 0.0765, z),
+                        BARREL_OUTER + 0.0008, 0.075, purple, 32, 0)
                for index, (side, z) in enumerate(
                    ((x, z) for x in (-1, 1) for z in (BARREL_Z, QUAD_Z)), 1)]
     cutter = join_at(cutters, "Chamber channel cutters", (0, 0, 0))
@@ -370,25 +445,15 @@ def build_static(purple, charcoal, grip_charcoal, yellow):
                                  yellow))
     static.append(cylinder("Action hinge pin", HINGE_ORIGIN, HINGE_RADIUS,
                            HINGE_W, purple, 24, SMALL_BEVEL, "X"))
-    static.append(box("Standing breech face", (0, 0.034, 0.080),
-                      (0.068, 0.012, 0.070), purple, 0.003))
-
-    stock_points = [
-        (-0.318, 0.060), (-0.250, 0.055), (-0.120, 0.035),
-        (-0.055, 0.035), (STOCK_FRONT, 0.040), (STOCK_FRONT, -0.025),
-        (-0.050, -0.040), (-0.090, -0.020), (-0.150, -0.025),
-        (-0.250, -0.045), (-0.318, -0.060),
-    ]
-    static.append(profile("Solid shoulder stock", stock_points, STOCK_W,
-                          charcoal, 0.006))
+    static.append(rounded_stock(charcoal))
     static.append(box("Rounded rubber butt pad",
                       (0, STOCK_BACK + BUTT_L / 2, 0),
                       (BUTT_W, BUTT_L, BUTT_H), charcoal, 0.008, 4))
     static.append(rounded_grip(grip_charcoal))
 
-    guard_outer = [(-0.006, 0.015), (0.006, 0.005), (0.050, 0.005),
+    guard_outer = [(-0.018, 0.010), (0.006, 0.005), (0.050, 0.005),
                    (0.065, 0.018), (0.063, 0.037), (0.055, 0.043),
-                   (-0.002, 0.043)]
+                   (-0.014, 0.043), (-0.020, 0.025)]
     guard_inner = [(0.006, 0.017), (0.014, 0.012), (0.049, 0.012),
                    (0.057, 0.019), (0.055, 0.032), (0.050, 0.037),
                    (0.007, 0.037)]
@@ -400,6 +465,7 @@ def build_static(purple, charcoal, grip_charcoal, yellow):
     apply_modifier(guard, mod)
     bpy.data.objects.remove(cutter, do_unlink=True)
     bevel(guard, 0.0008, 2)
+    check_guard_joins(guard, bpy.data.objects["Smooth pistol wrist"], receiver)
     static.append(guard)
 
     for obj in static:
@@ -475,14 +541,14 @@ def build_model():
     moving = []
     for side in (-1, 1):
         moving.append(tube("Fat barrel", (side * BARREL_X, BARREL_Y, BARREL_Z),
-                           BARREL_OUTER, BARREL_INNER, BARREL_L, purple, 24))
+                           BARREL_OUTER, BARREL_INNER, BARREL_L, purple, 40))
         moving.append(tube("Orange muzzle ring",
                            (side * BARREL_X, BARREL_FRONT - TIP_L / 2, BARREL_Z),
-                           TIP_OUTER, BARREL_INNER, TIP_L, orange, 24))
-    moving.append(box("Flat top rib", (0, BARREL_Y, BARREL_Z + 0.019),
+                           TIP_OUTER, BARREL_INNER, TIP_L, orange, 32))
+    moving.append(box("Flat top rib", (0, BARREL_Y, BARREL_Z + 0.018),
                       (RIB_W, BARREL_L - 0.02, RIB_H), purple, SMALL_BEVEL))
     moving.append(cylinder("Yellow bead front sight",
-                           (0, BARREL_FRONT - 0.025, BARREL_Z + 0.024),
+                           (0, BARREL_FRONT - 0.025, BARREL_Z + 0.0235),
                            0.0035, 0.006, yellow, 16, SMALL_BEVEL, "Z"))
     for obj in moving:
         while obj.data.uv_layers:
@@ -491,6 +557,7 @@ def build_model():
     fore_end = rounded_foreend(grip_charcoal)
     fore_end.name = "fore-end"
     parent_keep_world(fore_end, breach)
+    check_surface_gap("Fore-end to barrels", fore_end, breach)
 
     shells = []
     for index, side in enumerate((-1, 1), 1):
@@ -501,17 +568,24 @@ def build_model():
         add_muzzle("muzzle_" + str(index), side * BARREL_X, BARREL_Z, breach)
 
     mod_parts = []
+    quad_barrels = []
     for side in (-1, 1):
-        mod_parts.append(tube("Quad barrel", (side * BARREL_X, BARREL_Y, QUAD_Z),
-                              BARREL_OUTER, BARREL_INNER, BARREL_L, purple, 24))
+        quad_barrels.append(tube(
+            "Quad barrel", (side * BARREL_X, BARREL_Y, QUAD_Z),
+            BARREL_OUTER, BARREL_INNER, BARREL_L, purple, 40))
         mod_parts.append(tube("Quad orange muzzle",
                               (side * BARREL_X, BARREL_FRONT - TIP_L / 2, QUAD_Z),
-                              TIP_OUTER, BARREL_INNER, TIP_L, orange, 24))
-    mod_parts.append(box("Quad top rib", (0, BARREL_Y, QUAD_Z + 0.019),
+                              TIP_OUTER, BARREL_INNER, TIP_L, orange, 32))
+    quad_barrel_pair = join_at(quad_barrels, "Quad barrel pair", HINGE_ORIGIN)
+    mod_parts.append(quad_barrel_pair)
+    mod_parts.append(box("Quad top rib", (0, BARREL_Y, QUAD_Z + 0.018),
                          (RIB_W, BARREL_L - 0.02, RIB_H), purple, SMALL_BEVEL))
-    mod_parts.append(rounded_foreend(
+    quad_fore_end = rounded_foreend(
         grip_charcoal, "Quad smooth fore-end",
-        QUAD_Z - FORE_H / 2 - BARREL_OUTER - 0.001))
+        QUAD_Z - FORE_H / 2 - BARREL_OUTER + 0.005)
+    check_surface_gap("Quad fore-end to lower barrels",
+                      quad_fore_end, quad_barrel_pair)
+    mod_parts.append(quad_fore_end)
     for obj in mod_parts:
         if obj.name != "Quad smooth fore-end":
             while obj.data.uv_layers:

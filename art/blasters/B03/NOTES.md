@@ -68,3 +68,19 @@ The exported hierarchy was checked explicitly: `breach` has only `fore-end`, `mu
 No approved brief item was omitted. There are no modelled ribs, text, logos, trademarks or external assets. The grip and wrist are smooth; grip ribs exist only in their small tiling normal map.
 
 The normal model and the optional quad configuration were both inspected in closed and 40 degree open poses. Still unverified: Paul's visual approval and loading or animating the model in the game. Collision clearance was not tested through a full in-game animation.
+
+## Round 2
+
+- Start: 2026-11-01 21:58:02 CST.
+- End: 2026-11-01 22:06:00 CST.
+- Joined both fore-ends into the undersides of their barrel rows with 5 mm of designed overlap. They remain separate `fore-end` and `mod_quad` nodes under `breach`, and the quad swap is unchanged.
+- Kept the two 3.4 cm barrels on 3.6 cm centres, for a 7.0 cm wide pair. Increased their radial resolution and overlapped the flat top rib so the pair, rib and bead read cleanly in side and three-quarter views.
+- Rebuilt the shoulder stock as a rounded loft with a gently sloping comb and generous cross-section rounding. The 4.5 cm deep, 3.5 cm wide rounded wrist and its texture are unchanged. The rounded rubber butt pad remains.
+- Removed the vertical breech plate. Blind rounded chamber recesses now seat the barrel chambers inside the action while hiding closed shells. The hinge is a 12 mm diameter short pin with small flush round ends.
+- Extended the guard rear into the wrist and retained its overlap into the action underside. The trigger shape, pivot and pull direction are unchanged.
+- Added B04-style BVH surface gap checks before static joining and before the moving assemblies are completed. Measured gaps: guard to wrist 0.000 mm, guard to action 0.000 mm, fore-end to barrels 0.000 mm, quad fore-end to lower barrels 0.000 mm. The build fails above 0.5 mm.
+- Inspected all seven renders after each of two builds. The closed shell occlusion is clean, and the -40 degree open pose clears the action with no visible passing through.
+- Final asset: 0.800 m long, 0.1895 m high and 0.074 m across the barrel group; 19,372 triangles, 7 materials and 733,808 bytes.
+- SHA-256: `510942e298f0b7ff86fe6ac1139d75e662b5397e1dceb9b43d2c5e698662b434`. Two consecutive exports were byte-identical.
+- `art/blasters/check_glb.py`: PASS. `art/blasters/B03/check.py`: PASS. The shared checker and B03 checker were not changed.
+- Still unverified: Paul's visual approval of round 2 and loading or animating the model in the game.
