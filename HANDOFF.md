@@ -71,6 +71,36 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-04 B04 round 2: moulded trigger guard (Kimi via Pi)
+
+- Extended the guard's outer profile into the front of the pistol grip and the
+  receiver underside. The 4.5 by about 2.5 cm opening, trigger, pivot, pull,
+  rounded grip and grip texture are unchanged.
+- Added a pre-join BVH world-space surface gap check with a 0.5 mm failure
+  threshold. Both joins measure 0.000 mm. Measurement details are in
+  `art/blasters/B04/NOTES.md`.
+- Inspected all six renders after both final builds. Both checkers pass:
+  16,590 triangles, 835,684 bytes and eight materials. Two consecutive exports
+  were byte-identical with SHA-256
+  `920307fe77b041684d41e41c2a9aa7d46dba82a2ee82f2ab518dc27c1c929940`.
+- Paul's visual approval, Claude's review and in-game animation remain
+  unverified.
+
+### 2026-11-01: ART-04: B04 in Blender (Kimi via Pi)
+
+- Built B04 from its approved brief: `art/blasters/B04/build.py`,
+  `public/models/blasters/B04.glb`, six renders and B04-specific
+  `art/blasters/B04/check.py`. The shared checker is unchanged.
+- The model has both visible flywheels, a curved translucent magazine, the
+  correct concave trigger and smooth textured grips. Both checkers pass:
+  16,628 triangles, 838,280 bytes and eight materials. Two final exports
+  were byte-identical.
+- Decisions and rotation signs are in `art/blasters/B04/NOTES.md`. The right
+  window is a clear open aperture so both vertical-axle wheels remain
+  readable within the material budget.
+- Paul's visual approval, Claude's review and in-game animation remain
+  unverified.
+
 ### 2026-11-01: B04 and B03 cards and briefs (Claude)
 
 - `design/blasters/B04.md` (Shredder, level 2) and `B03.md` (Leviathan,
