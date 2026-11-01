@@ -71,6 +71,20 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: GAME-09 card (Claude)
+
+- `tasks/GAME-09.md`, for Pi: the three approved blasters in the game.
+  Data-driven blasters in `data/blasters.json` (B01 pump, B04 full-auto
+  with spin-up and growing recoil, B03 break action with shells), mods
+  merged over the base data, dart types read from data (new `slug`), the
+  `.glb` viewmodel loaded with three's GLTFLoader and animated from each
+  model's NOTES.md rotation signs, switching on 1, 2, 3, HUD ammo, and
+  range panel buttons for blasters and mods. 14 tests, including one that
+  checks every model has the nodes its data and animation need.
+- Left for GAME-09b: catastrophic chunks, slug piercing, explosions, B04's
+  bounce. Viewmodel placement and every feel number are first guesses for
+  tuning on the range.
+
 ### 2026-11-01: B03 approved and merged; the three slice blasters are done (Claude)
 
 - Paul approved B03 "Leviathan" after 2 Kimi rounds (about 70 minutes,
