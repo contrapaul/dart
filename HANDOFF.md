@@ -122,6 +122,20 @@ the old sink path running on kinematic ragdoll bodies; stage 2 rewrites it
 and adds tests 7 and 8. Whether 150 kills fling too hard on the real
 course is a review decision.
 
+Review (Claude), in the browser on the range:
+- `killPush` 150 threw a 16 kg Foamer 1.5 to 3 m and up to 0.5 m into
+  the air: far too strong. Reverted to the card's 2.5, which is far too
+  weak (0.16 m/s on the body): every Foamer then falls forward, toward
+  the player, whatever the shot. F01 is hunched (its weight is ahead of
+  its feet) and is walking forward when it dies; a push on the one part
+  that was hit mostly spins that part. Stage 2 redesigns the push.
+- Ragdoll parts collided with each other. A Foamer's part boxes overlap
+  where they join, and only directly jointed pairs had contacts off, so
+  overlapping non-neighbours (a forearm and the body) were pushed apart
+  on the first step. `RAGDOLL_GROUPS` now collides with the world only.
+- With the push at 2.5, tests 3 and 4 fail as they should (they catch
+  the canned fall) and parts test 12 fails; left for stage 2.
+
 ### 2026-11-01: ENG-12 card and the blaster pipeline (Claude)
 
 - `tasks/ENG-12.md`: ragdolls for downed Foamers (Paul: go limp, not a

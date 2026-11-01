@@ -37,7 +37,7 @@
         "density": 60,
         "linearDamping": 0.4,
         "angularDamping": 1.5,
-        "killPush": 150,
+        "killPush": 2.5,
         "limits": {
           "head": [-0.7, 0.7],
           "arm": [-2.4, 0.4],
