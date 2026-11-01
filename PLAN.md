@@ -175,7 +175,7 @@ Unlock point:  [level]
 
 | ID | Name | Role | Ammo | Status |
 |---|---|---|---|---|
-| B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Details in CONTENT-PLAN 4; card and model not started |
+| B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Card and brief drafted (`design/blasters/B01.md`), awaiting Paul |
 | B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Details in CONTENT-PLAN 4; card and model not started |
 | B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Details in CONTENT-PLAN 4; card and model not started |
 | B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Details in CONTENT-PLAN 4; card and model not started |
@@ -524,8 +524,9 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | GAME-06 | Melee weapon + charges | F | GAME-04 |
 | GAME-07 | Stagger + Pop finishers + health drops | F | GAME-03 |
 | GAME-08 | Ammo-for-kills tool | F | GAME-07 |
-| GAME-09 | Weapon framework from JSON data: per-blaster data from the cards, fire types (pump, semi, full-auto with growing recoil, spin-up, break-action double), new dart types (precision, mega, foam ball, slug), `popTypes` per type, a `.glb` viewmodel from the named nodes; the 3 slice blasters (Proposed: B01, B03, B04), tested on the range | Pi + Claude review | ART-04 for the models (placeholder models until then) |
-| GAME-09b | Explosions: an area blast that carves terrain and Foamers, pushes and can pop (B05 and B06 mods, B07) | Pi + Claude review | GAME-09 |
+| GAME-09 | Weapon framework from JSON data: per-blaster data from the cards, fire types (pump, semi, full-auto with growing recoil, spin-up, break-action double), new dart types (precision, mega, foam ball, slug), `popTypes` per type, a `.glb` viewmodel from the named nodes; the 3 slice blasters in level order B01, B04, B03 (D04), tested on the range | Pi + Claude review | ART-04 for the models (placeholder models until then) |
+| GAME-09b | Catastrophic hits and explosions (D12): a close B03 blast or a B01 slug blows a big chunk out of a mid-tier, weakened elite or boss and finishes it in a large foam burst without popping the whole body; area blasts carve terrain and Foamers, push, and can pop (B05 and B06 mods, B07) | Pi + Claude review | GAME-09 |
+| GAME-11 | Leg loss (D11): a Foamer that loses a leg falls over (a short ragdoll fall, ENG-12) and then crawls, instead of tipping slightly and walking slower | Pi + Claude review | ENG-12 |
 | ENG-08 | AI director (attack tokens), state machine base, navmesh | A | GAME-03 |
 | ENG-10a | Foamer sandbox: greybox rigs per role, movement styles, `sandbox.html` | Claude (done) | ENG-09 |
 | ENG-10 | Foamer parts: the F01 rig in game, per-part damage, break-off, handicaps, foam-core wounds, going down and popping (card: `tasks/ENG-10.md`) | Pi (done) | ENG-10a |
@@ -642,3 +643,18 @@ All twelve answered 2026-10-29.
 | 2026-11-01 | The player asks for no downward move while grounded; snap-to-ground holds it to the floor. Pressing into the floor made Rapier stall the whole move now and then (Paul's movement hitch). | 7.3 |
 | 2026-11-01 | Only dart types listed in `catastrophic.popTypes` can pop a Foamer; none of the starter types are listed (Paul: the starter blaster should not pop). | 4.1 |
 | 2026-11-01 | Blasters are modelled by Blender Python scripts written by Kimi K3.1 Pro through Pi, from a written brief (not the photo), to a `.glb` contract with named moving parts (Paul added Kimi and Blender). Replaces the image model and Hunyuan3D route, pending spike ART-00. | 5.2, 8.2, 11.1 |
+| 2026-11-01 | D1: 3 acts x 4 levels, about 4 hours; new blasters in the first 7 levels, the last 5 are about challenge and story (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D2: a boss per act plus mid-act mini-bosses; colour variants promote enemies (D5) (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D3: 12 Foamer types plus 3 bosses (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D4: 8 blasters, one per level in order: level 1 B01, level 2 B04 (Shredder), level 3 B03 (Leviathan), and so on (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D5: size and shape show class, not colour; all Foamers read as one species; colour variants mark boosted versions for bosses and late challenges (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D6: two upgrade layers, blaster mods and player upgrades from hidden tokens (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D7: upgrades are bought at stations inside levels (not a between-level screen) (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D8: no ammo from floor darts; ammo is placed at set points (a new blaster's first find, before a gauntlet) (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D9: a foam vacuum: weakened Foamers are stunned, E locks on and extracts darts (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D10: four difficulty presets plus sliders (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D11: losing a leg makes a Foamer fall over, then crawl (GAME-11) (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D12: catastrophic deaths vary by weapon (for example a close B03 blast blows a huge chunk out and finishes it in a foam burst), not only whole-body pops (GAME-09b); no starter dart pops (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D13: unrated, aiming between E10+ and T (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D14: five ammo types: standard, precision, mega, foam ball, launcher round (B07) (Paul). | CONTENT-PLAN 1A |
+| 2026-11-01 | D15: B03 is a break-action double barrel (Paul). | CONTENT-PLAN 1A |

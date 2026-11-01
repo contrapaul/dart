@@ -35,6 +35,24 @@ Each has a recommendation first.
 | D14 | Ammo for B06 and B07, both now on mega darts | **A. Keep five ammo types: standard, precision, mega, foam ball, and a launcher round for B07 (a mega dart with a foam warhead, its own pickup).** B. Four types: B06 and B07 share mega darts |
 | D15 | B03 fire type: "pump" and "double barrel" | **A. Break-action double barrel: each trigger pull fires one barrel, both fired means reload (the 2 in 2 / 24); mod 1 fires both at once.** B. Pump-action with a 2-shell tube |
 
+## 1A. Answers
+
+Note that "**A." in the table above was answereed by Claude or inferred, clarifications are below: 
+-D01: Proposed length is good. A fast player could speedrun the game in 2.5-3 hours, while a slow player could be 6 hours, target of 4 is solid and gives us 7 levels with new weapons and 5 to allow players full range of weapon synergy.
+-D02: As proposed. We can use color to 'promote' enemies, see D05 answer.
+-D03: 12 + 3 bosses is good. We want players to feel like new content is still arriving for a while. 
+-DO4: 8 is a good start. The first level sees the player find the base shotgun, level 2 the shredder, level 3 the double barrel, etc. This continues until we run out, then levels no longer introduce new mechanics and weapons- they focus entirely on challenge and gameplay (and bits of story)
+-D05: I'd prefer size and shape to indicate class more than color, as I'd like the foamers to have a semi-unified visual language. Enemy types can certainly be identified by color as well, but they shouldn't look like 15 different specicies, but 15 different types of the same species. We can use color variance to denote boosted versions of enemies for boss fights or late game challenge. 
+-D06: The proposed solution is as I'd like it to be. 
+-D07: Stations inside levels would be my preference. 
+-D08: I'd like there to be ammo in specific locations, but not dropped haphazardly. For example, when a player first finds a new weapon type, or before an end of level gauntlet.
+-D09: A foam vaccuum is good, we can emulate Doom's stunned effect on enemies that have been weakened, then press E to animation lock onto them and extract the darts. 
+-D10: The proposed difficulties are good.
+-D11: Foamers should fall over when a leg is removed, then crawl. At present they defy physics and tip over slightly but don't fall, then move slower. 
+-D12: As we add the weapon types I'd like to see catastrophic deaths beyond 'the entire foamer explodes'. For example, a close range blast with B03 could explode a huge chunk out of a mid-tier enemy or a heavily weakened elite or boss, ending them with a 'big explosion of foam gore' but not 'total explodes'. 
+-D13: This will be unrated, but E10+ to T would be the target. 
+-D14: 5 ammo types is fine. 
+-D15: Break-action is more appropriate, I should have cleared 'pump'. 
 ---
 
 ## 2. Game structure (assumes D1 A, D2 A)
@@ -277,7 +295,7 @@ something else uses them.
 - B05, B06 and B07 all gain explosive options. Explosions should carve
   terrain and Foamers alike and are the other main way to pop.
 - The names are Paul's. Before launch, check each one isn't another toy
-  or game company's product name.
+  or game company's product name. (Note- they are not.)
 
 **The rest of the kit** (PLAN.md 3.2 and 3.4), all [Paul] for names and
 looks:

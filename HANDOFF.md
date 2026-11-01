@@ -92,8 +92,11 @@ github.com/contrapaul/dart (public), MIT licence.
   spike of that route on B01; Hunyuan3D is parked. GAME-09 is spelled
   out (fire types, new dart types, popTypes, viewmodel) with explosions
   split off as GAME-09b. Proposed slice blasters: B01, B03, B04.
-- Open for Paul: the slice blasters, D14 (B07's round) and D15 (B03's
-  fire type), and checking Moonshot's terms for publishing Kimi output.
+- Paul answered D1 to D15 (CONTENT-PLAN 1A; summary in the PLAN
+  decisions log). Slice blasters follow the level order: B01, B04, B03.
+  New tasks from the answers: GAME-11 (fall over then crawl after a leg)
+  and GAME-09b (catastrophic chunks). Still open: Moonshot's terms for
+  publishing Kimi output.
 
 ### 2026-11-01: Starter darts no longer pop Foamers (Claude)
 
@@ -108,7 +111,9 @@ github.com/contrapaul/dart (public), MIT licence.
 - Tests: the pop tests in `foamers.test.ts` and `parts.test.ts` allow
   standard darts to pop for their file. New `parts.test.ts` 14b: with
   the shipped list, a three-dart burst that kills downs it.
-- D12 is still Paul's to settle: this matches option B.
+- D12 (Paul, 2026-11-01): catastrophic deaths should vary by weapon, for
+  example a big chunk blown out by a close B03 blast; `popTypes` stays as
+  the gate, GAME-09b builds the rest.
 
 ### 2026-11-01: Movement hitch fixed (Claude, from Paul's range test)
 
