@@ -666,3 +666,4 @@ All twelve answered 2026-10-29.
 | 2026-11-01 | D13: unrated, aiming between E10+ and T (Paul). | CONTENT-PLAN 1A |
 | 2026-11-01 | D14: five ammo types: standard, precision, mega, foam ball, launcher round (B07) (Paul). | CONTENT-PLAN 1A |
 | 2026-11-01 | D15: B03 is a break-action double barrel (Paul). | CONTENT-PLAN 1A |
+| 2026-11-02 | B04's flywheels are internal: the housing is closed, no window; the brief asked for one in error (Paul). | 5.2, B04 brief |
