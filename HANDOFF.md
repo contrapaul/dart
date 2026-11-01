@@ -71,6 +71,17 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: B04 approved and merged (Claude)
+
+- Paul approved B04 "Shredder" after 2 Kimi rounds (about 28 minutes):
+  round 2 merged the floating trigger guard into the grip and receiver,
+  and `build.py` now fails if either join has a gap over 0.5 mm.
+- For GAME-09: `trigger` pulls with positive local X (as B01);
+  `flywheel_l` and `flywheel_r` spin about their local Y; signs and
+  origins in `art/blasters/B04/NOTES.md`.
+- B03 is on branch `art-04-b03`, in a second round (fore-end gap, thin
+  barrels, slab stock, the plate around the barrels, the guard join).
+
 ### 2026-11-01: ART-04 B04 round 2: moulded trigger guard (Kimi via Pi)
 
 - Extended the guard's outer profile into the front of the pistol grip and the
