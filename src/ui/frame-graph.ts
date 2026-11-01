@@ -3,7 +3,7 @@
 // ring buffers of typed arrays; push never allocates, so the hot path cost
 // is a handful of stores per frame. The graph class lands in stage 2.
 import rangeJson from "../../data/range.json";
-import type { FrameStats } from "../core/loop";
+import { STEP, type FrameStats } from "../core/loop";
 
 export const GRAPH = (rangeJson as {
   graph: {
@@ -88,7 +88,9 @@ export class FrameLog {
 
   /** Classify every frame in the buffer and describe it. A hitch is a
    *  frame whose raw is over hitchFactor times the median, or one that
-   *  ran 0 steps or more than 2 while not paused. A hitch is a long
+   *  ran a step count the refresh rate cannot explain while not paused
+   *  (at 60 Hz anything but 1; at 120 Hz, 0 and 1 alternate normally, so
+   *  only 2 or more). A hitch is a long
    *  (work-heavy) frame when work is over longWorkFactor times the
    *  median, otherwise a pacing hitch. A heap drop is a frame whose heap
    *  fell by more than gcDropMb from the frame before: a GC. */
@@ -110,6 +112,11 @@ export class FrameLog {
     const works = new Float32Array(n);
     let rawSum = 0, workSum = 0, rawWorst = 0, workWorst = 0, drops = 0;
     let total = 0, long = 0, pacing = 0;
+    // Steps a frame of one refresh interval should run: 60 Hz is 1, 120 Hz
+    // alternates 0 and 1, 30 Hz is 2.
+    const perFrame = ref / (STEP * 1000);
+    const stepsLo = Math.floor(perFrame + 0.05);
+    const stepsHi = Math.ceil(perFrame - 0.05);
     const isHitch = new Uint8Array(n);
     const heapDrop = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
@@ -130,7 +137,7 @@ export class FrameLog {
           heapDrop[i] = 1;
         }
       }
-      if (r > hitchAt || (!this.at(this.paused, i) && st !== 1)) {
+      if (r > hitchAt || (!this.at(this.paused, i) && (st < stepsLo || st > stepsHi))) {
         isHitch[i] = 1;
         total++;
         if (w > longAt) long++;

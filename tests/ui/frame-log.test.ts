@@ -33,6 +33,16 @@ describe("FrameLog (ENG-11)", () => {
     expect(s.hitches.pacing).toBe(1);
   });
 
+  it("at 120 Hz, frames alternating 0 and 1 steps are not hitches; 2 steps is", () => {
+    const log = new FrameLog();
+    for (let i = 0; i < 598; i++) log.push(f(MS / 2, 3, i % 2));
+    log.push(f(MS / 2, 3, 2));
+    log.push(f(MS / 2, 3, 0));
+    const s = log.summary();
+    expect(s.hitches.total).toBe(1);
+    expect(s.hitches.pacing).toBe(1);
+  });
+
   it("a heap fall of 5 MB is one drop; a hitch two frames later is near it", () => {
     const log = new FrameLog();
     for (let i = 0; i < 30; i++) log.push(f(MS, 5, 1), 100);

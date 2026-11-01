@@ -83,7 +83,11 @@ No page, the parts behind it. Stage 2 is the range page, the graph drawing, and 
 
 Not verified: nothing game-play-visible this stage, aim helper and clear() need eyes in the browser in stage 2 (the reviewer ran the range).
 
-Unclear, recorded rather than guessed: the card's tests section and the graph section do not agree on a 2-steps frame ("0 steps or more than 2" vs "0 or 2+" vs pacing in test 5); `FrameLog` treats any number of steps not equal to 1 as a hitch, because the test doesn't have a 3-step frame.
+Review (Claude): the card's step rule was wrong for 120 Hz displays, where
+frames normally alternate 0 and 1 steps; "not 1 step" would have flagged
+every other frame. A frame is now a step hitch only when its step count is
+outside what the refresh rate explains (60 Hz: 1; 120 Hz: 0 or 1; 30 Hz:
+2). New test for 120 Hz; the card is corrected.
 
 ### 2026-11-01: Paul's play test of ENG-10 (notes, nothing changed yet)
 

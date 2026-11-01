@@ -112,9 +112,8 @@ export class FoamerSystem {
     this.cc.enableSnapToGround(0.3);
   }
 
-  /** Spawn at a feet position facing a target. Returns null at the `max`
-   *  cap. The requested facing comes from `facing` (a world direction the
-   *  Foamer turns toward at its turn rate, as usual). */
+  /** Spawn at a feet position. Returns null at the `max` cap. With
+   *  `facing` (a world point), it starts turned toward that point. */
   spawn(feet: THREE.Vector3, facing?: THREE.Vector3): Foamer | null {
     if (this.list.length >= SPAWNER.max) return null;
     const f = new Foamer(this.rapier, this.world, this.mesher, SPEC, RIG, feet);
