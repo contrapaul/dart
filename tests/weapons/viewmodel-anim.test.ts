@@ -105,7 +105,7 @@ describe("GAME-09 stage 2c: viewmodel animation", () => {
     expect(root1.position.z).toBeCloseTo(restRoot1.z, 5);
     expect(root1.position.x).toBeCloseTo(restRoot1.x, 5);
     expect(root1.position.y).toBeCloseTo(restRoot1.y, 5); // base: viewmodel.position.y + rest offset 
-    expect(root1.rotation.x).toBeCloseTo(0, 5);
+    expect(root1.rotation.x).toBeCloseTo(THREE.MathUtils.degToRad(spec1.viewmodel.rotationDeg[0]), 5);
     // During the spring the kick should have gone non-zero (check it
     // moved off the rest z, even if the end frame is at rest); the
     // state (__range) would be able to verify this in a real render,
@@ -125,7 +125,7 @@ describe("GAME-09 stage 2c: viewmodel animation", () => {
       if (i++ > 500) break;
     }
     expect(root1.position.z).toBeCloseTo(restRoot1.z, 5);
-    expect(root1.rotation.x).toBeCloseTo(0, 5);
+    expect(root1.rotation.x).toBeCloseTo(THREE.MathUtils.degToRad(spec1.viewmodel.rotationDeg[0]), 5);
     const pumpNow = root1.getObjectByName("pump")!.position;
     expect(pumpNow.x).toBeCloseTo(restPump1.x, 5);
     expect(pumpNow.y).toBeCloseTo(restPump1.y, 5);
@@ -157,7 +157,7 @@ describe("GAME-09 stage 2c: viewmodel animation", () => {
     expect(root1.getObjectByName("pump")!.position.y).toBeCloseTo(restPump1.y, 5);
     expect(root1.getObjectByName("pump")!.position.z).toBeCloseTo(restPump1.z, 5);
     expect(root1.position.z).toBeCloseTo(restRoot1.z, 5);
-    expect(root1.rotation.x).toBeCloseTo(0, 5);
+    expect(root1.rotation.x).toBeCloseTo(THREE.MathUtils.degToRad(spec1.viewmodel.rotationDeg[0]), 5);
 
     // B03 ----------------------------------------------------------
     const spec3 = resolveSpec("B03");
