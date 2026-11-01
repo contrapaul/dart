@@ -43,6 +43,9 @@ export class Input {
   locked = false;
   /** Called when the mouse is captured or released. */
   onLockChange: (locked: boolean) => void = () => {};
+  /** Move to use in place of the computed one (the range page auto-strafe
+   *  feeds a sideways vector here). Null until set. */
+  moveOverride: { x: number; y: number } | null = null;
 
   private held = new Map<Action, number>();
   private pressed = new Set<Action>();
@@ -137,6 +140,7 @@ export class Input {
 
   /** Movement as x (right) and y (forward), length at most 1. */
   move() {
+    if (this.moveOverride) return this.moveOverride;
     let x = (this.isDown("moveRight") ? 1 : 0) - (this.isDown("moveLeft") ? 1 : 0);
     let y = (this.isDown("moveForward") ? 1 : 0) - (this.isDown("moveBack") ? 1 : 0);
     const [sx, sy] = deadzone(this.padAxes[0], -this.padAxes[1], 1);

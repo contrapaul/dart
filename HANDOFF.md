@@ -69,6 +69,100 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ENG-11: test range page (Pi)
+
+Plain level, frame-time graph and the panel: `range.html` next to the
+game and the sandbox. Stage 1 built the parts behind it:
+
+
+
+- `data/range.json` exactly as the card gives it.
+- `src/core/loop.ts`: an optional `stats` hook called after render with one reused `FrameStats` (`raw`, `dt`, `steps`, `work`, `updateWork`; `raw` is the unsnapped rAF interval in ms, 0 on the first frame), `createFrameClock` takes a snap option and exposes the raw last interval, and `startLoop` returns `{ setSnap }`. The existing loop tests pass unchanged.
+- `src/ui/frame-graph.ts`: `FrameLog` only (FrameGraph comes in stage 2). Ring buffers of `Float32Array` for the last 600 frames, `push` allocates nothing, `refreshMs()` is the median of `raw`, hitch is `raw > 1.5x` the median or a frame that ran non-1 steps while not paused (set to that because test 5 needs 2 steps to count as pacing, but the card text says "0 or more than 2" and the graph spec says "0 or 2+"), long when `work > 0.75x` median else pacing, a heap drop is a fall of more than 1 MB from the previous frame, `summary()` and `report(extra)` as on the card.
+- `src/weapons/aim.ts`: the muzzle and aim block out of `src/main.ts`, one function, module-scope scratch vectors and one shared ray, no allocation per step. The game page calls it; behaviour is the same (same ray, same exclude flags, same pull-back).
+- `src/foamers/foamers.ts`: public `spawnCount` and `spawnPoints` (defaults from the data file, the spawner uses them), and `clear()` which takes every live, downed and broken Foamer out: lists, parts, voxel targets, bodies and colliders, scene groups. Darts stuck to a body drop when the body goes, already.
+- `spawn` gained an optional `facing` (it sets the initial yaw). That is the `spawnAt` from the card but folded into `spawn`, nothing new to learn on the range page and one less API method.
+- Tests 1 to 10 are in `tests/core/loop-stats.test.ts`, `tests/ui/frame-log.test.ts` and `tests/foamers/range-api.test.ts`. All pass, the old ones unchanged.
+
+Stage 2:
+
+- `vite.config.ts`: range.html as a third input; the build puts
+  `dist/range.html` out.
+- `range.html`, `src/range/range.css`: canvas, HUD, a `#graphbox` (text
+  line + 480x120 canvas) top left, the pause overlay holding the panel with
+  the sandbox look.
+- `src/range/main.ts`: the card's range. Same structure as the game page
+  without the voxel wall, FallingPieces, the foam blocks, the melee debug
+  blast and the thrown blocks; the only voxel targets are the Foamers'
+  parts. Level from `data/range.json`: 60 m floor, 4 m walls, the three
+  cover boxes, thin 5 m markers (no collider) along the spawn line,
+  player at playerSpawn facing -z. The spawner uses range.json's points
+  and count (0 at start). Every frame goes into a FrameLog through the
+  loop's stats hook, with heap MB from `performance.memory` guarded
+  (Firefox has none) and the paused flag. No new objects per frame or per
+  step: all scratch vectors are module-scope, strafe writes one reused
+  object, the loop reuses its one FrameStats.
+- `FrameGraph` in `src/ui/frame-graph.ts`: bars of raw with the work part
+  in orange, lines at one refresh and the hitch threshold, a tick under
+  each step hitch (the graph and summary share the rule through the new
+  `FrameLog.isStepHitch`), a dot at each heap drop, a heap line where
+  available, and the text line from summary() at most 4 times a second.
+  Back-quote toggles it (plain keydown, so it works paused); it starts
+  shown. `FrameLog` gained `reset()`, `peek` and `heapAt` for the graph
+  and the panel.
+- The panel: Foamers (off clears them), shadows (the directional light
+  and the flag), pixel ratio (device or 1 through setPixelRatio), frame
+  clock snap (setSnap), auto strafe (the player wanders sideways, turning
+  every bench.strafePeriod), dart type buttons from data/darts.json,
+  infinite ammo (the magazine refills after every shot, keeping the
+  model's recoil hook), spawn a Foamer at 5/10/20/30 m ahead, keep alive
+  0/1/4/10 (the spawner count), Clear Foamers, Benchmark (20 s unpaused
+  with auto strafe, log cleared at the start, unlocks and writes the
+  report), Report and Copy (the clipboard API) and Clear log.
+- Auto-strafe needed one addition to Input: a public `moveOverride`
+  ({x,y}|null) that move() returns in place of the computed move when set.
+  Nothing else in Input changes; the game page never sets it.
+- Dev hook: `window.__range` with log, foamers, darts, blaster, player,
+  camera and the loop controls (setSnap) when DEV.
+
+Verified: `npx tsc --noEmit` clean, `npm test` 111 pass (101 from stage 1
+on and 10 new from the card, all old ones unchanged), `npm run build`
+passes, dist/ has range.html, the card's perl check finds no em or en dash
+in the written files. Unverified (the reviewer runs them): the range in a
+real browser, the switches, the benchmark, the pointer lock and the
+back-quote toggle, and whether the stutter shows there.
+
+Review (Claude): the card's step rule was wrong for 120 Hz displays, where
+frames normally alternate 0 and 1 steps; "not 1 step" would have flagged
+every other frame. A frame is now a step hitch only when its step count is
+outside what the refresh rate explains (60 Hz: 1; 120 Hz: 0 or 1; 30 Hz:
+2). New test for 120 Hz; the card is corrected.
+
+Stage 2 review (Claude), in the Claude pane (Chrome, 120 Hz):
+- Range loads with no console errors; graph, switches, spawn, keep
+  alive, clear, dart types all work. Single darts down a Foamer on the
+  range; Clear removes live, downed and broken ones.
+- 15 s of auto-strafe with 4 Foamers: 0 hitches, frames 8.3 ms average,
+  9.4 ms worst, game work 1.0 ms average, 3.2 ms worst. So in Chrome the
+  range has no stutter; Paul's run in his own browser is the real test.
+- Chrome's `performance.memory` stayed at one value for the whole run: it
+  is rounded and rarely updated unless Chrome starts with
+  `--enable-precise-memory-info`, so garbage collections cannot be seen
+  that way. The report and graph now say "not measurable" when the heap
+  reading never changes, instead of "GC drops 0".
+- "Pacing" hitches also include browser pauses outside the game's code
+  (garbage collection between frames, the compositor), since those show
+  as a late frame with little game work. The report and the panel note
+  say so; the graph text wraps instead of being cut off.
+- Toggling shadows recompiles every material: one frame of about 300 ms.
+  Expected; clear the log after changing switches.
+- Not reproduced: Pi saw `foamers.test.ts` test 8 fail once with a Rapier
+  "unreachable" in `FoamerPart.voxelToWorld` (a freed body). 8 runs
+  since, all pass; every path that frees a part body takes it out of the
+  dart targets first. Watch for it.
+- Not checked: the Benchmark button with a real pointer lock (the pane
+  cannot capture the mouse), Firefox, the deployed build.
+
 ### 2026-11-01: Paul's play test of ENG-10 (notes, nothing changed yet)
 
 - Stutter: still there, a regular pause. Two fixes so far (render

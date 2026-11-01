@@ -1,12 +1,13 @@
 import * as THREE from "three";
 import { createRenderer } from "./render/scene";
-import { createPhysics, SOLID_QUERY_GROUPS } from "./physics/world";
+import { createPhysics } from "./physics/world";
 import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
 import { DartSystem } from "./weapons/darts";
 import { Blaster, type BlasterSpec } from "./weapons/blaster";
 import { BlasterModel } from "./weapons/blaster-model";
+import { updateAim } from "./weapons/aim";
 import { DartImpacts, type VoxelTarget } from "./weapons/impacts";
 import { FoamerSystem } from "./foamers/foamers";
 import { Hud } from "./ui/hud";
@@ -201,15 +202,12 @@ window.addEventListener("keydown", (e) => {
     console.info("Dart type: " + blaster.dartType);
   }
 });
-// Scratch vectors for the aim math; allocated once.
+// Scratch vectors for the aim math; allocated once (aim.ts carries its
+// own).
 const _muzzle = new THREE.Vector3();
-const _aim = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
-const _dir = new THREE.Vector3();
-const _toMuzzle = new THREE.Vector3();
 const _playerPos = new THREE.Vector3();
 const _rot = new THREE.Quaternion();
-const muzzleRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
 
 let paused = true;
 /** While paused the scene only needs redrawing for meshes that arrive and
@@ -245,20 +243,7 @@ startLoop({
       if (input.wasPressed("melee")) debugBlast();
       // Blaster: muzzle from the camera, aim 50 m down the view, then the
       // blaster's fixed step, then the darts.
-      camera.updateMatrixWorld();
-      _muzzle.set(blasterSpec.muzzle[0], blasterSpec.muzzle[1], blasterSpec.muzzle[2]);
-      camera.localToWorld(_muzzle);
-      // Up against a wall the muzzle is inside it: pull it back to just in
-      // front of the surface, or darts would start inside solid geometry.
-      _toMuzzle.subVectors(_muzzle, camera.position);
-      const muzzleDist = _toMuzzle.length();
-      muzzleRay.origin = camera.position;
-      muzzleRay.dir = _toMuzzle.divideScalar(muzzleDist);
-      const blocked = world.castRay(muzzleRay, muzzleDist, true, 8 /* EXCLUDE_SENSORS */, SOLID_QUERY_GROUPS, player.collider);
-      if (blocked) _muzzle.copy(camera.position).addScaledVector(_toMuzzle, Math.max(0, blocked.timeOfImpact - 0.02));
-      camera.getWorldDirection(_dir);
-      _aim.copy(camera.position).addScaledVector(_dir, 50);
-      _aimDir.subVectors(_aim, _muzzle).normalize();
+      updateAim(camera, world, player.collider, blasterSpec.muzzle, _muzzle, _aimDir);
       blaster.update(
         dt,
         { firePressed: input.wasPressed("fire"), reloadPressed: input.wasPressed("reload") },

@@ -120,7 +120,9 @@ the raw interval (still capped at `MAX_FRAME`). `startLoop` returns
   `push(s, heapMb)` never allocates.
 - `refreshMs()`: the median `raw` of the buffer.
 - A frame is a **hitch** when `raw > graph.hitchFactor * refreshMs()`
-  (1.5), or when it ran 0 steps or more than 2 while not paused.
+  (1.5), or when it ran a step count the refresh rate cannot explain
+  while not paused (at 60 Hz anything but 1; at 120 Hz 0 and 1 alternate
+  normally, so only 2 or more).
 - A hitch is a **long frame** when `work > graph.longWorkFactor *
   refreshMs()` (0.75), otherwise a **pacing** hitch.
 - A **heap drop** is a frame where `heap` fell by more than
@@ -141,8 +143,8 @@ the raw interval (still capped at `MAX_FRAME`). `startLoop` returns
   (480 by 120), drawn every frame from the log, newest frame on the right.
 - One bar per frame: height is `raw`, with the part that was `work`
   drawn in a second colour. A horizontal line at one refresh interval and
-  one at the hitch threshold. A tick under each frame that ran 0 or 2+
-  steps. A dot at each heap drop. A line for heap (MB) where available.
+  one at the hitch threshold. A tick under each frame whose step count
+  counts as a hitch. A dot at each heap drop. A line for heap (MB) where available.
 - Text above: `refresh Hz | avg / p95 / worst ms | hitches N (long L,
   pacing P) | GC drops G`.
 - Back-quote (`` ` ``) shows or hides it, read with a plain keydown

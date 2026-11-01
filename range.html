@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DART test range</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/range/range.css" />
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="hud" hidden><div id="crosshair"></div><div id="ammo"></div></div>
+    <div id="graphbox"><p id="graphText"></p><canvas id="graphCanvas"></canvas></div>
+    <div id="overlay">
+      <aside id="panel">
+        <h1>Test range</h1>
+        <p class="note">The graph shows one bar per frame: its height is the time since the last frame, the orange part is the game's own work. A hitch is a frame much longer than the display's refresh, or one that ran the wrong number of physics steps. Long: the game worked too long. Pacing: the frame came late while the game was idle (frame timing, or a browser pause such as garbage collection). Back-quote hides the graph.</p>
+        <div class="row"><button id="play">Play</button></div>
+        <p class="label">Switches</p>
+        <label class="ctl">Foamers
+          <span class="row">
+            <button data-switch="foamers" data-on="1">on</button>
+            <button data-switch="foamers" data-on="0">off</button>
+          </span>
+        </label>
+        <label class="ctl">Shadows
+          <span class="row">
+            <button data-switch="shadows" data-on="1">on</button>
+            <button data-switch="shadows" data-on="0">off</button>
+          </span>
+        </label>
+        <label class="ctl">Pixel ratio
+          <span class="row">
+            <button data-switch="pixelRatio" data-on="1">device</button>
+            <button data-switch="pixelRatio" data-on="0">1</button>
+          </span>
+        </label>
+        <label class="ctl">Frame clock snap
+          <span class="row">
+            <button data-switch="snap" data-on="1">on</button>
+            <button data-switch="snap" data-on="0">off</button>
+          </span>
+        </label>
+        <label class="ctl">Auto strafe
+          <span class="row">
+            <button data-switch="strafe" data-on="1">on</button>
+            <button data-switch="strafe" data-on="0" class="on">off</button>
+          </span>
+        </label>
+        <p class="label">Test panel</p>
+        <label class="ctl">Dart type
+          <span class="row" id="dartTypes"></span>
+        </label>
+        <label class="ctl">Infinite ammo
+          <span class="row">
+            <button data-switch="infiniteAmmo" data-on="1">on</button>
+            <button data-switch="infiniteAmmo" data-on="0" class="on">off</button>
+          </span>
+        </label>
+        <label class="ctl">Spawn a Foamer
+          <span class="row">
+            <button id="spawn5">5 m</button>
+            <button id="spawn10">10 m</button>
+            <button id="spawn20">20 m</button>
+            <button id="spawn30">30 m</button>
+          </span>
+        </label>
+        <label class="ctl">Keep alive
+          <span class="row" id="keepAlive"></span>
+        </label>
+        <div class="row">
+          <button id="clearFoamers">Clear Foamers</button>
+          <button id="benchmark">Benchmark</button>
+        </div>
+        <p class="label">Report</p>
+        <div class="row">
+          <button id="reportBtn">Report</button>
+          <button id="copyBtn">Copy</button>
+          <button id="clearLog">Clear log</button>
+        </div>
+        <pre id="report"></pre>
+        <p class="hint">Esc pauses and shows this panel. Backquote shows or hides the frame graph.</p>
+      </aside>
+    </div>
+    <script type="module" src="/src/range/main.ts"></script>
+  </body>
+</html>
