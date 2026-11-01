@@ -564,7 +564,7 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(f.centre.distanceTo(start), "moves again").toBeGreaterThan(0.001);
   });
 
-  it("12. going down: single darts at the body every ~0.2 s down it; no colliders left and no parts in targets; body pitch reaches at least 1 rad within the topple; it is disposed within topple + lie + 4 s; a stuck suction dart is no longer stuck after that", async () => {
+  it("12. going down: single darts at the body every ~0.2 s down it; no voxel colliders left and no parts in targets; the ragdoll lies by 1 s; it is disposed within lie + sink + 4 s; a stuck suction dart is no longer stuck after that", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 8);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
@@ -589,30 +589,29 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     }
     expect(f.state, "it went down, not popped").toBe("down");
     expect(r.foamers.stats.popped).toBe(0);
-    // No colliders left on the root or on any part body, and no parts in
-    // the shared target list (darts pass through it).
+    // No voxel trimesh colliders left on the root or any part body (the
+    // ragdoll's new cuboids are the intended state), and no parts in the
+    // shared target list (darts pass through it).
     await new Promise((res) => setTimeout(res, 0));
     const handles = [f.root.handle, ...[...f.parts.values()].map((p) => p.body.handle)];
     let remaining = 0;
     r.world.forEachCollider((c) => {
       const parent = c.parent();
-      if (parent && handles.includes(parent.handle)) remaining++;
+      if (parent && handles.includes(parent.handle) &&
+          c.shapeType() === RAPIER.ShapeType.TriMesh) remaining++;
     });
-    expect(remaining, "no colliders left").toBe(0);
+    expect(remaining, "no voxel colliders left").toBe(0);
     let inTargets = 0;
     for (const p of f.parts.values()) if (r.targets.includes(p)) inTargets++;
     expect(inTargets, "no parts in targets").toBe(0);
-    // Body pitch reaches at least 1 rad within the topple.
-    let maxPitch = 0;
-    const toppleSteps = Math.ceil(SPEC.down.topple / DT);
-    for (let i = 0; i < toppleSteps; i++) {
-      tick(r, player);
-      maxPitch = Math.max(maxPitch, f.motion.pitch);
-    }
-    expect(maxPitch, "at least 1 rad of pitch inside the topple").toBeGreaterThanOrEqual(1);
-    // Disposed within topple + lie + 4 s (F01 lies about 1 m high and sinks
-    // at 0.35 m/s until its top is under the floor): its bodies leave.
-    const budget = Math.ceil((SPEC.down.topple + SPEC.down.lie + 4) / DT);
+    // The ragdoll lies: the body part's centre is under 0.6 m by 1 s.
+    for (let i = 0; i < 60; i++) tick(r, player);
+    const bodyT = body.body.translation();
+    expect(bodyT.y, "body part lying low").toBeLessThan(0.6);
+    // Disposed within lie + sink + 4 s (F01 lies about 0.9 m high and
+    // sinks at down.sinkSpeed until its top is under the floor): its
+    // bodies leave.
+    const budget = Math.ceil((SPEC.down.lie + 6) / DT);
     let gone = false;
     for (let i = 0; i < budget; i++) {
       if (r.world.getRigidBody(f.root.handle) === null) { gone = true; break; }

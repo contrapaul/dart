@@ -21,6 +21,7 @@ const _qPrev = new THREE.Quaternion();
 const _qNow = new THREE.Quaternion();
 const _pPrev = new THREE.Vector3();
 const _pNow = new THREE.Vector3();
+const _oneB = new THREE.Vector3(1, 1, 1);
 
 export class FoamerPart implements VoxelTarget {
   readonly spec: PartSpec;
@@ -131,6 +132,13 @@ export class FoamerPart implements VoxelTarget {
     let n = 0;
     for (const c of this.volume.chunks.values()) n += c.count;
     return n;
+  }
+
+  /** Draw the downed part at its ragdoll body's render pose (ENG-12). */
+  drawFrom(bodyP: THREE.Vector3, bodyQ: THREE.Quaternion) {
+    // The part's body sits where its pose put it (origin at the voxel
+    // box corner), so the body pose is the draw pose.
+    this.group.matrix.compose(bodyP, bodyQ, _oneB);
   }
 
   /** Remove the mesh and its colliders and the body. */

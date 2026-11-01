@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
+import { RAGDOLL_GROUPS } from "../physics/world";
 import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import type { DebrisSystem } from "../voxel/debris";
@@ -54,7 +55,12 @@ const _q = new THREE.Quaternion();
 const _p = new THREE.Vector3();
 const _v = new THREE.Vector3();
 const _cv = new THREE.Vector3();
+const _topP = new THREE.Vector3();
+const _topQ = new THREE.Quaternion();
+const _topV = new THREE.Vector3();
 const _sc = new THREE.Vector3();
+const _kbB = new THREE.Vector3(); // kill push: a part's centre
+const _kbV = new THREE.Vector3(); // kill push: the shot's horizontal direction
 const _one = new THREE.Vector3(1, 1, 1);
 
 /** A part and all its children (rig parent links), in break order. */
@@ -85,6 +91,11 @@ export class FoamerSystem {
   /** Where the spawner picks from, in feet metres. */
   spawnPoints: [number, number, number][] = SPAWNER.points.map((p) => [p[0], p[1], p[2]]);
   private dtPrev = 1 / 60;
+  /** Caps on the ragdoll seed velocity (a walking stride is a few m/s at
+   *  most; a near-instant kill would otherwise divide a near-zero dt over
+   *  an identity prevPose and seed a garbage velocity). */
+  static readonly VMAX = 4;
+  static readonly WMAX = 16;
 
   private cc: RAPIER.KinematicCharacterController;
   private targets: VoxelTarget[];
@@ -136,7 +147,7 @@ export class FoamerSystem {
     this.dtPrev = dt;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
-      // Downed Foamers keep stepping (topple, sink) but no longer walk.
+      // Downed Foamers keep stepping (lie, sink) but no longer walk.
       if (f.state === "down") {
         this.stepDown(f, dt);
       } else {
@@ -351,7 +362,7 @@ export class FoamerSystem {
       let recent = 0;
       for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
       if (recent >= SPEC.catastrophic.share * f.maxHealth) this.pop(f);
-      else this.goDown(f);
+      else this.goDown(f, hit); // the killing hit pushes the ragdoll
       return;
     }
     if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part);
@@ -365,11 +376,12 @@ export class FoamerSystem {
   }
 
   /** Go down (card "Go down"): it stops moving and attacking, its parts
-   *  leave targets and lose their colliders (darts pass through), and the
-   *  root capsule is removed. It then sinks away; stuck darts drop when
-   *  its bodies are disposed (darts.ts drops stuck darts whose body is
-   *  gone). Counts as gone for the spawner. */
-  private goDown(f: Foamer) {
+   *  leave targets and lose their trimesh colliders (darts pass through),
+   *  and the root capsule is removed. Then it becomes a ragdoll (ENG-12):
+   *  every attached part is a dynamic body with a cuboid collider and a
+   *  hinge to its parent, pushed by the killing hit. Stuck darts drop when
+   *  its bodies are disposed. Counts as gone for the spawner. */
+  private goDown(f: Foamer, hit?: DartHit) {
     if (f.state === "down") return;
     f.state = "down";
     f.stateTime = 0;
@@ -380,30 +392,200 @@ export class FoamerSystem {
       if (t >= 0) this.targets.splice(t, 1);
       part.mesh.dropColliders();
     }
+    this.buildRagdoll(f, hit);
     this.downed.push(f);
   }
 
-  /** Topple, lie, then sink: the body sinks at down.sinkSpeed until its
-   *  top corner is below the floor, then it is disposed and counts as
-   *  gone. Past down.max downed, the oldest drains to the floor at once. */
+  /** ENG-12: turn a downed Foamer into a ragdoll. Every attached part is
+   *  a dynamic body with the same cuboid collider broken pieces use (in
+   *  RAGDOLL_GROUPS, at down.ragdoll.density) at the data's damping,
+   *  starting with the velocity it had on its last step. Every part with
+   *  a parent still attached gets a hinge (card step 4): revolute joint
+   *  at the rig joint, anchor on the parent at `at`, pivot on the child
+   *  at `pivot`, both in their bodies' local frames, axis the child's
+   *  local x (the axis the rig's walk swings about), limits from
+   *  down.ragdoll.limits (negative bends forward) measured from the angle
+   *  the joint had when it went down, contacts off so the pair never
+   *  grinds. The killing hit changes the whole ragdoll's speed along the
+   *  dart's travel by down.ragdoll.killSpeed (m/s), applied as one
+   *  impulse on the body part (not the small part that was hit) at the
+   *  hit's height clamped inside the body's box, so a high hit tips it
+   *  over away from the shooter. Runs once per death, so it allocates
+   *  freely rather than reusing the per-step scratch. */
+  private buildRagdoll(f: Foamer, hit?: DartHit) {
+    const rag = SPEC.down.ragdoll;
+    const vs = f.rig.voxelSize;
+    const dt = Math.max(this.dtPrev, 1 / 240);
+    for (const part of f.parts.values()) {
+      const body = part.body;
+      body.setBodyType(this.rapier.RigidBodyType.Dynamic, true);
+      body.setLinearDamping(rag.linearDamping);
+      body.setAngularDamping(rag.angularDamping);
+      const p2 = new THREE.Vector3(), q2 = new THREE.Quaternion();
+      part.pose.decompose(p2, q2, _sc);
+      const pPrev = new THREE.Vector3(), qPrev = new THREE.Quaternion();
+      part.prevPose.decompose(pPrev, qPrev, _sc);
+      const sz = part.spec.size;
+      const hx = sz[0] * vs / 2, hy = sz[1] * vs / 2, hz = sz[2] * vs / 2;
+      this.world.createCollider(
+        this.rapier.ColliderDesc.cuboid(
+          Math.max(0.02, hx - 0.02),
+          Math.max(0.02, hy - 0.02),
+          Math.max(0.02, hz - 0.02),
+        )
+          .setTranslation(hx, hy, hz)
+          .setDensity(rag.density)
+          .setCollisionGroups(RAGDOLL_GROUPS),
+        body,
+      );
+      // Velocity it had on its last step (pose change / dt), linear and
+      // angular, scaled by keepStride: the stride feeds the fall without
+      // deciding where it lands (F01 walks forward when it is shot). A
+      // cap keeps a kill on a very early step (a fresh part's first pose
+      // is written against the previous step's origin) from seeding a
+      // garbage velocity: a real stride is a few m/s at most.
+      const lvx0 = (p2.x - pPrev.x) / dt, lvY0 = (p2.y - pPrev.y) / dt, lvz0 = (p2.z - pPrev.z) / dt;
+      const lm = Math.hypot(lvx0, lvY0, lvz0);
+      const k = lm > FoamerSystem.VMAX ? FoamerSystem.VMAX / lm : 1;
+      // The walk's horizontal momentum lingers, scaled by keepStride, so
+      // the walk feeds the fall without overriding the shot (F01 walks
+      // forward when it is shot). What dies at once: the vertical part
+      // of it (a rising limb was being raised, it does not keep rising)
+      // and every rotation (the last swing's wind-up must not start the
+      // fall).
+      body.setLinvel({ x: lvx0 * k * rag.keepStride, y: 0, z: lvz0 * k * rag.keepStride }, true);
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    }
+    // One hinge per attached part with a parent. Rapier initialises a new
+    // impulse joint at the current relative pose, so its free angle reads
+    // zero right now: the limits are then measured from the pose the
+    // Foamer had when it went down, as the card wants.
+    const links = f.ragdoll;
+    for (const child of f.parts.values()) {
+      const spec = child.spec;
+      if (spec.parent === null) continue;
+      const parent = f.parts.get(spec.parent);
+      if (!parent) continue; // a broken-off part leaves no hinge
+      const at = spec.at ?? [0, 0, 0];
+      const pv = spec.pivot ?? [0, 1, 0];
+      const ps = parent.spec.size, cs = spec.size;
+      const wJ = new THREE.Vector3(
+        ((at[0] + 1) / 2) * ps[0] * vs,
+        ((at[1] + 1) / 2) * ps[1] * vs,
+        ((at[2] + 1) / 2) * ps[2] * vs,
+      ).applyMatrix4(parent.pose);
+      const wP = new THREE.Vector3(
+        ((pv[0] + 1) / 2) * cs[0] * vs,
+        ((pv[1] + 1) / 2) * cs[1] * vs,
+        ((pv[2] + 1) / 2) * cs[2] * vs,
+      ).applyMatrix4(child.pose);
+      const tp = new THREE.Vector3(), qp = new THREE.Quaternion();
+      parent.pose.decompose(tp, qp, _sc);
+      const tc = new THREE.Vector3(), qc = new THREE.Quaternion();
+      child.pose.decompose(tc, qc, _sc);
+      const anchorP = wJ.clone().sub(tp).applyQuaternion(qp.clone().invert());
+      const anchorC = wP.clone().sub(tc).applyQuaternion(qc.clone().invert());
+      // The hinge axis: the child's local x (its walk swing); the same
+      // world direction in the parent's frame, so both frames agree.
+      const axisP = new THREE.Vector3(1, 0, 0).applyQuaternion(qp.clone().invert().multiply(qc));
+      const j = this.world.createImpulseJoint(
+        this.rapier.JointData.revoluteWithAxes(
+          { x: anchorP.x, y: anchorP.y, z: anchorP.z },
+          { x: anchorC.x, y: anchorC.y, z: anchorC.z },
+          { x: axisP.x, y: axisP.y, z: axisP.z },
+          { x: 1, y: 0, z: 0 },
+        ),
+        parent.body, child.body, true,
+      );
+      const lim = (rag.limits as Record<string, number[]>)[spec.kind] ?? [-0.5, 0.5];
+      (j as unknown as { setLimits(min: number, max: number): void }).setLimits(lim[0], lim[1]);
+      j.setContactsEnabled(false);
+      // The neutral pose and axis at creation, so the joint angle can be
+      // read as the twist about the axis since the kill (test 6).
+      const neutralQ = qp.clone().invert().multiply(qc).normalize();
+      const axisWorld = new THREE.Vector3(1, 0, 0).applyQuaternion(qc);
+      links.push({
+        joint: j,
+        parent: parent.body,
+        child: child.body,
+        anchorLocal: anchorP,
+        pivotLocal: anchorC,
+        kind: spec.kind,
+        neutralQ,
+        neutralAxisWorld: axisWorld,
+      });
+    }
+    // The kill push (card step 5, redesigned in review): the shot tips the
+    // Foamer over about its feet, away from the shooter. Every part gains
+    // killSpeed along the shot's horizontal direction, scaled by the
+    // height of its centre over the top of the body, so the feet barely
+    // move and the top moves most. A push on one part (the first design)
+    // either spun that part alone or, scaled up, threw the whole body.
+    if (hit) {
+      _kbV.set(hit.direction.x, 0, hit.direction.z);
+      if (_kbV.lengthSq() > 1e-6) {
+        _kbV.normalize();
+        const body = f.parts.get(f.rig.parts.find((p) => p.parent === null)!.id);
+        const top = body ? this.topYOfPart(body) : 1;
+        for (const part of f.parts.values()) {
+          const c = part.voxelToWorld(_kbB.set(part.spec.size[0] / 2, part.spec.size[1] / 2, part.spec.size[2] / 2));
+          const k = rag.killSpeed * THREE.MathUtils.clamp(c.y / top, 0, 1.2);
+          const v = part.body.linvel();
+          part.body.setLinvel({ x: v.x + _kbV.x * k, y: v.y, z: v.z + _kbV.z * k }, true);
+        }
+      }
+    }
+
+    for (const part of f.parts.values()) {
+      const t = part.body.translation();
+      const r = part.body.rotation();
+      f.ragdollPrev.set(part.spec.id, {
+        t: new THREE.Vector3(t.x, t.y, t.z),
+        q: new THREE.Quaternion(r.x, r.y, r.z, r.w),
+      });
+    }
+  }
+
+  /** Collapse, lie, then sink (ENG-12): while lying, nothing moves the
+   *  bodies but physics; the parts render between their last two steps.
+   *  After down.lie (or immediately when the down.max cap demands): the
+   *  joints come off, every body becomes kinematic with its colliders
+   *  disabled (as broken pieces do for their sink), and it drops at
+   *  down.sinkSpeed until its top is below the floor, then it is
+   *  disposed. */
   private stepDown(f: Foamer, dt: number) {
     f.prevCentre.copy(f.centre);
     f.prevYaw = f.yaw;
     f.stateTime += dt;
-    if (f.sinkingNow || f.stateTime >= SPEC.down.topple + SPEC.down.lie) {
-      if (f.sinkDepth < 0) f.sinkDepth = this.topYOf(f) + 0.05; // out of sight
-      f.sinkDrop += SPEC.down.sinkSpeed * dt;
+    // Render interpolation: each part body remembers its pose at the
+    // start of the step; the frame lerps to where physics leaves it.
+    for (const part of f.parts.values()) {
+      const t = part.body.translation();
+      const r = part.body.rotation();
+      const prev = f.ragdollPrev.get(part.spec.id);
+      if (prev) {
+        prev.t.set(t.x, t.y, t.z);
+        prev.q.set(r.x, r.y, r.z, r.w);
+      }
     }
-    f.applyPose();
-    f.poseParts(dt, false);
-    // sinkDepth sits at -1 until sinking starts (a Foamer is usually down
-    // for down.topple + down.lie seconds before that): never dispose before
-    // it could have sunk.
+    if (f.sinkingNow || f.stateTime >= SPEC.down.lie) {
+      if (f.ragdoll.length > 0) this.lockRagdollForSink(f);
+      if (f.sinkDepth < 0) f.sinkDepth = this.topYOf(f) + 0.05; // out of sight
+      const drop = SPEC.down.sinkSpeed * dt;
+      for (const part of f.parts.values()) {
+        const t = part.body.translation();
+        part.body.setNextKinematicTranslation({ x: t.x, y: t.y - drop, z: t.z });
+      }
+      f.sinkDrop += drop;
+    }
+    // sinkDepth sits at -1 until the sink starts (a Foamer lies for
+    // down.lie seconds before then): never dispose before it sank.
     if (f.sinkDepth >= 0 && f.sinkDrop >= f.sinkDepth) this.removeFoamer(f);
   }
 
   /** Past down.max not yet sinking, the oldest downed starts sinking at
-   *  once: it skips the rest of the topple and the whole lie. */
+   *  once, as broken pieces do when they sink: it locks now (the joints
+   *  come off at the first sink step) and skips the lie. */
   private enforceDownCap() {
     for (const d of this.downed) {
       if (this.notSinkingCount() <= SPEC.down.max) break;
@@ -419,25 +601,45 @@ export class FoamerSystem {
     return n;
   }
 
-  /** The top corner of the Foamer's attached parts in world y (its height
-   *  as it lies for the down pose), from the current step's pose. */
+  /** Top of one part's box in world y, from its live body. */
+  private topYOfPart(part: FoamerPart): number {
+    const sz = part.spec.size;
+    let top = -Infinity;
+    for (const cx of [0, 1]) for (const cy of [0, 1]) for (const cz of [0, 1])
+      top = Math.max(top, part.voxelToWorld(_topV.set(cx * sz[0], cy * sz[1], cz * sz[2])).y);
+    return top;
+  }
+
+  /** Top of the Foamer's ragdoll in world y (its height as it lies for
+   *  the lie), from every part body and its cuboid, so the sink knows how
+   *  far to drop it. */
   private topYOf(f: Foamer): number {
-    let top = 0;
     const vs = f.rig.voxelSize;
+    let top = 0;
     for (const part of f.parts.values()) {
+      const b = part.body;
+      const t = b.translation();
+      const r = b.rotation();
+      _topP.set(t.x, t.y, t.z);
+      _topQ.set(r.x, r.y, r.z, r.w);
       const sz = part.spec.size;
+      const hx = Math.max(0.02, (sz[0] * vs) / 2 - 0.02) * 2;
+      const hy = Math.max(0.02, (sz[1] * vs) / 2 - 0.02) * 2;
+      const hz = Math.max(0.02, (sz[2] * vs) / 2 - 0.02) * 2;
       for (const cx of [0, 1]) for (const cy of [0, 1]) for (const cz of [0, 1]) {
-        _v.set(cx * sz[0] * vs, cy * sz[1] * vs, cz * sz[2] * vs).applyMatrix4(part.pose);
-        top = Math.max(top, _v.y);
+        _topV.set(cx * hx, cy * hy, cz * hz).applyQuaternion(_topQ).add(_topP);
+        top = Math.max(top, _topV.y);
       }
     }
     return top;
   }
 
-  /** Take a done Foamer out of the world and the bookkeeping. Its broken
-   *  pieces are kept: they sink like any other. Stuck darts drop as its
-   *  bodies go away (darts.ts handles that). */
+  /** Take a done Foamer out of the world and the bookkeeping. The ragdoll
+   *  joints come off, then its bodies, part meshes and voxel targets go.
+   *  Its broken pieces are kept. Stuck darts drop as its bodies go away
+   *  (darts.ts handles that). */
   private removeFoamer(f: Foamer) {
+    this.lockRagdollForSink(f);
     const i = this.list.indexOf(f);
     if (i >= 0) this.list.splice(i, 1);
     const j = this.downed.indexOf(f);
@@ -447,6 +649,23 @@ export class FoamerSystem {
       if (t >= 0) this.targets.splice(t, 1);
     }
     f.dispose(this.world);
+  }
+
+  /** Sink-lock the ragdoll (the first line stepDown's sink takes): remove
+   *  the joints and make every body kinematic with its colliders
+   *  disabled, as broken pieces do when they sink. */
+  private lockRagdollForSink(f: Foamer) {
+    for (const link of f.ragdoll) this.world.removeImpulseJoint(link.joint, false);
+    f.ragdoll.length = 0;
+    const handles: number[] = [];
+    for (const part of f.parts.values()) {
+      part.body.setBodyType(this.rapier.RigidBodyType.KinematicPositionBased, false);
+      handles.push(part.body.handle);
+    }
+    this.world.forEachCollider((c) => {
+      const parent = c.parent();
+      if (parent && handles.includes(parent.handle)) c.setEnabled(false);
+    });
   }
 
   /** Paint the wound: every solid voxel of the part within the dart's carve

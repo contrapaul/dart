@@ -70,27 +70,3 @@ export function staggerMotion(t: number, out: RigMotion) {
   out.roll = Math.sin(t * 22) * 0.14 * env;
   out.y = -Math.abs(Math.sin(t * 11)) * 0.02 * env;
 }
-
-/** Toppled pose, k 0..1 of the topple: forward for two-leg rigs, onto the
- *  side for others; arms, legs and head go limp. */
-export function downMotion(rig: RigSpec, k: number, out: RigMotion) {
-  const e = ease(clamp01(k));
-  const biped = !isQuad(rig);
-  out.y = 0;
-  out.pitch = (biped ? 1.35 : 0.15) * e;
-  out.roll = (biped ? 0.15 : 1.25) * e;
-  out.rot.clear();
-  out.squash = 1;
-  for (const p of rig.parts) {
-    const side = p.id.endsWith("L") ? -1 : p.id.endsWith("R") ? 1 : 0;
-    const limp: [number, number, number] =
-      p.kind === "arm" ? [0.4, 0, side * 0.7]
-      : p.kind === "leg" ? [-0.25, 0, side * 0.2]
-      : p.kind === "head" ? [0.5, 0, 0.3]
-      // A held weapon swings back along the arm, so it does not prop the
-      // fallen body up off the floor.
-      : p.kind === "weapon" ? [-1.5, 0, 0]
-      : [0, 0, 0];
-    out.rot.set(p.id, [limp[0] * e, limp[1] * e, limp[2] * e]);
-  }
-}
