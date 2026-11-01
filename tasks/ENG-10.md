@@ -169,8 +169,10 @@ health 6). Everything about how damage works lives here:
 - `attacks.needs`: part ids, at least one still attached; `[]` always.
   The first attack whose needs are met is used.
 - The capsule is no longer in data. Work it out from the rig at spawn:
-  radius half the wider of the body part's x and z size, height
-  `rigHeight(rig)`.
+  radius `capsuleShare` (0.6) times half the narrower of the body part's
+  x and z size, height `rigHeight(rig)`. It must sit inside the body's
+  voxels so darts hit the parts, not the capsule (as GAME-03's did). A
+  dart that hits only the capsule does no damage.
 
 ## `FoamerPart` (`foamer-part.ts`)
 
@@ -298,8 +300,8 @@ export function downMotion(rig: RigSpec, k: number, out: RigMotion): void;
 - **Go down**: state `down`. It stops moving and attacking, its parts
   leave `targets` and lose their colliders (darts pass through), and its
   root capsule is removed. It topples over `down.topple` s, lies for
-  `down.lie` s, then sinks at `down.sinkSpeed` m/s until it is below the
-  floor by its height, then it is disposed and counts as gone for the
+  `down.lie` s, then sinks at `down.sinkSpeed` m/s until its top is below
+  the floor, then it is disposed and counts as gone for the
   spawner. At most `down.max` downed Foamers: past that, the oldest
   starts sinking at once. Stuck darts drop.
 - **Pop**: as today, every attached part bursts into debris (per part),
@@ -339,7 +341,7 @@ floor. Use rig F01 unless a test says otherwise.
 12. Going down: single darts at the body, 0.2 s apart, until health is 0.
     The Foamer is `down`, has no colliders left and no parts in
     `targets`, its body pitch reaches at least 1 rad within `topple` s,
-    and it is disposed within `topple + lie + 3` s. A suction dart stuck
+    and it is disposed within `topple + lie + 4` s. A suction dart stuck
     to it is no longer stuck after that.
 13. Head and an arm gone with health above 0: the Foamer goes down.
 14. Catastrophic: with health at 3 or less, three standard darts hitting

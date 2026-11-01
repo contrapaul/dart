@@ -24,6 +24,9 @@ export class VolumeMesh {
   private views = new Map<number, ChunkView>();
   /** True after dispose(); remesh results that arrive after that are ignored. */
   private dead = false;
+  /** True after dropColliders(): later apply() calls build meshes but no
+   *  collider (a broken part, a downed Foamer). */
+  private noColliders = false;
   /** Remesh jobs sent but not yet back. Decrement when they resolve,
    *  whether or not the result is stale. */
   private pendingJobs = 0;
@@ -65,6 +68,17 @@ export class VolumeMesh {
 
   owns(collider: RAPIER.Collider) {
     return collider.parent()?.handle === this.body.handle;
+  }
+
+  /** Remove every chunk collider and keep the mesh: later apply() calls
+   *  build the chunk meshes but no collider (a broken part or a downed
+   *  Foamer that is drawn but no longer shoots back). The body stays. */
+  dropColliders() {
+    this.noColliders = true;
+    for (const view of this.views.values()) {
+      if (view.collider) this.world.removeCollider(view.collider, false);
+      view.collider = null;
+    }
   }
 
   /** Remove every chunk mesh (and its geometry) and collider.
@@ -132,6 +146,7 @@ export class VolumeMesh {
     this.group.add(mesh);
     view.mesh = mesh;
 
+    if (this.noColliders) return;
     // Collider vertices in the volume body's space (metres).
     const verts = new Float32Array(data.positions.length);
     for (let i = 0; i < verts.length; i += 3) {

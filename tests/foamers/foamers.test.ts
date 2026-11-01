@@ -1,21 +1,19 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { VoxelVolume } from "../../src/voxel/chunk";
 import { linearColorTable } from "../../src/voxel/materials";
 import { greedyMesh } from "../../src/voxel/mesher";
 import type { Mesher } from "../../src/voxel/pieces";
 import { DebrisSystem } from "../../src/voxel/debris";
 import { DartSystem } from "../../src/weapons/darts";
 import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
-import { buildTestFoamer } from "../../src/foamers/foamer-model";
 import { FoamerSystem } from "../../src/foamers/foamers";
 import foamerData from "../../data/foamers.json";
 import destructionData from "../../data/destruction.json";
 
 const DT = 1 / 60;
 const SPEC = foamerData.test;
-const SIZE = [SPEC.size[0], SPEC.size[1], SPEC.size[2]] as [number, number, number];
+const ATTACK = SPEC.attacks[0]!;
 const DEBRIS_CAP = destructionData.debris.max;
 
 /** Node has no Worker: mesh synchronously on the main thread, as the
@@ -60,16 +58,6 @@ function tick(r: ReturnType<typeof rig>, player: THREE.Vector3, dt = DT) {
   r.darts.syncRender();
 }
 
-/** Dart position through the instance matrix, as the darts tests read them. */
-function dartPos(r: ReturnType<typeof rig>, type: "standard" | "suction") {
-  const mesh = (r.darts as unknown as { meshes: Record<string, THREE.InstancedMesh> }).meshes[type];
-  const m = new THREE.Matrix4();
-  mesh.getMatrixAt(0, m);
-  const p = new THREE.Vector3();
-  m.decompose(p, new THREE.Quaternion(), new THREE.Vector3());
-  return p;
-}
-
 /** Shape counts of the live colliders on one body. */
 function shapesOf(world: RAPIER.World, handle: number) {
   const shapes: number[] = [];
@@ -83,49 +71,39 @@ function shapesOf(world: RAPIER.World, handle: number) {
   };
 }
 
-function countVoxels(volume: VoxelVolume) {
-  return [...volume.chunks.values()].reduce((n, c) => n + c.count, 0);
+/** Fire a three-dart burst at the current body front. A single dart kill
+ *  now goes down, only a burst pops (stage 3), so the pop tests kill with
+ *  bursts instead of one dart at a time. */
+function burst(r: ReturnType<typeof rig>, f: NonNullable<ReturnType<FoamerSystem["spawn"]>>) {
+  const body = f.parts.get("body")!;
+  const c = body.voxelToWorld(new THREE.Vector3(
+    body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
+  for (const off of [-0.2, 0, 0.2])
+    r.darts.fire(new THREE.Vector3(c.x + off, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "standard");
 }
 
 beforeAll(async () => {
   await RAPIER.init();
 });
 
-describe("test Foamer (GAME-03)", () => {
-  it("1. buildTestFoamer: inside the box, one chunk, x-mirror-symmetric, front-half foam-white and ink eyes", () => {
-    const volume = new VoxelVolume(SPEC.voxelSize);
-    buildTestFoamer(volume, SIZE);
-    expect(volume.chunks.size).toBe(1);
-    const [sx, sy, sz] = SIZE;
-    const chunk = [...volume.chunks.values()][0]!;
-    let white = 0;
-    let ink = 0;
-    for (let y = 0; y < sy; y++)
-      for (let z = 0; z < sz; z++)
-        for (let x = 0; x < sx; x++) {
-          const m = chunk.get(x, y, z);
-          if (m === 0) continue;
-          expect(chunk.get(sx - 1 - x, y, z)).toBe(m);
-          if (m === 7 || m === 8) {
-            expect(z).toBeGreaterThanOrEqual(Math.floor(sz / 2));
-          }
-          if (m === 7) white++;
-          if (m === 8) ink++;
-        }
-    expect(white).toBeGreaterThan(0);
-    expect(ink).toBeGreaterThan(0);
-  });
+describe("test Foamer (ENG-10, rig F01)", () => {
+  it.skip("1. buildTestFoamer: single-volume model test moved to the per-part tests in parts.test.ts (stage 1)", () => {});
 
-  it("2. spawn feeds the targets, meshing grows a capsule plus a trimesh, and the max caps the spawn", async () => {
+  it("2. spawn: the root plus one body per F01 part exist, every part is a target, and the max caps the spawn", async () => {
     const r = rig();
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0));
     expect(f).not.toBeNull();
     expect(r.foamers.live).toBe(1);
-    expect(r.targets).toContain(f);
-    expect(r.foamers.stats.spawned).toBe(1);
-    await settle(f!.mesh, r.world);
-    expect(shapesOf(r.world, f!.body.handle).trimesh).toBeGreaterThan(0);
-    expect(shapesOf(r.world, f!.body.handle).other).toBeGreaterThan(0);
+    expect(f!.parts.size).toBe(9); // F01 has nine parts
+    r.world.step();
+    for (const part of f!.parts.values()) {
+      expect(r.targets, part.spec.id).toContain(part);
+      expect(r.world.getRigidBody(part.body.handle), part.spec.id).not.toBeNull();
+    }
+    expect(r.world.getRigidBody(f!.root.handle)).not.toBeNull();
+    await settle(f!.parts.get("body")!.mesh, r.world);
+    expect(shapesOf(r.world, f!.parts.get("body")!.body.handle).trimesh).toBeGreaterThan(0);
+    expect(shapesOf(r.world, f!.root.handle).other).toBe(1); // only the capsule
     for (let i = 1; i < foamerData.spawner.max; i++) {
       expect(r.foamers.spawn(new THREE.Vector3(i, 0, 5))).not.toBeNull();
     }
@@ -139,7 +117,8 @@ describe("test Foamer (GAME-03)", () => {
     r.foamers.spawn(new THREE.Vector3(0, 0, 0));
     for (let i = 0; i < 120; i++) tick(r, player);
     const f = r.foamers.list[0]!;
-    expect(f.centre.z).toBeGreaterThan(3);
+    // F01's rig speed is 1.0 m/s; two seconds of it.
+    expect(f.centre.z).toBeGreaterThan(1.5);
     expect(f.centre.y).toBeCloseTo(0, 1);
     const facing = new THREE.Vector3(Math.sin(f.yaw), 0, Math.cos(f.yaw));
     const toPlayer = player.clone().sub(f.centre).setY(0).normalize();
@@ -156,41 +135,60 @@ describe("test Foamer (GAME-03)", () => {
     expect(r.foamers.list[0]!.centre.z).toBeLessThan(3);
   });
 
-  it("5. bonks exactly once by windup + 0.1 s, and not again early", () => {
+  it("5. bonks once at the end of the windup, and not again until a full cycle has passed", () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 1);
     r.foamers.onBonk = () => {};
     r.foamers.spawn(new THREE.Vector3(0, 0, 0));
-    const t1 = Math.ceil((SPEC.windup + 0.1) / DT); // first bonk must be in by here
-    const t2 = Math.ceil((SPEC.windup + SPEC.recover + SPEC.windup) / DT); // second bonk only after this
+    // The Foamer spawns in attack range, so it winds up straight away.
+    const t1 = Math.ceil((ATTACK.windup + 0.1) / DT); // first bonk must be in by here
     for (let i = 0; i < t1; i++) tick(r, player);
-    expect(r.foamers.stats.bonks, "no bonk by windup + 0.1 s").toBe(1);
-    for (let i = 0; i < t2 - t1; i++) tick(r, player);
-    expect(r.foamers.stats.bonks, "second bonk before windup + recover + windup").toBe(1);
+    expect(r.foamers.stats.bonks, "no bonk by windup end").toBe(1);
+    // A full cycle: windup, strike, recover and the next windup. The
+    // second bonk is not yet due here.
+    const t2 = Math.ceil((ATTACK.windup + ATTACK.strike + SPEC.recover + ATTACK.windup) / DT);
+    for (let i = t1; i < t2; i++) tick(r, player);
+    expect(r.foamers.stats.bonks, "second bonk before a full cycle").toBe(1);
   });
 
   it("6. a standard dart lowers the health, counts a hit and carves voxels", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 5);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-    const before = countVoxels(f.volume);
-    await settle(f.mesh, r.world);
-    r.darts.fire(new THREE.Vector3(0, 0.8, 5), new THREE.Vector3(0, 0, -1), "standard");
+    // Aim at the centre of the body part (the capsule sits inside the body's
+    // voxels, so a centre dart always finds the body).
+    const body = f.parts.get("body")!;
+    const before = body.voxelCount;
+    await settle(body.mesh, r.world);
+    const aim = body.voxelToWorld(new THREE.Vector3(
+      body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2 + 0.5));
+    r.darts.fire(new THREE.Vector3(aim.x, aim.y, aim.z + 5), new THREE.Vector3(0, 0, -1), "standard");
     for (let i = 0; i < 120 && r.foamers.stats.hits === 0; i++) tick(r, player);
     expect(r.foamers.stats.hits).toBe(1);
-    expect(f.health).toBeCloseTo(SPEC.health - SPEC.damage.standard, 5);
-    expect(countVoxels(f.volume)).toBeLessThan(before);
+    expect(f.health).toBeCloseTo(f.maxHealth - SPEC.damage.standard, 5);
+    expect(body.voxelCount).toBeLessThan(before);
   });
 
-  it("7. darts down to zero pop it: out of the lists, body gone, foam chunks flying", () => {
+  it("7. a burst kills and pops it: out of the lists, bodies gone, foam chunks flying", async () => {
     const r = rig();
     // The player stands one metre from the Foamer, in reach of its bonk,
     // so it holds still through the fight.
     const player = new THREE.Vector3(0, 1.6, 1);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-    const handle = f.body.handle;
-    while (r.foamers.stats.popped === 0) {
+    const rootHandle = f.root.handle;
+    const partHandles = [...f.parts.values()].map((p) => p.body.handle);
+    // The body part must be meshed, so its trimesh collider exists: the
+    // darts carve the part, not the root capsule.
+    await settle(f.parts.get("body")!.mesh, r.world);
+    // A single dart that takes the health to 0 now downs the Foamer
+    // (it only pops when the killing damage is a burst, ENG-10 stage 3),
+    // so each round fires three darts close together: they land in the
+    // same step, count as one blast and clear the catastrophic share.
+    let rounds = 0;
+    while (r.foamers.stats.popped === 0 && rounds++ < 20) {
       r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+      r.darts.fire(new THREE.Vector3(0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+      r.darts.fire(new THREE.Vector3(-0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
       for (let i = 0; i < 120 && r.foamers.stats.popped === 0 && f.health > 0; i++) {
         tick(r, player);
       }
@@ -199,87 +197,93 @@ describe("test Foamer (GAME-03)", () => {
     expect(f.health).toBeLessThanOrEqual(0);
     expect(r.foamers.stats.hits).toBeGreaterThan(0);
     expect(r.foamers.live).toBe(0);
-    expect(r.targets).not.toContain(f);
-    expect(r.world.getRigidBody(handle)).toBeNull();
+    for (const part of f.parts.values()) expect(r.targets).not.toContain(part);
+    expect(r.world.getRigidBody(rootHandle)).toBeNull();
+    for (const h of partHandles) expect(r.world.getRigidBody(h)).toBeNull();
     expect(r.debris.live).toBeGreaterThan(0);
     expect(r.debris.live).toBeLessThanOrEqual(DEBRIS_CAP);
-    // Any remesh promise that arrives afterwards must not throw.
-    f.mesh.update();
-    r.world.step();
   });
 
   it("8. a stuck suction dart rides a walking Foamer, and drops when it pops", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 10);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-    const handle = f.body.handle;
-    await settle(f.mesh, r.world);
+    const rootHandle = f.root.handle;
+    await settle(f.parts.get("body")!.mesh, r.world);
     r.darts.fire(new THREE.Vector3(0, 0.8, 8), new THREE.Vector3(0, 0, -1), "suction");
     for (let i = 0; i < 120 && r.darts.stats().stuck < 1; i++) tick(r, player);
     expect(r.darts.stats().stuck).toBe(1);
+    const mesh = (r.darts as unknown as { meshes: Record<string, THREE.InstancedMesh> }).meshes.suction;
+    const m0 = new THREE.Matrix4();
+    mesh.getMatrixAt(0, m0);
+    const dart0 = new THREE.Vector3();
+    dart0.setFromMatrixPosition(m0);
     const start = f.centre.clone();
-    const dart0 = dartPos(r, "suction").clone();
     for (let i = 0; i < 60; i++) tick(r, player);
+    const mv = new THREE.Matrix4();
+    mesh.getMatrixAt(0, mv);
+    const dart1 = new THREE.Vector3();
+    dart1.setFromMatrixPosition(mv);
     const moved = f.centre.clone().sub(start);
-    const dartMoved = dartPos(r, "suction").clone().sub(dart0);
-    expect(dartMoved.distanceTo(moved)).toBeLessThan(0.05);
+    expect(dart1.distanceTo(dart0.add(moved))).toBeLessThan(0.05);
     expect(r.darts.stats().stuck).toBe(1);
+    // A single dart kill now goes down; only a burst pops (stage 3), so
+    // each round fires three darts at the body front (test 7's method).
+    let rounds = 0;
     while (r.foamers.stats.popped === 0) {
-      const aim = f.centre.clone().setY(1.18);
-      const dir = aim.clone().sub(new THREE.Vector3(0, 0.4, 3)).normalize();
-      r.darts.fire(new THREE.Vector3(0, 0.4, 3), dir, "standard");
-      for (let i = 0; i < 120 && r.foamers.stats.popped === 0 && f.health > 0; i++) {
-        tick(r, player);
-      }
+      expect(rounds++, "popped within 20 rounds").toBeLessThan(20);
+      burst(r, f);
+      for (let i = 0; i < 120 && r.foamers.stats.popped === 0; i++) tick(r, player);
     }
     expect(r.foamers.stats.popped).toBe(1);
-    expect(r.world.getRigidBody(handle)).toBeNull();
+    expect(r.world.getRigidBody(rootHandle)).toBeNull();
     for (let i = 0; i < 30; i++) tick(r, player);
     expect(r.darts.stats().stuck).toBe(0);
   });
 
-  it("8b. a suction dart that lands the popping hit falls clear instead of sticking to the removed body", async () => {
+  it("8b. darts that land the popping hit fall clear instead of sticking to the removed body", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 1);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-    await settle(f.mesh, r.world);
-    f.health = SPEC.damage.suction;
-    r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "suction");
-    for (let i = 0; i < 120 && r.foamers.stats.popped === 0; i++) tick(r, player);
+    await settle(f.parts.get("body")!.mesh, r.world);
+    // The suction dart flies first and starts the burst; the two
+    // standards behind it follow (all in the window), and the last one
+    // kills.
+    f.health = 3;
+    const body = f.parts.get("body")!;
+    const c = body.voxelToWorld(new THREE.Vector3(
+      body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
+    r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "suction");
+    burst(r, f);
+    for (let i = 0; i < 240 && r.foamers.stats.popped === 0; i++) tick(r, player);
     expect(r.foamers.stats.popped).toBe(1);
     for (let i = 0; i < 30; i++) tick(r, player);
     expect(r.darts.stats().stuck).toBe(0);
   });
 
-  it("3b. the drawn mesh lines up with the body for a turned Foamer", () => {
-    const r = rig();
-    const f = r.foamers.spawn(new THREE.Vector3(2, 0, -1))!;
-    f.yaw = 1.1;
-    f.applyPose();
-    r.world.step();
-    f.syncRender();
-    f.group.updateWorldMatrix(true, true);
-    for (const v of [[0, 0, 0], [SIZE[0], SIZE[1], SIZE[2]], [3, 20, 11]]) {
-      const drawn = new THREE.Vector3(v[0], v[1], v[2])
-        .multiplyScalar(SPEC.voxelSize)
-        .applyMatrix4(f.mesh.group.matrixWorld);
-      const body = f.voxelToWorld(new THREE.Vector3(v[0], v[1], v[2]));
-      expect(drawn.distanceTo(body)).toBeLessThan(1e-4);
-    }
-  });
+  it.skip("3b. single-mesh alignment for a turned Foamer replaced by per-part tests in parts.test.ts (stage 1)", () => {});
 
-  it("3c. syncRender(alpha) draws the Foamer between its last two steps", () => {
+  it("3c. syncRender(alpha) draws each part between its last two steps", () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 10);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    f.poseParts(DT, true);
     for (let i = 0; i < 10; i++) tick(r, player);
+    const part = f.parts.get("body")!;
+    const pPrev = new THREE.Vector3().setFromMatrixPosition(part.prevPose);
+    const pNow = new THREE.Vector3().setFromMatrixPosition(part.pose);
+    expect(pNow.distanceTo(pPrev)).toBeGreaterThan(0.01); // it is walking at 1 m/s
     f.syncRender(0);
-    expect(f.group.position.distanceTo(f.prevCentre)).toBeLessThan(1e-6);
+    expect(part.group.matrix.elements[12]).toBeCloseTo(pPrev.x, 6);
+    expect(part.group.matrix.elements[13]).toBeCloseTo(pPrev.y, 6);
     f.syncRender(0.5);
-    const mid = f.prevCentre.clone().lerp(f.centre, 0.5);
-    expect(f.group.position.distanceTo(mid)).toBeLessThan(1e-6);
-    expect(f.centre.distanceTo(f.prevCentre)).toBeGreaterThan(0.02); // it is walking
+    part.group.updateWorldMatrix(false, false);
+    const mid = pPrev.clone().lerp(pNow, 0.5);
+    expect(part.group.matrix.elements[12] - mid.x).toBeCloseTo(0, 5);
+    expect(part.group.matrix.elements[13] - mid.y).toBeCloseTo(0, 5);
     f.syncRender(1);
-    expect(f.group.position.distanceTo(f.centre)).toBeLessThan(1e-6);
+    expect(part.group.matrix.elements[12]).toBeCloseTo(pNow.x, 6);
+    expect(part.group.matrix.elements[13]).toBeCloseTo(pNow.y, 6);
   });
 });

@@ -37,7 +37,7 @@ shadows are never black, and a rim light on edges facing away from the
 camera. The course boxes, floor, blaster and darts keep their old
 materials.
 
-In progress: ENG-10 (Pi, branch `eng-10`): the F01 rig in the game with part damage, going down and popping. Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
+In progress: ENG-10 (Pi, branch `eng-10`): the F01 rig in the game is built (part damage, going down, popping); all three stages committed, awaiting review. Next up: QA-01 (performance on the low-end machine, Paul) and the P0 gate. P0 prototype due 2026-11-12.
 
 Live at https://dart.contrapaul.com since 2026-10-30. Paul connected the repo in the Cloudflare
 dashboard: a push to `main` builds (`npm run build`) and deploys. Repo:
@@ -68,6 +68,91 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-01: ENG-10 review (Claude)
+
+Review of Pi's three ENG-10 stages; the fixes are on `eng-10`.
+
+- Broken pieces were drawn in the wrong place (up to 16 m under the
+  floor) and their cuboid colliders were offset to match: `breakPart`
+  inverted the piece body's transform in the wrong order. Fixed; test 6b
+  now spawns off the origin and checks the drawn part sits on its
+  collider near the Foamer (it passed at the origin, where the order
+  does not matter).
+- Breaking a part whose child already broke off (the club, then the
+  forearm holding it) threw and stopped the game loop. Fixed; new test 6c.
+- Downed F01 lay propped on its club about 1.3 m high: the down pose
+  left the weapon rigid. `downMotion` now swings a weapon back along the
+  arm (F01 lies about 1 m high). Other rigs' down poses are GAME-10's.
+- Sink depth: see the entry below. Pi's 1.2 m/s is back to 0.35.
+- Browser (port 5174): F01 walks with the raised club, head and club
+  shots break off pieces that fall with foam-core stumps on both sides,
+  body shots show foam-core wounds, a single-dart kill topples and
+  sinks. No console errors after the fixes.
+- 11 Foamers walking at the player on Paul's Mac in the browser pane:
+  average frame 8.3 ms, 95th percentile 9.7 ms, worst 10.8 ms (120 Hz
+  display, so at refresh); worker remesh of a part chunk about 1.0 ms
+  (max 1.1). Not measured on a base Apple Silicon Mac.
+- Unverified: a close pump blast popping a Foamer in the browser (test
+  14 covers it), crawling with both legs off, and the attacks on screen.
+  Old test 8 hit its 5 s timeout once under load; it passed every other
+  run.
+
+### 2026-11-01: ENG-10 complete: going down, catastrophic pops, broken piece fixes (Pi, Qwen 3.8-27b)
+
+All three stages of the test Foamer are committed on `eng-10`. What was
+built (card "The system"):
+
+- Per part: the rig F01 runs as one root body (movement capsule) plus one
+  `FoamerPart` per rig part (own voxel volume, kinematic body and mesh),
+  posed each step from `solvePose` with eased motions. A dart hit is
+  owned by the part that carved it; the part's hp and the Foamer's
+  health fall by the kind's factors, and the wound paints foam-core in
+  the hit part only. A part (never the body) breaks when its hp hits 0
+  or it has lost wearBreak of its voxels; the stump paints on both
+  sides, one dynamic piece falls, the Foamer staggers and loses what
+  the part did (legs: speed, arms: attacks, head: turn rate).
+- Stage 3: at health 0 the Foamer pops if the damage in the last
+  catastrophic.window seconds is at least catastrophic.share of max
+  health, otherwise it goes down (state down: stops moving and
+  attacking, parts leave `targets` and lose their colliders, the root
+  capsule is removed, then it topples over down.topple, lies down.lie,
+  sinks at down.sinkSpeed until fully below the floor, and is
+  disposed). Losing the head and any arm downs it at any health. Pop is
+  unchanged otherwise; its broken pieces are left to sink. Downed
+  Foamers count as gone for the spawner; past down.max the oldest
+  (not yet sinking) starts sinking at once.
+- Stage 2 review fixes: `VolumeMesh.dropColliders()` removes the chunk
+  colliders and stops later remeshes from rebuilding them, so a broken
+  piece (and a downed Foamer) keeps drawing but darts pass through; a
+  piece that starts sinking also disables its own colliders besides
+  fixing the body; the piece sink uses brokenParts.sinkTime instead of
+  the old 0.35 m/s; breakPart's launch uses the real step dt.
+
+Decisions: the pop-or-down call sits in `handleHit`, on the killing hit:
+the recent damage list keeps every hit since spawn (it is tiny: one
+entry per hit). A downed Foamer sinks at 0.35 m/s until its lying top
+corner is under the floor (about 3 s for F01, which lies about 1 m
+high; test 12's budget is topple + lie + 4 s). Pi first read the card as
+"sink a further rig height" and raised the speed to 1.2 m/s to fit test
+12; review (Claude) fixed the depth instead and kept the approved speed.
+`src/foamers/foamer-model.ts` deleted (nothing used it any more).
+
+Old tests that changed, and why: in `foamers.test.ts` old 7, 8 and 8b
+fired single darts until the pop, but a single dart kill now downs the
+Foamer, so they fire a three-dart burst (a `burst()` helper; the burst
+clears the catastrophic share); 8b now includes the suction dart in the
+burst (it lands the popping hit). New in `parts.test.ts`: 6b (broken
+piece keeps its mesh, part body collider-free), 12 to 15 (card test
+12's single-dart kills use closures to dodge TS narrowing); 15 breaks
+legR by wear instead of darts, because the fallen legL piece lands on
+the dart line. The sandbox's `rig.test.ts` is untouched.
+
+Verified: `npx tsc --noEmit`, `npm test` (14 files, 101 tests, 2 skipped)
+and `npm run build`. Unverified (the reviewer checks those): the
+browser at port 5174 (walk, wounds and stumps, topple and sink, pop,
+stuck darts), and the 10-Foamer frame times and per-part remesh worker
+time from the card's done list.
 
 ### 2026-10-31: F01 stands on its feet (Claude)
 
