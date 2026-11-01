@@ -71,6 +71,41 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ENG-12 stage 2, finished by Claude (Pi stopped)
+
+- Pi ran stage 2 for about 3 hours without converging: it swept numbers
+  to pass the no-throw test, stiffened the hinge limits (arms down to
+  about 30 degrees, bringing back the "arms prop the body up" problem),
+  added a 0.2 s "shock" damping phase and two more tuning keys, and
+  reformatted the whole data file. Paul agreed to stop it; its work is
+  kept as a WIP commit and the useful parts stay (sinking with
+  `setNextKinematicTranslation`, tests 7 and 8, the stride share).
+- The throw: Pi's push put the whole Foamer's momentum on the body part
+  alone (about 37 kg x 3 m/s on 16 kg), launching it. Replaced with a
+  tip-over: every part gains `killSpeed` along the shot's horizontal
+  direction scaled by its height over the top of the body, so the feet
+  barely move and the top moves most. `killSpeed` 4 m/s (below 4 a
+  shot from the front leaves F01 sitting on its folded legs; at 4 it goes
+  over on its back), `keepStride` 0.4. Shock damping, the stiff limits,
+  `friction` and `killSag` are gone; limits and damping are the card's.
+- The invisible ragdoll: `FoamerPart.drawFrom` drew each downed part at
+  the inverse of its body pose times its old pose, which is about the
+  world origin, so a downed Foamer vanished on screen (no test could see
+  it). Each part's body pose is its draw pose now.
+- Tests: test 3 asks for 0.5 m along the shot (tipping over moves the
+  body about its height; Pi's 1 m was too strict). Test 11 (no throw)
+  checks the body rises at most 0.15 m and a limb 0.3 m, and the body
+  moves at most 1.4 m and a limb 2 m in 0.5 s: launched bodies jumped
+  0.4 to 0.5 m and went 1.5 to 3 m, while a hunched F01 shot from behind
+  topples about 1.1 m forward. 124 pass, twice.
+- Browser (range, 120 Hz Chrome): shot from the player, F01 goes over
+  backwards; from behind, onto its face toward the player; from a side,
+  over to the other side; it ends limp, limbs loose, then sinks. 10
+  downed at once: frames 8.3 ms average, 9.4 ms worst, game work 1.2 ms
+  average, no hitches; the down.max cap sinks the oldest early; no
+  console errors.
+- Unverified: Paul's eye; the main course (the range only); other rigs.
+
 ### 2026-11-01: ENG-12 stage 1 (Pi)
 Ragdoll bodies, hinges and the kill push (stage 1 of 2). What was built:
 

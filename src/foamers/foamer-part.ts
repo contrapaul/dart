@@ -21,7 +21,6 @@ const _qPrev = new THREE.Quaternion();
 const _qNow = new THREE.Quaternion();
 const _pPrev = new THREE.Vector3();
 const _pNow = new THREE.Vector3();
-const _mbB = new THREE.Matrix4();
 const _oneB = new THREE.Vector3(1, 1, 1);
 
 export class FoamerPart implements VoxelTarget {
@@ -135,12 +134,11 @@ export class FoamerPart implements VoxelTarget {
     return n;
   }
 
-  /** Draw the downed part under its ragdoll body's render transform
-   *  (ENG-12): the group's world matrix is this step's pose, so the local
-   *  one is that pose under the body's inverse transform. */
+  /** Draw the downed part at its ragdoll body's render pose (ENG-12). */
   drawFrom(bodyP: THREE.Vector3, bodyQ: THREE.Quaternion) {
-    _mbB.compose(bodyP, bodyQ, _oneB).invert();
-    this.group.matrix.copy(this.pose).premultiply(_mbB);
+    // The part's body sits where its pose put it (origin at the voxel
+    // box corner), so the body pose is the draw pose.
+    this.group.matrix.compose(bodyP, bodyQ, _oneB);
   }
 
   /** Remove the mesh and its colliders and the body. */
