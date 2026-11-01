@@ -71,6 +71,20 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-00 round 5: B01 trigger and smooth grip (Kimi via Pi)
+
+- Moved B01's trigger pivot to Y 0.013 m, rebuilt it as a 0.025 m forward-concave
+  blade with a forward-curling tip, and retained a 0.045 x 0.025 m guard opening
+  with finger space ahead. Positive local X rotation still pulls toward the grip.
+- Replaced the grip and all modelled ribs with one smooth rounded 0.10 m mesh.
+  Its own charcoal material has explicit UVs and a generated, embedded 128 x 128
+  horizontal-rib normal map. The checker now enforces the new texture budget.
+- All five renders were inspected after each of four builds. Every contract check
+  passes: 17,388 triangles, 852,376 bytes and seven materials. Two consecutive
+  final GLB exports were byte-identical with SHA-256
+  `2a4990f909de0ab639b69473e1791c4d6e8afdf3dda0ee8e715ad00f0f743ef5`.
+- Unverified: Paul's visual approval and in-game animation.
+
 ### 2026-11-01: ART-00 round 4: B01 guard clearance (Kimi via Pi)
 
 - Moved B01's guard and trigger forward by 0.025 m and pulled the grip's top

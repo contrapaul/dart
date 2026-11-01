@@ -50,11 +50,13 @@ PUMP_L, PUMP_H, PUMP_W = 0.12, 0.064, 0.062
 PUMP_Y, PUMP_Z = 0.295, 0.04
 PUMP_GROOVES, PUMP_GROOVE_L, PUMP_GROOVE_DEPTH = 6, 0.006, 0.0035
 PUMP_CHANNEL_W = 0.052
-GRIP_H, GRIP_W = 0.11, 0.03
-GRIP_RIBS = 6
+GRIP_H, GRIP_D, GRIP_W = 0.10, 0.045, 0.03
+GRIP_ANGLE = math.radians(15)
+GRIP_CORNER = 0.009
+GRIP_TEX_SIZE, GRIP_TEX_RIBS = 128, 8
 GUARD_W = 0.024
-TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.03, 0.012, 0.008
-TRIGGER_ORIGIN = (0.0, 0.051, 0.047)
+TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.025, 0.012, 0.008
+TRIGGER_ORIGIN = (0.0, 0.013, 0.047)
 
 MAG_H, MAG_D, MAG_W = 0.13, 0.06, 0.022
 MAG_Y, MAG_Z = 0.140, 0.005
@@ -91,6 +93,33 @@ def material(name, colour, alpha=1.0):
     bsdf.inputs["Alpha"].default_value = alpha
     if alpha < 1.0:
         mat.surface_render_method = "DITHERED"
+    return mat
+
+
+def grip_material():
+    mat = material("Grip charcoal", CHARCOAL)
+    size = GRIP_TEX_SIZE
+    image = bpy.data.images.new("Grip horizontal ribs", width=size, height=size,
+                                alpha=False)
+    image.colorspace_settings.name = "Non-Color"
+    pixels = []
+    for y in range(size):
+        slope = 2.0 * math.cos(math.tau * GRIP_TEX_RIBS * (y + 0.5) / size)
+        normal_y = -slope / math.sqrt(1 + slope * slope)
+        normal_z = 1 / math.sqrt(1 + slope * slope)
+        for _ in range(size):
+            pixels.extend((0.5, 0.5 + normal_y * 0.5,
+                           0.5 + normal_z * 0.5, 1.0))
+    image.pixels.foreach_set(pixels)
+    image.pack()
+    nodes = mat.node_tree.nodes
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.image = image
+    normal = nodes.new("ShaderNodeNormalMap")
+    normal.inputs["Strength"].default_value = 1.0
+    mat.node_tree.links.new(texture.outputs["Color"], normal.inputs["Color"])
+    mat.node_tree.links.new(normal.outputs["Normal"],
+                            nodes["Principled BSDF"].inputs["Normal"])
     return mat
 
 
@@ -144,6 +173,73 @@ def profile(name, points, width, mat, edge=BEVEL):
     faces += [(i, (i + 1) % count, (i + 1) % count + count, i + count)
               for i in range(count)]
     return bevel(mesh_object(name, vertices, faces, mat), edge)
+
+
+def rounded_grip(mat):
+    ring_specs = [
+        (0.045, 0.78), (0.043, 0.93), (0.040, 1.0),
+        (0.032, 1.0), (0.020, 1.025), (0.005, 1.055),
+        (-0.010, 1.06), (-0.025, 1.03), (-0.040, 1.0),
+        (-0.049, 1.08), (-0.052, 1.04), (0.045 - GRIP_H, 0.82),
+    ]
+    corner_segments = 8
+    count = corner_segments * 4
+    vertices = []
+    ring_scales = []
+    for z, scale in ring_specs:
+        half_x = GRIP_W * scale / 2
+        half_y = GRIP_D * scale / 2
+        radius = GRIP_CORNER * scale
+        centre_y = -GRIP_D / 2 - math.tan(GRIP_ANGLE) * (0.045 - z)
+        corners = [
+            (half_x - radius, half_y - radius, 0),
+            (-half_x + radius, half_y - radius, 90),
+            (-half_x + radius, -half_y + radius, 180),
+            (half_x - radius, -half_y + radius, 270),
+        ]
+        for cx, cy, start in corners:
+            for i in range(corner_segments):
+                angle = math.radians(start + 90 * i / corner_segments)
+                vertices.append((cx + radius * math.cos(angle),
+                                 centre_y + cy + radius * math.sin(angle), z))
+        ring_scales.append(scale)
+
+    faces = []
+    face_uvs = []
+
+    def cap_uv(indices, scale):
+        return [(vertices[index][0] / (GRIP_W * scale) + 0.5,
+                 (vertices[index][1] + GRIP_D / 2
+                  + math.tan(GRIP_ANGLE) * (0.045 - vertices[index][2]))
+                 / (GRIP_D * scale) + 0.5) for index in indices]
+
+    top = tuple(range(count))
+    faces.append(top)
+    face_uvs.append(cap_uv(top, ring_scales[0]))
+    for ring in range(len(ring_specs) - 1):
+        upper = ring * count
+        lower = (ring + 1) * count
+        v_top = ring / (len(ring_specs) - 1)
+        v_bottom = (ring + 1) / (len(ring_specs) - 1)
+        for i in range(count):
+            j = (i + 1) % count
+            u_next = (i + 1) / count
+            faces.append((upper + i, lower + i, lower + j, upper + j))
+            face_uvs.append(((i / count, v_top), (i / count, v_bottom),
+                             (u_next, v_bottom), (u_next, v_top)))
+    bottom = tuple(reversed(range((len(ring_specs) - 1) * count,
+                                  len(ring_specs) * count)))
+    faces.append(bottom)
+    face_uvs.append(cap_uv(bottom, ring_scales[-1]))
+
+    obj = mesh_object("Smooth rounded grip", vertices, faces, mat)
+    uv = obj.data.uv_layers.new(name="UV" + "Map")
+    for polygon, coordinates in zip(obj.data.polygons, face_uvs):
+        for loop, coordinate in zip(polygon.loop_indices, coordinates):
+            uv.data[loop].uv = coordinate
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
 
 
 def cylinder(name, loc, radius, depth, mat, vertices=24, edge=SMALL_BEVEL):
@@ -200,6 +296,7 @@ def build_model():
     blue = material("Foam blue", BLUE)
     panel_blue = material("Recess blue", PANEL_BLUE)
     charcoal = material("Charcoal", CHARCOAL)
+    grip_charcoal = grip_material()
     yellow = material("Foam yellow", YELLOW)
     orange = material("Safety orange", ORANGE)
     pink = material("Clear pink", PINK, MAG_ALPHA)
@@ -301,18 +398,13 @@ def build_model():
                            (x, MUZZLE_Y - TIP_L / 2, z), TIP_OUTER,
                            BARREL_INNER, TIP_L, orange))
 
-    grip_points = [(0.0, 0.045), (-0.025, 0.045),
-                   (-0.055, 0.045 - GRIP_H), (-0.015, 0.045 - GRIP_H)]
-    static.append(profile("Angled grip", grip_points, GRIP_W, charcoal))
-    for i in range(GRIP_RIBS):
-        static.append(box("Grip rib", (0, -0.004 - i * 0.005, 0.025 - i * 0.014),
-                          (GRIP_W + 0.003, 0.032, 0.003), charcoal, SMALL_BEVEL))
-    guard_outer = [(0.006, 0.018), (0.020, 0.002), (0.050, 0.002),
-                   (0.063, 0.018), (0.065, 0.039), (0.059, 0.049),
-                   (0.011, 0.047)]
-    guard_inner = [(0.016, 0.022), (0.026, 0.01), (0.053, 0.01),
-                   (0.061, 0.022), (0.061, 0.032), (0.059, 0.041),
-                   (0.020, 0.039)]
+    static.append(rounded_grip(grip_charcoal))
+    guard_outer = [(-0.006, 0.018), (0.008, 0.007), (0.038, 0.007),
+                   (0.051, 0.018), (0.053, 0.039), (0.047, 0.049),
+                   (-0.001, 0.047)]
+    guard_inner = [(0.004, 0.023), (0.014, 0.015), (0.041, 0.015),
+                   (0.049, 0.023), (0.049, 0.032), (0.047, 0.040),
+                   (0.008, 0.039)]
     guard = profile("Trigger guard", guard_outer, GUARD_W, charcoal)
     cutter = profile("Guard opening", guard_inner, GUARD_W + 0.02, charcoal, 0)
     mod = guard.modifiers.new("Moulded guard opening", "BOOLEAN")
@@ -322,14 +414,15 @@ def build_model():
     bpy.data.objects.remove(cutter, do_unlink=True)
     bevel(guard, 0.0006, 2)
     static.append(guard)
-    trigger_points = [(-TRIGGER_D / 2, 0), (TRIGGER_D / 2, 0),
-                      (TRIGGER_D / 2, TRIGGER_H * 0.65),
-                      (TRIGGER_D / 3, TRIGGER_H), (-TRIGGER_D / 3, TRIGGER_H)]
-    for i in range(1, 6):
-        z = TRIGGER_H * (1 - i / 6)
-        y = (-TRIGGER_D / 3 - TRIGGER_D / 6 * z / TRIGGER_H
-             + 0.004 * math.sin(math.pi * z / TRIGGER_H))
-        trigger_points.append((y, z))
+    trigger_points = []
+    for i in range(9):
+        t = i / 8
+        front_y = 0.005 - 0.020 * t * (1 - t) + 0.001 * t ** 3
+        trigger_points.append((front_y, TRIGGER_H * t))
+    for i in reversed(range(9)):
+        t = i / 8
+        front_y = 0.005 - 0.020 * t * (1 - t) + 0.001 * t ** 3
+        trigger_points.append((front_y - TRIGGER_D / 2, TRIGGER_H * t))
     trigger = profile("trigger", trigger_points, TRIGGER_W, yellow, SMALL_BEVEL)
     trigger.location = TRIGGER_ORIGIN
     # Local X points left, so positive glTF local X rotation pulls rearward.
@@ -384,6 +477,10 @@ def build_model():
                        (STOCK_TOP_Z + STOCK_BOTTOM_Z) / 2),
                       (STOCK_W + 0.008, STOCK_BUTT_L, STOCK_H + 0.006),
                       charcoal, 0.006))
+    for obj in static:
+        if obj.name != "Smooth rounded grip":
+            while obj.data.uv_layers:
+                obj.data.uv_layers.remove(obj.data.uv_layers[0])
     body = join_at(static, "body", (0, 0, 0))
 
     for index, (x, z) in enumerate(BARREL_TRIPLE, 1):
@@ -506,10 +603,12 @@ def main():
     unapplied = [obj.name for obj in bpy.data.objects if obj.modifiers]
     if unapplied:
         raise RuntimeError("Unapplied modifiers: " + ", ".join(unapplied))
-    # Flat materials need no UVs, and generated UVs vary slightly between runs.
+    # Only the grip uses UVs. Primitive UVs vary slightly between runs.
+    body = objects[0]
     for mesh in bpy.data.meshes:
-        while mesh.uv_layers:
-            mesh.uv_layers.remove(mesh.uv_layers[0])
+        if mesh != body.data:
+            while mesh.uv_layers:
+                mesh.uv_layers.remove(mesh.uv_layers[0])
     bpy.ops.export_scene.gltf(
         filepath=str(GLB_PATH),
         export_format="GLB",

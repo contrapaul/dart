@@ -128,3 +128,38 @@ and six materials. Two consecutive exports were byte-identical, both with
 SHA-256
 `de36d1a2e80cc92a6c15d25ac9e5ee70b2ab1212ce6a7385390ee06abe34aaf8`.
 Paul's visual approval and in-game animation remain unverified.
+
+## Round 5
+
+Start: 2026-11-01 19:42:40 CST (`date`).
+End: 2026-11-01 19:57:37 CST (`date`).
+Elapsed: about 15 minutes.
+
+Moved the trigger pivot back to (0, 0.013, 0.047) m, 0.013 m in front of
+the grip. The yellow blade is 0.025 m tall, about 0.012 m deep and 0.008 m
+wide. Its front finger face is concave toward the muzzle and its lower tip
+curls forward. The guard opening is 0.045 m long and 0.025 m tall, with clear
+finger space in front of the blade. Positive local X rotation still pulls the
+blade toward the grip: the checker measures -0.00664 m in Blender Y at +15
+degrees.
+
+Rebuilt the grip as one smooth rounded-rectangle mesh, 0.10 m long, about
+0.045 m front to back and 0.03 m wide, angled back 15 degrees. It has a slight
+palm swell and bottom flare, rounded edges, smooth shading and no modelled
+ribs, steps, slots or facets. Its separate charcoal material uses a 128 x 128
+tiling normal map with eight horizontal ribs. The script generates the pixels
+and packs the 926 byte PNG into the GLB without reading an image file.
+Explicit grip UVs replace generated primitive UVs; all other exported meshes
+have no UV layer.
+
+`check_glb.py` now allows embedded textures only on `Grip charcoal`, with each
+at most 256 x 256 and all image data together at most 200 KB. All contract
+checks pass. The final export is 0.650 m long, 0.062 m wide and 0.261 m high,
+with 17,388 triangles, 852,376 bytes and seven materials.
+
+Four builds were made. All four turnaround renders and the close-up were
+inspected after every build. The first close-up caught a reversed blade curve,
+which was corrected before the final builds. Two consecutive final exports
+were byte-identical, both with SHA-256
+`2a4990f909de0ab639b69473e1791c4d6e8afdf3dda0ee8e715ad00f0f743ef5`.
+Paul's visual approval and in-game animation remain unverified.

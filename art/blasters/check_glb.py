@@ -9,6 +9,9 @@ from mathutils import Matrix, Vector
 MAX_TRIANGLES = 20000
 MAX_BYTES = int(1.5 * 1024 * 1024)
 MAX_MATERIALS = 8
+MAX_TEXTURE_SIZE = 256
+MAX_TEXTURE_BYTES = 200 * 1024
+TEXTURE_MATERIALS = {"Grip charcoal"}
 B01_SIZE = (0.06, 0.62, 0.24)
 B01_TOLERANCE = (0.02, 0.04, 0.04)
 B01_NODES = {"body", "pump", "trigger", "mag", "mod_double"}
@@ -54,6 +57,12 @@ def main():
                  if slot.material is not None}
     image_nodes = [node for mat in materials if mat.use_nodes
                    for node in mat.node_tree.nodes if node.type == "TEX_IMAGE"]
+    texture_images = {node.image for node in image_nodes if node.image is not None}
+    texture_materials = {mat.name for mat in materials if mat.use_nodes
+                         for node in mat.node_tree.nodes
+                         if node.type == "TEX_IMAGE" and node.image is not None}
+    texture_bytes = sum(len(image.packed_file.data) for image in texture_images
+                        if image.packed_file is not None)
     low, high = world_bounds(default_meshes)
     size = high - low
     bytes_on_disk = path.stat().st_size
@@ -80,7 +89,15 @@ def main():
     check("GLB at most 1.5 MB", bytes_on_disk <= MAX_BYTES)
     check("At most 20000 triangles", triangles <= MAX_TRIANGLES)
     check("At most 8 materials", len(materials) <= MAX_MATERIALS)
-    check("No image textures", not image_nodes)
+    check("Textures only on grip material", texture_materials <= TEXTURE_MATERIALS,
+          ", ".join(sorted(texture_materials)) or "none")
+    check("Textures at most 256 x 256",
+          all(image.size[0] <= MAX_TEXTURE_SIZE and image.size[1] <= MAX_TEXTURE_SIZE
+              for image in texture_images))
+    check("Textures embedded",
+          all(image.packed_file is not None for image in texture_images))
+    check("Textures total at most 200 KB", texture_bytes <= MAX_TEXTURE_BYTES,
+          "{} bytes".format(texture_bytes))
     check("No text nodes", not any(obj.type == "FONT" for obj in objects))
     body = bpy.data.objects.get("body")
     check("Named body node", body is not None and body.type == "MESH")
