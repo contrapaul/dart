@@ -4,7 +4,7 @@ import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
-import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, downMotion } from "./rig-states";
+import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -24,6 +24,10 @@ const _poses = new Map<string, THREE.Matrix4>();
 const _target = restMotion();
 const _quat = new THREE.Quaternion();
 const _fitV = new THREE.Vector3();
+const _pL = new THREE.Vector3();
+const _pL2 = new THREE.Vector3();
+const _qL = new THREE.Quaternion();
+const _qL2 = new THREE.Quaternion();
 
 export class Foamer {
   readonly spec: FoamerSpec;
@@ -55,6 +59,11 @@ export class Foamer {
   sinkDrop = 0;
   sinkDepth = -1;
   sinkingNow = false;
+  /** The ragdoll's hinges (ENG-12), cleared when the sink starts. */
+  readonly ragdoll: { joint: RAPIER.ImpulseJoint; parent: RAPIER.RigidBody; child: RAPIER.RigidBody; anchorLocal: THREE.Vector3; pivotLocal: THREE.Vector3; kind: string; neutralQ: THREE.Quaternion; neutralAxisWorld: THREE.Vector3 }[] = [];
+  /** Body pose at the start of each step for the downed Foamer (render
+   *  interpolation), part id as key. */
+  readonly ragdollPrev = new Map<string, { t: THREE.Vector3; q: THREE.Quaternion }>();
   /** The rig's height (m): the top corner must sink below the floor by this
    *  much before the body is disposed. */
   height = 0;
@@ -196,7 +205,7 @@ export class Foamer {
     if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
     else if (this.state === "stagger") staggerMotion(this.stateTime, t);
-    else if (this.state === "down") downMotion(this.rig, THREE.MathUtils.clamp(this.stateTime / this.spec.down.topple, 0, 1), t);
+    else if (this.state === "down") restInto(t); // ENG-12: physics carries it now
     else if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
     else restInto(t);
     // Missing legs: roll the body 0.15 rad toward each missing side.
@@ -238,9 +247,24 @@ export class Foamer {
     for (const [id, part] of this.parts) part.setPose(_poses.get(id)!);
   }
 
-  /** Render frame: every part draws alpha of the way from its prev pose to
-   *  its current one. */
+  /** Render frame. Approach, attacks and staggers: every part draws
+   *  alpha of the way from its prev pose to its current one. Downed
+   *  (ENG-12): the parts ride their ragdoll bodies, the body pose alpha
+   *  of the way from the step's start to where physics left it. */
   syncRender(alpha: number) {
+    if (this.state === "down") {
+      for (const p of this.parts.values()) {
+        const prev = this.ragdollPrev.get(p.spec.id);
+        if (!prev) { p.syncRender(alpha); continue; }
+        const b = p.body;
+        const t = b.translation();
+        const r = b.rotation();
+        _pL.lerpVectors(prev.t, _pL2.set(t.x, t.y, t.z), alpha);
+        _qL.slerpQuaternions(prev.q, _qL2.set(r.x, r.y, r.z, r.w), alpha);
+        p.drawFrom(_pL, _qL);
+      }
+      return;
+    }
     for (const p of this.parts.values()) p.syncRender(alpha);
   }
 

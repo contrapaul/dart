@@ -30,7 +30,25 @@
     "catastrophic": { "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.", "share": 0.4, "window": 0.1, "popTypes": [] },
     "wound": { "coreShell": 1.0, "stumpRadius": 0.12 },
     "stagger": { "time": 0.5 },
-    "down": { "topple": 0.7, "lie": 3.5, "sinkSpeed": 0.35, "max": 8 },
+    "down": {
+      "lie": 3.5, "sinkSpeed": 0.35, "max": 8,
+      "ragdoll": {
+        "_note": "ENG-12. density in kg/m^3 for the part cuboids. damping slows the fall to a limp, heavy foam feel. killPush: impulse in N s added to the killed part along the dart's travel, on top of the dart's own capped push. limits: hinge range in radians about the part's local x axis, per part kind, measured from the pose it had when it went down (negative bends forward).",
+        "density": 60,
+        "linearDamping": 0.4,
+        "angularDamping": 1.5,
+        "killPush": 150,
+        "limits": {
+          "head": [-0.7, 0.7],
+          "arm": [-2.4, 0.4],
+          "leg": [-1.8, 0.3],
+          "weapon": [-1.5, 1.5],
+          "fin": [-0.5, 0.5],
+          "ability": [-0.5, 0.5],
+          "detail": [-0.3, 0.3]
+        }
+      }
+    },
     "brokenParts": { "max": 24, "lifetime": 4, "sinkTime": 1, "density": 0.3 },
     "handicaps": { "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5 },
     "attacks": [

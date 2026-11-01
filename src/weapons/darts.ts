@@ -4,6 +4,7 @@ import type { Rapier } from "../physics/world";
 import tuning from "../../data/darts.json";
 import { buildDartGeometry } from "./dart-model";
 import type { DartTypeSpec, DartTypeName } from "./dart-model";
+import { RAGDOLL_GROUPS } from "../physics/world";
 
 export type { DartTypeName } from "./dart-model";
 
@@ -250,6 +251,10 @@ export class DartSystem {
     this._ray.dir = this._pd;
     const hit = this.world.castRayAndGetNormal(
       this._ray, maxDist, true, EXCLUDE_SENSORS, undefined, this.ignore, undefined,
+      // Ragdolls are scenery: darts fly through them. Only the ragdoll part
+      // builders set RAGDOLL_GROUPS, so an exact-match check cannot exclude
+      // any default-group collider.
+      (c) => c.collisionGroups() !== RAGDOLL_GROUPS,
     );
     if (hit) {
       // timeOfImpact is a distance in metres along the unit ray, already

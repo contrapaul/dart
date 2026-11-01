@@ -530,7 +530,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ENG-10a | Foamer sandbox: greybox rigs per role, movement styles, `sandbox.html` | Claude (done) | ENG-09 |
 | ENG-10 | Foamer parts: the F01 rig in game, per-part damage, break-off, handicaps, foam-core wounds, going down and popping (card: `tasks/ENG-10.md`) | Pi (done) | ENG-10a |
 | ENG-11 | Test range page `range.html`: plain level, frame-time graph, system switches, test panel for darts and Foamers (card: `tasks/ENG-11.md`) | Pi (done) | ENG-10 |
-| ENG-12 | Foamers go limp when killed: a jointed ragdoll pushed by the killing hit, then lie and sink (card: `tasks/ENG-12.md`) | Pi | ENG-10, ENG-11 |
+| ENG-12 | Foamers go limp when killed: a jointed ragdoll pushed by the killing hit, then lie and sink (card: `tasks/ENG-12.md`) | Pi (review) | ENG-10, ENG-11 |
 | GAME-10 | 3 Foamer types (fodder ranged, charger, heavy) | F | ENG-08, ENG-10, PRE-05 |
 | ART-00 | Spike: Kimi K3.1 Pro through Pi builds B01 in Blender from its brief (script, `.glb`, renders) to the section 5.2 contract; record time, cost and quality. Go / no-go for the Blender route (was: Hunyuan3D) | A + P | |
 | ART-01 | Cards and design briefs for all 8 blasters (`design/blasters/Bxx.md`) from CONTENT-PLAN 4 and the reference photos, Paul approves | Claude + P | |
