@@ -71,6 +71,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-01: ART-00: B01 in Blender (Kimi via Pi)
+
+- `art/blasters/B01/build.py` builds B01 from the written brief, exports
+  `public/models/blasters/B01.glb` and renders the four 1024 x 768 Eevee views.
+  Three inspected render rounds produced the final toy-plastic finish.
+- `art/blasters/check_glb.py` is the reusable Blender contract checker. B01
+  passes every rule: 0.620 m long, 15,318 triangles, 757,696 bytes, six
+  materials, no image textures, correct moving-part pivots and muzzle nodes.
+- The double pump mod uses `hidden: true` in glTF extras because glTF has no
+  standard visibility flag. It is included in the export but not the renders.
+  Hex colours are converted to linear values so the exported materials match
+  the brief. No reference image was used.
+- Unverified: Claude's review, Paul's approval from the renders, and in-game
+  loading and animation in GAME-09 and ART-05.
+
 ### 2026-11-01: ENG-12 card and the blaster pipeline (Claude)
 
 - `tasks/ENG-12.md`: ragdolls for downed Foamers (Paul: go limp, not a
