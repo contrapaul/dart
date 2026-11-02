@@ -81,6 +81,53 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: UI-01 stage 2, pause menu and settings (Qwen 3.8 Flash-next via Pi)
+
+- `src/core/settings.ts`: `SettingsStore`, one `Settings` object loaded
+  from and saved to `localStorage` under `dart.settings` as
+  `{ ...values, version: 1 }`. Every storage access is in try/catch: a
+  blocked storage or broken JSON falls back to `DEFAULTS`. An older save
+  merges over the defaults so new keys gain theirs; unknown `difficulty`
+  values fall back to `normal`. `set(key, value)` and
+  `setDifficulty(key)` save and call every `onChange` listener. Moving
+  `damageTaken` by hand sets `difficulty` to `custom`; other keys do not.
+  `applySettings` in `src/main.ts` is the one page subscriber: it pushes
+  sensitivity and invert into `settings` from `src/core/input.ts`, FOV onto
+  the camera, `damageTaken` onto `health`, `reduceFlashes` onto the HUD, and
+  volume/mute onto the engine (re-applied when the engine loads).
+- `data/difficulty.json`: Story 0.5, Normal 1, Hard 1.5, Foam Fury 2
+  damage taken, each with the `director` key (`story`, `normal`, `hard`,
+  `fury`) ENG-08's director will read. Names as in D10.
+- `src/ui/menus.ts`: `SettingsPanel`, plain DOM built once into
+  `#settingsRows`: four preset buttons plus a readout that shows "Custom",
+  sliders for damage taken (25 to 200%), mouse sensitivity (shown as a
+  percent of the default 0.0022), FOV (60 to 100), volume, and switches for
+  invert look, mute, reduce screen shake, reduce flashes, reduce head bob
+  (shake and head bob stored for later tasks). Subscribes to the store so it
+  always mirrors it. Keyboard and mouse only; Tab follows element order.
+- `index.html` + `src/style.css`: `#pausemenu` (Resume, Settings, Restart)
+  and `#settings` (panel with `#settingsRows` and Back) over a dimmed
+  screen, and a Settings button on the title overlay. Foam colours, system
+  fonts.
+- `src/main.ts` flow: `started` becomes true on the first pointer lock. The
+  pause menu shows when paused, started and not popped; before the first
+  click only the title (with its Settings button) shows. Resume, a click on
+  the dimmed background, or the canvas plays on; Restart shares the Try
+  again respawn (`restart()`). The M key now toggles `muted` through the
+  store so the panel and storage stay in step.
+- Tests: `tests/core/settings.test.ts` (6): defaults on empty and broken
+  storage; round-trip; presets set damage taken; a slider move marks
+  Custom; an old version gains new keys with defaults. `npm test` 183
+  passed, `tsc --noEmit` and `npm run build` pass.
+- Decisions: sensitivity is stored in rad/px (the input's unit) and shown
+  as a percent of the default, so no second source of truth. FOV applies
+  live via `camera.updateProjectionMatrix()`. The store is per page; the
+  range page keeps its own panel and does not read the store yet (the card
+  scopes the panels to the main page).
+- Unverified: everything visual (tab order, the panels' look, live FOV and
+  volume) awaits the reviewer's browser pass; no browser check was run
+  here.
+
 ### 2026-11-02: UI-01 stage 1, player health, damage and HUD v1 (Qwen 3.8 Flash-next via Pi)
 
 - `src/player/health.ts`: `PlayerHealth`, pure (no DOM, no THREE). `hp`,

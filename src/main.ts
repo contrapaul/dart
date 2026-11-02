@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { createRenderer } from "./render/scene";
 import { createPhysics } from "./physics/world";
 import { startLoop } from "./core/loop";
-import { Input } from "./core/input";
+import { Input, settings as lookSettings } from "./core/input";
+import { SettingsStore, type Settings } from "./core/settings";
 import { PlayerController } from "./player/controller";
 import { PlayerHealth } from "./player/health";
 import { DartSystem } from "./weapons/darts";
@@ -11,6 +12,7 @@ import { updateAim } from "./weapons/aim";
 import { DartImpacts, type VoxelTarget } from "./weapons/impacts";
 import { FoamerSystem } from "./foamers/foamers";
 import { Hud } from "./ui/hud";
+import { SettingsPanel } from "./ui/menus";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";
 import { carveSphere } from "./voxel/carve";
@@ -179,6 +181,24 @@ const ATTACK_DAMAGE = new Map<string, number>(
     .attacks.map((a) => [a.id, a.damage]),
 );
 
+// UI-01 stage 2: one settings store (localStorage, defaults on failure),
+// applied live to look, FOV, volume and damage taken. The panels subscribe
+// through the store's change callback.
+const store = new SettingsStore();
+function applySettings(s: Settings): void {
+  lookSettings.mouseSensitivity = s.mouseSensitivity;
+  lookSettings.invertY = s.invertY;
+  camera.fov = s.fov;
+  camera.updateProjectionMatrix();
+  health.damageTaken = s.damageTaken;
+  hud.reduceFlashes = s.reduceFlashes;
+  if (engine) {
+    engine.volume = s.volume;
+    engine.muted = s.muted;
+  }
+}
+store.onChange(applySettings);
+
 // Darts: one pooled system, excluding the player's own capsule from hits.
 const darts = new DartSystem(scene, world, rapier, player.collider);
 // The loadout: all three blasters and their viewmodels, driven by data in
@@ -192,6 +212,9 @@ const loadout = await Loadout.load(camera, darts);
 let engine: AudioEngine | null = null;
 let sounds: GameSounds | null = null;
 let audioStarting = false;
+// The defaults from storage go onto the camera, look and health now; the
+// engine gets volume and mute when it arrives (see startAudio).
+applySettings(store.value);
 const _aimUnused = new THREE.Vector3();
 Loadout.muzzleToWorld = (camPoint, out) => {
   updateAim(camera, world, player.collider, camPoint, out, _aimUnused);
@@ -233,9 +256,50 @@ const _playerPos = new THREE.Vector3();
 const _rot = new THREE.Quaternion();
 
 let paused = true;
+/** True once the mouse has been captured: before that the title overlay is
+ *  up, and the pause menu stays hidden behind it. */
+let started = false;
 /** UI-01: while the player has popped, only the Try again button unpauses. */
 let poppedOut = false;
 const popped = document.querySelector<HTMLDivElement>("#popped")!;
+
+// UI-01 stage 2: the pause menu (Esc or gamepad Start) and the settings
+// panel. The menu shows whenever the game is paused and the player has not
+// popped; Settings opens from it, or from the title overlay before the
+// first click. Resume or a canvas click plays on.
+const pauseMenu = document.querySelector<HTMLDivElement>("#pausemenu")!;
+const settingsBtn = document.querySelector<HTMLButtonElement>("#settingsBtn")!;
+const settingsPanel = new SettingsPanel(
+  document.querySelector<HTMLDivElement>("#settings")!,
+  store,
+  () => {
+    settingsPanel.close();
+    // Back goes to the pause menu when playing was started, otherwise the
+    // title overlay is already behind the panel.
+    pauseMenu.hidden = !(started && !poppedOut);
+    if (!pauseMenu.hidden) settingsBtn.focus();
+  },
+);
+document.querySelector<HTMLButtonElement>("#resumeBtn")!.addEventListener("click", () => {
+  settingsPanel.close();
+  if (input.locked) setPaused(false);
+  else input.requestLock();
+});
+settingsBtn.addEventListener("click", () => settingsPanel.open());
+document.querySelector<HTMLButtonElement>("#restartBtn")!.addEventListener("click", restart);
+// A click on the dimmed background (not the panel) plays on, like Resume.
+pauseMenu.addEventListener("pointerdown", (e) => {
+  if (e.target === pauseMenu) {
+    settingsPanel.close();
+    if (input.locked) setPaused(false);
+    else input.requestLock();
+  }
+});
+document.querySelector<HTMLButtonElement>("#titleSettings")!.addEventListener("click", () => {
+  pauseMenu.hidden = true;
+  settingsPanel.open();
+});
+
 /** The pop: no gore, no red. A burst of foam blocks at the player in the
  *  foam colours, the edge glow in the foam-core colour, and a toy-like
  *  foam pop from the audio engine. */
@@ -259,16 +323,20 @@ function playerPopped() {
   popped.hidden = false;
   status.textContent = "Press Try again.";
 }
-document.querySelector<HTMLButtonElement>("#tryAgain")!.addEventListener("click", () => {
+document.querySelector<HTMLButtonElement>("#tryAgain")!.addEventListener("click", () => restart());
+/** The Try again / Restart respawn: full health, back at the spawn, the
+ *  Foamers cleared (the range keeps its own respawn rules). */
+function restart(): void {
   health.reset();
   player.teleport(SPAWN);
   foamers.clear();
   hud.clearFlash();
   popped.hidden = true;
   poppedOut = false;
+  settingsPanel.close();
   if (input.locked) setPaused(false);
   else input.requestLock();
-});
+}
 /** While paused the scene only needs redrawing for meshes that arrive and
  *  window resizes, so it draws a few frames a second to save battery. */
 const PAUSED_FRAME = renderJson.pausedFrame;
@@ -278,11 +346,22 @@ function setPaused(p: boolean) {
   paused = p;
   overlay.hidden = !p;
   hud.show(!p);
+  // The pause menu stands in for "click to play" while paused (the popped
+  // overlay has its own button instead). The title's Settings button hides
+  // so the menu's is the only one on screen.
+  pauseMenu.hidden = !(p && !poppedOut && started);
+  // The title's Settings button is for before the first click; after that
+  // Settings lives in the pause menu.
+  document.querySelector<HTMLButtonElement>("#titleSettings")!.hidden = started;
+  if (!p) settingsPanel.close();
   status.textContent = "Click to play. Esc to pause.";
   if (engine) { if (p) engine.suspend(); else engine.resume(); }
   if (p && input.locked) document.exitPointerLock();
 }
-input.onLockChange = (locked) => setPaused(!locked);
+input.onLockChange = (locked) => {
+  if (locked) started = true;
+  setPaused(!locked);
+};
 // The first click or key starts the audio. The context must be made inside
 // that gesture: the pointer lock event comes later and is not a gesture, so
 // a strict browser (Safari) would keep a context made there silent.
@@ -294,6 +373,7 @@ function startAudio() {
       engine = e;
       sounds = new GameSounds(e, loadout, player, darts, impacts, foamers);
       if (paused) e.suspend();
+      applySettings(store.value); // volume and mute from storage
     })
     .catch(() => { /* no Web Audio on this host: the game stays silent */ })
     .finally(() => { audioStarting = false; });
@@ -314,8 +394,9 @@ startLoop({
   update(dt) {
     // Gamepad start toggles pause; with a mouse, Esc releases the lock instead.
     if (input.wasPressed("pause")) setPaused(!paused);
-    // M (the mute action in data/input.json) toggles the master mute.
-    if (input.wasPressed("mute") && engine) engine.muted = !engine.muted;
+    // M (the mute action in data/input.json) toggles the master mute,
+    // through the store so the settings panel stays in step.
+    if (input.wasPressed("mute")) store.set("muted", !store.value.muted);
     if (!paused) {
       health.update(dt);
       player.update(dt, input);
