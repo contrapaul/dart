@@ -53,8 +53,8 @@
     "brokenParts": { "max": 24, "lifetime": 4, "sinkTime": 1, "density": 0.3 },
     "handicaps": { "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5 },
     "attacks": [
-      { "id": "bonk", "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
-      { "id": "headbutt", "needs": [], "windup": 0.9, "strike": 0.2 }
+      { "id": "bonk", "damage": 12, "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
+      { "id": "headbutt", "damage": 8, "needs": [], "windup": 0.9, "strike": 0.2 }
     ]
   },
   "spawner": {

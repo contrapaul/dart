@@ -4,6 +4,7 @@ import { createPhysics } from "./physics/world";
 import { startLoop } from "./core/loop";
 import { Input } from "./core/input";
 import { PlayerController } from "./player/controller";
+import { PlayerHealth } from "./player/health";
 import { DartSystem } from "./weapons/darts";
 import { Loadout } from "./weapons/loadout";
 import { updateAim } from "./weapons/aim";
@@ -21,6 +22,7 @@ import { createFoamMaterial } from "./render/foam-material";
 import { AudioEngine } from "./audio/audio";
 import { GameSounds } from "./audio/game-sounds";
 import renderJson from "../data/render.json";
+import foamerData from "../data/foamers.json";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -169,6 +171,14 @@ for (let i = 0; i < 30; i++) {
 const player = new PlayerController(rapier, world, SPAWN);
 const eye = new THREE.Vector3();
 
+// UI-01 stage 1: the player's health. The damage of each Foamer attack comes
+// from data/foamers.json (attacks[].damage), looked up by id on the bonk.
+const health = new PlayerHealth();
+const ATTACK_DAMAGE = new Map<string, number>(
+  (foamerData.test as unknown as { attacks: { id: string; damage: number }[] })
+    .attacks.map((a) => [a.id, a.damage]),
+);
+
 // Darts: one pooled system, excluding the player's own capsule from hits.
 const darts = new DartSystem(scene, world, rapier, player.collider);
 // The loadout: all three blasters and their viewmodels, driven by data in
@@ -202,8 +212,18 @@ impacts.onCarve = (target, removed) => {
 // GAME-03.
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
 scene.add(foamers.group);
-// The bonk just logs; player damage arrives in the later card.
-foamers.onBonk = (_f, attack) => console.info("Bonk", attack);
+// The bonk now costs health (UI-01 stage 1). The chain is kept: the sound
+// wrapper (AUD-01) wraps this handler when it arrives, and the console log
+// stays. God mode is a range-page switch; this page always takes damage.
+const logBonk = foamers.onBonk;
+foamers.onBonk = (f, attack) => {
+  logBonk(f, attack);
+  if (paused) return;
+  const lost = health.damage(ATTACK_DAMAGE.get(attack) ?? 0, attack);
+  if (lost <= 0) return;
+  hud.onHit();
+  if (health.dead) playerPopped();
+};
 // Scratch vectors for the aim math; allocated once (aim.ts carries its
 // own).
 const _muzzleCam = new THREE.Vector3();
@@ -213,11 +233,48 @@ const _playerPos = new THREE.Vector3();
 const _rot = new THREE.Quaternion();
 
 let paused = true;
+/** UI-01: while the player has popped, only the Try again button unpauses. */
+let poppedOut = false;
+const popped = document.querySelector<HTMLDivElement>("#popped")!;
+/** The pop: no gore, no red. A burst of foam blocks at the player in the
+ *  foam colours, the edge glow in the foam-core colour, and a toy-like
+ *  foam pop from the audio engine. */
+function popBurst() {
+  const at = player.eye(1, new THREE.Vector3());
+  for (let i = 0; i < 10; i++) {
+    const v = new THREE.Vector3(
+      Math.random() * 2 - 1,
+      Math.random() * 1.4 + 0.2,
+      Math.random() * 2 - 1,
+    ).multiplyScalar(4);
+    spawnBlock(at.clone().addScaledVector(v, 0.15), v);
+  }
+  hud.popFlash();
+  if (engine) engine.play("FX-pop");
+}
+function playerPopped() {
+  poppedOut = true;
+  setPaused(true);
+  popBurst();
+  popped.hidden = false;
+  status.textContent = "Press Try again.";
+}
+document.querySelector<HTMLButtonElement>("#tryAgain")!.addEventListener("click", () => {
+  health.reset();
+  player.teleport(SPAWN);
+  foamers.clear();
+  hud.clearFlash();
+  popped.hidden = true;
+  poppedOut = false;
+  if (input.locked) setPaused(false);
+  else input.requestLock();
+});
 /** While paused the scene only needs redrawing for meshes that arrive and
  *  window resizes, so it draws a few frames a second to save battery. */
 const PAUSED_FRAME = renderJson.pausedFrame;
 let pausedClock = PAUSED_FRAME;
 function setPaused(p: boolean) {
+  if (poppedOut && !p) return; // Try again clears the flag first
   paused = p;
   overlay.hidden = !p;
   hud.show(!p);
@@ -260,6 +317,7 @@ startLoop({
     // M (the mute action in data/input.json) toggles the master mute.
     if (input.wasPressed("mute") && engine) engine.muted = !engine.muted;
     if (!paused) {
+      health.update(dt);
       player.update(dt, input);
       // Foamer on a fixed step, before world.step().
       foamers.update(dt, player.eye(1, _playerPos));
@@ -329,6 +387,7 @@ startLoop({
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(_dt, input.isDown("fire"));
     hud.setAmmo(loadout.active, loadout.active.state);
+    hud.setHealth(health.hp, health.max);
     for (const { mesh, body, prevT, prevQ } of blocks) {
       const p = body.translation();
       const r = body.rotation();
@@ -343,4 +402,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { camera, player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, loadout, impacts, pieces, foamers } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { camera, player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, loadout, impacts, pieces, foamers, health } });
