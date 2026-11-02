@@ -466,8 +466,8 @@
               "f0": 220,
               "f1": 220,
               "wave": "triangle",
-              "attack": 0.02,
-              "decay": 9
+              "attack": 0,
+              "decay": 0
             },
             "gain": 0.4
           },
@@ -477,8 +477,8 @@
               "f0": 440,
               "f1": 440,
               "wave": "triangle",
-              "attack": 0.02,
-              "decay": 9
+              "attack": 0,
+              "decay": 0
             },
             "gain": 0.12
           }
@@ -1114,8 +1114,8 @@
       "synth": {
         "noise": {
           "dur": 3,
-          "attack": 0.5,
-          "decay": 2.4,
+          "attack": 0,
+          "decay": 0,
           "lowpass": 250,
           "highpass": 40
         },

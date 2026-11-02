@@ -2,7 +2,7 @@
 // for the shape check as well, so a recipe shape that cannot render fails
 // here rather than in the engine.
 import { describe, expect, it } from "vitest";
-import { renderRecipe, type Layer, type Recipe } from "../../src/audio/synth";
+import { LOOP_XF, renderRecipe, type Layer, type Recipe } from "../../src/audio/synth";
 import DATA from "../../data/sounds.json";
 
 // DATA is the JSON file; the cast below is permissive because JSON imports
@@ -37,7 +37,13 @@ function recipeSamples(synth: Recipe): number {
       l.noise?.dur ?? l.tone?.dur ?? l.click?.dur ?? l.crackle?.dur ?? 0,
     );
   }
-  return Math.round(dur * 48000);
+  const n = Math.round(dur * 48000);
+  // A loop drops its crossfaded tail (see renderRecipe).
+  return isLoop(synth) ? n - Math.min(Math.floor(n / 2), Math.round(LOOP_XF * 48000)) : n;
+}
+
+function isLoop(synth: Recipe): boolean {
+  return (synth as { loop?: boolean }).loop === true;
 }
 
 describe("renderRecipe over data/sounds.json", () => {
@@ -60,8 +66,11 @@ describe("renderRecipe over data/sounds.json", () => {
       }
       expect(peak, `peak of ${id}`).toBeLessThanOrEqual(1);
       expect(peak, `peak of ${id} (not silent)`).toBeGreaterThan(0.05);
-      expect(Math.abs(a[0]), `first sample of ${id}`).toBeLessThan(0.01);
-      expect(Math.abs(a[a.length - 1]), `last sample of ${id}`).toBeLessThan(0.01);
+      if (!isLoop(synth)) {
+        // Loops are checked below: their ends join, they are not silent.
+        expect(Math.abs(a[0]), `first sample of ${id}`).toBeLessThan(0.01);
+        expect(Math.abs(a[a.length - 1]), `last sample of ${id}`).toBeLessThan(0.01);
+      }
       const b = renderRecipe(synth);
       expect(a.length).toBe(b.length);
       let same = true;
@@ -70,17 +79,26 @@ describe("renderRecipe over data/sounds.json", () => {
     }
   });
 
-  it("loops have ends that fade to silence, so looping does not click", () => {
+  it("loops join without a jump and keep their level at the join", () => {
     const ids = ["B04-rev-loop", "AMB-level"];
     for (const id of ids) {
       const a = renderRecipe(SOUNDS.sounds[id].synth);
-      // The first and last 96 samples (2 ms) are a flat fade to zero.
-      let m = 0;
-      for (let i = a.length - 96; i < a.length; i++) m = Math.max(m, Math.abs(a[i]));
-      expect(m, `tail of ${id}`).toBeLessThan(0.005);
-      m = 0;
-      for (let i = 0; i < 96; i++) m = Math.max(m, Math.abs(a[i]));
-      expect(m, `head of ${id}`).toBeLessThan(0.005);
+      // The step from the last sample back to the first is no bigger than
+      // the biggest step inside the loop (no click).
+      let maxStep = 0;
+      for (let i = 1; i < a.length; i++) maxStep = Math.max(maxStep, Math.abs(a[i] - a[i - 1]));
+      expect(Math.abs(a[0] - a[a.length - 1]), `join of ${id}`).toBeLessThanOrEqual(maxStep);
+      // Level (RMS) over 20 ms either side of the join is at least half the
+      // whole loop's level: the loop does not dip to silence as it repeats.
+      const rms = (from: number, to: number) => {
+        let s = 0;
+        for (let i = from; i < to; i++) s += a[i] * a[i];
+        return Math.sqrt(s / (to - from));
+      };
+      const w = 960;
+      const whole = rms(0, a.length);
+      expect(rms(0, w), `start level of ${id}`).toBeGreaterThan(0.5 * whole);
+      expect(rms(a.length - w, a.length), `end level of ${id}`).toBeGreaterThan(0.5 * whole);
     }
   });
 });

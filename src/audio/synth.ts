@@ -56,9 +56,12 @@ function layerDur(l: Layer): number {
 // Render a whole recipe. Layers render to their own buffers and are
 // summed; the result is capped at a peak of 1 and windowed at the ends.
 // A non-loop gets a 2 ms fade in and out so nothing clicks at the ends.
-// A loop (loop: true) gets a half-cosine (Hann) window across the whole
-// buffer instead: the ends fade to silence AND the fade is smooth, so a
-// steady tone (decay 0) can repeat without a click at the join.
+// A loop (loop: true) is crossfaded instead: its last LOOP_XF seconds are
+// faded into its start and dropped, so the end runs straight on into the
+// start at the same level, with no gap and no click at the join.
+/** Seconds of crossfade at a loop's join. */
+export const LOOP_XF = 0.1;
+
 export function renderRecipe(recipe: Recipe): Float32Array {
   const layers = "layers" in recipe ? recipe.layers : [recipe];
   let dur = 0;
@@ -75,13 +78,17 @@ export function renderRecipe(recipe: Recipe): Float32Array {
   let peak = 0;
   for (let i = 0; i < n; i++) { const a = out[i] < 0 ? -out[i] : out[i]; if (a > peak) peak = a; }
   if (peak > 1) for (let i = 0; i < n; i++) out[i] /= peak;
-  // End windowing: a 2 ms linear fade for one-shots, a Hann window for
-// loops (the fades at the join then touch smoothly, no click).
+  // End windowing: a crossfaded join for loops, a 2 ms linear fade for
+  // one-shots.
   const loop = "layers" in recipe ? recipe.loop === true : recipe.loop === true;
   if (loop) {
-    for (let i = 0; i < n; i++) {
-      out[i] *= 0.5 * (1 - Math.cos((Math.PI * 2 * i) / n));
+    const xf = Math.min(Math.floor(n / 2), Math.round(LOOP_XF * SAMPLE_RATE));
+    const m = n - xf;
+    for (let i = 0; i < xf; i++) {
+      const w = i / xf;
+      out[i] = out[i] * w + out[m + i] * (1 - w);
     }
+    return out.slice(0, m);
   }
   const f = Math.min(n, Math.max(2, Math.round(0.002 * SAMPLE_RATE)));
   for (let i = 0; i < f; i++) {
@@ -105,9 +112,10 @@ function renderNoise(p: NoiseParams, n: number, rng: () => number): Float32Array
   let lp = 0, hpPrev = 0;
   for (let i = 0; i < n; i++) {
     const t = i / sr;
+    // decay 0: constant level after the attack (loops), as for tones.
     const env = t < p.attack
       ? t / Math.max(p.attack, 1e-6)
-      : Math.exp(-(t - p.attack) / Math.max(p.decay, 1e-6));
+      : p.decay <= 0 ? 1 : Math.exp(-(t - p.attack) / p.decay);
     const fc = p.lowpassEnd !== undefined
       ? lp0 + (lpE - lp0) * Math.min(1, t / p.dur)
       : lp0;
