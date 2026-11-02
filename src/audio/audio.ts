@@ -163,8 +163,8 @@ export class AudioEngine implements AudioSink {
     }
     gain.connect(dest === gain ? this.sfx : dest);
     const slot = book.voice;
-    source.onended = () => this.release(slot);
     const v: ActiveVoice = { kind: "one", source, gain, panner };
+    source.onended = () => this.release(slot, v);
     this.voices[slot] = v;
     source.start();
   }
@@ -207,7 +207,7 @@ export class AudioEngine implements AudioSink {
         panner.positionY.value = p.y;
         panner.positionZ.value = p.z;
       },
-      stop: () => this.release(slot),
+      stop: () => this.kill(slot, v),
     };
   }
 
@@ -249,22 +249,25 @@ export class AudioEngine implements AudioSink {
     return n;
   }
 
-  /** Returns the slot and its nodes. Safe to call twice: an already-empty
-   *  slot or a slot holding something else does nothing. */
-  private release(slot: number): void {
-    const v = this.voices[slot];
-    if (!v) return;
+  /** Returns the slot to the pool and lets its nodes go. Safe to call
+   *  twice: an empty slot, or one now holding another voice, does nothing. */
+  private release(slot: number, v: ActiveVoice): void {
+    if (this.voices[slot] !== v) return;
     this.voices[slot] = null;
+    this.pool.end(slot);
     v.source.onended = null;
     if (v.panner) v.panner.disconnect();
     v.gain.disconnect();
   }
 
-  /** Stops a slot now and frees it (a theft or a manual stop). */
-  private kill(slot: number): void {
+  /** Stops a voice now and frees its slot (a manual stop), or, with no
+   *  voice given, whatever is in the slot (a theft: the pool has already
+   *  rebooked the slot, so it is not ended here). */
+  private kill(slot: number, only?: ActiveVoice): void {
     const v = this.voices[slot];
-    if (!v) return;
+    if (!v || (only && v !== only)) return;
     this.voices[slot] = null;
+    if (only) this.pool.end(slot);
     v.source.onended = null;
     if (v.panner) v.panner.disconnect();
     v.gain.disconnect();

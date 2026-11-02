@@ -368,7 +368,8 @@ function buildSoundPanel() {
     state.textContent = takes ? `recording (${takes})` : "placeholder";
     const pb = document.createElement("button");
     pb.textContent = "Play";
-    pb.addEventListener("click", () => e.play(id));
+    // The panel shows while paused, when the engine is suspended.
+    pb.addEventListener("click", () => { e.resume(); e.play(id); });
     row.appendChild(sid); row.appendChild(state); row.appendChild(pb);
     list.appendChild(row);
   }
@@ -471,7 +472,6 @@ loopCtl = startLoop({
     debris.syncRender(alpha);
     if (switches.foamers) foamers.syncRender(alpha);
     darts.syncRender(alpha);
-    if (engine) engine.updateListener();
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own
     // pitch is unchanged, so releasing the trigger brings the view back).
@@ -480,6 +480,7 @@ loopCtl = startLoop({
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
     hud.setAmmo(loadout.active, loadout.active.state);
+    if (engine) engine.updateListener();
     renderer.render(scene, camera);
   },
   stats: pushStats,

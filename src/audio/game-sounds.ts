@@ -6,12 +6,11 @@
 // How it listens. Nothing in here is tuned by hand: every sound id comes
 // from data/sounds.json (the blasterCues table) and every threshold from
 // its "player" block (strideWalk, strideSprint, hardLandSpeed).
-// - Fire: counts magazine drops on the active blaster. Its magazine goes
-//   down on a step, and each drop is one shot: B01's three dart pump is
-//   one drop (one sound), a B03 press that fires both barrels (the both
-//   mod) is two. The count is a per-step difference in the magazine, not
-//   a per-dart hook, so nothing moves if the range page or a mod rebuild
-//   replaces the blaster's onShot.
+// - Fire: counts Blaster.shots on the active blaster, one sound per shot:
+//   B01's three dart pump is one shot (one sound), a B03 press that fires
+//   both barrels (the both mod) is two. A per-step difference in the
+//   count, not a per-dart hook, so nothing moves if the range page or a
+//   mod rebuild replaces the blaster's onShot.
 // - Cues: the active blaster's cue list for its state, sorted by at, is
 //   walked as progress crosses each cue's at, once per priming or reload.
 // - Switching: BX-holster when a switch starts, BX-draw when the new
@@ -68,13 +67,11 @@ export class GameSounds {
   // switch flag of the last step, so BX-holster fires once per switch start.
   private lastIdx = -1;
   private wasSwitching = false;
-  // The last-seen magazine of each blaster, per blaster object. A step that
-  // drops the active blaster's magazine by k plays k fire sounds (one shot
-  // is one drop: the B01 pump's three darts are one drop, so one sound; a
-  // B03 press that fires both barrels is two). Reading the magazine
-  // instead of the onShot hook means the range page and Loadout.setMod may
-  // replace that hook freely and never lose a count.
-  private lastMag = new WeakMap<Blaster, number>();
+  // The last-seen shot count of each blaster, per blaster object. A step
+  // where the active blaster's count rises by k plays k fire sounds.
+  // Reading the count instead of the onShot hook means the range page and
+  // Loadout.setMod may replace that hook freely and never lose a shot.
+  private lastShots = new WeakMap<Blaster, number>();
   // The B04 rev loop.
   private rev: LoopHandle | null = null;
   // The active blaster's mods, as a comma string, for the mod sounds.
@@ -98,7 +95,7 @@ export class GameSounds {
     // seeded here rather than replayed on the very first fixed step.
     this.lastIdx = loadout.activeIndex;
     this.lastMods = loadout.modsOf(loadout.activeIndex).join(",");
-    this.lastMag.set(loadout.active, loadout.active.mag);
+    this.lastShots.set(loadout.active, loadout.active.shots);
     // The level loop, from the first click: quiet, not spatial.
     this.sink.loop("AMB-level");
   }
@@ -149,18 +146,14 @@ export class GameSounds {
     }
   }
 
-  /** One fire sound per drop of the active blaster's magazine. The
-   *  magazine goes down when it shoots, and each drop is one shot: the B01
-   *  pump's three darts are one drop (one sound), a B03 press that fires
-   *  both barrels (the both mod) is two. We read mag rather than the
-   *  onShot hook, so the range page and Loadout.setMod may replace that
-   *  hook freely and still not lose a count. A reload that fills the mag
-   *  reads as no shot (we only count drops, never fills). */
+  /** One fire sound per shot of the active blaster: B01's three dart
+   *  pump is one shot (one sound), a B03 press that fires both barrels is
+   *  two. Counted from Blaster.shots rather than the magazine, because the
+   *  range's infinite ammo refills the magazine in the same step. */
   private watchFire(b: Blaster): void {
-    const before = this.lastMag.get(b) ?? b.mag;
-    this.lastMag.set(b, b.mag);
-    const drops = before - b.mag;
-    for (let k = 0; k < drops; k++)
+    const before = this.lastShots.get(b) ?? b.shots;
+    this.lastShots.set(b, b.shots);
+    for (let k = before; k < b.shots; k++)
       this.sink.play(this.loadout.activeId() + "-fire");
   }
 

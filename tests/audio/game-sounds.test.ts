@@ -139,6 +139,17 @@ const countOf = (list: string[], id: string) =>
   list.reduce((n, x) => n + (x === id ? 1 : 0), 0);
 
 describe("card test 5: B01", () => {
+  it("a shot whose onShot refills the magazine (the range's infinite ammo) still plays its fire sound", () => {
+    const { lo, sink, gs } = makeProbed();
+    const b = lo.blasters[0];
+    const inner = b.onShot;
+    b.onShot = (i: number) => { inner(i); b.refill(); };
+    lo.update(DT, HOLD, AIM);
+    gs.update(DT, HOLD);
+    expect(b.mag).toBe(b.spec.magSize);
+    expect(countOf(ids(sink.log), "B01-fire")).toBe(1);
+  });
+
   it("one shot fires once, priming plays its cues in order, reload plays mag-out then mag-in", () => {
     const { lo, sink, gs } = makeProbed();
     const step = (c: typeof NO) => {

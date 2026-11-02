@@ -208,6 +208,9 @@ export class Blaster {
   dartType: DartTypeName;
   mag: number;
   reserve: number;
+  /** Shots fired so far, one per magazine round spent (AUD-01: the fire
+   *  sound counts these, so a refill in onShot cannot hide a shot). */
+  shots = 0;
   /** Auto recoil: added spread over the base, degrees. 0 for pump and break. */
   spreadNow = 0;
   /** Auto recoil: aim climb, degrees. 0 for pump and break. */
@@ -367,6 +370,7 @@ export class Blaster {
     if (!controls.firePressed) return;
     if (this.mag > 0) {
       this.mag -= 1;
+      this.shots += 1;
       const n = s.muzzles.length;
       const start = this.nextMuzzle;
       for (let k = 0; k < s.dartsPerShot; k++) this.fireDart((start + k) % n, s.spreadDeg);
@@ -434,6 +438,7 @@ export class Blaster {
     // per fireInterval in the long run without drifting out of phase.
     this.fireClock -= s.fireInterval;
     this.mag -= 1;
+    this.shots += 1;
     this.spreadNow = Math.min(r.spreadMax, this.spreadNow + r.spreadPerShot);
     this.climbDegNow = Math.min(r.climbDegMax, this.climbDegNow + r.climbDegPerShot);
     this.fireDart(0, s.spreadDeg + this.spreadNow);
@@ -455,6 +460,7 @@ export class Blaster {
       for (let k = 0; k < s.dartsPerShot; k++) this.fireDart(i, s.spreadDeg);
       this.loaded[i] = false;
       this.mag -= 1; // mag counts the loaded shells
+      this.shots += 1;
     };
     if (s.bothBarrels) {
       for (let i = 0; i < n; i++) if (this.loaded[i]) fire(i);
