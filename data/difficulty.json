@@ -1,0 +1,6 @@
+{
+  "story": { "name": "Story", "damageTaken": 0.5, "director": "story" },
+  "normal": { "name": "Normal", "damageTaken": 1, "director": "normal" },
+  "hard": { "name": "Hard", "damageTaken": 1.5, "director": "hard" },
+  "fury": { "name": "Foam Fury", "damageTaken": 2, "director": "fury" }
+}

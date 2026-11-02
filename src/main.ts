@@ -2,14 +2,17 @@ import * as THREE from "three";
 import { createRenderer } from "./render/scene";
 import { createPhysics } from "./physics/world";
 import { startLoop } from "./core/loop";
-import { Input } from "./core/input";
+import { Input, settings as lookSettings } from "./core/input";
+import { SettingsStore, type Settings } from "./core/settings";
 import { PlayerController } from "./player/controller";
+import { PlayerHealth } from "./player/health";
 import { DartSystem } from "./weapons/darts";
 import { Loadout } from "./weapons/loadout";
 import { updateAim } from "./weapons/aim";
 import { DartImpacts, type VoxelTarget } from "./weapons/impacts";
 import { FoamerSystem } from "./foamers/foamers";
 import { Hud } from "./ui/hud";
+import { SettingsPanel } from "./ui/menus";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";
 import { carveSphere } from "./voxel/carve";
@@ -21,6 +24,7 @@ import { createFoamMaterial } from "./render/foam-material";
 import { AudioEngine } from "./audio/audio";
 import { GameSounds } from "./audio/game-sounds";
 import renderJson from "../data/render.json";
+import foamerData from "../data/foamers.json";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -169,6 +173,32 @@ for (let i = 0; i < 30; i++) {
 const player = new PlayerController(rapier, world, SPAWN);
 const eye = new THREE.Vector3();
 
+// UI-01 stage 1: the player's health. The damage of each Foamer attack comes
+// from data/foamers.json (attacks[].damage), looked up by id on the bonk.
+const health = new PlayerHealth();
+const ATTACK_DAMAGE = new Map<string, number>(
+  (foamerData.test as unknown as { attacks: { id: string; damage: number }[] })
+    .attacks.map((a) => [a.id, a.damage]),
+);
+
+// UI-01 stage 2: one settings store (localStorage, defaults on failure),
+// applied live to look, FOV, volume and damage taken. The panels subscribe
+// through the store's change callback.
+const store = new SettingsStore();
+function applySettings(s: Settings): void {
+  lookSettings.mouseSensitivity = s.mouseSensitivity;
+  lookSettings.invertY = s.invertY;
+  camera.fov = s.fov;
+  camera.updateProjectionMatrix();
+  health.damageTaken = s.damageTaken;
+  hud.reduceFlashes = s.reduceFlashes;
+  if (engine) {
+    engine.volume = s.volume;
+    engine.muted = s.muted;
+  }
+}
+store.onChange(applySettings);
+
 // Darts: one pooled system, excluding the player's own capsule from hits.
 const darts = new DartSystem(scene, world, rapier, player.collider);
 // The loadout: all three blasters and their viewmodels, driven by data in
@@ -182,6 +212,9 @@ const loadout = await Loadout.load(camera, darts);
 let engine: AudioEngine | null = null;
 let sounds: GameSounds | null = null;
 let audioStarting = false;
+// The defaults from storage go onto the camera, look and health now; the
+// engine gets volume and mute when it arrives (see startAudio).
+applySettings(store.value);
 const _aimUnused = new THREE.Vector3();
 Loadout.muzzleToWorld = (camPoint, out) => {
   updateAim(camera, world, player.collider, camPoint, out, _aimUnused);
@@ -202,8 +235,18 @@ impacts.onCarve = (target, removed) => {
 // GAME-03.
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
 scene.add(foamers.group);
-// The bonk just logs; player damage arrives in the later card.
-foamers.onBonk = (_f, attack) => console.info("Bonk", attack);
+// The bonk now costs health (UI-01 stage 1). The chain is kept: the sound
+// wrapper (AUD-01) wraps this handler when it arrives, and the console log
+// stays. God mode is a range-page switch; this page always takes damage.
+const logBonk = foamers.onBonk;
+foamers.onBonk = (f, attack) => {
+  logBonk(f, attack);
+  if (paused) return;
+  const lost = health.damage(ATTACK_DAMAGE.get(attack) ?? 0, attack);
+  if (lost <= 0) return;
+  hud.onHit();
+  if (health.dead) playerPopped();
+};
 // Scratch vectors for the aim math; allocated once (aim.ts carries its
 // own).
 const _muzzleCam = new THREE.Vector3();
@@ -213,19 +256,112 @@ const _playerPos = new THREE.Vector3();
 const _rot = new THREE.Quaternion();
 
 let paused = true;
+/** True once the mouse has been captured: before that the title overlay is
+ *  up, and the pause menu stays hidden behind it. */
+let started = false;
+/** UI-01: while the player has popped, only the Try again button unpauses. */
+let poppedOut = false;
+const popped = document.querySelector<HTMLDivElement>("#popped")!;
+
+// UI-01 stage 2: the pause menu (Esc or gamepad Start) and the settings
+// panel. The menu shows whenever the game is paused and the player has not
+// popped; Settings opens from it, or from the title overlay before the
+// first click. Resume or a canvas click plays on.
+const pauseMenu = document.querySelector<HTMLDivElement>("#pausemenu")!;
+const settingsBtn = document.querySelector<HTMLButtonElement>("#settingsBtn")!;
+const settingsPanel = new SettingsPanel(
+  document.querySelector<HTMLDivElement>("#settings")!,
+  store,
+  () => {
+    settingsPanel.close();
+    // Back goes to the pause menu when playing was started, otherwise the
+    // title overlay is already behind the panel.
+    pauseMenu.hidden = !(started && !poppedOut);
+    if (!pauseMenu.hidden) settingsBtn.focus();
+  },
+);
+document.querySelector<HTMLButtonElement>("#resumeBtn")!.addEventListener("click", () => {
+  settingsPanel.close();
+  if (input.locked) setPaused(false);
+  else input.requestLock();
+});
+settingsBtn.addEventListener("click", () => settingsPanel.open());
+document.querySelector<HTMLButtonElement>("#restartBtn")!.addEventListener("click", restart);
+// A click on the dimmed background (not the panel) plays on, like Resume.
+pauseMenu.addEventListener("pointerdown", (e) => {
+  if (e.target === pauseMenu) {
+    settingsPanel.close();
+    if (input.locked) setPaused(false);
+    else input.requestLock();
+  }
+});
+document.querySelector<HTMLButtonElement>("#titleSettings")!.addEventListener("click", () => {
+  pauseMenu.hidden = true;
+  settingsPanel.open();
+});
+
+/** The pop: no gore, no red. A burst of foam blocks at the player in the
+ *  foam colours, the edge glow in the foam-core colour, and a toy-like
+ *  foam pop from the audio engine. */
+function popBurst() {
+  const at = player.eye(1, new THREE.Vector3());
+  for (let i = 0; i < 10; i++) {
+    const v = new THREE.Vector3(
+      Math.random() * 2 - 1,
+      Math.random() * 1.4 + 0.2,
+      Math.random() * 2 - 1,
+    ).multiplyScalar(4);
+    spawnBlock(at.clone().addScaledVector(v, 0.15), v);
+  }
+  hud.popFlash();
+  if (engine) engine.play("FX-pop");
+}
+function playerPopped() {
+  poppedOut = true;
+  setPaused(true);
+  popBurst();
+  popped.hidden = false;
+  status.textContent = "Press Try again.";
+}
+document.querySelector<HTMLButtonElement>("#tryAgain")!.addEventListener("click", () => restart());
+/** The Try again / Restart respawn: full health, back at the spawn, the
+ *  Foamers cleared (the range keeps its own respawn rules). */
+function restart(): void {
+  health.reset();
+  player.teleport(SPAWN);
+  foamers.clear();
+  hud.clearFlash();
+  popped.hidden = true;
+  poppedOut = false;
+  settingsPanel.close();
+  if (input.locked) setPaused(false);
+  else input.requestLock();
+}
 /** While paused the scene only needs redrawing for meshes that arrive and
  *  window resizes, so it draws a few frames a second to save battery. */
 const PAUSED_FRAME = renderJson.pausedFrame;
 let pausedClock = PAUSED_FRAME;
 function setPaused(p: boolean) {
+  if (poppedOut && !p) return; // Try again clears the flag first
   paused = p;
   overlay.hidden = !p;
   hud.show(!p);
+  // The pause menu stands in for "click to play" while paused (the popped
+  // overlay has its own button instead). The title's Settings button hides
+  // so the menu's is the only one on screen.
+  pauseMenu.hidden = !(p && !poppedOut && started);
+  // The title's Settings button is for before the first click; after that
+  // Settings lives in the pause menu.
+  document.querySelector<HTMLButtonElement>("#titleSettings")!.hidden = started;
+  if (!p) settingsPanel.close();
   status.textContent = "Click to play. Esc to pause.";
   if (engine) { if (p) engine.suspend(); else engine.resume(); }
   if (p && input.locked) document.exitPointerLock();
 }
-input.onLockChange = (locked) => setPaused(!locked);
+input.onLockChange = (locked) => {
+  if (locked) started = true;
+  setPaused(!locked);
+};
 // The first click or key starts the audio. The context must be made inside
 // that gesture: the pointer lock event comes later and is not a gesture, so
 // a strict browser (Safari) would keep a context made there silent.
@@ -237,6 +373,7 @@ function startAudio() {
       engine = e;
       sounds = new GameSounds(e, loadout, player, darts, impacts, foamers);
       if (paused) e.suspend();
+      applySettings(store.value); // volume and mute from storage
     })
     .catch(() => { /* no Web Audio on this host: the game stays silent */ })
     .finally(() => { audioStarting = false; });
@@ -257,9 +394,11 @@ startLoop({
   update(dt) {
     // Gamepad start toggles pause; with a mouse, Esc releases the lock instead.
     if (input.wasPressed("pause")) setPaused(!paused);
-    // M (the mute action in data/input.json) toggles the master mute.
-    if (input.wasPressed("mute") && engine) engine.muted = !engine.muted;
+    // M (the mute action in data/input.json) toggles the master mute,
+    // through the store so the settings panel stays in step.
+    if (input.wasPressed("mute")) store.set("muted", !store.value.muted);
     if (!paused) {
+      health.update(dt);
       player.update(dt, input);
       // Foamer on a fixed step, before world.step().
       foamers.update(dt, player.eye(1, _playerPos));
@@ -329,6 +468,7 @@ startLoop({
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(_dt, input.isDown("fire"));
     hud.setAmmo(loadout.active, loadout.active.state);
+    hud.setHealth(health.hp, health.max);
     for (const { mesh, body, prevT, prevQ } of blocks) {
       const p = body.translation();
       const r = body.rotation();
@@ -343,4 +483,4 @@ startLoop({
 });
 
 // Dev-only hook for automated checks in the browser pane.
-if (import.meta.env.DEV) Object.assign(window, { __dart: { camera, player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, loadout, impacts, pieces, foamers } });
+if (import.meta.env.DEV) Object.assign(window, { __dart: { camera, player, voxels, voxelMesh, carveSphere, debris, debugBlast, mesherPool, darts, loadout, impacts, pieces, foamers, health } });

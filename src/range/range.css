@@ -57,6 +57,65 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Health, UI-01 stage 1: the same bar as the game page, bottom-left. */
+#health {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+#health .bar {
+  position: relative;
+  width: clamp(10rem, 22vw, 16rem);
+  height: 1.4rem;
+  border-radius: 0.7rem;
+  background: rgb(0 0 0 / 45%);
+  border: 2px solid #fff6e8;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+  overflow: hidden;
+}
+#health .bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  border-radius: 0.55rem;
+  background: #b6ff3b;
+  transition: width 120ms linear;
+}
+#health .bar.hit i {
+  background: #fff6e8;
+}
+#health .bar.low i {
+  background: #ffd23f;
+}
+#health .num {
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  color: #fff6e8;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+  font-variant-numeric: tabular-nums;
+}
+#hitflash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 18vmin 6vmin rgb(255 246 232 / 55%);
+}
+#hitflash.on {
+  opacity: 1;
+  transition: opacity 140ms ease-out;
+}
+
+#hitflash.pop {
+  opacity: 1;
+  box-shadow: inset 0 0 26vmin 10vmin rgb(255 233 168 / 70%);
+  transition: opacity 500ms ease-out;
+}
+
 /* The frame graph, top left. */
 #graphbox {
   position: fixed;

@@ -9,7 +9,12 @@
   </head>
   <body>
     <canvas id="view"></canvas>
-    <div id="hud" hidden><div id="crosshair"></div><div id="ammo"></div></div>
+    <div id="hud" hidden>
+      <div id="crosshair"></div>
+      <div id="ammo"></div>
+      <div id="health"><div class="bar"><i></i></div><span class="num"></span></div>
+    </div>
+    <div id="hitflash"></div>
     <div id="graphbox"><p id="graphText"></p><canvas id="graphCanvas"></canvas></div>
     <div id="overlay">
       <aside id="panel">
@@ -56,6 +61,12 @@
         </label>
         <label class="ctl">Dart type
           <span class="row" id="dartTypes"></span>
+        </label>
+        <label class="ctl">God mode
+          <span class="row">
+            <button data-switch="godMode" data-on="1">on</button>
+            <button data-switch="godMode" data-on="0" class="on">off</button>
+          </span>
         </label>
         <label class="ctl">Infinite ammo
           <span class="row">
