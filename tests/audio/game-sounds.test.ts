@@ -303,7 +303,7 @@ function surfRig() {
   const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
   const gs = new GameSounds(sink, lo, player, darts, impacts);
   world.step();
-  return { sink, world, darts, foamers, impacts, gs };
+  return { sink, world, darts, foamers, impacts, gs, vol };
 }
 
 /** Fire one dart from (x, y, z) toward -z and step the world. */
@@ -335,6 +335,13 @@ describe("card test 7: dart surfaces", () => {
     expect(e).toBeDefined();
     // The wall face the dart strikes is at z 0.4, at the fired x and y.
     expect(posOf(e!).distanceTo(new THREE.Vector3(-1.55, 0.25, 0.4))).toBeLessThanOrEqual(0.3);
+  });
+
+  it("a voxel material with no surface entry of its own plays the default DT-hit-hard", () => {
+    const R = surfRig();
+    R.vol.fillBox(-30, 0, 0, 29, 4, 4, materialId("foam-orange"));
+    fireForward(R, -1.55, 0.25, 2);
+    expect(R.sink.log.find((x) => x.id === "DT-hit-hard")).toBeDefined();
   });
 
   it("a hit on a plain collider plays DT-hit-hard at the hit point", () => {

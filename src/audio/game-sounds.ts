@@ -232,7 +232,8 @@ export class GameSounds {
       this.sink.play("DT-slug-hit", { position: hit.point });
       return;
     }
-    const id = this.surfaceId.get(hit.material ?? "default");
+    // A material with no entry of its own (the foam colours) is "default".
+    const id = this.surfaceId.get(hit.material ?? "default") ?? this.surfaceId.get("default");
     if (!id) return;
     this.sink.play(id, {
       position: hit.point,
