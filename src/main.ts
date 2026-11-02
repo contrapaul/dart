@@ -18,6 +18,8 @@ import { MesherPool } from "./voxel/mesher-pool";
 import { VolumeMesh } from "./voxel/volume-mesh";
 import { FallingPieces } from "./voxel/pieces";
 import { createFoamMaterial } from "./render/foam-material";
+import { AudioEngine } from "./audio/audio";
+import { GameSounds } from "./audio/game-sounds";
 import renderJson from "../data/render.json";
 
 // Test course: proves rendering, physics, input and the player controller
@@ -173,7 +175,13 @@ const darts = new DartSystem(scene, world, rapier, player.collider);
 // data/blasters.json. Loads before the start overlay can resolve, so by
 // the time the player can act every viewmodel is on screen.
 const loadout = await Loadout.load(camera, darts);
-// Darts leave from the active muzzle's world point, pulled out of walls.
+// Sound (AUD-01 stage 2): the engine opens on the first click (the browser
+// keeps sound off before a click), and GameSounds gets it as its sink.
+// While the engine loads, or on a host with no Web Audio, the game carries
+// on silent.
+let engine: AudioEngine | null = null;
+let sounds: GameSounds | null = null;
+let audioStarting = false;
 const _aimUnused = new THREE.Vector3();
 Loadout.muzzleToWorld = (camPoint, out) => {
   updateAim(camera, world, player.collider, camPoint, out, _aimUnused);
@@ -214,9 +222,20 @@ function setPaused(p: boolean) {
   overlay.hidden = !p;
   hud.show(!p);
   status.textContent = "Click to play. Esc to pause.";
+  if (engine) { if (p) engine.suspend(); else engine.resume(); }
   if (p && input.locked) document.exitPointerLock();
 }
-input.onLockChange = (locked) => setPaused(!locked);
+input.onLockChange = (locked) => {
+  setPaused(!locked);
+  // The first lock starts the audio inside the click gesture.
+  if (locked && !engine && !audioStarting) {
+    audioStarting = true;
+    AudioEngine.create(camera)
+      .then((e) => { engine = e; sounds = new GameSounds(e, loadout, player); })
+      .catch(() => { /* no Web Audio on this host: the game stays silent */ })
+      .finally(() => { audioStarting = false; });
+  }
+};
 setPaused(true);
 
 startLoop({
@@ -231,6 +250,8 @@ startLoop({
   update(dt) {
     // Gamepad start toggles pause; with a mouse, Esc releases the lock instead.
     if (input.wasPressed("pause")) setPaused(!paused);
+    // M (the mute action in data/input.json) toggles the master mute.
+    if (input.wasPressed("mute") && engine) engine.muted = !engine.muted;
     if (!paused) {
       player.update(dt, input);
       // Foamer on a fixed step, before world.step().
@@ -256,6 +277,13 @@ startLoop({
         },
         _aimDir,
       );
+      // The blaster, player and level hooks, one step per fixed step.
+      if (sounds) sounds.update(dt, {
+        fireHeld: input.isDown("fire"),
+        firePressed: input.wasPressed("fire"),
+        reloadPressed: input.wasPressed("reload"),
+        sprintHeld: input.isDown("sprint"),
+      });
       debris.update(dt);
       pieces.update(dt);
       if (player.feet < -20) player.teleport(SPAWN);
@@ -301,6 +329,8 @@ startLoop({
       mesh.quaternion.copy(prevQ).slerp(_rot.set(r.x, r.y, r.z, r.w), alpha);
     }
     darts.syncRender(alpha);
+    // The spatial listener follows the camera each render frame.
+    if (engine) engine.updateListener();
     renderer.render(scene, camera);
   },
 });

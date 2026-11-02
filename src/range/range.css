@@ -146,6 +146,15 @@ h1 {
   min-width: 40px;
 }
 
+/* The sound list (AUD-01): one row per sound ID, a Play button and the
+   state (placeholder, or the recording's take count). */
+.soundPanel { margin: 4px 0; }
+.soundRow { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+.soundRow .sid { flex: 1 1 auto; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.soundRow .sstate { flex: 0 0 auto; font-size: 11px; color: var(--muted); }
+.soundRow button { flex: 0 0 auto; }
+.soundPanel input[type="range"] { width: 120px; }
+
 label.ctl {
   display: flex;
   justify-content: space-between;

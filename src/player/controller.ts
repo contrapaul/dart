@@ -10,6 +10,13 @@ import tuning from "../../data/player.json";
 
 export const P = { ...tuning };
 
+// AUD-01: the movement events the sound hooks care about. "land" is one
+// touchdown after being airborne, firing with the velocity at that instant
+// (vel is reused by the controller; do not retain it: at landing, vel.y
+// is the fall speed, which is zeroed right after the event). "dash-ready"
+// is once, when the dash cooldown expires.
+export type PlayerMoveKind = "jump" | "dash" | "mantle" | "land" | "dash-ready";
+
 const MANTLE_FILTER = 4 | 8; // QueryFilterFlags.EXCLUDE_DYNAMIC | EXCLUDE_SENSORS
 
 export class PlayerController {
@@ -17,6 +24,19 @@ export class PlayerController {
   pitch = 0;
   grounded = false;
   readonly vel = new THREE.Vector3();
+  /** AUD-01: called by the controller for each movement event, with the
+   *  event kind and the velocity that step set, for the sound hooks.
+   *  No-op by default. vel is reused by the controller; do not keep it.
+   *  For footsteps the hook watches the public state (grounded, dash,
+   *  vel, the data's strides), not an event: one grounded run while
+   *  standing is every stride the player makes, and no steps come in the
+   *  air, in a dash, or in a mantle. */
+  onMove: (kind: PlayerMoveKind, vel: THREE.Vector3) => void = () => {};
+  /** AUD-01: while a dash burst is running. */
+  get dashing(): boolean { return this.dashLeft > 0; }
+  /** AUD-01: while a mantle is running (the player is not grounded
+   *  usefully then, and a mantle's fall is not a landing). */
+  get mantling(): boolean { return this.mantle !== null; }
 
   private body: RAPIER.RigidBody;
   readonly collider: RAPIER.Collider;
@@ -72,6 +92,7 @@ export class PlayerController {
   /** One fixed step. Call before world.step(). */
   update(dt: number, input: Input) {
     this.prev.copy(this.pos);
+    const wasGrounded = this.grounded;
     this.forward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     this.right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const m = input.move();
@@ -79,7 +100,9 @@ export class PlayerController {
 
     this.coyote = this.grounded ? P.coyoteTime : Math.max(0, this.coyote - dt);
     this.jumpBuffer = input.wasPressed("jump") ? P.jumpBuffer : Math.max(0, this.jumpBuffer - dt);
+    const dashCd = this.dashCooldown;
     this.dashCooldown = Math.max(0, this.dashCooldown - dt);
+    if (dashCd > 0 && this.dashCooldown === 0) this.onMove("dash-ready", this.vel);
 
     if (this.mantle) return this.stepMantle(dt);
 
@@ -88,6 +111,7 @@ export class PlayerController {
       this.dashDir.copy(this.wish.lengthSq() > 0.01 ? this.wish : this.forward).normalize();
       this.dashLeft = P.dashTime;
       this.dashCooldown = P.dashCooldown;
+      this.onMove("dash", this.vel);
     }
 
     if (this.dashLeft > 0) {
@@ -109,6 +133,7 @@ export class PlayerController {
         this.vel.y = P.jumpSpeed;
         this.jumpBuffer = 0;
         this.coyote = 0;
+        this.onMove("jump", this.vel);
       }
       this.vel.y = Math.max(this.vel.y - P.gravity * dt, -P.maxFallSpeed);
     }
@@ -129,12 +154,19 @@ export class PlayerController {
     this.pos.z += moved.z;
     this.body.setNextKinematicTranslation(this.pos);
 
-    // Walls take horizontal speed away; floors and ceilings stop vertical speed.
+    // Walls take horizontal speed away; floors and ceilings stop vertical
+    // speed. A landing is read here: grounded now, not at the start of this
+    // step, and the fall speed not yet zeroed.
     this.vel.x = moved.x / dt;
     this.vel.z = moved.z / dt;
+    if (this.grounded && !wasGrounded && this.vel.y < 0) {
+      this.onMove("land", this.vel);
+    }
     if ((this.grounded && this.vel.y < 0) || (this.vel.y > 0 && moved.y < desired.y * 0.5)) {
       this.vel.y = 0;
     }
+    // A mantle ends on the ledge with no step and no landing sound; the
+    // mantle itself already rang its own event in tryMantle.
   }
 
   /** Eye position between the last two steps; alpha is 0 to 1. */
@@ -175,6 +207,7 @@ export class PlayerController {
 
     this.mantle = { from: this.pos.clone(), to, t: 0 };
     this.dashLeft = 0;
+    this.onMove("mantle", this.vel);
     return true;
   }
 

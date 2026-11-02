@@ -79,6 +79,66 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: AUD-01 stage 2 (Pi, Qwen 3.8)
+
+- `src/audio/sink.ts`: the `AudioSink` / `PlayOptions` / `LoopHandle`
+  interfaces from the card, so tests can fake the engine. `audio.ts`
+  (Web Audio, created in the Click to play handler on both pages): buses
+  master / sfx / music / voice, placeholders rendered to AudioBuffers at
+  start, files fetched from `/audio/<file>` with the placeholder as
+  fallback, a seeded take picker, rate jitter, a PannerNode per spatial
+  one-shot (equal power pan, inverse rolloff from the data), the
+  listener follows the camera each render frame, `suspend` on pause and
+  `resume` on play, an unknown ID warns once, the master mute and volume
+  are on the page side (M on the main page, the panel on the range).
+- `src/audio/game-sounds.ts`: `GameSounds` with `update(dt, controls)`,
+  the blaster, player and level hooks of this stage. Cues walk `at` once
+  per priming or reload from `blasterCues`; switching plays BX-holster
+  at the start and BX-draw at the halfway swap; BX-dry is a press with
+  no dart anywhere; BX-mod-on / off when the active blaster's mod list
+  grows or shrinks; the B04 rev loop is one loop created when B04
+  becomes the active blaster, volume is `wheelSpeed` (0 when the wheels
+  still are) and the rate goes 0.6 to 1 with the wheel, the loop stops
+  when B04 is switched away; AMB-level starts on build, not spatial.
+- Fire: one fire sound per shot is read as a magazine drop, not per
+  dart: the active blaster's mag is watched each step and each drop
+  below the last reading plays its `<id>-fire`. That is why B01's three
+  darts are one sound and a B03 press that fires both barrels is two.
+  It deliberately does not wrap `onShot`, because that hook carries the
+  viewmodel chain, the range's infinite ammo hook and gets replaced by
+  `Loadout.setMod` rebuilding the blaster; watching the mag keeps the
+  count no matter what occupies it. (On-set shot counting, tried,
+  dropped: it missed the first shot of a replaced blaster.)
+- Callback field added to `PlayerController` (the one field this stage
+  needs, in the style of `onShot`): `onMove(kind, vel)` with
+  `kind: "jump" | "dash" | "mantle" | "land" | "dash-ready"`, plus the
+  getters `dashing` and `mantling` and vel being public. Steps are not
+  an event: GameSounds watches `grounded`, `dashing`, `mantling` and
+  the horizontal speed, and plays `PL-step-hard` every walk (or
+  sprint) stride in `data`; a land is read inside the controller,
+  touching `vel.y` with the fall speed zeroed after the event. No
+  other new fields.
+- Pages: `src/main.ts` builds the engine and `GameSounds` on the first
+  mouse lock, calls `update` once per fixed step, the engine listener
+  once per render display, and M (a new `mute` in `data/input.json`
+  and the action list) toggles the mute. `src/range/main.ts`: the same
+  three, plus a Sound section on the panel and the voice count in the
+  report (built when the engine arrives: master volume, mute toggle that
+  is not saved, every sound ID with a Play button and the display of
+  whether it has a recording (+ the number of takes) or a placeholder).
+- `tests/audio/game-sounds.test.ts`: card tests 5, 6, 9 and 10 with a
+  fake sink that records calls and options; a blaster row and player
+  with the actual `Loadout` / `Blaster` / `PlayerController` (an
+  actual Rapier component). The controller makes one soft land at
+  component level (on-set settle), the test tolerates that.
+- Build: the large chunk (4.4 MB, rapier's WASM inlined into `game-
+sounds-*.js` right after `debris-*.js` on stage 1) is existing;
+  nothing root. tsc, `npm test` (158 pass), `npm run build` all green.
+- Unverified: all of it (no listening, no browser; the card
+  explicitly holds the ear work for Paul). Unverified in browser:
+  the listener path, the fetch / fallback, that M mutes and the mute
+  button on the panel, and any hitch.
+
 ### 2026-11-02: AUD-01 stage 1 (Pi, Qwen 3.8)
 
 - `data/sounds.json`: 47 placeholder sounds (buses, maxVoices 32,
