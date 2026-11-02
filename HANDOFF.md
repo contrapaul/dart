@@ -79,6 +79,48 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: AUD-01 stage 1 (Pi, Qwen 3.8)
+
+- `data/sounds.json`: 47 placeholder sounds (buses, maxVoices 32,
+  refDistance 2, maxDistance 40), `blasterCues` for B01, B03, B04,
+  `surfaces`, `player` strides. Every ID is also checked against the
+  tables in `design/SOUNDS.md` by the new tests.
+- `src/audio/synth.ts` (pure): renders a recipe (noise, tone, click,
+  crackle, layers, gain, seed) to a 48 kHz mono Float32Array.
+  Deterministic (LCG), peak at most 1 via cap-only normalization, 2 ms
+  end fades; a `loop: true` recipe gets a Hann window across the whole
+  buffer so a repeat never clicks (B04-rev-loop, AMB-level).
+- `src/audio/voices.ts` (pure): VoicePool on fixed arrays (per-id cap
+  steals the oldest voice of the id; a full pool steals the oldest
+  one-shot; loops are never stolen), plus `pickTake` / `makeTakePicker`
+  (never the same take twice in a row when there are two or more).
+- `tests/audio/`: synth.test.ts (test 1, every recipe in the data
+  renders: length, peak, end fades, determinism, loop ends), data.test.ts
+  (test 2, shape plus IDs, reads SOUNDS.md via a `?raw` import),
+  voices.test.ts (test 3, VoicePool) and test 4 (takes). 14 tests.
+- Cue times in the data, to be tuned by ear later:
+  - B01: pump-back 0.05 (card), mag-out 0.1, mag-in 0.7 (card), pump-fwd
+    0.95. The card says the pump is home at 1, but a cue's `at` is only
+    reached while the state is still active; at 1 the blaster is ready
+    again, so a cue at 1 would never play.
+  - B03 from the windows in `src/weapons/viewmodel.ts` breakAction:
+    latch 0.05 (turn starts), break-open 0.15 (breach starts), eject
+    0.35 (spent shells start flying, the card's own number), shell-drop
+    0.55 (breach nearly open), load 0.65, close 0.75 (close phase
+    starts; the breach fully shuts at 1).
+  - B04: mag-out 0.1, mag-in 0.8 (no card reference; the auto mode's
+    viewmodel only drops the magazine during reload).
+- Question (stops the card, per its rules): the hooks section plays
+  `F01-swing` and `F01-bonk`, but SOUNDS.md lists the F01 sounds in the
+  per-Foamer table's third column without IDs in the first column, so a
+  `sounds` entry for either would fail test 2. Paul or the reviewer
+  should add the ID rows to SOUNDS.md's F01 table and the entries can
+  then go in. I did not invent IDs (the card forbids it) and did not
+  write the question into the card itself; it is here and in the commit
+  message instead.
+- Unverified: no listening, no browser; the engine and all hooks are
+  the next stages. Nothing is audible yet.
+
 ### 2026-11-02: AUD-01 card written (Claude)
 
 - `tasks/AUD-01.md`: the sound system for Pi. A Web Audio mixer, a sound

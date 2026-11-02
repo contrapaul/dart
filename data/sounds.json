@@ -1,0 +1,1285 @@
+{
+  "_note": "AUD-01. Sound IDs are the IDs in design/SOUNDS.md. files: finished recordings in public/audio/, one per take; empty means the synth placeholder plays. volume 0 to 1. jitter: random playback rate change, plus or minus. maxVoices: copies of this sound playing at once; a new one steals the oldest. refDistance and maxDistance in metres for spatial sounds.",
+  "buses": {
+    "master": 0.8,
+    "sfx": 1,
+    "music": 0.7,
+    "voice": 1
+  },
+  "maxVoices": 32,
+  "refDistance": 2,
+  "maxDistance": 40,
+  "sounds": {
+    "BX-draw": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.2,
+              "attack": 0.004,
+              "decay": 0.16,
+              "lowpass": 1200,
+              "highpass": 250,
+              "lowpassEnd": 300
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.06,
+              "f0": 700,
+              "f1": 500,
+              "wave": "triangle",
+              "attack": 0.002,
+              "decay": 0.04
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "BX-holster": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.16,
+              "attack": 0.004,
+              "decay": 0.12,
+              "lowpass": 900,
+              "highpass": 200,
+              "lowpassEnd": 250
+            },
+            "gain": 0.55
+          },
+          {
+            "tone": {
+              "dur": 0.05,
+              "f0": 500,
+              "f1": 300,
+              "wave": "triangle",
+              "attack": 0.002,
+              "decay": 0.03
+            },
+            "gain": 0.2
+          }
+        ]
+      }
+    },
+    "BX-dry": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.03,
+              "freq": 2400
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.04,
+              "f0": 900,
+              "f1": 600,
+              "wave": "square",
+              "attack": 0.001,
+              "decay": 0.02
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "BX-mod-on": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0,
+      "maxVoices": 2,
+      "synth": {
+        "click": {
+          "dur": 0.04,
+          "freq": 1600
+        },
+        "gain": 0.8
+      }
+    },
+    "BX-mod-off": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0,
+      "maxVoices": 2,
+      "synth": {
+        "click": {
+          "dur": 0.04,
+          "freq": 1200
+        },
+        "gain": 0.7
+      }
+    },
+    "B01-fire": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.3,
+              "attack": 0.002,
+              "decay": 0.25,
+              "lowpass": 900,
+              "highpass": 60,
+              "lowpassEnd": 220
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.14,
+              "f0": 110,
+              "f1": 55,
+              "wave": "triangle",
+              "attack": 0.002,
+              "decay": 0.12
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "B01-pump-back": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.22,
+          "attack": 0.006,
+          "decay": 0.18,
+          "lowpass": 800,
+          "highpass": 120,
+          "lowpassEnd": 250
+        },
+        "gain": 0.6
+      }
+    },
+    "B01-pump-fwd": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 1700
+            },
+            "gain": 0.85
+          },
+          {
+            "noise": {
+              "dur": 0.04,
+              "attack": 0.001,
+              "decay": 0.03,
+              "lowpass": 3500,
+              "highpass": 800
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "B01-mag-out": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 900
+            },
+            "gain": 0.6
+          },
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.002,
+              "decay": 0.06,
+              "lowpass": 1200,
+              "highpass": 300
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B01-mag-in": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.06,
+              "freq": 1400
+            },
+            "gain": 0.75
+          },
+          {
+            "click": {
+              "dur": 0.1,
+              "freq": 650
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "B03-fire": {
+      "files": [],
+      "volume": 0.95,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.4,
+              "attack": 0.003,
+              "decay": 0.35,
+              "lowpass": 700,
+              "highpass": 35,
+              "lowpassEnd": 140
+            },
+            "gain": 1
+          },
+          {
+            "tone": {
+              "dur": 0.22,
+              "f0": 65,
+              "f1": 38,
+              "wave": "sine",
+              "attack": 0.005,
+              "decay": 0.2
+            },
+            "gain": 0.6
+          }
+        ]
+      }
+    },
+    "B03-latch": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.06,
+              "freq": 800
+            },
+            "gain": 0.8
+          },
+          {
+            "noise": {
+              "dur": 0.03,
+              "attack": 0.001,
+              "decay": 0.02,
+              "lowpass": 2500,
+              "highpass": 600
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "B03-break-open": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.12,
+              "attack": 0.003,
+              "decay": 0.1,
+              "lowpass": 1500,
+              "highpass": 200
+            },
+            "gain": 0.5
+          },
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 1000
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "B03-eject": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.04,
+              "freq": 2000
+            },
+            "gain": 0.7
+          },
+          {
+            "click": {
+              "dur": 0.04,
+              "freq": 1600
+            },
+            "gain": 0.5
+          },
+          {
+            "noise": {
+              "dur": 0.05,
+              "attack": 0.001,
+              "decay": 0.04,
+              "lowpass": 3000,
+              "highpass": 700
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "B03-shell-drop": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.08,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 700
+            },
+            "gain": 0.6
+          },
+          {
+            "noise": {
+              "dur": 0.06,
+              "attack": 0.005,
+              "decay": 0.05,
+              "lowpass": 900,
+              "highpass": 150
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B03-load": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.04,
+              "freq": 1300
+            },
+            "gain": 0.6
+          },
+          {
+            "click": {
+              "dur": 0.04,
+              "freq": 1500
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "B03-close": {
+      "files": [],
+      "volume": 0.95,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.07,
+              "freq": 1100
+            },
+            "gain": 0.9
+          },
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.002,
+              "decay": 0.06,
+              "lowpass": 2000,
+              "highpass": 400
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "B04-rev-loop": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 220,
+              "f1": 220,
+              "wave": "triangle",
+              "attack": 0.02,
+              "decay": 9
+            },
+            "gain": 0.4
+          },
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 440,
+              "f1": 440,
+              "wave": "triangle",
+              "attack": 0.02,
+              "decay": 9
+            },
+            "gain": 0.12
+          }
+        ],
+        "loop": true
+      }
+    },
+    "B04-fire": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.08,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.001,
+              "decay": 0.06,
+              "lowpass": 1800,
+              "highpass": 100,
+              "lowpassEnd": 500
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.05,
+              "f0": 200,
+              "f1": 120,
+              "wave": "triangle",
+              "attack": 0.001,
+              "decay": 0.04
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "B04-mag-out": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 800
+            },
+            "gain": 0.6
+          },
+          {
+            "noise": {
+              "dur": 0.09,
+              "attack": 0.002,
+              "decay": 0.07,
+              "lowpass": 1100,
+              "highpass": 300
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B04-mag-in": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "click": {
+          "dur": 0.06,
+          "freq": 1500
+        },
+        "gain": 0.8
+      }
+    },
+    "DT-hit-foamer": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 8,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.12,
+              "attack": 0.002,
+              "decay": 0.1,
+              "lowpass": 1000,
+              "highpass": 100,
+              "lowpassEnd": 300
+            },
+            "gain": 0.7
+          },
+          {
+            "tone": {
+              "dur": 0.08,
+              "f0": 180,
+              "f1": 90,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.06
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "DT-hit-hard": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 8,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.03,
+              "freq": 2500
+            },
+            "gain": 0.7
+          },
+          {
+            "noise": {
+              "dur": 0.09,
+              "attack": 0.001,
+              "decay": 0.07,
+              "lowpass": 2500,
+              "highpass": 400,
+              "lowpassEnd": 800
+            },
+            "gain": 0.4
+          },
+          {
+            "tone": {
+              "dur": 0.06,
+              "f0": 500,
+              "f1": 200,
+              "wave": "triangle",
+              "attack": 0.001,
+              "decay": 0.05
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "DT-hit-wood": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 8,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 1800,
+              "highpass": 200,
+              "lowpassEnd": 500
+            },
+            "gain": 0.55
+          },
+          {
+            "click": {
+              "dur": 0.04,
+              "freq": 1200
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "DT-hit-cardboard": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 8,
+      "synth": {
+        "noise": {
+          "dur": 0.12,
+          "attack": 0.002,
+          "decay": 0.1,
+          "lowpass": 900,
+          "highpass": 120,
+          "lowpassEnd": 250
+        },
+        "gain": 0.6
+      }
+    },
+    "DT-hit-plastic": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 8,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 2200,
+              "highpass": 300,
+              "lowpassEnd": 700
+            },
+            "gain": 0.55
+          },
+          {
+            "click": {
+              "dur": 0.03,
+              "freq": 3000
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "DT-carve": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.1,
+      "maxVoices": 6,
+      "synth": {
+        "crackle": {
+          "dur": 0.25,
+          "rate": 30,
+          "decay": 0.04
+        }
+      }
+    },
+    "DT-floor": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.1,
+      "maxVoices": 6,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.03,
+              "freq": 1000
+            },
+            "gain": 0.5
+          },
+          {
+            "noise": {
+              "dur": 0.15,
+              "attack": 0.002,
+              "decay": 0.12,
+              "lowpass": 800,
+              "highpass": 80,
+              "lowpassEnd": 200
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "DT-slug-hit": {
+      "files": [],
+      "volume": 1,
+      "jitter": 0.05,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.25,
+              "attack": 0.003,
+              "decay": 0.22,
+              "lowpass": 700,
+              "highpass": 40,
+              "lowpassEnd": 150
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.18,
+              "f0": 90,
+              "f1": 50,
+              "wave": "sine",
+              "attack": 0.004,
+              "decay": 0.15
+            },
+            "gain": 0.6
+          }
+        ]
+      }
+    },
+    "FX-step-medium": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.12,
+      "maxVoices": 4,
+      "synth": {
+        "noise": {
+          "dur": 0.12,
+          "attack": 0.005,
+          "decay": 0.09,
+          "lowpass": 700,
+          "highpass": 60,
+          "lowpassEnd": 180
+        },
+        "gain": 0.7
+      }
+    },
+    "FX-wound": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.1,
+      "maxVoices": 6,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.35,
+              "attack": 0.003,
+              "decay": 0.3,
+              "lowpass": 1400,
+              "highpass": 250,
+              "lowpassEnd": 2400
+            },
+            "gain": 0.4
+          },
+          {
+            "crackle": {
+              "dur": 0.35,
+              "rate": 40,
+              "decay": 0.03
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "FX-topple": {
+      "files": [],
+      "volume": 1,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.3,
+              "attack": 0.005,
+              "decay": 0.25,
+              "lowpass": 500,
+              "highpass": 30,
+              "lowpassEnd": 120
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.2,
+              "f0": 70,
+              "f1": 35,
+              "wave": "sine",
+              "attack": 0.005,
+              "decay": 0.18
+            },
+            "gain": 0.6
+          }
+        ]
+      }
+    },
+    "FX-fizz-out": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 3,
+              "attack": 0.05,
+              "decay": 2.8,
+              "lowpass": 3000,
+              "highpass": 500,
+              "lowpassEnd": 6000
+            },
+            "gain": 0.3
+          },
+          {
+            "crackle": {
+              "dur": 3,
+              "rate": 50,
+              "decay": 0.03
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "FX-pop": {
+      "files": [],
+      "volume": 1,
+      "jitter": 0.06,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 900,
+              "f1": 250,
+              "wave": "sine",
+              "attack": 0.001,
+              "decay": 0.08
+            },
+            "gain": 0.8
+          },
+          {
+            "noise": {
+              "dur": 0.15,
+              "attack": 0.001,
+              "decay": 0.12,
+              "lowpass": 2000,
+              "highpass": 150,
+              "lowpassEnd": 400
+            },
+            "gain": 0.8
+          },
+          {
+            "crackle": {
+              "dur": 0.2,
+              "rate": 35,
+              "decay": 0.05
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "FX-chunk": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.1,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.04,
+              "freq": 900
+            },
+            "gain": 0.55
+          },
+          {
+            "crackle": {
+              "dur": 0.2,
+              "rate": 20,
+              "decay": 0.04
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "PL-step-hard": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.1,
+      "maxVoices": 3,
+      "synth": {
+        "noise": {
+          "dur": 0.11,
+          "attack": 0.004,
+          "decay": 0.08,
+          "lowpass": 900,
+          "highpass": 80,
+          "lowpassEnd": 250
+        },
+        "gain": 0.7
+      }
+    },
+    "PL-jump": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.1,
+          "attack": 0.005,
+          "decay": 0.08,
+          "lowpass": 700,
+          "highpass": 60
+        },
+        "gain": 0.5
+      }
+    },
+    "PL-land-soft": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.1,
+          "attack": 0.005,
+          "decay": 0.08,
+          "lowpass": 800,
+          "highpass": 60
+        },
+        "gain": 0.5
+      }
+    },
+    "PL-land-hard": {
+      "files": [],
+      "volume": 0.95,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.2,
+              "attack": 0.003,
+              "decay": 0.16,
+              "lowpass": 700,
+              "highpass": 40,
+              "lowpassEnd": 150
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.14,
+              "f0": 80,
+              "f1": 40,
+              "wave": "sine",
+              "attack": 0.004,
+              "decay": 0.12
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "PL-dash": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.25,
+          "attack": 0.01,
+          "decay": 0.2,
+          "lowpass": 900,
+          "highpass": 150,
+          "lowpassEnd": 3000
+        },
+        "gain": 0.6
+      }
+    },
+    "PL-dash-ready": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0,
+      "maxVoices": 2,
+      "synth": {
+        "tone": {
+          "dur": 0.08,
+          "f0": 500,
+          "f1": 900,
+          "wave": "triangle",
+          "attack": 0.01,
+          "decay": 0.05
+        }
+      }
+    },
+    "PL-mantle": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "click": {
+          "dur": 0.05,
+          "freq": 600
+        },
+        "gain": 0.7
+      }
+    },
+    "PL-hurt": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.15,
+              "attack": 0.003,
+              "decay": 0.12,
+              "lowpass": 700,
+              "highpass": 40
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.12,
+              "f0": 120,
+              "f1": 60,
+              "wave": "sine",
+              "attack": 0.003,
+              "decay": 0.1
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "AMB-level": {
+      "files": [],
+      "volume": 0.3,
+      "jitter": 0,
+      "maxVoices": 1,
+      "loop": true,
+      "synth": {
+        "noise": {
+          "dur": 3,
+          "attack": 0.5,
+          "decay": 2.4,
+          "lowpass": 250,
+          "highpass": 40
+        },
+        "gain": 0.3,
+        "loop": true
+      }
+    },
+    "FX-spawn": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.5,
+              "attack": 0.05,
+              "decay": 0.4,
+              "lowpass": 400,
+              "highpass": 50,
+              "lowpassEnd": 150
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 60,
+              "f1": 140,
+              "wave": "sine",
+              "attack": 0.1,
+              "decay": 0.3
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "FX-part-off": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.08,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.18,
+              "attack": 0.002,
+              "decay": 0.15,
+              "lowpass": 2500,
+              "highpass": 200,
+              "lowpassEnd": 600
+            },
+            "gain": 0.5
+          },
+          {
+            "crackle": {
+              "dur": 0.15,
+              "rate": 25,
+              "decay": 0.05
+            },
+            "gain": 0.45
+          }
+        ]
+      }
+    },
+    "FX-sink": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "noise": {
+          "dur": 0.6,
+          "attack": 0.2,
+          "decay": 0.4,
+          "lowpass": 500,
+          "highpass": 40,
+          "lowpassEnd": 120
+        },
+        "gain": 0.7
+      }
+    }
+  },
+  "blasterCues": {
+    "B01": [
+      {
+        "state": "priming",
+        "at": 0.05,
+        "sound": "B01-pump-back"
+      },
+      {
+        "state": "priming",
+        "at": 0.95,
+        "sound": "B01-pump-fwd"
+      },
+      {
+        "state": "reloading",
+        "at": 0.1,
+        "sound": "B01-mag-out"
+      },
+      {
+        "state": "reloading",
+        "at": 0.7,
+        "sound": "B01-mag-in"
+      }
+    ],
+    "B03": [
+      {
+        "state": "reloading",
+        "at": 0.05,
+        "sound": "B03-latch"
+      },
+      {
+        "state": "reloading",
+        "at": 0.15,
+        "sound": "B03-break-open"
+      },
+      {
+        "state": "reloading",
+        "at": 0.35,
+        "sound": "B03-eject"
+      },
+      {
+        "state": "reloading",
+        "at": 0.55,
+        "sound": "B03-shell-drop"
+      },
+      {
+        "state": "reloading",
+        "at": 0.65,
+        "sound": "B03-load"
+      },
+      {
+        "state": "reloading",
+        "at": 0.75,
+        "sound": "B03-close"
+      }
+    ],
+    "B04": [
+      {
+        "state": "reloading",
+        "at": 0.1,
+        "sound": "B04-mag-out"
+      },
+      {
+        "state": "reloading",
+        "at": 0.8,
+        "sound": "B04-mag-in"
+      }
+    ]
+  },
+  "surfaces": {
+    "foamer": "DT-hit-foamer",
+    "wood": "DT-hit-wood",
+    "cardboard": "DT-hit-cardboard",
+    "plastic": "DT-hit-plastic",
+    "default": "DT-hit-hard"
+  },
+  "player": {
+    "strideWalk": 1.6,
+    "strideSprint": 2.2,
+    "hardLandSpeed": 7
+  }
+}
