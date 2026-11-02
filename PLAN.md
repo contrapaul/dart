@@ -497,7 +497,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | PRE-02 | Write story outline (section 6) | P | |
 | PRE-03 | Collect blaster reference images, one folder per blaster | P | |
 | PRE-04 | Write blaster cards (section 5) | P (B can format) | PRE-03 |
-| PRE-05 | Name and describe Foamers (section 4.2) | P | |
+| PRE-05 | Name and describe Foamers (section 4.2) | P: done 2026-11-02 (CONTENT-PLAN 3, colours 3.4); boss names and looks later | |
 | PRE-06 | Design the DART logo | P | |
 | PRE-07 | Mood board in `reference/mood/` | P | |
 | PRE-08 | Confirm model roster and tool access (11.1) | P | |
