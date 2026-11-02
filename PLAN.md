@@ -670,3 +670,4 @@ All twelve answered 2026-10-29.
 | 2026-11-01 | D14: five ammo types: standard, precision, mega, foam ball, launcher round (B07) (Paul). | CONTENT-PLAN 1A |
 | 2026-11-01 | D15: B03 is a break-action double barrel (Paul). | CONTENT-PLAN 1A |
 | 2026-11-02 | B04's flywheels are internal: the housing is closed, no window; the brief asked for one in error (Paul). | 5.2, B04 brief |
+| 2026-11-02 | Foamer names and looks (Paul, CONTENT-PLAN 3). Foamer colours: purple, orange and lime are the primaries, each Foamer wears all three with the primary varying, shades on one ladder so they look like one factory; accents ink, cream and the core colour; pink, blue and yellow stay off Foamers (parry and darts). Claude assigned the per-Foamer colours (Paul). | CONTENT-PLAN 3.4 |

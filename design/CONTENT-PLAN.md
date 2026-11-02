@@ -96,20 +96,20 @@ Health is in standard-dart hits (a standard dart does 1). Attacks marked
 
 | # | Tier | Behaviour | Attacks | Teaches | Weak point | Health | First seen | Name | Look | Colour |
 |---|---|---|---|---|---|---|---|---|---|---|
-| F01 | Fodder | Slow, walks at you in groups | Bonk at close range | Shooting, finishers | none | 6 | 1-1 | [Paul] | [Paul] | [Paul] |
-| F02 | Fodder | Climbs and keeps distance | Slow foam ball (P) | Parry | none | 8 | 1-2 | | | |
-| F03 | Fodder | Small, fast, comes in packs of 4 to 6 | Nibble swarm | Spread blaster, staying mobile | none | 2 | 1-3 | | | |
-| F04 | Fodder | Holds a shield wall, fires over it | Volley (P) | Flanking, shield charge | Shield can be carved away | 10 | 2-1 | | | |
-| F05 | Heavy | Charges in a straight line, armoured front | Charge, stun on hit | Sidestep, shoot the back | Back | 30 | 1-4 | | | |
-| F06 | Heavy | Floats slowly, spits blobs | Bouncing blobs, one big blob (P) | Shooting up, staggering | Mouth while open | 35 | 2-2 | | | |
-| F07 | Heavy | Melee brawler, leaps and slams | Shockwave ring (jump it) | Dash timing | none | 45 | 2-4 | | | |
-| F08 | Heavy | Slow tank | Walls of foam balls with gaps | Reading patterns | Two arm launchers | 80 | 3-1 | | | |
-| F09 | Heavy | Turret walker, sustained fire | Stream of pellets | Using cover, carving cover | Its gun | 40 | 2-3 | | | |
-| F10 | Elite | Flying, homing shots | Homing foam (P) | Prioritising targets | Its jets | 30 | 3-2 | | | |
-| F11 | Elite | Shield that only a parry breaks | Combo, then a parryable finisher (P) | Parry mastery | Shield | 60 | 3-3 | | | |
-| F12 | Elite | Hides in foam growths, leaps out | Pounce | Clearing growths, awareness | none | 25 | 3-3 | | | |
-| F13 | Elite | Support: rebuilds other Foamers' foam | Heals allies | Target priority | Its tank | 25 | 3-4 | | | |
-| BOSS 1 | Boss | [Paul] | 3 phases, weak points | Act 1 skills | Several | 300 | Boss 1 | [Paul] | [Paul] | [Paul] |
+| F01 | Fodder | Slow, walks at you in groups | Bonk at close range | Shooting, finishers | none | 6 | 1-1 | Slowmer | Like a foam zombie, low menace, sort of like a mildy scary 2 legged cookie monster | Lime body, purple limbs, orange club |
+| F02 | Fodder | Climbs and keeps distance | Slow foam ball (P) | Parry | none | 8 | 1-2 | Roamer | a more 'fit' version of the Slowmer, a bit more menace, looks competent even if not a real threat | Orange body, purple limbs, lime satchel |
+| F03 | Fodder | Small, fast, comes in packs of 4 to 6 | Nibble swarm | Spread blaster, staying mobile | none | 2 | 1-3 | Swarmer | foamy dogs with big mouths | Purple body, lime spines, orange mouth |
+| F04 | Fodder | Holds a shield wall, fires over it | Volley (P) | Flanking, shield charge | Shield can be carved away | 10 | 2-1 | Blocker | an F02 with a shield | Orange body, deep purple shield, lime visor |
+| F05 | Heavy | Charges in a straight line, armoured front | Charge, stun on hit | Sidestep, shoot the back | Back | 30 | 1-4 | Darter | A larger, bipedal mob like a squig in warhammer but made out of foam | Deep purple body, lime armour plate, orange back (weak point) |
+| F06 | Heavy | Floats slowly, spits blobs | Bouncing blobs, one big blob (P) | Shooting up, staggering | Mouth while open | 35 | 2-2 | Floater | Foamy cacodemon from Doom | Lime body, purple tendrils and fins, orange mouth (weak point) |
+| F07 | Heavy | Melee brawler, leaps and slams | Shockwave ring (jump it) | Dash timing | none | 45 | 2-4 | Brawler | A taller, stronger looking F02 with apparent armor that uses a foam sword | Purple body, orange armour, lime sword |
+| F08 | Heavy | Slow tank | Walls of foam balls with gaps | Reading patterns | Two arm launchers | 80 | 3-1 | Trawler | A thicker, more armored mob with emphasis on shields | Deep lime body, purple shields, orange launchers (weak points) |
+| F09 | Heavy | Turret walker, sustained fire | Stream of pellets | Using cover, carving cover | Its gun | 40 | 2-3 | Crawler | A 4-legged tank- literally- very menacing compared to fodder | Deep orange body, purple legs, lime gun (weak point) |
+| F10 | Elite | Flying, homing shots | Homing foam (P) | Prioritising targets | Its jets | 30 | 3-2 | Turbo | A jetpack version of F02, larger and with ability to shoot rcokets | Purple body, lime visor and trim, orange jets (weak point) |
+| F11 | Elite | Shield that only a parry breaks | Combo, then a parryable finisher (P) | Parry mastery | Shield | 60 | 3-3 | Seawall | Strongest looking F02, with a serious shield and a foam hammer | Deep lime armour, purple hammer, orange shield |
+| F12 | Elite | Hides in foam growths, leaps out | Pounce | Clearing growths, awareness | none | 25 | 3-3 | Ambusher | A lean bipedal foamer that leas out like a geist in World of Warcraft or an elite in left for dead | Deep purple body, orange spines, lime eyes |
+| F13 | Elite | Support: rebuilds other Foamers' foam | Heals allies | Target priority | Its tank | 25 | 3-4 | Biomechanic | A fat foamer with a tank of comressed foam that it sprays on others or on you to cause damage | Orange body, purple hood, lime tank (weak point) |
+| BOSS 1 | Boss | [Paul] | 3 phases, weak points | Act 1 skills | Several | 300 | Boss 1 | Foam Demon | [Paul] | [Paul] |
 | BOSS 2 | Boss | [Paul] | | Act 2 skills | | 500 | Boss 2 | | | |
 | BOSS 3 | Boss | [Paul] | | Everything | | 800 | Boss 3 | | | |
 
@@ -248,6 +248,52 @@ arena-boss role (template F15, folded into the act bosses).
   backpack, an arm launcher.
 - Looks stay 'foamy', but range from friendly to menacing, if not quite 'pure evil': big eyes, toothless mouths, rounded shapes combined with weapons, bright
   colours. (Paul, 2026-10-31; section 3.3 has the rules the greyboxes follow.)
+
+
+### 3.4 Colours: one factory (Paul, 2026-11-02)
+
+Paul: purple, orange and lime green are the Foamers' primary colours, with
+accent colours. Shades vary and the colours move between parts, but every
+Foamer looks as if it came from the same factory, and every Foamer touches
+all three colours. Which one is primary varies. Claude assigns the colours
+from this palette.
+
+**Palette.** Each primary comes in three shades on the same light-to-deep
+ladder, so any mix still looks related. The mid shades are the ones already
+in `data/materials.json`.
+
+| Colour | Light | Mid | Deep |
+|---|---|---|---|
+| Purple | `#c9a4ff` | `#9b5cff` | `#5b2fb8` |
+| Orange | `#ffb070` | `#ff7a1a` | `#c24e00` |
+| Lime | `#d4ff7a` | `#b6ff3b` | `#6fae12` |
+
+| Accent | Colour | Used for |
+|---|---|---|
+| Ink | `#2a2340` | Eyes, mouths, seams, straps and gear |
+| Cream | `#fff6e8` | Eye whites, grin rims, highlights, stitching |
+| Core | `#ffe9a8` | Wounds, stumps and pop chunks only (section 3.2) |
+
+**Kept off Foamers:** pink (`#ff4fa3`) means parryable (PLAN.md 3.2), and
+blue (`#2ec4ff`) and yellow (`#ffd23f`) belong to the player's darts. A
+Foamer never wears them, so they always read.
+
+**Rules:**
+- **Three colours on every Foamer:** the primary covers most of the body
+  (about 60%), the secondary the limbs, armour or big gear (about 30%), and
+  the third the small parts: weapons, spines, eyes, trim (about 10%).
+- **Weak points** in the weak point column wear the third colour at its
+  light or mid shade, so the part to shoot stands out from the body.
+- **Shade follows tier:** fodder in mid shades; heavies and elites lean
+  deep, which makes them look heavier. The core colour is pale, so the
+  light lime shade stays off large areas, where a wound would not show.
+- **Types that meet early differ in primary:** F01 is lime, F02 orange and
+  F03 purple, so a mixed group reads at a glance. Types based on the F02
+  (F04, F07, F10, F11) do not share its colours: their gear and shade tell
+  them apart.
+
+The per-Foamer assignments are in the Colour column of the roster above.
+The bosses wait for Paul's looks.
 
 ---
 
