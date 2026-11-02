@@ -16,6 +16,13 @@ toggles. Mods are not checked by eye in first person yet. AUD-01 (sound
 system) is done (merged 2026-11-02): every game event plays
 its sound ID from `data/sounds.json`, as a code-made placeholder until
 Paul's recordings land in `public/audio/` (AUD-01b). M mutes.
+UI-01 is done (merged 2026-11-03): the player has 100 health, Foamer
+attacks hurt (with a 0.5 s grace), the HUD shows a health bar and a cream
+hit flash, and at 0 the player pops with a Try again button. Esc opens a
+pause menu (Resume, Settings, Restart); Settings has the four difficulty
+presets, damage taken, sensitivity, invert, FOV, volume, mute and the
+reduce shake, flashes and head bob switches, saved in localStorage. The
+range has a God mode switch.
 
 A test course: click to capture the mouse, then walk, sprint, jump, dash
 and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
@@ -34,8 +41,7 @@ the player: it walks at you, winds up, and bonks, takes dart damage that
 carves visible chunks and lowers its health, and at zero pops into four
 bursts of foam chunks. A new one walks in about 3 s later from the spawn
 point farthest from the player. Suction darts stick to it and ride along
-while it walks, then drop when it pops. The bonk only logs for now; player
-health comes later.
+while it walks, then drop when it pops. The bonk costs player health (UI-01).
 
 Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
 occlusion into the vertex colours (inside corners, crater floors, the seam
@@ -80,6 +86,17 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: UI-01 merged (Claude)
+
+- Merged `ui-01` into main after Paul's approval. Review fixes on the
+  branch: the hit flash is found on the document (it sits outside the HUD
+  root; the main page crashed on load), and `data/difficulty.json` has no
+  note key, since every key becomes a preset button.
+- Checked in the browser: settings open and save, the Hard preset sticks
+  over a reload, the hit grace works, the range loads. 183 tests pass.
+- Unverified: gamepad Start into the menu, and how damage feels in a real
+  fight; tune `data/player.json` and `data/foamers.json` when arenas exist.
 
 ### 2026-11-02: UI-01 stage 2, pause menu and settings (Qwen 3.8 Flash-next via Pi)
 

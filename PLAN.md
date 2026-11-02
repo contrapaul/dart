@@ -551,7 +551,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | AUD-00 | Record Paul's blasters (session list in 8.3) | P | |
 | AUD-01 | (card: `tasks/AUD-01.md`) Sound system: Web Audio mixer, sound bank in `data/sounds.json` keyed by the IDs in `design/SOUNDS.md`, code-made placeholders for every sound, spatial one-shots and loops, hooks for blasters, darts, Foamers and the player, a Sound panel on the range | Done 2026-11-02 (Pi + Claude review) | GAME-09 |
 | AUD-01b | Paul's recordings (`design/SOUNDS.md`) edited, layered and dropped into the sound bank | Claude + P | AUD-00, AUD-01 |
-| UI-01 | (card: `tasks/UI-01.md`) Player health and damage, HUD v1, pause menu, settings with difficulty presets | Qwen Flash (review) | |
+| UI-01 | (card: `tasks/UI-01.md`) Player health and damage, HUD v1, pause menu, settings with difficulty presets | Done 2026-11-03 (Pi + Claude review) | GAME-09, AUD-01 |
 | QA-02 | Playtest with players aged 10+ [Paul: who?], collect notes | P | all above |
 
 ### Phase 3 (P2): Content
