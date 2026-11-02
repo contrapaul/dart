@@ -369,4 +369,4 @@ so a thorough player maxes out in act 3 and a casual one gets most.
   `data/` JSON, so balance changes need no code.
 - After Paul's answers: section 3 and 4 become `PLAN.md` 4.2 and 5.1, D1 to
   D11 go into the decisions log, and new task cards are written for the
-  upgrade screen (UI-02) and the mod system (GAME-11).
+  upgrade screen (UI-02) and the mod system (GAME-15).

@@ -549,7 +549,8 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ART-05 | Procedural first person animations | F | ART-04 |
 | LVL-01 | One arena blockout with destructible cover and a lock-in | F + P | ENG-06 |
 | AUD-00 | Record Paul's blasters (session list in 8.3) | P | |
-| AUD-01 | Core sfx set: blaster sounds edited from AUD-00 recordings; pops, parry and shield procedural | F + P | AUD-00 |
+| AUD-01 | (card: `tasks/AUD-01.md`) Sound system: Web Audio mixer, sound bank in `data/sounds.json` keyed by the IDs in `design/SOUNDS.md`, code-made placeholders for every sound, spatial one-shots and loops, hooks for blasters, darts, Foamers and the player, a Sound panel on the range | Pi + Claude (review) | GAME-09 |
+| AUD-01b | Paul's recordings (`design/SOUNDS.md`) edited, layered and dropped into the sound bank | Claude + P | AUD-00, AUD-01 |
 | UI-01 | HUD v1, pause, settings with difficulty sliders | F | |
 | QA-02 | Playtest with players aged 10+ [Paul: who?], collect notes | P | all above |
 
@@ -557,7 +558,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 
 | ID | Task | Owner |
 |---|---|---|
-| GAME-11 | Remaining blasters, mods and upgrades | F + B |
+| GAME-15 | Remaining blasters, mods and upgrades (was a second GAME-11, renumbered 2026-11-02) | F + B |
 | GAME-12 | Remaining Foamers and elites | F |
 | GAME-13 | Bosses | A + F |
 | LVL-02 | Act 1 levels | F + P |

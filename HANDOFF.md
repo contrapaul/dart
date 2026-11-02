@@ -79,6 +79,19 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: AUD-01 card written (Claude)
+
+- `tasks/AUD-01.md`: the sound system for Pi. A Web Audio mixer, a sound
+  bank in `data/sounds.json` keyed by the `design/SOUNDS.md` IDs, a
+  placeholder synth so every sound plays before Paul's recordings exist,
+  a voice pool with caps, spatial sounds, hooks for blasters (cue times
+  in data), darts (by surface), Foamers and the player, and a Sound panel
+  on the range to audition recordings. Finished sound files go in
+  `public/audio/` (SOUNDS.md corrected from `assets/audio/`).
+- Editing Paul's recordings is a new row, AUD-01b (Claude and Paul).
+- PLAN.md had two GAME-11 rows; "Remaining blasters, mods and upgrades"
+  is now GAME-15 (also in CONTENT-PLAN section 6). GAME-11 stays leg loss.
+
 ### 2026-11-02: Sound list for Paul (Claude)
 
 - `design/SOUNDS.md` lists every sound the game needs, for Paul to record

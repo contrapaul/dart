@@ -24,7 +24,7 @@ and the tool are unnamed so far).
   Record a few more takes than the list asks for; I pick the best.
 - **Where:** put raw files in `audio-raw/` in the repo folder. It is
   gitignored, so raw recordings never go public. I edit, layer and loop
-  them, and only the finished files go into `assets/audio/`.
+  them, and only the finished files go into `public/audio/`.
 - **File names:** the sound's ID plus a take number, for example
   `B01-fire-03.wav`. A whole session in one long file is fine too; then
   say out loud which sound is next.
