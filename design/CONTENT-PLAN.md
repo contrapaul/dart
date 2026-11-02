@@ -96,7 +96,7 @@ Health is in standard-dart hits (a standard dart does 1). Attacks marked
 
 | # | Tier | Behaviour | Attacks | Teaches | Weak point | Health | First seen | Name | Look | Colour |
 |---|---|---|---|---|---|---|---|---|---|---|
-| F01 | Fodder | Slow, walks at you in groups | Bonk at close range | Shooting, finishers | none | 6 | 1-1 | Slowmer | Like a foam zombie, low menace, sort of like a mildy scary 2 legged cookie monster | Lime body, purple limbs, orange club |
+| F01 | Fodder | Slow, walks at you in groups | Bonk at close range | Shooting, finishers | none | 6 | 1-1 | Slowmer | Like a foam zombie, low menace, sort of like a mildly scary 2 legged cookie monster | Lime body, purple limbs, orange club |
 | F02 | Fodder | Climbs and keeps distance | Slow foam ball (P) | Parry | none | 8 | 1-2 | Roamer | a more 'fit' version of the Slowmer, a bit more menace, looks competent even if not a real threat | Orange body, purple limbs, lime satchel |
 | F03 | Fodder | Small, fast, comes in packs of 4 to 6 | Nibble swarm | Spread blaster, staying mobile | none | 2 | 1-3 | Swarmer | foamy dogs with big mouths | Purple body, lime spines, orange mouth |
 | F04 | Fodder | Holds a shield wall, fires over it | Volley (P) | Flanking, shield charge | Shield can be carved away | 10 | 2-1 | Blocker | an F02 with a shield | Orange body, deep purple shield, lime visor |
@@ -105,10 +105,10 @@ Health is in standard-dart hits (a standard dart does 1). Attacks marked
 | F07 | Heavy | Melee brawler, leaps and slams | Shockwave ring (jump it) | Dash timing | none | 45 | 2-4 | Brawler | A taller, stronger looking F02 with apparent armor that uses a foam sword | Purple body, orange armour, lime sword |
 | F08 | Heavy | Slow tank | Walls of foam balls with gaps | Reading patterns | Two arm launchers | 80 | 3-1 | Trawler | A thicker, more armored mob with emphasis on shields | Deep lime body, purple shields, orange launchers (weak points) |
 | F09 | Heavy | Turret walker, sustained fire | Stream of pellets | Using cover, carving cover | Its gun | 40 | 2-3 | Crawler | A 4-legged tank- literally- very menacing compared to fodder | Deep orange body, purple legs, lime gun (weak point) |
-| F10 | Elite | Flying, homing shots | Homing foam (P) | Prioritising targets | Its jets | 30 | 3-2 | Turbo | A jetpack version of F02, larger and with ability to shoot rcokets | Purple body, lime visor and trim, orange jets (weak point) |
+| F10 | Elite | Flying, homing shots | Homing foam (P) | Prioritising targets | Its jets | 30 | 3-2 | Turbo | A jetpack version of F02, larger and with ability to shoot rockets | Purple body, lime visor and trim, orange jets (weak point) |
 | F11 | Elite | Shield that only a parry breaks | Combo, then a parryable finisher (P) | Parry mastery | Shield | 60 | 3-3 | Seawall | Strongest looking F02, with a serious shield and a foam hammer | Deep lime armour, purple hammer, orange shield |
-| F12 | Elite | Hides in foam growths, leaps out | Pounce | Clearing growths, awareness | none | 25 | 3-3 | Ambusher | A lean bipedal foamer that leas out like a geist in World of Warcraft or an elite in left for dead | Deep purple body, orange spines, lime eyes |
-| F13 | Elite | Support: rebuilds other Foamers' foam | Heals allies | Target priority | Its tank | 25 | 3-4 | Biomechanic | A fat foamer with a tank of comressed foam that it sprays on others or on you to cause damage | Orange body, purple hood, lime tank (weak point) |
+| F12 | Elite | Hides in foam growths, leaps out | Pounce | Clearing growths, awareness | none | 25 | 3-3 | Ambusher | A lean bipedal foamer that leaps out like a geist in World of Warcraft or an elite in left for dead | Deep purple body, orange spines, lime eyes |
+| F13 | Elite | Support: rebuilds other Foamers' foam | Heals allies | Target priority | Its tank | 25 | 3-4 | Biomechanic | A fat foamer with a tank of compressed foam that it sprays on others or on you to cause damage | Orange body, purple hood, lime tank (weak point) |
 | BOSS 1 | Boss | [Paul] | 3 phases, weak points | Act 1 skills | Several | 300 | Boss 1 | Foam Demon | [Paul] | [Paul] |
 | BOSS 2 | Boss | [Paul] | | Act 2 skills | | 500 | Boss 2 | | | |
 | BOSS 3 | Boss | [Paul] | | Everything | | 800 | Boss 3 | | | |
