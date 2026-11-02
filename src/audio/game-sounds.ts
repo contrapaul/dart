@@ -35,12 +35,20 @@
 import type { Blaster, BlasterControls } from "../weapons/blaster";
 import type { Loadout } from "../weapons/loadout";
 import type { PlayerController, PlayerMoveKind } from "../player/controller";
+import type * as THREE from "three";
+import type { DartSystem, DartHit } from "../weapons/darts";
+import type { DartImpacts } from "../weapons/impacts";
 import soundsJson from "../../data/sounds.json";
 import type { AudioSink, LoopHandle } from "./sink";
+
+// A dart's hit plays its surface sound at full volume at this speed and up,
+// scaled by speed below it (the card's dart hooks: full at 30 m/s and up).
+const FULL_HIT_SPEED = 30;
 
 interface Cue { state: string; at: number; sound: string }
 interface SoundsData {
   blasterCues: Record<string, Cue[]>;
+  surfaces: Record<string, string>;
   player: { strideWalk: number; strideSprint: number; hardLandSpeed: number };
 }
 
@@ -54,7 +62,17 @@ export class GameSounds {
   private sink: AudioSink;
   private loadout: Loadout;
   private player: PlayerController;
+  private impacts: DartImpacts | null;
+  // The dart-hit sound id per surface name, built once from the data's
+  // "surfaces" block: a Foamer part is "foamer", a voxel target falls
+  // through to its material's name, everything else "default".
+  private surfaceId = new Map<string, string>();
   private data: SoundsData;
+  // The DART hooks (stage 3a, in the style of Blaster.onShot): a surface
+  // sound per dart hit (the slug type swaps in DT-slug-hit), DT-carve when
+  // a hit removed voxel material, DT-floor when a dart comes to rest.
+  // Surfaces come from the data's "surfaces" block; the dart-hit sound id
+  // of a material is looked up by name (falling back to "default").
   // Cue lists sorted by at, so they play in time order however the data
   // is written.
   private cueLists = new Map<string, Cue[]>();
@@ -81,11 +99,28 @@ export class GameSounds {
   private sprint = false;
 
 
-  constructor(sink: AudioSink, loadout: Loadout, player: PlayerController) {
+  constructor(
+    sink: AudioSink,
+    loadout: Loadout,
+    player: PlayerController,
+    darts: DartSystem,
+    impacts?: DartImpacts,
+  ) {
     this.sink = sink;
     this.loadout = loadout;
     this.player = player;
+    this.impacts = impacts ?? null;
     this.data = soundsJson as unknown as SoundsData;
+    // The dart-hit sound id per surface name, from the data's surfaces block.
+    for (const [surface, id] of Object.entries(this.data.surfaces)) {
+      this.surfaceId.set(surface, id);
+    }
+    // Dart hooks: DartSystem.onDartHit fires after the onHit chain, so
+    // DartImpacts has labelled the hit's material by the time this runs.
+    // DT-carve comes from the impacts' onCarveAt, the same step.
+    darts.onDartHit = (hit) => this.onDartHit(hit);
+    darts.onDartRest = (e) => this.playFloor(e.point);
+    if (this.impacts) this.impacts.onCarveAt = (p) => this.playCarve(p);
     for (const [id, cues] of Object.entries(this.data.blasterCues)) {
       this.cueLists.set(id, [...cues].sort((a, b) => a.at - b.at));
     }
@@ -181,6 +216,42 @@ export class GameSounds {
     this.rev.set(0, 1);
     this.rev.stop();
     this.rev = null;
+  }
+
+  // ---- darts (stage 3a) ----
+
+  /** A dart hit something (DartSystem.onDartHit, fired after the onHit
+   *  chain, so DartImpacts has already labelled the hit's material and
+   *  the Foamer system a part "foamer"). Slugs play DT-slug-hit; the
+   *  rest play the surface sound of what was hit (a Foamer part is
+   *  "foamer", a voxel target its material's name when one is listed,
+   *  anything else "default"), spatial at the hit point, full volume at
+   *  FULL_HIT_SPEED m/s and above. */
+  private onDartHit(hit: DartHit): void {
+    if (hit.type === "slug") {
+      this.sink.play("DT-slug-hit", { position: hit.point });
+      return;
+    }
+    const id = this.surfaceId.get(hit.material ?? "default");
+    if (!id) return;
+    this.sink.play(id, {
+      position: hit.point,
+      volume: Math.min(1, hit.speed / FULL_HIT_SPEED),
+    });
+  }
+
+  /** A dart carve removed voxel material (DartImpacts.onCarveAt; a hit
+   *  that only scuffed a surface does not fire it): DT-carve at the hit
+   *  point. */
+  private playCarve(point: THREE.Vector3): void {
+    this.sink.play("DT-carve", { position: point });
+  }
+
+  /** A dart came to rest on the floor (DartSystem.onDartRest): DT-floor
+   *  at its position. The sound's voice cap keeps a floor full of darts
+   *  from playing one sound each. */
+  private playFloor(point: THREE.Vector3): void {
+    this.sink.play("DT-floor", { position: point });
   }
 
   // ---- the player ----

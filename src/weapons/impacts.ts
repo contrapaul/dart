@@ -3,6 +3,7 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import { DartSystem, type DartHit } from "./darts";
 import dartTuning from "../../data/darts.json";
 import { carveSphere, type RemovedVoxel } from "../voxel/carve";
+import { material } from "../voxel/materials";
 import { DebrisSystem } from "../voxel/debris";
 import type { VoxelVolume } from "../voxel/chunk";
 
@@ -24,6 +25,10 @@ export class DartImpacts {
   /** Called after each carve that removed voxels, with the removed ones.
    *  main uses it to drop the islands (ENG-06). */
   onCarve: (target: VoxelTarget, removed: RemovedVoxel[]) => void = () => {};
+  /** Called once per carve that removed voxels, with the dart's hit
+   *  point in the world. AUD-01's DT-carve sound listens here: onCarve
+   *  carries no position. Reads the hit's own point vector at call time. */
+  onCarveAt: (point: THREE.Vector3) => void = () => {};
   private darts: DartSystem;
 
   constructor(darts: DartSystem, private debris: DebrisSystem, private targets: VoxelTarget[]) {
@@ -48,6 +53,13 @@ export class DartImpacts {
     // Centre the carve slightly inside the surface, in voxel space.
     centreScratch.copy(hit.point).addScaledVector(hit.direction, size * 0.5);
     target.worldToVoxel(centreScratch);
+    // Name the material under the tip for the dart sound of the hit:
+    // the surface of the carve is that material. A Foamer part gets
+    // relabelled "foamer" by the Foamer system, which runs after this.
+    hit.material =
+      material(target.volume.get(
+        Math.floor(centreScratch.x), Math.floor(centreScratch.y), Math.floor(centreScratch.z),
+      ))?.name ?? null;
     const removed = carveSphere(
       target.volume,
       centreScratch.x, centreScratch.y, centreScratch.z,
@@ -61,5 +73,6 @@ export class DartImpacts {
     // Darts stuck to foam that is now gone fall off as loose darts.
     this.darts.releaseInSphere(hit.point, radiusMetres + size);
     this.onCarve(target, removed);
+    this.onCarveAt(hit.point);
   }
 }

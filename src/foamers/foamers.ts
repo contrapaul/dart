@@ -324,7 +324,6 @@ export class FoamerSystem {
    *  capsule sits inside the body voxels; a graze through the gaps is no
    *  hit). */
   private handleHit(hit: DartHit) {
-    if (hit.speed < SPEC.minDamageSpeed) return;
     let f: Foamer | undefined;
     let part: FoamerPart | undefined;
     for (const foamer of this.list) {
@@ -340,6 +339,12 @@ export class FoamerSystem {
       // NoSuchCollider evidence: some hits miss every part and the root.
     }
     if (!f || !part) return;
+    // The dart sound (AUD-01) wants to tell a Foamer part from an ordinary
+    // voxel wall, so the material name DartImpacts just wrote is swapped
+    // for the "foamer" surface. This runs even below the damage speed, so
+    // a soft graze still thumps like foam.
+    hit.material = "foamer";
+    if (hit.speed < SPEC.minDamageSpeed) return;
     const d = SPEC.damage[hit.type];
     const kind = SPEC.partDamage.kinds[part.spec.kind];
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.

@@ -12,8 +12,9 @@ blasters (B01 pump, B04 full-auto, B03 break action) are in the game
 through `Loadout` as animated first person viewmodels; switching is keys 1
 to 3 or the mouse wheel, the HUD shows blaster name, magazine, reserve and
 B03 shell pips, and the range panel has blaster selection and per-mod
-toggles. Mods are not checked by eye in first person yet, and there are no
-sounds.
+toggles. Mods are not checked by eye in first person yet. Sounds exist
+from stage 2 (engine, blaster and player hooks) and 3a (the dart surface,
+carve and floor hooks); see the log.
 
 A test course: click to capture the mouse, then walk, sprint, jump, dash
 and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
@@ -78,6 +79,44 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-02: AUD-01 stage 3a, dart sounds (Pi, Qwen 3.8)
+
+- **Dart sounds only; the Foamer hooks wait for the next stage.** New
+  callback fields (the card's "add one field, no change to existing
+  public APIs"):
+  - `src/weapons/darts.ts` `DartSystem.onDartHit` (the full `DartHit`,
+    fired after the `onHit` chain so subscribers have run) and
+    `DartSystem.onDartRest` (the rest point) (no-op defaults).
+    `DartHit` gains `material` (the voxel material name or `null`).
+  - `src/weapons/impacts.ts` `DartImpacts.onCarveAt` (the hit point,
+    once per carve that removed voxels). It also fills `DartHit.material`
+    from the voxel under the dart's tip.
+- `src/foamers/foamers.ts`: `handleHit` relabels a Foamer part hit as
+  material "foamer" before the damage-speed early return, so even a soft
+  graze thumps like foam in the sounds.
+- `src/audio/game-sounds.ts`: the dart hooks. A non-slug hit plays the
+  surface sound of `data/sounds.json`'s `surfaces` block by material
+  name (Foamer part "foamer", voxel target its material, else
+  "default"), spatial at the hit point, volume scaled by speed and full
+  at 30 m/s and above. A slug plays `DT-slug-hit`. A carve plays
+  `DT-carve` at the hit point. A dart at rest plays `DT-floor` at its
+  position (the sound's `maxVoices` caps it). `GameSounds` now takes the
+  `DartSystem` (required) and the `DartImpacts` (optional: a page without
+  them passes none) after `player`; both pages and the existing tests'
+  construction were updated to match.
+- Card test 7 in `tests/audio/game-sounds.test.ts`: a hit on a wood
+  voxel wall plays `DT-hit-wood`, a plain collider `DT-hit-hard`, a slug
+  `DT-slug-hit`, a hit on a spawned Foamer's part `DT-hit-foamer`, each
+  at the hit point.
+- Unverified by ear: the actual sounds (Paul records the files; the
+  synth placeholders stand in). Hand-checked in a run of each page: a
+  burst and a wood wall on the main page, and a Foamer part on the
+  test range. Test-writing gotchas found along the way: Rapier's
+  `ColliderDesc.cuboid` takes half extents, so a collider bigger than its
+  voxel volume leaves the material look-up empty; and the Foamer's root
+  capsule sits in front of the parts on a dart aimed at low height at
+  the body centre, so a test hit on the part fires higher.
 
 ### 2026-11-02: AUD-01 stage 2 (Pi, Qwen 3.8)
 

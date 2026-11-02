@@ -1,8 +1,9 @@
-// AUD-01 stage 2, card tests 5, 6, 9 and 10: GameSounds against a fake
-// AudioSink that records every play and loop call. The blaster tests drive
-// the real Loadout and Blaster classes with fixed fake viewmodels and a
-// quiet dart sink; the player tests drive the real PlayerController on a
-// flat Rapier floor.
+// AUD-01 stages 2 and 3a, card tests 5, 6, 7, 9 and 10: GameSounds
+// against a fake AudioSink that records every play and loop call. The
+// blaster tests drive the real Loadout and Blaster classes with fixed
+// fake viewmodels and a quiet dart sink; the player tests drive the real
+// PlayerController on a flat Rapier floor; the dart surface tests drive
+// the full DartSystem -> DartImpacts -> FoamerSystem chain.
 import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
@@ -12,6 +13,14 @@ import { Loadout } from "../../src/weapons/loadout";
 import { PlayerController } from "../../src/player/controller";
 import type { Input } from "../../src/core/input";
 import { GameSounds } from "../../src/audio/game-sounds";
+import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
+import { DartSystem } from "../../src/weapons/darts";
+import { VoxelVolume } from "../../src/voxel/chunk";
+import { materialId, linearColorTable } from "../../src/voxel/materials";
+import { greedyMesh } from "../../src/voxel/mesher";
+import type { Mesher } from "../../src/voxel/pieces";
+import { DebrisSystem } from "../../src/voxel/debris";
+import { FoamerSystem } from "../../src/foamers/foamers";
 import type { DartTypeName } from "../../src/weapons/darts";
 import type {
   AudioSink,
@@ -117,6 +126,13 @@ function moveInput() {
   return { state, input };
 }
 
+/** Node has no Worker: mesh synchronously on the main thread, as the
+ *  worker would. Same rig as the Foamer tests. */
+function fakeMesher(): Mesher {
+  const colors = linearColorTable();
+  return { mesh: (padded) => Promise.resolve(greedyMesh(padded, colors)) };
+}
+
 function makeProbed() {
   const lo = makeLo();
   const sink = new FakeSink();
@@ -126,7 +142,11 @@ function makeProbed() {
     world,
     new THREE.Vector3(-40, 0, 0),
   );
-  const gs = new GameSounds(sink, lo, player);
+  const ignore = world.createCollider(
+    RAPIER.ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 100, 0),
+  );
+  const darts = new DartSystem(new THREE.Scene(), world, RAPIER, ignore);
+  const gs = new GameSounds(sink, lo, player, darts);
   return { lo, sink, player, world, gs };
 }
 
@@ -237,6 +257,125 @@ describe("card test 6: B03", () => {
   });
 });
 
+/* The card test 7 rig: the full dart chain (DartImpacts before the Foamer
+ * system, so the Foamer relabel runs last), a wood voxel wall with a
+ * collider flush to the volume, and a plain box collider. GameSounds is
+ * wired on the same darts and impacts the darts use. */
+function surfRig() {
+  const sink = new FakeSink();
+  const lo = makeLo();
+  const world = flatWorld();
+  const player = new PlayerController(
+    RAPIER,
+    world,
+    new THREE.Vector3(-40, 0, 0),
+  );
+  const ignore = world.createCollider(
+    RAPIER.ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 100, 0),
+  );
+  const darts = new DartSystem(new THREE.Scene(), world, RAPIER, ignore);
+  const debris = new DebrisSystem(RAPIER, world);
+  // The wood wall: 29 x 4 x 4 voxels (2.9 m x 0.4 m x 0.4 m) from
+  // x -3 to -0.1, z 0 to 0.4. The collider is flush with the faces, so a
+  // hit point sits on a volume face and the carve centre is in range.
+  const vol = new VoxelVolume(0.1);
+  vol.fillBox(-30, 0, 0, 29, 4, 4, materialId("wood"));
+  const wallBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(1.45, 0.2, 0.2).setTranslation(-1.55, 0.2, 0.2),
+    wallBody,
+  );
+  // A plain collider a dart can hit that no voxel target owns: the
+  // "default" surface (the card's DT-hit-hard case).
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5).setTranslation(2.5, 0.25, 0.25),
+    world.createRigidBody(RAPIER.RigidBodyDesc.fixed()),
+  );
+  const targets: VoxelTarget[] = [
+    {
+      volume: vol,
+      owns: (c) => c.parent()?.handle === wallBody.handle,
+      worldToVoxel: (v) => v.divideScalar(0.1),
+      voxelToWorld: (v) => v.multiplyScalar(0.1),
+    },
+  ];
+  const impacts = new DartImpacts(darts, debris, targets);
+  const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
+  const gs = new GameSounds(sink, lo, player, darts, impacts);
+  world.step();
+  return { sink, world, darts, foamers, impacts, gs };
+}
+
+/** Fire one dart from (x, y, z) toward -z and step the world. */
+function fireForward(
+  R: ReturnType<typeof surfRig>,
+  x: number,
+  y: number,
+  z: number,
+  type: DartTypeName = "standard",
+  n = 240,
+) {
+  R.darts.fire(new THREE.Vector3(x, y, z), new THREE.Vector3(0, 0, -1), type);
+  for (let i = 0; i < n; i++) {
+    R.darts.update(DT);
+    R.world.step();
+  }
+}
+
+function posOf(e: { id: string; opts?: PlayOptions }): THREE.Vector3 {
+  expect(e.opts?.position).toBeDefined();
+  return e.opts!.position!;
+}
+
+describe("card test 7: dart surfaces", () => {
+  it("a hit on a wood voxel target plays DT-hit-wood at the hit point", () => {
+    const R = surfRig();
+    fireForward(R, -1.55, 0.25, 2);
+    const e = R.sink.log.find((x) => x.id === "DT-hit-wood");
+    expect(e).toBeDefined();
+    // The wall face the dart strikes is at z 0.4, at the fired x and y.
+    expect(posOf(e!).distanceTo(new THREE.Vector3(-1.55, 0.25, 0.4))).toBeLessThanOrEqual(0.3);
+  });
+
+  it("a hit on a plain collider plays DT-hit-hard at the hit point", () => {
+    const R = surfRig();
+    fireForward(R, 2.5, 0.25, 2);
+    const e = R.sink.log.find((x) => x.id === "DT-hit-hard");
+    expect(e).toBeDefined();
+    expect(posOf(e!).distanceTo(new THREE.Vector3(2.5, 0.25, 0.5))).toBeLessThanOrEqual(0.3);
+  });
+
+  it("a slug hit plays DT-slug-hit at the hit point", () => {
+    const R = surfRig();
+    fireForward(R, 2.5, 0.25, 2, "slug");
+    const e = R.sink.log.find((x) => x.id === "DT-slug-hit");
+    expect(e).toBeDefined();
+    expect(posOf(e!).distanceTo(new THREE.Vector3(2.5, 0.25, 0.5))).toBeLessThanOrEqual(0.3);
+    // A slug is its own sound: it never takes the plain surface sound.
+    expect(R.sink.log.find((x) => x.id === "DT-hit-hard")).toBeUndefined();
+  });
+
+  it("a hit on a Foamer part plays DT-hit-foamer at the hit point", async () => {
+    const R = surfRig();
+    const f = R.foamers.spawn(
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 0, 1),
+    );
+    expect(f).not.toBeNull();
+    // Let the remeshed part colliders land before the dart flies.
+    for (const part of f!.parts.values()) part.mesh.update();
+    await new Promise((r) => setTimeout(r, 0));
+    R.world.step();
+    R.world.step();
+    fireForward(R, 0, 0.7, 3);
+    const e = R.sink.log.find((x) => x.id === "DT-hit-foamer");
+    expect(e).toBeDefined();
+    // The Foamer faced +z and stood at the origin; the hit is on one of
+    // its parts, roughly a metre tall and in front of the feet.
+    expect(posOf(e!).distanceTo(new THREE.Vector3(0, 0.7, 0.3))).toBeLessThanOrEqual(0.4);
+  });
+});
+
 describe("card test 9: player", () => {
   it("16 m of walking plays PL-step-hard 10 times (plus or minus 1)", () => {
     const { player, world, sink, gs } = makeProbed();
@@ -307,7 +446,11 @@ describe("card test 9: player", () => {
         new THREE.Vector3(-20, h, 0),
       );
       const sink = new FakeSink();
-      new GameSounds(sink, makeLo(), player);
+      const ignore = world.createCollider(
+        RAPIER.ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 100, 0),
+      );
+      const darts = new DartSystem(new THREE.Scene(), world, RAPIER, ignore);
+      new GameSounds(sink, makeLo(), player, darts);
       const { input } = moveInput();
       let guard = 0;
       while (guard++ < 400) {

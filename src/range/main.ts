@@ -102,7 +102,7 @@ function startAudio() {
   AudioEngine.create(camera)
     .then((e) => {
       engine = e;
-      sounds = new GameSounds(e, loadout, player);
+      sounds = new GameSounds(e, loadout, player, darts, impacts);
       buildSoundPanel();
     })
     .catch(() => { /* no Web Audio on this host: the range goes on silent */ })
@@ -122,7 +122,7 @@ Loadout.muzzleToWorld = (camPoint, out) => {
 // pushes each part in and out as Foamers spawn and go.
 const voxelTargets: VoxelTarget[] = [];
 // Dart hits on the Foamer parts carve craters and throw foam debris.
-new DartImpacts(darts, debris, voxelTargets);
+const impacts = new DartImpacts(darts, debris, voxelTargets);
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
 foamers.spawnCount = R.spawn.count;
 foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
