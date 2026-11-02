@@ -544,7 +544,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ART-00 | (card: `tasks/ART-00.md`) Spike: Kimi K3.1 Pro through Pi builds B01 in Blender from its brief (script, `.glb`, renders) to the section 5.2 contract; record time, cost and quality. Go / no-go for the Blender route (was: Hunyuan3D) | Kimi via Pi (done 2026-11-01: go) | |
 | ART-01 | Cards and design briefs for all 8 blasters (`design/blasters/Bxx.md`) from CONTENT-PLAN 4 and the reference photos, Paul approves | Claude + P | |
 | ART-02 | Folded into ART-04: the Blender renders are the turnarounds Paul approves | | |
-| ART-03 | Code-generated blocky voxel Foamers (3 types), Paul approves | F | PRE-05 |
+| ART-03 | (card: `tasks/ART-03.md`) Code-generated blocky voxel Foamers (3 types: F01, F02, F05 in the palette), Paul approves | Kimi via Pi + Claude review | PRE-05 |
 | ART-04 | The 3 slice blasters modelled in Blender by script (Kimi), named moving parts, to the section 5.2 contract; the other 5 in Phase 3 | Kimi via Pi (slice 3 done 2026-11-01; other 5 in Phase 3) | ART-00, ART-01 |
 | ART-05 | Procedural first person animations | F | ART-04 |
 | LVL-01 | One arena blockout with destructible cover and a lock-in | F + P | ENG-06 |
