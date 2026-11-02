@@ -81,6 +81,70 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ENG-08 stage 2 (DeepSeek V4.1 Flash)
+
+Grid navigation and steering: `src/ai/nav-grid.ts`, `src/ai/steer.ts`, the
+`nav` and `steer` blocks in `data/ai.json`, 18 tests in
+`tests/ai/nav-grid.test.ts` and `tests/ai/steer.test.ts`. Pure numbers and
+typed arrays; Three.js is not imported.
+
+`NavGrid` bakes a rectangle of the level into a 0.25 m grid: a downward ray
+from 8 m finds the ground, the hit normal rejects slopes over 40 degrees,
+and an agent sized capsule (0.35 m radius, 1.6 m tall) standing on that
+ground must hit nothing. Ground height and a walkable flag live in two
+typed arrays. `rebake(minX, minZ, maxX, maxZ)` redoes only the cells in
+that rectangle plus one agent radius around it, for `impacts.onCarve` and
+for a falling piece that rests. `findPath(from, to, out)` is A* on
+8-connected cells with no corner cutting and a 0.45 m step limit between
+neighbours, string pulled to the fewest waypoints, writing into caller
+owned arrays: no allocation per query after the first. An unwalkable or
+walled off goal paths to the reachable cell nearest it. `steer` seeks the
+next waypoint, eases to a stop inside `arriveRadius` 0.6 m of the last one,
+and pushes away from neighbours nearer than `separation` 0.9 m.
+
+Measured in the test runner: bake of a 40 by 40 m floor 27.8 ms, path
+query across it 1.1 ms with 4 waypoints (targets under 150 ms and under
+2 ms).
+
+Decisions and why (PLAN.md 14, row of 2026-11-03):
+- A walkable grid, not a recast navmesh. The level is destructible, so a
+  navmesh would need re-baking around every carve, which is the cost 4.3
+  exists to avoid. A grid re-bakes a small rectangle instead, needs no new
+  dependency, and is plain typed arrays.
+- Cells are test baked from the physics world, not from the voxel data:
+  pieces that have fallen, ramps and the level all come out the same way,
+  and there is one source of truth for what is solid.
+- Kinematic bodies are skipped in the bake. The player and Foamers are
+  kinematic, so nobody steers around an agent that is steering; pieces
+  (dynamic) and the level (fixed) are found.
+- The standing shape is lifted by `maxStep` before the shape cast. Without
+  that lift every 0.45 m step reads as a wall, because the capsule's lower
+  half is inside the step. With it, a step the character controller walks
+  up passes and a 1 m ledge still fails.
+- A* uses an indexed heap with decrease-key, one entry per open cell.
+  Lazy duplicate insertion overflowed the fixed heap on a long search.
+- The goal that cannot be reached falls back to a second A* that may end
+  anywhere and keeps the cell nearest the goal. Picking the nearest
+  walkable cell first is wrong: it can be an isolated pocket under a ramp.
+
+Two things to know when wiring this in stage 3:
+- Rapier's query pipeline only updates on `world.step()`. A bake or rebake
+  straight after adding or removing a collider queries the old world, so
+  the game must rebake after the step that applies the change (or call the
+  query pipeline update). The tests step before every bake.
+- A wall's own top is stand-able ground, so its cells are walkable; what
+  stops a path climbing a 2 m wall is the step limit, not the flag. The
+  tests assert paths and ground heights rather than the flag for that
+  reason.
+
+Unverified: nothing in the game calls the grid or steering yet (stage 3
+wires them into the Foamer loop). Bake cost on the real 40 by 40 m course
+with its voxel wall and towers is not measured; the 27.8 ms above is a
+plain floor in the test runner. The rebake cost per carve is not measured
+either, only reasoned about. Grid resolution 0.25 m is from the card and
+has not been tuned against a 0.35 m agent walking through the course.
+
+
 ### 2026-11-02: ENG-08 stage 1 (DeepSeek V4.1 Flash)
 
 The AI director: `src/ai/director.ts` plus `data/ai.json`, 8 tests in
