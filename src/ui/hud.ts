@@ -34,7 +34,9 @@ export class Hud {
     this.bar = root.querySelector<HTMLElement>("#health .bar")!;
     this.barFill = this.bar.querySelector<HTMLElement>("i")!;
     this.healthNum = root.querySelector<HTMLElement>("#health .num")!;
-    this.flash = root.querySelector<HTMLElement>("#hitflash")!;
+    // The edge glow sits outside the HUD root (it shows over the popped
+    // overlay too), so it is looked up on the document.
+    this.flash = document.querySelector<HTMLElement>("#hitflash")!;
     this.setHealth(0, 0); // hides until the first real update
     this.lastHp = -1;
     this.lastMax = -1;

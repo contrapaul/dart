@@ -1,4 +1,5 @@
 {
+  "_note": "Difficulty presets (D10, UI-01). damageTaken multiplies every hit on the player. director names the attack token pool in data/ai.json (ENG-08). Names are Paul's to change.",
   "story": { "name": "Story", "damageTaken": 0.5, "director": "story" },
   "normal": { "name": "Normal", "damageTaken": 1, "director": "normal" },
   "hard": { "name": "Hard", "damageTaken": 1.5, "director": "hard" },
