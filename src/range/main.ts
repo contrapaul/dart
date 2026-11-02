@@ -102,7 +102,7 @@ function startAudio() {
   AudioEngine.create(camera)
     .then((e) => {
       engine = e;
-      sounds = new GameSounds(e, loadout, player, darts, impacts);
+      sounds = new GameSounds(e, loadout, player, darts, impacts, foamers);
       buildSoundPanel();
     })
     .catch(() => { /* no Web Audio on this host: the range goes on silent */ })

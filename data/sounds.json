@@ -1200,6 +1200,54 @@
         },
         "gain": 0.7
       }
+    },
+    "F01-swing": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.2,
+          "attack": 0.02,
+          "decay": 0.15,
+          "lowpass": 1200,
+          "highpass": 200,
+          "lowpassEnd": 3500
+        },
+        "gain": 0.6
+      }
+    },
+    "F01-bonk": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.12,
+              "attack": 0.002,
+              "decay": 0.1,
+              "lowpass": 900,
+              "highpass": 60
+            },
+            "gain": 0.7
+          },
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 90,
+              "f1": 50,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.08
+            },
+            "gain": 0.5
+          }
+        ]
+      }
     }
   },
   "blasterCues": {

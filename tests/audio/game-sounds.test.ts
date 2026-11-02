@@ -21,6 +21,9 @@ import { greedyMesh } from "../../src/voxel/mesher";
 import type { Mesher } from "../../src/voxel/pieces";
 import { DebrisSystem } from "../../src/voxel/debris";
 import { FoamerSystem } from "../../src/foamers/foamers";
+import type { Foamer } from "../../src/foamers/foamer";
+import type { FoamerPart } from "../../src/foamers/foamer-part";
+import foamerData from "../../data/foamers.json";
 import type { DartTypeName } from "../../src/weapons/darts";
 import type {
   AudioSink,
@@ -301,9 +304,9 @@ function surfRig() {
   ];
   const impacts = new DartImpacts(darts, debris, targets);
   const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
-  const gs = new GameSounds(sink, lo, player, darts, impacts);
+  const gs = new GameSounds(sink, lo, player, darts, impacts, foamers);
   world.step();
-  return { sink, world, darts, foamers, impacts, gs, vol };
+  return { sink, world, darts, foamers, impacts, gs, vol, player };
 }
 
 /** Fire one dart from (x, y, z) toward -z and step the world. */
@@ -383,9 +386,206 @@ describe("card test 7: dart surfaces", () => {
   });
 });
 
+/* Card test 8 rig (the card's "the fake sink": GameSounds on a
+ * FakeSink). One fixed step runs in the game's own order: the Foamer
+ * system, the world, then the sounds. Hits are real standard darts fired
+ * 1 m out at the part's centre, the way the parts tests do it. The pop
+ * comes from a temporary edit to the data's pop types, restored in a
+ * finally, because the shipped data pops no starter dart. */
+const _eye8 = new THREE.Vector3();
+
+function tick8(R: ReturnType<typeof surfRig>, player: THREE.Vector3, n = 4) {
+  for (let i = 0; i < n; i++) {
+    R.foamers.update(DT, R.player.eye(1, _eye8).copy(player));
+    R.darts.update(DT);
+    R.world.step();
+    R.gs.update(DT, NO);
+  }
+}
+
+/** One approach F01 at the origin, facing the player. */
+async function spawnF01(
+  R: ReturnType<typeof surfRig>,
+  face: THREE.Vector3,
+): Promise<Foamer> {
+  R.foamers.spawnCount = 0; // the test owns the population
+  R.foamers.spawnPoints = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  const f = R.foamers.spawn(new THREE.Vector3(0, 0, 0), face)!;
+  for (const part of f.parts.values()) part.mesh.update(); // land colliders
+  await new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < 3; i++) {
+    R.world.step();
+    R.gs.update(DT, NO);
+  }
+  return f;
+}
+
+/** Fire one standard dart 1 m back along dir, at the part's centre. */
+function fireAtPart(
+  R: ReturnType<typeof surfRig>,
+  part: FoamerPart,
+  dir: [number, number, number],
+) {
+  const d = new THREE.Vector3(...dir).normalize();
+  const c = part.voxelToWorld(
+    new THREE.Vector3(
+      part.spec.size[0] / 2, part.spec.size[1] / 2, part.spec.size[2] / 2,
+    ),
+  );
+  R.darts.fire(c.addScaledVector(d, -1), d, "standard");
+}
+
+/** Break one part by dart misses; the candidate side is the one whose 1 m
+ *  line of fire touches no other part. */
+async function breakLeg(
+  R: ReturnType<typeof surfRig>,
+  f: Foamer,
+  id: string,
+): Promise<void> {
+  const cands = [
+    [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0],
+  ] as [number, number, number][];
+  const part = f.parts.get(id)!;
+  let dir = cands[0]!;
+  for (const d of cands) {
+    const dd = new THREE.Vector3(...d).normalize();
+    const c = part.voxelToWorld(new THREE.Vector3(
+      part.spec.size[0] / 2, part.spec.size[1] / 2, part.spec.size[2] / 2));
+    let clear = true;
+    for (const o of f.parts.values()) {
+      if (o === part) continue;
+      const oc = o.voxelToWorld(new THREE.Vector3(
+        o.spec.size[0] / 2, o.spec.size[1] / 2, o.spec.size[2] / 2));
+      const t = c.addScaledVector(dd, 1);
+      if (
+        Math.abs(t.x - oc.x) < 0.35 &&
+        Math.abs(t.y - oc.y) < 0.45 &&
+        Math.abs(t.z - oc.z) < 0.35
+      ) { clear = false; break; }
+      t.set(c.x, c.y, c.z);
+    }
+    if (clear) { dir = d; break; }
+  }
+  for (let i = 0; i < 10 && f.parts.has(id); i++) {
+    fireAtPart(R, f.parts.get(id)!, dir);
+    tick8(R, new THREE.Vector3(99, 0, 99), 60); // the player far off
+  }
+  if (f.parts.has(id)) throw new Error("could not break " + id);
+}
+
+describe("card test 8: Foamers", () => {
+  it("a standard-dart kill plays FX-wound per damaging hit, one FX-topple, and FX-fizz-out 0.3 s later", async () => {
+    const R = surfRig();
+    const player = new THREE.Vector3(0, 1, 11);
+    const f = await spawnF01(R, new THREE.Vector3(0, 0, 1));
+    // One body dart at a time until it is down. The shipped data has no
+    // popping starter dart, so the kill is a down, not a pop.
+    let guard = 0;
+    while (f.state !== "down" && guard++ < 80) {
+      fireAtPart(R, f.parts.get("body")!, [0, 0, 1]);
+      tick8(R, player, 9);
+    }
+    expect(f.state, "killed").toBe("down");
+    // FX-wound once per damaging hit, spatial at the hit part.
+    const seen = ids(R.sink.log);
+    expect(
+      countOf(seen, "FX-wound"),
+      "one wound line per damaging dart",
+    ).toBe(R.foamers.stats.hits);
+    expect(R.foamers.stats.hits).toBeGreaterThanOrEqual(3);
+    const w = R.sink.log.find((x) => x.id === "FX-wound")!;
+    expect(w.opts?.position, "the hit part's position").toBeDefined();
+    // One topple for the down.
+    expect(countOf(seen, "FX-topple"), "one topple for the down").toBe(1);
+    // The fizz-out lands 0.3 s (about 18 ticks) after the topple, not
+    // with it: step until it has been heard.
+    let i = 0;
+    while (ids(R.sink.log).indexOf("FX-fizz-out") < 0 && i++ < 60) {
+      tick8(R, player, 1);
+    }
+    const seen2 = ids(R.sink.log);
+    expect(countOf(seen2, "FX-fizz-out"), "the fizz-out once").toBe(1);
+    const ti = seen2.indexOf("FX-topple");
+    const fi = seen2.indexOf("FX-fizz-out");
+    expect(fi).toBeGreaterThan(ti);
+    expect(fi - ti, "about 0.3 s, not 1 s").toBeLessThan(32);
+  });
+
+  it("a broken leg plays FX-part-off once, at the part", async () => {
+    const R = surfRig();
+    const f = await spawnF01(R, new THREE.Vector3(0, 0, 1));
+    await breakLeg(R, f, "legL");
+    const seen = ids(R.sink.log);
+    expect(
+      countOf(seen, "FX-part-off"),
+      "one part-off line for the one leg",
+    ).toBe(1);
+    const p = R.sink.log.find((x) => x.id === "FX-part-off")!;
+    expect(p.opts?.position, "spatial, at the part").toBeDefined();
+    // A one-leg loss is a handicap, not a down: no topple unless the other
+    // arm went too.
+    if (f.state !== "down") {
+      expect(countOf(seen, "FX-topple")).toBe(0);
+    }
+  });
+
+  it("a pop plays FX-pop and FX-chunk", async () => {
+    // The card lets pop types come from the data: edit them in, pop,
+    // restore.
+    const popTypes = foamerData.test.catastrophic.popTypes as string[];
+    const saved = popTypes.splice(0);
+    popTypes.push("standard");
+    try {
+      const R = surfRig();
+      const f = await spawnF01(R, new THREE.Vector3(0, 0, 1));
+      // Three body darts in the 0.1 s catastrophic window: the sum (3)
+      // is past the pop share (0.4 x 6 = 2.4), so the burst pops.
+      f.health = 3;
+      for (let i = 0; i < 3; i++) fireAtPart(R, f.parts.get("body")!, [0, 0, 1]);
+      let guard = 0;
+      while (
+        R.foamers.stats.popped < 1 &&
+        f.health > 0 &&
+        f.state !== "down" &&
+        guard++ < 180
+      ) {
+        tick8(R, new THREE.Vector3(99, 0, 99), 1);
+      }
+      expect(R.foamers.stats.popped, "it popped").toBe(1);
+      const seen = ids(R.sink.log);
+      expect(countOf(seen, "FX-pop"), "one pop line").toBe(1);
+      expect(countOf(seen, "FX-chunk"), "one chunk line").toBe(1);
+      expect(seen.indexOf("FX-chunk")).toBeGreaterThanOrEqual(
+        seen.indexOf("FX-pop"),
+      );
+    } finally {
+      popTypes.push(...saved);
+    }
+  });
+
+  it("a walking F01 plays footsteps at about two per walk cycle, within one over 3 s", async () => {
+    const R = surfRig();
+    const player = new THREE.Vector3(0, 1, 40); // far: it approaches all 3 s
+    const f = await spawnF01(R, new THREE.Vector3(0, 0, 40));
+    expect(f.state, "walking toward the player").toBe("approach");
+    const before = R.sink.log.length;
+    tick8(R, player, 180); // 3 s
+    const seen = ids(R.sink.log).slice(before);
+    const steps = countOf(seen, "FX-step-medium");
+    // It has walked: the gait has advanced past the first half.
+    expect(f.gait).toBeGreaterThan(0.5);
+    // Over 3 s of walking the walk cycle runs once: about two foot plants,
+    // within one.
+    expect(steps).toBeGreaterThanOrEqual(1);
+    expect(steps).toBeLessThanOrEqual(3);
+    const s = R.sink.log.find((x) => x.id === "FX-step-medium")!;
+    expect(s, "at least one step over 3 s").toBeDefined();
+    expect(s.opts?.position, "spatial, at the Foamer").toBeDefined();
+  });
+});
+
 describe("card test 9: player", () => {
-  it("16 m of walking plays PL-step-hard 10 times (plus or minus 1)", () => {
-    const { player, world, sink, gs } = makeProbed();
+  it("16 m of walking plays PL-step-hard 10 times (plus or minus 1)", () => {    const { player, world, sink, gs } = makeProbed();
     const { state, input } = moveInput();
     state.move.x = 1; // walk along +x at yaw 0
     const eye = new THREE.Vector3();

@@ -38,8 +38,10 @@ import type { PlayerController, PlayerMoveKind } from "../player/controller";
 import type * as THREE from "three";
 import type { DartSystem, DartHit } from "../weapons/darts";
 import type { DartImpacts } from "../weapons/impacts";
+import type { FoamerSystem } from "../foamers/foamers";
 import soundsJson from "../../data/sounds.json";
 import type { AudioSink, LoopHandle } from "./sink";
+import { FoamerSounds } from "./foamer-sounds";
 
 // A dart's hit plays its surface sound at full volume at this speed and up,
 // scaled by speed below it (the card's dart hooks: full at 30 m/s and up).
@@ -63,6 +65,7 @@ export class GameSounds {
   private loadout: Loadout;
   private player: PlayerController;
   private impacts: DartImpacts | null;
+  private foamers: FoamerSounds | null;
   // The dart-hit sound id per surface name, built once from the data's
   // "surfaces" block: a Foamer part is "foamer", a voxel target falls
   // through to its material's name, everything else "default".
@@ -105,11 +108,13 @@ export class GameSounds {
     player: PlayerController,
     darts: DartSystem,
     impacts?: DartImpacts,
+    foamers?: FoamerSystem,
   ) {
     this.sink = sink;
     this.loadout = loadout;
     this.player = player;
     this.impacts = impacts ?? null;
+    this.foamers = new FoamerSounds(sink, foamers ?? null);
     this.data = soundsJson as unknown as SoundsData;
     // The dart-hit sound id per surface name, from the data's surfaces block.
     for (const [surface, id] of Object.entries(this.data.surfaces)) {
@@ -140,6 +145,7 @@ export class GameSounds {
     this.sprint = controls.sprintHeld;
     this.watchBlaster(controls);
     this.watchSteps(dt);
+    this.foamers?.update(dt);
   }
 
   // ---- blasters ----

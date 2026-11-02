@@ -231,7 +231,7 @@ input.onLockChange = (locked) => {
   if (locked && !engine && !audioStarting) {
     audioStarting = true;
     AudioEngine.create(camera)
-      .then((e) => { engine = e; sounds = new GameSounds(e, loadout, player, darts, impacts); })
+      .then((e) => { engine = e; sounds = new GameSounds(e, loadout, player, darts, impacts, foamers); })
       .catch(() => { /* no Web Audio on this host: the game stays silent */ })
       .finally(() => { audioStarting = false; });
   }
