@@ -6,6 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+ART-03 done 2026-11-03: Slowmer, Roamer and Darter have palette rigs,
+deterministic turnaround renders and sheets in `design/foamers/`; Paul's
+visual approval is still pending.
+
 PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
 GAME-03 (test Foamer) done. GAME-09 done (merged 2026-11-02): the three
 blasters (B01 pump, B04 full-auto, B03 break action) are in the game
@@ -80,6 +84,20 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: ART-03 Slowmer, Roamer and Darter (Kimi via Pi)
+
+- Added the light and deep purple, orange and lime palette materials and
+  rebuilt F01, F02 and F05 to their CONTENT-PLAN silhouettes and colours.
+- Added `tools/render-rig.ts`: real rig volumes and rest poses become four
+  orthographic PNG views and a labelled sheet, with no new dependencies.
+- Slowmer keeps its original part sizes and combat volumes. Longer arms and
+  body nubs broke existing hit and ragdoll tests, so its shaggy nubs are on
+  the head. Darter has split front armour, a rear orange weak point and a
+  paint-only `gapeScale` option for a readable mouth.
+- Added palette, F01 gameplay-contract and deterministic-PNG tests. All
+  172 active tests and TypeScript checking pass; final sheets were checked
+  visually. Paul's approval and in-game framing remain unverified.
 
 ### 2026-11-02: AUD-01 stage 3b and final review (Pi, Claude)
 

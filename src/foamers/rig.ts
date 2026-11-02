@@ -42,6 +42,8 @@ export interface PartSpec {
   /** A toothless mouth on the +z face, under the eyes: a painted grin, or
    *  a gaping hole (ellipsoids only; others get it painted). */
   mouth?: "grin" | "gape";
+  /** Scale a gaping mouth without changing the part's collision box. */
+  gapeScale?: number;
   /** Paint the bottom `length` voxels (the muzzle of a barrel that hangs
    *  from its pivot) another material. */
   tip?: { material: string; length: number };
@@ -166,7 +168,8 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
     }
     return 0;
   };
-  const mouthY = cy - sy * 0.22, mouthW = sx * 0.26, mouthH = Math.max(1.5, sy * 0.13);
+  const mouthScale = part.mouth === "gape" ? (part.gapeScale ?? 1) : 1;
+  const mouthY = cy - sy * 0.22, mouthW = sx * 0.26 * mouthScale, mouthH = Math.max(1.5, sy * 0.13) * mouthScale;
   const inMouth = (x: number, y: number): boolean => {
     if (!part.mouth || Math.abs(x - cx) > mouthW) return false;
     if (part.mouth === "grin") {
