@@ -5,6 +5,7 @@ import { materialId } from "../../src/voxel/materials";
 import { buildPartVolume, restMotion, solvePose, type RigSpec } from "../../src/foamers/rig";
 import { MOVEMENT_STYLES, rigMotion } from "../../src/foamers/rig-motion";
 import rigData from "../../data/foamer-rigs.json";
+import { encodePng, renderRigViews, renderSheet, VIEW_SIZE, VIEWS } from "../../tools/render-rig";
 
 const RIGS = rigData.rigs as unknown as RigSpec[];
 
@@ -94,6 +95,26 @@ describe("Foamer rigs", () => {
         expect(inkSeen, `${rig.id}.${p.id}`).toBe(true);
         expect(whiteXs.size, `${rig.id}.${p.id}`).toBeGreaterThanOrEqual(6); // two eyes, 3 each
       }
+  });
+
+  it("renders F01 to valid deterministic PNGs", () => {
+    const rig = RIGS.find((entry) => entry.id === "F01")!;
+    const first = renderRigViews(rig);
+    const second = renderRigViews(rig);
+    const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+    for (const view of VIEWS) {
+      const png = encodePng(first[view]);
+      expect([...png.subarray(0, 8)]).toEqual(signature);
+      const header = new DataView(png.buffer, png.byteOffset, png.byteLength);
+      expect(header.getUint32(16)).toBe(VIEW_SIZE);
+      expect(header.getUint32(20)).toBe(VIEW_SIZE);
+      expect(encodePng(second[view])).toEqual(png);
+    }
+    const sheet = encodePng(renderSheet(rig, first));
+    const header = new DataView(sheet.buffer, sheet.byteOffset, sheet.byteLength);
+    expect(header.getUint32(16)).toBe(VIEW_SIZE * 4);
+    expect(header.getUint32(20)).toBe(VIEW_SIZE + 58);
+    expect(encodePng(renderSheet(rig, second))).toEqual(sheet);
   });
 
   it("every movement style gives finite poses and ground speeds over a full minute", () => {
