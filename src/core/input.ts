@@ -15,7 +15,7 @@ export const ACTIONS = [
   "weaponNext", "weaponPrev",
   "weapon1", "weapon2", "weapon3", "weapon4",
   "weapon5", "weapon6", "weapon7", "weapon8",
-  "pause",
+  "pause", "mute",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 

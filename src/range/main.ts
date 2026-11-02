@@ -19,8 +19,11 @@ import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
 import { DebrisSystem } from "../voxel/debris";
 import { MesherPool } from "../voxel/mesher-pool";
+import { AudioEngine } from "../audio/audio";
+import { GameSounds } from "../audio/game-sounds";
 import rangeJson from "../../data/range.json";
 import dartsJson from "../../data/darts.json";
+import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
 
 const R = (rangeJson as unknown as {
@@ -86,6 +89,25 @@ for (let m = 5; m <= 30; m += 5)
 
 const player = new PlayerController(rapier, world, SPAWN_POSE);
 const darts = new DartSystem(scene, world, rapier, player.collider);
+// Sound (AUD-01 stage 2): the engine opens on the first click (the range Play
+// button, or the canvas), and GameSounds gets it as its sink. The panel's
+// Sound section is built when the engine arrives; the report's voice
+// count reads the engine's pool.
+let engine: AudioEngine | null = null;
+let sounds: GameSounds | null = null;
+let audioStarting = false;
+function startAudio() {
+  if (engine || audioStarting) return;
+  audioStarting = true;
+  AudioEngine.create(camera)
+    .then((e) => {
+      engine = e;
+      sounds = new GameSounds(e, loadout, player, darts, impacts, foamers);
+      buildSoundPanel();
+    })
+    .catch(() => { /* no Web Audio on this host: the range goes on silent */ })
+    .finally(() => { audioStarting = false; });
+}
 // The loadout loads all three blasters and their GLTF viewmodels before the
 // start overlay can resolve. The panel's blaster and mod rows drive this;
 // the dart type buttons set the active blaster's dart type.
@@ -100,7 +122,7 @@ Loadout.muzzleToWorld = (camPoint, out) => {
 // pushes each part in and out as Foamers spawn and go.
 const voxelTargets: VoxelTarget[] = [];
 // Dart hits on the Foamer parts carve craters and throw foam debris.
-new DartImpacts(darts, debris, voxelTargets);
+const impacts = new DartImpacts(darts, debris, voxelTargets);
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
 foamers.spawnCount = R.spawn.count;
 foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
@@ -274,6 +296,7 @@ function reportText(): string {
     keepAlive: foamers.spawnCount,
     blaster: loadout.activeId(),
     dartType: loadout.active.dartType,
+    voices: engine ? engine.playingCount : 0,
     mods: mods.length ? mods.join(",") : "none",
     userAgent: navigator.userAgent,
     devicePixelRatio: window.devicePixelRatio,
@@ -297,11 +320,62 @@ function setPaused(p: boolean) {
   paused = p;
   overlay.hidden = !p;
   hud.show(!p);
+  if (engine) { if (p) engine.suspend(); else engine.resume(); }
   if (p && input.locked) document.exitPointerLock();
 }
 input.onLockChange = (locked) => setPaused(!locked);
+// The first click or key starts the audio, inside that gesture (the pointer
+// lock event is not a gesture, and Safari keeps a context made there silent).
+window.addEventListener("pointerdown", startAudio, { capture: true });
+window.addEventListener("keydown", startAudio, { capture: true });
 document.querySelector<HTMLButtonElement>("#play")!.addEventListener("click", () => input.requestLock());
 setPaused(true);
+
+// The Sound section of the panel (AUD-01): the master volume, a mute for
+// this page only, and one row per sound ID with a Play button and a
+// show of whether it has a recording and how many takes, or a skin.
+const soundPanel = document.querySelector<HTMLDivElement>("#soundPanel")!;
+function buildSoundPanel() {
+  const e = engine!;
+  const table = (soundsJson as { sounds: Record<string, { files: string[] }> }).sounds;
+  soundPanel.innerHTML = "";
+  const vol = document.createElement("label");
+  vol.className = "ctl";
+  vol.textContent = "Volume";
+  const slider = document.createElement("input");
+  slider.type = "range"; slider.min = "0"; slider.max = "1"; slider.step = "0.05";
+  slider.value = String(Math.round(e.volume * 100) / 100);
+  slider.addEventListener("input", () => { engine && (engine.volume = Number(slider.value)); });
+  vol.appendChild(slider);
+  soundPanel.appendChild(vol);
+  const mute = document.createElement("label");
+  mute.className = "ctl";
+  const muteLbl = document.createTextNode("Mute");
+  const mb = document.createElement("button");
+  function syncMute() { mb.textContent = engine?.muted ? "on" : "off"; mb.classList.toggle("on", !!engine?.muted); }
+  mb.addEventListener("click", () => { engine && (engine.muted = !engine.muted); syncMute(); });
+  mute.appendChild(muteLbl); mute.appendChild(mb);
+  soundPanel.appendChild(mute);
+  const list = document.createElement("div");
+  list.className = "soundList";
+  for (const id of Object.keys(table)) {
+    const takes = engine!.takeCount(id);
+    const row = document.createElement("div");
+    row.className = "soundRow";
+    const sid = document.createElement("span");
+    sid.className = "sid"; sid.textContent = id;
+    const state = document.createElement("span");
+    state.className = "sstate";
+    state.textContent = takes ? `recording (${takes})` : "placeholder";
+    const pb = document.createElement("button");
+    pb.textContent = "Play";
+    // The panel shows while paused, when the engine is suspended.
+    pb.addEventListener("click", () => { e.resume(); e.play(id); });
+    row.appendChild(sid); row.appendChild(state); row.appendChild(pb);
+    list.appendChild(row);
+  }
+  soundPanel.appendChild(list);
+}
 
 // Benchmark: clear the log, run BENCH.seconds unpaused with auto-strafe on
 // (it locks the mouse, as does the Play button), keep the other switches,
@@ -375,6 +449,12 @@ loopCtl = startLoop({
         },
         _aimDir,
       );
+      if (sounds) sounds.update(dt, {
+        fireHeld: input.isDown("fire"),
+        firePressed: input.wasPressed("fire"),
+        reloadPressed: input.wasPressed("reload"),
+        sprintHeld: input.isDown("sprint"),
+      });
       debris.update(dt);
       darts.update(dt);
       if (player.feet < -20) player.teleport(SPAWN_POSE);
@@ -401,6 +481,7 @@ loopCtl = startLoop({
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
     hud.setAmmo(loadout.active, loadout.active.state);
+    if (engine) engine.updateListener();
     renderer.render(scene, camera);
   },
   stats: pushStats,

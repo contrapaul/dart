@@ -16,6 +16,17 @@ export interface DartHit {
   speed: number;              // m/s at impact
   type: DartTypeName;
   collider: RAPIER.Collider;  // what was hit
+  /** The material of the voxel hit, filled in by DartImpacts in its onHit
+   *  subscription (which the darts fire before the dart sound's own read),
+   *  or a Foamer part's "foamer" label from the Foamer system. Null when
+   *  the hit was not on a voxel volume the sounds distinguish. */
+  material: string | null;
+}
+
+/** Where a dart came to rest on a surface. `point` is the dart's own
+ *  vector, read at call time. */
+export interface DartRestEvent {
+  point: THREE.Vector3;
 }
 
 // Darts are not Rapier bodies. At full rate, up to 310 live darts mean 310
@@ -65,6 +76,16 @@ interface Slot {
 export class DartSystem {
   /** Called once per hit. Other systems subscribe here later. */
   onHit: (hit: DartHit) => void = () => {};
+
+  /** Called once per dart hit, after the onHit chain, so DartImpacts has
+   *  filled in the material on the DartHit before the dart sound hears.
+   *  The same DartHit object, the same point clone onHit got. AUD-01
+   *  reads it for the dart surface sounds. */
+  onDartHit: (hit: DartHit) => void = () => {};
+
+  /** Called once per dart that comes to rest on a surface (the RESTING
+   *  state). AUD-01 uses the point for the DT-floor sound. */
+  onDartRest: (e: DartRestEvent) => void = () => {};
 
   private world: RAPIER.World;
   private ignore: RAPIER.Collider;
@@ -270,14 +291,18 @@ export class DartSystem {
       // and a collider without a live body must not be queried.
       const hitBody = hit.collider.parent();
       const hitDynamic = hitBody ? hitBody.isDynamic() : false;
-      this.onHit({
+      const dartHit: DartHit = {
         point: this._hp.clone(),
         normal: this._n3.clone(),
         direction: this._dn.clone(),
         speed,
         type: s.type,
         collider: hit.collider,
-      });
+        material: null,
+      };
+      this.onHit(dartHit);
+      // After the onHit chain, so the sounds read the material.
+      this.onDartHit(dartHit);
       // Push dynamic bodies along the flight direction at the impact point.
       // The push never changes a body's speed by more than maxPushSpeed: a
       // foam chunk weighs a few grams, and the full impulse would fling it
@@ -320,6 +345,7 @@ export class DartSystem {
         s.restT = 0;
         this.count[FLYING]--;
         this.count[RESTING]++;
+        this.onDartRest({ point: s.pos });
       }
       return;
     }

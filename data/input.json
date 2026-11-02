@@ -26,7 +26,8 @@
     "weapon6": ["Digit6"],
     "weapon7": ["Digit7"],
     "weapon8": ["Digit8"],
-    "pause": ["KeyP"]
+    "pause": ["KeyP"],
+    "mute": ["KeyM"]
   },
   "mouse": {
     "fire": [0],

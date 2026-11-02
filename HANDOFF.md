@@ -12,8 +12,10 @@ blasters (B01 pump, B04 full-auto, B03 break action) are in the game
 through `Loadout` as animated first person viewmodels; switching is keys 1
 to 3 or the mouse wheel, the HUD shows blaster name, magazine, reserve and
 B03 shell pips, and the range panel has blaster selection and per-mod
-toggles. Mods are not checked by eye in first person yet, and there are no
-sounds.
+toggles. Mods are not checked by eye in first person yet. AUD-01 (sound
+system) is built on branch aud-01, awaiting merge: every game event plays
+its sound ID from `data/sounds.json`, as a code-made placeholder until
+Paul's recordings land in `public/audio/` (AUD-01b). M mutes.
 
 A test course: click to capture the mouse, then walk, sprint, jump, dash
 and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
@@ -78,6 +80,186 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-02: AUD-01 stage 3b and final review (Pi, Claude)
+
+Pi (Qwen 3.8) built the Foamer sounds: one `FoamerSystem.onSound(kind, f,
+point)` field (spawn, wound, part-off, attack, down, sink, pop), and
+`src/audio/foamer-sounds.ts`, owned by GameSounds: FX-spawn, FX-wound,
+FX-part-off, F01-swing on attack start, F01-bonk plus PL-hurt (wrapping
+the existing onBonk), FX-topple then FX-fizz-out 0.3 s later (a timer in
+update), FX-sink once per Foamer, FX-pop plus FX-chunk, and FX-step-medium
+each time `Math.floor(gait)` rises while approaching (two per walk cycle).
+Test 8 added.
+
+Claude's review across all stages fixed:
+- Fire sounds count a new `Blaster.shots` field, not magazine drops: the
+  range's infinite ammo refills the magazine in onShot and hid every shot.
+- The engine never returned pool slots, and stopped loops kept running:
+  after about 32 B04 switches the game would have gone silent.
+- Voxel materials with no surface entry (the foam colours) played nothing;
+  they now fall back to `default` (DT-hit-hard).
+- A one-shot of a looping sound's ID (the range panel's Play on
+  AMB-level) took over the loop's voice and killed the hum. The voice
+  pool now leaves loops out of the per-ID cap.
+- Sound now starts on the first click or key on both pages, not on the
+  pointer lock event, which is not a user gesture (Safari would keep the
+  context silent). The range panel's Play resumes the context, since the
+  panel shows while paused.
+- Loops crossfade at the join (stage 1 windowed them to silence).
+
+Callback fields added to existing modules: `PlayerController.onMove`
+(plus `dashing`, `mantling` getters), `Blaster.shots`,
+`DartSystem.onDartHit` and `onDartRest`, `DartHit.material`,
+`DartImpacts.onCarveAt`, `FoamerSystem.onSound`.
+
+Checked in the browser (range, port 5178): the engine starts on the click
+without pointer lock, all 49 sounds play from the panel with no console
+errors, voices free when they end (16 playing, then 1, the hum). Not
+heard: the browser pane has no speakers. Unverified: cue timing, volumes
+and footstep rates by ear (left for Paul's recordings, AUD-01b: no more
+time on the placeholder sounds, Paul's call); F01's headbutt attack also
+plays F01-swing and F01-bonk. 169 tests pass.
+
+### 2026-11-02: AUD-01 stage 3a, dart sounds (Pi, Qwen 3.8)
+
+- **Dart sounds only; the Foamer hooks wait for the next stage.** New
+  callback fields (the card's "add one field, no change to existing
+  public APIs"):
+  - `src/weapons/darts.ts` `DartSystem.onDartHit` (the full `DartHit`,
+    fired after the `onHit` chain so subscribers have run) and
+    `DartSystem.onDartRest` (the rest point) (no-op defaults).
+    `DartHit` gains `material` (the voxel material name or `null`).
+  - `src/weapons/impacts.ts` `DartImpacts.onCarveAt` (the hit point,
+    once per carve that removed voxels). It also fills `DartHit.material`
+    from the voxel under the dart's tip.
+- `src/foamers/foamers.ts`: `handleHit` relabels a Foamer part hit as
+  material "foamer" before the damage-speed early return, so even a soft
+  graze thumps like foam in the sounds.
+- `src/audio/game-sounds.ts`: the dart hooks. A non-slug hit plays the
+  surface sound of `data/sounds.json`'s `surfaces` block by material
+  name (Foamer part "foamer", voxel target its material, else
+  "default"), spatial at the hit point, volume scaled by speed and full
+  at 30 m/s and above. A slug plays `DT-slug-hit`. A carve plays
+  `DT-carve` at the hit point. A dart at rest plays `DT-floor` at its
+  position (the sound's `maxVoices` caps it). `GameSounds` now takes the
+  `DartSystem` (required) and the `DartImpacts` (optional: a page without
+  them passes none) after `player`; both pages and the existing tests'
+  construction were updated to match.
+- Card test 7 in `tests/audio/game-sounds.test.ts`: a hit on a wood
+  voxel wall plays `DT-hit-wood`, a plain collider `DT-hit-hard`, a slug
+  `DT-slug-hit`, a hit on a spawned Foamer's part `DT-hit-foamer`, each
+  at the hit point.
+- Unverified by ear: the actual sounds (Paul records the files; the
+  synth placeholders stand in). Hand-checked in a run of each page: a
+  burst and a wood wall on the main page, and a Foamer part on the
+  test range. Test-writing gotchas found along the way: Rapier's
+  `ColliderDesc.cuboid` takes half extents, so a collider bigger than its
+  voxel volume leaves the material look-up empty; and the Foamer's root
+  capsule sits in front of the parts on a dart aimed at low height at
+  the body centre, so a test hit on the part fires higher.
+
+### 2026-11-02: AUD-01 stage 2 (Pi, Qwen 3.8)
+
+- `src/audio/sink.ts`: the `AudioSink` / `PlayOptions` / `LoopHandle`
+  interfaces from the card, so tests can fake the engine. `audio.ts`
+  (Web Audio, created in the Click to play handler on both pages): buses
+  master / sfx / music / voice, placeholders rendered to AudioBuffers at
+  start, files fetched from `/audio/<file>` with the placeholder as
+  fallback, a seeded take picker, rate jitter, a PannerNode per spatial
+  one-shot (equal power pan, inverse rolloff from the data), the
+  listener follows the camera each render frame, `suspend` on pause and
+  `resume` on play, an unknown ID warns once, the master mute and volume
+  are on the page side (M on the main page, the panel on the range).
+- `src/audio/game-sounds.ts`: `GameSounds` with `update(dt, controls)`,
+  the blaster, player and level hooks of this stage. Cues walk `at` once
+  per priming or reload from `blasterCues`; switching plays BX-holster
+  at the start and BX-draw at the halfway swap; BX-dry is a press with
+  no dart anywhere; BX-mod-on / off when the active blaster's mod list
+  grows or shrinks; the B04 rev loop is one loop created when B04
+  becomes the active blaster, volume is `wheelSpeed` (0 when the wheels
+  still are) and the rate goes 0.6 to 1 with the wheel, the loop stops
+  when B04 is switched away; AMB-level starts on build, not spatial.
+- Fire: one fire sound per shot is read as a magazine drop, not per
+  dart: the active blaster's mag is watched each step and each drop
+  below the last reading plays its `<id>-fire`. That is why B01's three
+  darts are one sound and a B03 press that fires both barrels is two.
+  It deliberately does not wrap `onShot`, because that hook carries the
+  viewmodel chain, the range's infinite ammo hook and gets replaced by
+  `Loadout.setMod` rebuilding the blaster; watching the mag keeps the
+  count no matter what occupies it. (On-set shot counting, tried,
+  dropped: it missed the first shot of a replaced blaster.)
+- Callback field added to `PlayerController` (the one field this stage
+  needs, in the style of `onShot`): `onMove(kind, vel)` with
+  `kind: "jump" | "dash" | "mantle" | "land" | "dash-ready"`, plus the
+  getters `dashing` and `mantling` and vel being public. Steps are not
+  an event: GameSounds watches `grounded`, `dashing`, `mantling` and
+  the horizontal speed, and plays `PL-step-hard` every walk (or
+  sprint) stride in `data`; a land is read inside the controller,
+  touching `vel.y` with the fall speed zeroed after the event. No
+  other new fields.
+- Pages: `src/main.ts` builds the engine and `GameSounds` on the first
+  mouse lock, calls `update` once per fixed step, the engine listener
+  once per render display, and M (a new `mute` in `data/input.json`
+  and the action list) toggles the mute. `src/range/main.ts`: the same
+  three, plus a Sound section on the panel and the voice count in the
+  report (built when the engine arrives: master volume, mute toggle that
+  is not saved, every sound ID with a Play button and the display of
+  whether it has a recording (+ the number of takes) or a placeholder).
+- `tests/audio/game-sounds.test.ts`: card tests 5, 6, 9 and 10 with a
+  fake sink that records calls and options; a blaster row and player
+  with the actual `Loadout` / `Blaster` / `PlayerController` (an
+  actual Rapier component). The controller makes one soft land at
+  component level (on-set settle), the test tolerates that.
+- Build: the large chunk (4.4 MB, rapier's WASM inlined into `game-
+sounds-*.js` right after `debris-*.js` on stage 1) is existing;
+  nothing root. tsc, `npm test` (158 pass), `npm run build` all green.
+- Unverified: all of it (no listening, no browser; the card
+  explicitly holds the ear work for Paul). Unverified in browser:
+  the listener path, the fetch / fallback, that M mutes and the mute
+  button on the panel, and any hitch.
+
+### 2026-11-02: AUD-01 stage 1 (Pi, Qwen 3.8)
+
+- `data/sounds.json`: 47 placeholder sounds (buses, maxVoices 32,
+  refDistance 2, maxDistance 40), `blasterCues` for B01, B03, B04,
+  `surfaces`, `player` strides. Every ID is also checked against the
+  tables in `design/SOUNDS.md` by the new tests.
+- `src/audio/synth.ts` (pure): renders a recipe (noise, tone, click,
+  crackle, layers, gain, seed) to a 48 kHz mono Float32Array.
+  Deterministic (LCG), peak at most 1 via cap-only normalization, 2 ms
+  end fades; a `loop: true` recipe gets a Hann window across the whole
+  buffer so a repeat never clicks (B04-rev-loop, AMB-level).
+- `src/audio/voices.ts` (pure): VoicePool on fixed arrays (per-id cap
+  steals the oldest voice of the id; a full pool steals the oldest
+  one-shot; loops are never stolen), plus `pickTake` / `makeTakePicker`
+  (never the same take twice in a row when there are two or more).
+- `tests/audio/`: synth.test.ts (test 1, every recipe in the data
+  renders: length, peak, end fades, determinism, loop ends), data.test.ts
+  (test 2, shape plus IDs, reads SOUNDS.md via a `?raw` import),
+  voices.test.ts (test 3, VoicePool) and test 4 (takes). 14 tests.
+- Cue times in the data, to be tuned by ear later:
+  - B01: pump-back 0.05 (card), mag-out 0.1, mag-in 0.7 (card), pump-fwd
+    0.95. The card says the pump is home at 1, but a cue's `at` is only
+    reached while the state is still active; at 1 the blaster is ready
+    again, so a cue at 1 would never play.
+  - B03 from the windows in `src/weapons/viewmodel.ts` breakAction:
+    latch 0.05 (turn starts), break-open 0.15 (breach starts), eject
+    0.35 (spent shells start flying, the card's own number), shell-drop
+    0.55 (breach nearly open), load 0.65, close 0.75 (close phase
+    starts; the breach fully shuts at 1).
+  - B04: mag-out 0.1, mag-in 0.8 (no card reference; the auto mode's
+    viewmodel only drops the magazine during reload).
+- Question (stops the card, per its rules): the hooks section plays
+  `F01-swing` and `F01-bonk`, but SOUNDS.md lists the F01 sounds in the
+  per-Foamer table's third column without IDs in the first column, so a
+  `sounds` entry for either would fail test 2. Paul or the reviewer
+  should add the ID rows to SOUNDS.md's F01 table and the entries can
+  then go in. I did not invent IDs (the card forbids it) and did not
+  write the question into the card itself; it is here and in the commit
+  message instead.
+- Unverified: no listening, no browser; the engine and all hooks are
+  the next stages. Nothing is audible yet.
 
 ### 2026-11-02: AUD-01 card written (Claude)
 

@@ -62,6 +62,21 @@ const _sc = new THREE.Vector3();
 const _kbB = new THREE.Vector3(); // kill push: a part's centre
 const _kbV = new THREE.Vector3(); // kill push: the shot's horizontal direction
 const _one = new THREE.Vector3(1, 1, 1);
+const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
+
+/** The Foamer one-shot events in the order the card names them (AUD-01 3b). */
+export type FoamerSoundKind =
+  | "spawn" | "wound" | "part-off" | "attack" | "down" | "sink" | "pop";
+
+/** One event to onSound, at the Foamer's or part's position. */
+function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
+  sys.onSound(kind, f, point);
+}
+/** A part's body centre in world space, as _snd, for onSound. */
+function partPoint(part: FoamerPart): THREE.Vector3 {
+  const t = part.body.translation();
+  return _snd.set(t.x, t.y, t.z);
+}
 
 /** A part and all its children (rig parent links), in break order. */
 function partAndChildren(rig: GameRig, id: string): string[] {
@@ -78,6 +93,9 @@ export class FoamerSystem {
   /** Called once per bonk that connects, with the attack id. Player health
    *  does not exist yet. */
   onBonk: (foamer: Foamer, attack: string) => void = () => {};
+  /** Called once per Foamer sound event, at the part's or the Foamer's own
+   *  position (AUD-01 stage 3b). Foamer sounds are owned by GameSounds. */
+  onSound: (kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) => void = () => {};
   readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0 };
   /** Fallen pieces, oldest first. Capped at brokenParts.max. */
   readonly broken: BrokenPiece[] = [];
@@ -138,6 +156,7 @@ export class FoamerSystem {
     // they actually hit.
     for (const part of f.parts.values()) this.targets.push(part);
     this.stats.spawned++;
+    sound(this, "spawn", f, f.centre);
     return f;
   }
 
@@ -230,6 +249,7 @@ export class FoamerSystem {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
+        sound(this, "attack", f, f.centre);
       }
     } else if (f.state === "windup") {
       const atk = f.attack();
@@ -324,7 +344,6 @@ export class FoamerSystem {
    *  capsule sits inside the body voxels; a graze through the gaps is no
    *  hit). */
   private handleHit(hit: DartHit) {
-    if (hit.speed < SPEC.minDamageSpeed) return;
     let f: Foamer | undefined;
     let part: FoamerPart | undefined;
     for (const foamer of this.list) {
@@ -340,6 +359,12 @@ export class FoamerSystem {
       // NoSuchCollider evidence: some hits miss every part and the root.
     }
     if (!f || !part) return;
+    // The dart sound (AUD-01) wants to tell a Foamer part from an ordinary
+    // voxel wall, so the material name DartImpacts just wrote is swapped
+    // for the "foamer" surface. This runs even below the damage speed, so
+    // a soft graze still thumps like foam.
+    hit.material = "foamer";
+    if (hit.speed < SPEC.minDamageSpeed) return;
     const d = SPEC.damage[hit.type];
     const kind = SPEC.partDamage.kinds[part.spec.kind];
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
@@ -349,6 +374,7 @@ export class FoamerSystem {
     if (POP_TYPES.includes(hit.type)) f.addDamage(this.time, d * kind.hit * kind.total);
     this.stats.hits++;
     this.paintWound(part, hit);
+    sound(this, "wound", f, partPoint(part));
     // Breaking: hp <= 0, or the carve took the part to wearBreak of its
     // starting voxels. The body never breaks; wear from slow chipping is
     // checked once per step in update.
@@ -385,6 +411,7 @@ export class FoamerSystem {
     if (f.state === "down") return;
     f.state = "down";
     f.stateTime = 0;
+    sound(this, "down", f, f.centre);
     if (f.attack()) f.setAttack(null);
     this.world.removeCollider(f.capsule, false);
     for (const part of f.parts.values()) {
@@ -571,6 +598,7 @@ export class FoamerSystem {
     if (f.sinkingNow || f.stateTime >= SPEC.down.lie) {
       if (f.ragdoll.length > 0) this.lockRagdollForSink(f);
       if (f.sinkDepth < 0) f.sinkDepth = this.topYOf(f) + 0.05; // out of sight
+      if (!f.sinkingNow) { f.sinkingNow = true; sound(this, "sink", f, f.centre); }
       const drop = SPEC.down.sinkSpeed * dt;
       for (const part of f.parts.values()) {
         const t = part.body.translation();
@@ -591,6 +619,7 @@ export class FoamerSystem {
       if (this.notSinkingCount() <= SPEC.down.max) break;
       if (d.sinkDrop > 0 || d.sinkingNow) continue;
       d.sinkingNow = true;
+      sound(this, "sink", d, d.centre);
     }
   }
 
@@ -748,6 +777,7 @@ export class FoamerSystem {
     const q2 = new THREE.Quaternion();
     part.pose.decompose(st2, q2, _sc);
     part.prevPose.decompose(_p, _q, _sc);
+    sound(this, "part-off", f, partPoint(part));
     // The part's last pose change over a step (the fling), plus 1.5 m/s
     // outward from the Foamer and up.
     const out2 = _v.set(st2.x - f.centre.x, 0, st2.z - f.centre.z);
@@ -872,6 +902,7 @@ export class FoamerSystem {
 
   /** The model bursts into foam debris per part and leaves the world. */
   private pop(f: Foamer) {
+    sound(this, "pop", f, f.centre);
     for (const part of f.parts.values()) {
       // Every remaining voxel, in the part volume's own (non-rotated) space.
       const voxels: { x: number; y: number; z: number; material: number }[] = [];

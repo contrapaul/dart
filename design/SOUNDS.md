@@ -196,13 +196,26 @@ all?** That is your call; the vocal rows below are marked "Optional".
 Optional vocals are a short grunt or squeak per type, a few takes each, if
 Foamers have voices.
 
+The slice Foamers, one row per sound:
+
+| ID | Sound | Slice | Takes | Suggested source |
+|---|---|---|---|---|
+| F01-swing | F01 (fodder grunt): club swing, a whoosh | Yes | 4 | Foley: swing a pool noodle |
+| F01-bonk | F01: club hitting the player | Yes | 4 | Foley: pool noodle on a cushion |
+| F02-throw | F02 (lanky ball thrower): wind-up and throw | Yes | 4 | Foley |
+| F02-ball-loop | F02: foam ball in flight (loop) | Yes | 2 | Foley or Code: a soft whoosh |
+| F02-ball-hit | F02: ball hitting the player | Yes | 4 | Foley: foam ball on a cushion |
+| F05-snort | F05 (charging bull): charge wind-up | Yes | 3 | Foley: your voice for the snort |
+| F05-run-loop | F05: charge run (loop) | Yes | 2 | Foley: fast thumps on a cushion |
+| F05-impact | F05: charge hitting a wall or the player | Yes | 4 | Foley: drop a heavy cushion |
+| F05-stun | F05: stunned after hitting a wall | Yes | 2 | Foley or Code |
+
+The other Foamers (IDs given when each is built):
+
 | ID | Foamer | Sounds | Slice | Suggested source |
 |---|---|---|---|---|
-| F01 | Fodder grunt with a club | Club swing (whoosh), club bonk on the player | Yes | Foley: swing a pool noodle |
-| F02 | Lanky ball thrower | Throw grunt or wind-up, foam ball in flight (loop), ball hit on the player | Yes | Foley |
 | F03 | Small fast biter (packs) | Skittering steps (loop), nibble attack, a tiny pop | Later | Foley |
 | F04 | Shield trooper | Volley fire, dart hitting its shield, shield carved away | Later | Blaster plus Foley |
-| F05 | Charging bull | Charge wind-up (snort), charge run (loop), wall or player impact, stun | Yes | Foley: your voice for the snort |
 | F06 | Floating ball | Float hum (loop), jaw open, blob spit, blob bounce, big blob | Later | Foley plus Code |
 | F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |
 | F08 | Huge tank | Heavy steps, launcher volley, foam wall of balls | Later | Blaster plus Foley |
