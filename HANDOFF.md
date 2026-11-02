@@ -13,7 +13,7 @@ through `Loadout` as animated first person viewmodels; switching is keys 1
 to 3 or the mouse wheel, the HUD shows blaster name, magazine, reserve and
 B03 shell pips, and the range panel has blaster selection and per-mod
 toggles. Mods are not checked by eye in first person yet. AUD-01 (sound
-system) is built on branch aud-01, awaiting merge: every game event plays
+system) is done (merged 2026-11-02): every game event plays
 its sound ID from `data/sounds.json`, as a code-made placeholder until
 Paul's recordings land in `public/audio/` (AUD-01b). M mutes.
 
