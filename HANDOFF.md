@@ -81,6 +81,42 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: ENG-08 stage 1 (DeepSeek V4.1 Flash)
+
+The AI director: `src/ai/director.ts` plus `data/ai.json`, 8 tests in
+`tests/ai/director.test.ts`. Pure TypeScript, no Three.js or Rapier.
+Attack tokens by kind (`melee`, `ranged`), 1/2/3/4 of each for story /
+normal / hard / fury, default `normal`, `tokenCooldown` 0.4 s and
+`maxAgents` 64. `request(agentId, kind, score)` records a bid and returns
+true once the agent holds a token, `release` returns it, `forget` drops a
+dead agent's bid and its token at once, `update(dt)` runs the cooldowns and
+then grants free tokens, `stats()` reports tokens in use per kind and
+agents waiting. Fixed-size typed arrays: no allocation per call.
+
+Decisions and why:
+- Bids are resolved in `update`, highest score first, not inside
+`request`. If `request` granted on the spot, the first caller in a frame
+would always beat a higher score later in the same frame, and every Foamer
+would need an update order in `main.ts`. One pass over 64 slots per kind
+per frame, no sort.
+- A forgotten agent frees its token with no cooldown. The cooldown exists
+to stop one agent's attacks chaining; an agent that is gone cannot attack,
+so the next Foamer should not inherit its wait.
+- A waiting agent may raise its score between updates; the newest bid is
+what the next `update` sees. Ties go to the lower agent id, which keeps
+the grant order stable.
+- Ids are integers in [0, `maxAgents`); anything else is ignored rather
+than throwing, because the caller is the Foamer loop.
+- The card says F01's bonk and headbutt are `melee`, but `data/foamers.json`
+carries no kind per attack, only `needs`, `windup` and `strike`, and adds
+no `attackKind`. Stage 1 does not read `data/foamers.json`, so nothing is
+hard coded either way. Question for the reviewer: should stage 3 add a
+`kind` field to each attack in `data/foamers.json`, or hold one kind per
+rig in `data/ai.json`?
+
+Unverified: nothing in the game calls the director yet (stage 3 wires it).
+No range report field yet either. Stage 2 (nav grid, steering) not started.
+
 ### 2026-11-02: AUD-01 stage 3b and final review (Pi, Claude)
 
 Pi (Qwen 3.8) built the Foamer sounds: one `FoamerSystem.onSound(kind, f,

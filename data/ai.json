@@ -1,0 +1,28 @@
+{
+  "_note": "AI director (ENG-08 stage 1). Units: seconds, counts. Attack tokens: a Foamer may only attack while it holds a token of its attack kind, so only a few Foamers attack at once and arenas stay intense but fair (PLAN.md 4.3). Stages 2 and 3 add the navigation and brain numbers here.",
+  "default": "normal",
+  "maxAgents": 64,
+  "tokenCooldown": 0.4,
+  "difficulties": {
+    "story": {
+      "_note": "Story preset (D10). Fewest Foamers attacking at once.",
+      "melee": 1,
+      "ranged": 1
+    },
+    "normal": {
+      "_note": "Normal preset and the default.",
+      "melee": 2,
+      "ranged": 2
+    },
+    "hard": {
+      "_note": "Hard preset.",
+      "melee": 3,
+      "ranged": 3
+    },
+    "fury": {
+      "_note": "Foam Fury preset. Most Foamers attacking at once.",
+      "melee": 4,
+      "ranged": 4
+    }
+  }
+}
