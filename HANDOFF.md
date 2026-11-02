@@ -12,9 +12,10 @@ blasters (B01 pump, B04 full-auto, B03 break action) are in the game
 through `Loadout` as animated first person viewmodels; switching is keys 1
 to 3 or the mouse wheel, the HUD shows blaster name, magazine, reserve and
 B03 shell pips, and the range panel has blaster selection and per-mod
-toggles. Mods are not checked by eye in first person yet. Sounds exist
-from stage 2 (engine, blaster and player hooks) and 3a (the dart surface,
-carve and floor hooks); see the log.
+toggles. Mods are not checked by eye in first person yet. AUD-01 (sound
+system) is built on branch aud-01, awaiting merge: every game event plays
+its sound ID from `data/sounds.json`, as a code-made placeholder until
+Paul's recordings land in `public/audio/` (AUD-01b). M mutes.
 
 A test course: click to capture the mouse, then walk, sprint, jump, dash
 and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
@@ -79,6 +80,46 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-02: AUD-01 stage 3b and final review (Pi, Claude)
+
+Pi (Qwen 3.8) built the Foamer sounds: one `FoamerSystem.onSound(kind, f,
+point)` field (spawn, wound, part-off, attack, down, sink, pop), and
+`src/audio/foamer-sounds.ts`, owned by GameSounds: FX-spawn, FX-wound,
+FX-part-off, F01-swing on attack start, F01-bonk plus PL-hurt (wrapping
+the existing onBonk), FX-topple then FX-fizz-out 0.3 s later (a timer in
+update), FX-sink once per Foamer, FX-pop plus FX-chunk, and FX-step-medium
+each time `Math.floor(gait)` rises while approaching (two per walk cycle).
+Test 8 added.
+
+Claude's review across all stages fixed:
+- Fire sounds count a new `Blaster.shots` field, not magazine drops: the
+  range's infinite ammo refills the magazine in onShot and hid every shot.
+- The engine never returned pool slots, and stopped loops kept running:
+  after about 32 B04 switches the game would have gone silent.
+- Voxel materials with no surface entry (the foam colours) played nothing;
+  they now fall back to `default` (DT-hit-hard).
+- A one-shot of a looping sound's ID (the range panel's Play on
+  AMB-level) took over the loop's voice and killed the hum. The voice
+  pool now leaves loops out of the per-ID cap.
+- Sound now starts on the first click or key on both pages, not on the
+  pointer lock event, which is not a user gesture (Safari would keep the
+  context silent). The range panel's Play resumes the context, since the
+  panel shows while paused.
+- Loops crossfade at the join (stage 1 windowed them to silence).
+
+Callback fields added to existing modules: `PlayerController.onMove`
+(plus `dashing`, `mantling` getters), `Blaster.shots`,
+`DartSystem.onDartHit` and `onDartRest`, `DartHit.material`,
+`DartImpacts.onCarveAt`, `FoamerSystem.onSound`.
+
+Checked in the browser (range, port 5178): the engine starts on the click
+without pointer lock, all 49 sounds play from the panel with no console
+errors, voices free when they end (16 playing, then 1, the hum). Not
+heard: the browser pane has no speakers. Unverified: cue timing, volumes
+and footstep rates by ear (left for Paul's recordings, AUD-01b: no more
+time on the placeholder sounds, Paul's call); F01's headbutt attack also
+plays F01-swing and F01-bonk. 169 tests pass.
 
 ### 2026-11-02: AUD-01 stage 3a, dart sounds (Pi, Qwen 3.8)
 

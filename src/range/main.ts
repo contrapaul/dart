@@ -323,10 +323,11 @@ function setPaused(p: boolean) {
   if (engine) { if (p) engine.suspend(); else engine.resume(); }
   if (p && input.locked) document.exitPointerLock();
 }
-input.onLockChange = (locked) => {
-  setPaused(!locked);
-  if (locked) startAudio(); // the first lock comes from the click that shows the gesture
-};
+input.onLockChange = (locked) => setPaused(!locked);
+// The first click or key starts the audio, inside that gesture (the pointer
+// lock event is not a gesture, and Safari keeps a context made there silent).
+window.addEventListener("pointerdown", startAudio, { capture: true });
+window.addEventListener("keydown", startAudio, { capture: true });
 document.querySelector<HTMLButtonElement>("#play")!.addEventListener("click", () => input.requestLock());
 setPaused(true);
 

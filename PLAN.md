@@ -549,7 +549,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ART-05 | Procedural first person animations | F | ART-04 |
 | LVL-01 | One arena blockout with destructible cover and a lock-in | F + P | ENG-06 |
 | AUD-00 | Record Paul's blasters (session list in 8.3) | P | |
-| AUD-01 | (card: `tasks/AUD-01.md`) Sound system: Web Audio mixer, sound bank in `data/sounds.json` keyed by the IDs in `design/SOUNDS.md`, code-made placeholders for every sound, spatial one-shots and loops, hooks for blasters, darts, Foamers and the player, a Sound panel on the range | Pi + Claude (review) | GAME-09 |
+| AUD-01 | (card: `tasks/AUD-01.md`) Sound system: Web Audio mixer, sound bank in `data/sounds.json` keyed by the IDs in `design/SOUNDS.md`, code-made placeholders for every sound, spatial one-shots and loops, hooks for blasters, darts, Foamers and the player, a Sound panel on the range | Pi + Claude (review); built 2026-11-02, awaiting merge | GAME-09 |
 | AUD-01b | Paul's recordings (`design/SOUNDS.md`) edited, layered and dropped into the sound bank | Claude + P | AUD-00, AUD-01 |
 | UI-01 | HUD v1, pause, settings with difficulty sliders | F | |
 | QA-02 | Playtest with players aged 10+ [Paul: who?], collect notes | P | all above |

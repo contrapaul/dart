@@ -40,6 +40,16 @@ describe("VoicePool", () => {
     expect(pool.playingCount()).toBe(4);
   });
 
+  it("a one-shot of a looping sound's id never takes over the loop", () => {
+    const pool = new VoicePool(4);
+    const loop = pool.start("amb", 1, 0.0, true)!;
+    const shot = pool.start("amb", 1, 0.1);
+    expect(shot).not.toBeNull();
+    expect(shot!.voice).not.toBe(loop.voice);
+    expect(shot!.stop).toBeNull();
+    expect(pool.slots[loop.voice].isLoop).toBe(true);
+  });
+
   it("loops are never stolen", () => {
     const pool = new VoicePool(4);
     const loop = pool.start("amb", 1, 0.0, true);

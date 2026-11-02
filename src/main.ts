@@ -225,17 +225,24 @@ function setPaused(p: boolean) {
   if (engine) { if (p) engine.suspend(); else engine.resume(); }
   if (p && input.locked) document.exitPointerLock();
 }
-input.onLockChange = (locked) => {
-  setPaused(!locked);
-  // The first lock starts the audio inside the click gesture.
-  if (locked && !engine && !audioStarting) {
-    audioStarting = true;
-    AudioEngine.create(camera)
-      .then((e) => { engine = e; sounds = new GameSounds(e, loadout, player, darts, impacts, foamers); })
-      .catch(() => { /* no Web Audio on this host: the game stays silent */ })
-      .finally(() => { audioStarting = false; });
-  }
-};
+input.onLockChange = (locked) => setPaused(!locked);
+// The first click or key starts the audio. The context must be made inside
+// that gesture: the pointer lock event comes later and is not a gesture, so
+// a strict browser (Safari) would keep a context made there silent.
+function startAudio() {
+  if (engine || audioStarting) return;
+  audioStarting = true;
+  AudioEngine.create(camera)
+    .then((e) => {
+      engine = e;
+      sounds = new GameSounds(e, loadout, player, darts, impacts, foamers);
+      if (paused) e.suspend();
+    })
+    .catch(() => { /* no Web Audio on this host: the game stays silent */ })
+    .finally(() => { audioStarting = false; });
+}
+window.addEventListener("pointerdown", startAudio, { capture: true });
+window.addEventListener("keydown", startAudio, { capture: true });
 setPaused(true);
 
 startLoop({

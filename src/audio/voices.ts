@@ -64,7 +64,8 @@ export class VoicePool {
     let sameOldestT = Infinity;
     for (let i = 0; i < this.maxTotal; i++) {
       const v = this.slots[i];
-      if (v.busy && v.id === id) {
+      // Loops are never stolen, so they do not count toward the cap either.
+      if (v.busy && v.id === id && !v.isLoop) {
         sameCount++;
         if (v.started < sameOldestT) { sameOldestT = v.started; sameOldest = i; }
       }
