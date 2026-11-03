@@ -1,5 +1,5 @@
 {
-  "_note": "GAME-04 stage 1: the shield. Every number the shield is tuned by. look is in metres and camera space (a child of the camera): lowered hangs low left, raised sits across the view; diameter is the disc's. block is the hold-to-block: raiseTime seconds to raise, frontArcDeg the arc of cover in front of the view, damageShare the part of an attack's damage that still lands inside it, walkShare the walk-speed multiplier, kick the view kick in radians decaying over kickTime. throw is press fire while raised: speed m/s, damage per Foamer hit, stun the stagger time in seconds (0 reuses the Foamer's own stagger.time), bounces extra Foamers after the first, range and homeRange metres, returnSpeed on the way back, carveRadius metres of voxel cover with debris capped at debrisMax. cooldown is the seconds after a catch before the disc can be thrown again.",
+  "_note": "GAME-04 stage 1 and GAME-05: the shield. Every number the shield is tuned by. look is in metres and camera space (a child of the camera): lowered hangs low left, raised sits across the view; diameter is the disc's. block is the hold-to-block: raiseTime seconds to raise, frontArcDeg the arc of cover in front of the view, damageShare the part of an attack's damage that still lands inside it, walkShare the walk-speed multiplier, kick the view kick in radians decaying over kickTime. throw is press fire while raised: speed m/s, damage per Foamer hit, stun the stagger time in seconds (0 reuses the Foamer's own stagger.time), bounces extra Foamers after the first, range and homeRange metres, returnSpeed on the way back, carveRadius metres of voxel cover with debris capped at debrisMax. cooldown is the seconds after a catch before the disc can be thrown again. charge (GAME-05) is press dash while raised at the locked Foamer (chargeTarget, nearest in coneDeg and range, in sight): the player is driven at it at speed m/s for at most time s through the player's own character controller, stops stopShort m short, and on contact the Foamer is knocked knockback metres along the charge through its own controller, staggered and damaged by damage; kick the view kick in radians decaying over kickTime; cooldown before the next charge.",
   "look": {
     "diameter": 0.55,
     "rimThickness": 0.07,
@@ -31,5 +31,17 @@
     "carveRadius": 0.14,
     "debrisMax": 4
   },
-  "cooldown": 0.25
+  "cooldown": 0.25,
+  "charge": {
+    "range": 14,
+    "coneDeg": 24,
+    "speed": 24,
+    "time": 0.7,
+    "stopShort": 1.0,
+    "knockback": 3,
+    "damage": 2,
+    "kick": 0.03,
+    "kickTime": 0.2,
+    "cooldown": 2
+  }
 }
