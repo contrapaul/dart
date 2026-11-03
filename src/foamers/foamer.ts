@@ -6,6 +6,7 @@ import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
 import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
+import type { AgentInput, FoamerAgent } from "../ai/agent";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
 // movement capsule, plus one FoamerPart per part of the rig it was spawned
@@ -13,7 +14,9 @@ import { FoamerPart } from "./foamer-part";
 // the rig is re-posed from solvePose and each part body is moved to the
 // translation and rotation of its part matrix.
 
-export type FoamerState = "approach" | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down";
+export type FoamerState =
+  | "idle" | "alert" | "approach" | "hold"
+  | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down";
 export type FoamerSpec = typeof foamerData.test;
 /** Rigs in the data file carry `health`; the base rig type does not. */
 export type GameRig = RigSpec & { health: number };
@@ -59,6 +62,17 @@ export class Foamer {
   state: FoamerState = "approach";
   /** Seconds spent in the current state. */
   stateTime = 0;
+  /** The brain and its token bid (ENG-08 stage 3b). Null when the system has
+   *  no director: then the Foamer attacks on approach range as it did before
+   *  the director, which is what the older tests and tools expect. */
+  agent: FoamerAgent | null = null;
+  /** The one input struct its agent reads, filled each step. */
+  agentInput: AgentInput | null = null;
+  /** It went idle to alert on this step, so neighbours this close go alert
+   *  too (alertRadiusMetres). */
+  justAlerted = false;
+  /** It took a dart hit since the last AI step, so being shot wakes it. */
+  damageSinceStep = false;
   /** Vertical speed (m/s); the system adds gravity and walks it. */
   vy = 0;
   /** Going down (ENG-10 stage 3): the body sits sinkDrop (m) below the

@@ -11,6 +11,7 @@ import { Loadout } from "./weapons/loadout";
 import { updateAim } from "./weapons/aim";
 import { DartImpacts, type VoxelTarget } from "./weapons/impacts";
 import { FoamerSystem } from "./foamers/foamers";
+import { makeLevelAI } from "./ai/level";
 import { Hud } from "./ui/hud";
 import { SettingsPanel } from "./ui/menus";
 import { VoxelVolume } from "./voxel/chunk";
@@ -227,13 +228,39 @@ const voxelTargets: VoxelTarget[] = [voxelMesh];
 const impacts = new DartImpacts(darts, debris, voxelTargets);
 // Darts stuck to a broken-off island fall off as loose darts.
 pieces.onBreak = (c, r) => darts.releaseInSphere(c, r);
+// A piece that comes to rest may block a cell: re-bake its patch.
+pieces.onRest = (c, r) => levelAI.pieceRested(c, r);
 // Islands only form in the wall, so isolate the carve notification there.
 impacts.onCarve = (target, removed) => {
-  if (target === voxelMesh) pieces.afterCarve(voxelMesh, removed);
+  if (target !== voxelMesh) return;
+  pieces.afterCarve(voxelMesh, removed);
+  // The grid re-bakes only where the carve was (ENG-08 stage 3b). The
+  // removed voxels are in the volume's own coordinates: convert the box's
+  // two corners to the world.
+  if (removed.length === 0) return;
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const v of removed) {
+    if (v.x < x0) x0 = v.x;
+    if (v.x > x1) x1 = v.x;
+    if (v.z < z0) z0 = v.z;
+    if (v.z > z1) z1 = v.z;
+  }
+  const a = voxelMesh.voxelToWorld(_carveA.set(x0, 0, z0));
+  const b = voxelMesh.voxelToWorld(_carveB.set(x1, 0, z1));
+  levelAI.carveChanged(a.x, a.z, b.x, b.z);
 };
 // Foamer system: spawn, bonk, dart damage, pop. This is the first enemy,
 // GAME-03.
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+// ENG-08 stage 3b: one director and one nav grid for the level. The grid is
+// baked over the level's bounds (the 40 m floor and the foam wall beside it)
+// and re-baked where a carve or a resting piece changed the ground.
+const levelAI = makeLevelAI(
+  rapier, world, { minX: -20, maxX: 70, minZ: -20, maxZ: 20 }, store.value.difficulty,
+);
+foamers.director = levelAI.director;
+foamers.navGrid = levelAI.grid;
+foamers.spawnState = "alert"; // an arena spawn is already in the fight
 scene.add(foamers.group);
 // The bonk now costs health (UI-01 stage 1). The chain is kept: the sound
 // wrapper (AUD-01) wraps this handler when it arrives, and the console log
@@ -252,6 +279,8 @@ foamers.onBonk = (f, attack) => {
 const _muzzleCam = new THREE.Vector3();
 const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
+const _carveA = new THREE.Vector3();
+const _carveB = new THREE.Vector3();
 const _playerPos = new THREE.Vector3();
 const _rot = new THREE.Quaternion();
 

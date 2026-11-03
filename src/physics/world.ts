@@ -35,3 +35,7 @@ export const DEBRIS_GROUPS = groups(GROUP_DEBRIS, GROUP_WORLD);
 export const RAGDOLL_GROUPS = groups(GROUP_RAGDOLL, GROUP_WORLD);
 /** Groups for queries that should ignore debris and ragdolls. */
 export const SOLID_QUERY_GROUPS = groups(0xffff, 0xffff & ~(GROUP_DEBRIS | GROUP_RAGDOLL));
+/** Groups for a Foamer's line of sight: solid level geometry only, not
+ *  Foamer part boxes (its own sit round the ray's start), debris or
+ *  ragdolls. */
+export const SIGHT_QUERY_GROUPS = groups(0xffff, 0xffff & ~(GROUP_DEBRIS | GROUP_RAGDOLL | GROUP_FOAMER));

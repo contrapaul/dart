@@ -89,6 +89,259 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ENG-08 review, seen on the range (Claude)
+
+- Watched on the range in watch mode (QA-watch branch, stepped by hand
+  because a hidden browser pane gets no animation frames): a range spawn
+  stands idle, sees the player at 8 m, alerts, approaches, takes a token at
+  the hold ring, winds up, strikes and recovers; with a leg broken it falls
+  in under 0.9 s, crawls and attacks from the ground.
+- Fixed in review: line of sight was always blocked (the ray started inside
+  the Foamer's own capsule and part boxes and ended inside the player's
+  capsule), so no Foamer ever saw the player; new `SIGHT_QUERY_GROUPS`, the
+  own capsule excluded, `sightEndMarginMetres` in `data/ai.json`, and a test
+  on the real system. An approach without a token no longer bids, and a
+  falling Foamer no longer bids until it is crawling.
+- Unverified: how the prone attack looks (the head rises to about standing
+  height in the windup) and the feel of the hold circle, by eye at 60 fps.
+- `tests/ai/nav-grid.test.ts` timing test still fails now and then under
+  load (wall clock); not touched.
+
+### 2026-11-03: ENG-08 stage 3b (DeepSeek V4.1 Flash)
+
+The Foamer brain on the director and the nav grid. Stage 3a built the pure
+logic; this is the wiring into `src/foamers/` now that GAME-11 has merged,
+plus the two pages and the range overlay.
+
+- `data/foamers.json`: both test attacks (bonk, headbutt) declare
+  `"token": "melee"`. The rig's pool is read from the attacks when a Foamer
+  spawns, so a ranged rig will draw from the ranged pool with no code change.
+- `src/ai/agent.ts`: one class per Foamer, `FoamerAgent`, holding the brain,
+  its context, the token bid and one reused path. `bid` and `step` are split
+  so every agent bids before `Director.update` resolves the bids (the best
+  bid wins, not the first caller), then reads the answer back. `navigate`
+  re-paths on `repathSeconds`, when `grid.version` changed (a carve or a
+  rest re-bake), or when the player moved more than 0.5 m. Nothing from
+  Three.js or Rapier is imported.
+- `src/ai/level.ts`: `makeLevelAI(rapier, world, bounds, difficulty)` builds
+  one director and one grid per level, with `carveChanged` and `pieceRested`
+  re-bake helpers. The director's difficulty comes from the settings preset's
+  `director` key (`DIFFICULTIES[...].director` in `data/difficulty.json`),
+  so a preset that should feel harder can cap more tokens.
+- `src/foamers/foamers.ts`: each Foamer gets an agent at spawn, with its
+  first state from `spawnState` (arena alert, range idle). The brain runs
+  before the state machine each step and owns idle, alert, approach and hold;
+  windup, strike, recover, stagger, fall, crawl and down stay in the Foamer.
+  An attack needs a token; the token is released on attack end, on stagger,
+  on fall, and forgotten on down. Approach follows the grid path with
+  separation steering; hold strides along the ring at `holdRange`. A crawl
+  follows the same path at crawl speed. Line of sight is a ray from chest to
+  player, with debris and ragdoll bodies excluded. Being shot wakes it
+  (`tookDamage`), and an idle Foamer picks up a neighbour's alert inside
+  `alertRadius`.
+- `src/voxel/pieces.ts`: `onRest(centre, radius)` fires once when a fallen
+  piece sleeps, so the grid can re-bake under it.
+- `src/main.ts` and `src/range/main.ts`: one `makeLevelAI` each, assigned to
+  the Foamer system; main bakes over the course and starts spawns alert, the
+  range bakes over its floor and starts spawns idle so the sight test can be
+  watched. Carves and resting pieces re-bake their patch in both.
+- Range: a Nav grid switch draws the walkable cells as one InstancedMesh
+  (built when first switched on, cells tinted by height) and each Foamer's
+  path as a line; the report gains the director's `stats()` (melee and
+  ranged tokens in use, and how many are waiting).
+- Tests: `tests/ai/foamer-ai.test.ts`, two real-physics tests: an F01 behind
+  a wall with one far gap reaches the player, and 4 F01s on the player never
+  have more than the normal melee token count attacking at once while the
+  director never issues more than its cap.
+
+Decisions. A Foamer with no director keeps the pre-brain behaviour (walk in,
+attack in range). That is deliberate: the older Foamer tests and the debug
+tools spawn without one, and it keeps the change surgical. `NavGrid.findPath`
+gained a fallback for an agent standing in a cell the bake calls unwalkable
+(pressed against a wall): it paths from the nearest walkable cell on its own
+level. Without that a Foamer that walked into a wall stood still for ever.
+
+Still unverified. The overlay is not checked by eye in the browser, and the
+bake over the main course's bounds (x -20 to 70) has not been timed there;
+the stage 2 measurement was 70 ms for 40 by 40 m at 0.25 m cells. The arena
+alert spawn means the main page starts with Foamers already closing in, which
+is new behaviour and has not been played.
+
+Review (same day, after the stage 3b review). One real bug: tokens were never
+given back, because the release on attack end and on stagger was only
+promised and never called, and every living Foamer bid every step, so the
+first Foamers to win a token kept it for good. Now `FoamerAgent.ask` bids
+only while it wants one (hold, a crawl in reach, an attack in progress, or an
+approach carrying the token it won) and calls `director.release` otherwise,
+which frees a stale bid too; `recover` end releases `attackEnd` and a stagger
+releases `stagger`. `nextAgentId` uses `aiData.maxAgents` and returns -1 when
+all are taken, so that Foamer spawns without an agent instead of sharing id
+0. `navigate` reuses two scratch points. The circle's 0.5, 0.6 and 0.15 are
+now `circleRampMetres`, `circleStrafeShare` and `circleDeadbandMetres` in
+`data/ai.json`. Two more real-physics tests: 4 F01s all attack within 20 s of
+sim time, and an idle F01 out of sight holds no token.
+
+### 2026-11-03: ENG-08 stage 3a (DeepSeek V4.1 Flash)
+
+The parts of stage 3 that do not touch the Foamer code, so it could land
+while GAME-11 rewrites `src/foamers/`:
+
+- `src/ai/brain.ts`: a small state machine base. States are a string union
+  given as a type parameter, each with optional `enter`, `update`, `exit`
+  hooks over a caller context, `stateTime` (reset on every transition) and a
+  fixed-size transition ring the tests read (`logLength`, `logAt`, `log`,
+  `statesEntered`). A state that returns itself is not a transition, so
+  nothing is logged for standing still. The hooks get `(dt, stateTime, ctx)`
+  so they never have to read `brain.stateTime` back.
+- `src/ai/f01-brain.ts`: idle, alert, approach and hold as pure functions
+  (`decideF01`) over a five field input struct plus attack range and
+  `holdRange`, returning the wanted state and a movement intent (`stand`,
+  `followPath`, `circleLeft`, `circleRight`). `makeF01Brain` wires the four
+  states onto the base machine; `makeF01Context` makes the one allocation per
+  Foamer. `updateToken` and `releaseToken` talk to the stage 1 director.
+  Nothing from `src/foamers/` is imported.
+- `data/ai.json`: the `brain` block with sightRange 20, alertRadius 8,
+  alertTime 0.4, repath 0.5 and holdRange 2.2, each explained in the `_note`.
+  `repathSeconds` is data only in 3a: the brain has no path yet, so the
+  Foamer side schedules re-paths in 3b.
+- `tests/ai/brain.test.ts`, 17 tests: the state machine base (time, enter and
+  exit, the ring wrapping); idle stays idle when the player is out of sight
+  and goes alert when shot or when a neighbour alerts; alert holds for the
+  telegraph then approaches; approach follows a path and asks for a token in
+  reach only; without a token it goes to hold, circles (odd ids the other way
+  so two Foamers do not mirror) and asks again every step; hold ends on a
+  token or when the player walks away; token scores put a closer agent ahead
+  and let a waiting one catch up; `down` forgets a token at once, attack end
+  releases it; 4 simulated F01s on the player never exceed the 2 normal
+  melee tokens attacking at once over 10 s, and every one attacks at least
+  once in 20 s.
+
+Decisions. Hold and circle live in the brain, not in the Foamer, so the
+"never attack without a token" rule is testable without a physics world. The
+brain never leaves `idle` for anything but `alert`: the log check asserts a
+real brain driven at point blank distance only ever logs `idle` to `alert`.
+`down` calls `Director.forget` rather than `release`, because down is terminal
+and the cooldown would otherwise look like a stall to the next Foamer.
+
+Still unverified. The card's "an F01 behind a wall walks round it" test waits
+for stage 3b, where the Foamer owns position, path and the nav grid; nothing
+here observes a real Foamer, so the walk round a wall is not tested yet.
+Attack range (1.3 m from `data/foamers.json`) is passed in by the caller and
+is not yet read from the rig; 3b wires it. Stages 3b and the range overlay
+(the Nav grid switch, the per Foamer path lines, the director `stats()` in
+the report) are still to do after GAME-11 merges.
+
+Review fixes (same entry): approach without a token now hands over to hold at
+`holdRange` instead of `attackRange`, and hold only returns to approach on a
+token or once the player is past `holdRange + holdExitMarginMetres` (new data
+value, 1.0 m), so a tokenless Foamer settles at 2.2 m instead of walking in
+and being told to hold and approach on alternate steps. With a token,
+approach walks to `attackRange` and stands. `tokenScore`'s three weights moved
+to `data/ai.json` brain (`tokenMinDistanceMetres` 0.5, `tokenSightScore` 1,
+`tokenWaitPerSecond` 0.5, each in the `_note`) and are read from `BRAIN`. New
+test: a tokenless agent whose distance follows its own intent enters hold
+once and stays for 5 s (one transition, no flapping).
+
+### 2026-11-03: ENG-08 stage 2 (DeepSeek V4.1 Flash)
+
+Grid navigation and steering: `src/ai/nav-grid.ts`, `src/ai/steer.ts`, the
+`nav` and `steer` blocks in `data/ai.json`, 18 tests in
+`tests/ai/nav-grid.test.ts` and `tests/ai/steer.test.ts`. Pure numbers and
+typed arrays; Three.js is not imported.
+
+`NavGrid` bakes a rectangle of the level into a 0.25 m grid: a downward ray
+from 8 m finds the ground, the hit normal rejects slopes over 40 degrees,
+and an agent sized capsule (0.35 m radius, 1.6 m tall) standing on that
+ground must hit nothing. Ground height and a walkable flag live in two
+typed arrays. `rebake(minX, minZ, maxX, maxZ)` redoes only the cells in
+that rectangle plus one agent radius around it, for `impacts.onCarve` and
+for a falling piece that rests. `findPath(from, to, out)` is A* on
+8-connected cells with no corner cutting and a 0.45 m step limit between
+neighbours, string pulled to the fewest waypoints, writing into caller
+owned arrays: no allocation per query after the first. An unwalkable or
+walled off goal paths to the reachable cell nearest it. `steer` seeks the
+next waypoint, eases to a stop inside `arriveRadius` 0.6 m of the last one,
+and pushes away from neighbours nearer than `separation` 0.9 m.
+
+Measured in the test runner: bake of a 40 by 40 m floor 27.8 ms, path
+query across it 1.1 ms with 4 waypoints (targets under 150 ms and under
+2 ms).
+
+Decisions and why (PLAN.md 14, row of 2026-11-03):
+- A walkable grid, not a recast navmesh. The level is destructible, so a
+  navmesh would need re-baking around every carve, which is the cost 4.3
+  exists to avoid. A grid re-bakes a small rectangle instead, needs no new
+  dependency, and is plain typed arrays.
+- Cells are test baked from the physics world, not from the voxel data:
+  pieces that have fallen, ramps and the level all come out the same way,
+  and there is one source of truth for what is solid.
+- Kinematic bodies are skipped in the bake. The player and Foamers are
+  kinematic, so nobody steers around an agent that is steering; pieces
+  (dynamic) and the level (fixed) are found.
+- The standing shape is lifted by `maxStep` before the shape cast. Without
+  that lift every 0.45 m step reads as a wall, because the capsule's lower
+  half is inside the step. With it, a step the character controller walks
+  up passes and a 1 m ledge still fails.
+- A* uses an indexed heap with decrease-key, one entry per open cell.
+  Lazy duplicate insertion overflowed the fixed heap on a long search.
+- The goal that cannot be reached falls back to a second A* that may end
+  anywhere and keeps the cell nearest the goal. Picking the nearest
+  walkable cell first is wrong: it can be an isolated pocket under a ramp.
+
+Two things to know when wiring this in stage 3:
+- Rapier's query pipeline only updates on `world.step()`. A bake or rebake
+  straight after adding or removing a collider queries the old world, so
+  the game must rebake after the step that applies the change (or call the
+  query pipeline update). The tests step before every bake.
+- A wall's own top is stand-able ground, so its cells are walkable; what
+  stops a path climbing a 2 m wall is the step limit, not the flag. The
+  tests assert paths and ground heights rather than the flag for that
+  reason.
+
+Unverified: nothing in the game calls the grid or steering yet (stage 3
+wires them into the Foamer loop). Bake cost on the real 40 by 40 m course
+with its voxel wall and towers is not measured; the 27.8 ms above is a
+plain floor in the test runner. The rebake cost per carve is not measured
+either, only reasoned about. Grid resolution 0.25 m is from the card and
+has not been tuned against a 0.35 m agent walking through the course.
+
+
+### 2026-11-02: ENG-08 stage 1 (DeepSeek V4.1 Flash)
+
+The AI director: `src/ai/director.ts` plus `data/ai.json`, 8 tests in
+`tests/ai/director.test.ts`. Pure TypeScript, no Three.js or Rapier.
+Attack tokens by kind (`melee`, `ranged`), 1/2/3/4 of each for story /
+normal / hard / fury, default `normal`, `tokenCooldown` 0.4 s and
+`maxAgents` 64. `request(agentId, kind, score)` records a bid and returns
+true once the agent holds a token, `release` returns it, `forget` drops a
+dead agent's bid and its token at once, `update(dt)` runs the cooldowns and
+then grants free tokens, `stats()` reports tokens in use per kind and
+agents waiting. Fixed-size typed arrays: no allocation per call.
+
+Decisions and why:
+- Bids are resolved in `update`, highest score first, not inside
+`request`. If `request` granted on the spot, the first caller in a frame
+would always beat a higher score later in the same frame, and every Foamer
+would need an update order in `main.ts`. One pass over 64 slots per kind
+per frame, no sort.
+- A forgotten agent frees its token with no cooldown. The cooldown exists
+to stop one agent's attacks chaining; an agent that is gone cannot attack,
+so the next Foamer should not inherit its wait.
+- A waiting agent may raise its score between updates; the newest bid is
+what the next `update` sees. Ties go to the lower agent id, which keeps
+the grant order stable.
+- Ids are integers in [0, `maxAgents`); anything else is ignored rather
+than throwing, because the caller is the Foamer loop.
+- The card says F01's bonk and headbutt are `melee`, but `data/foamers.json`
+carries no kind per attack, only `needs`, `windup` and `strike`, and adds
+no `attackKind`. Stage 1 does not read `data/foamers.json`, so nothing is
+hard coded either way. Question for the reviewer: should stage 3 add a
+`kind` field to each attack in `data/foamers.json`, or hold one kind per
+rig in `data/ai.json`?
+
+Unverified: nothing in the game calls the director yet (stage 3 wires it).
+No range report field yet either. Stage 2 (nav grid, steering) not started.
+
 ### 2026-11-03: GAME-11 merged (Claude)
 
 - Merged `game-11` into main after Paul's approval. Review: matches the

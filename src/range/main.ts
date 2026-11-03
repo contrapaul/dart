@@ -16,6 +16,9 @@ import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import { makeLevelAI } from "../ai/level";
+import { SettingsStore } from "../core/settings";
+import type { PathPoints } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
 import { DebrisSystem } from "../voxel/debris";
@@ -135,6 +138,15 @@ const impacts = new DartImpacts(darts, debris, voxelTargets);
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
 foamers.spawnCount = R.spawn.count;
 foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
+// ENG-08 stage 3b: one director (its difficulty from the settings preset's
+// director key) and one nav grid, baked over the range floor at load.
+const store = new SettingsStore();
+const levelAI = makeLevelAI(
+  rapier, world, { minX: -half, maxX: half, minZ: -half, maxZ: half }, store.value.difficulty,
+);
+foamers.director = levelAI.director;
+foamers.navGrid = levelAI.grid;
+foamers.spawnState = "idle"; // range spawns start idle, so the sight test works
 scene.add(foamers.group);
 foamers.onBonk = (_f, attack) => {
   if (switches.godMode || paused) return;
@@ -183,7 +195,7 @@ renderModRow();
 // Switches, each listed in the report.
 const switches = {
   foamers: true, shadows: true, pixelRatio: true, snap: true,
-  strafe: false, infiniteAmmo: false, godMode: false,
+  strafe: false, infiniteAmmo: false, godMode: false, nav: false,
 };
 // Infinite ammo refills the active blaster's magazine after every shot.
 function applyInfiniteAmmoHooks() {
@@ -243,6 +255,10 @@ function setSwitch(name: keyof typeof switches, on: boolean) {
       input.moveOverride = on ? strafeMove : null;
       break;
     case "infiniteAmmo":
+      break;
+    case "nav":
+      // Built the first time it is switched on, from the grid's own cells.
+      showNavGrid(on);
       break;
     case "godMode":
       if (on) {
@@ -305,6 +321,123 @@ document.querySelector<HTMLButtonElement>("#clearFoamers")!.addEventListener("cl
 document.querySelector<HTMLButtonElement>("#breakLeg")!.addEventListener("click", () =>
   foamers.breakLegForTest());
 
+// The Nav grid overlay (ENG-08 stage 3b): one InstancedMesh of thin tiles on
+// every walkable cell, built when the switch is first turned on, and one
+// line per living Foamer showing the path it is following. Both are redrawn
+// each step while the switch is on; nothing is built while it is off.
+let navMesh: THREE.InstancedMesh | null = null;
+const navPathLines = new THREE.Group();
+scene.add(navPathLines);
+const navCellGeo = new THREE.BoxGeometry(1, 1, 1);
+const navCellMat = new THREE.MeshBasicMaterial({
+  color: 0x7ef0c0, transparent: true, opacity: 0.22, depthWrite: false,
+});
+const _navM = new THREE.Matrix4();
+const _navC = new THREE.Color();
+
+function buildNavMesh() {
+  const g = levelAI.grid;
+  let n = 0;
+  for (let i = 0; i < g.walkable.length; i++) if (g.walkable[i] === 1) n++;
+  const mesh = new THREE.InstancedMesh(navCellGeo, navCellMat, Math.max(1, n));
+  mesh.count = n;
+  mesh.frustumCulled = false;
+  let k = 0;
+  for (let r = 0; r < g.rows; r++) {
+    for (let c = 0; c < g.cols; c++) {
+      const i = r * g.cols + c;
+      if (g.walkable[i] !== 1) continue;
+      const y = g.ground[i]!;
+      _navM.makeScale(g.cell * 0.94, 0.02, g.cell * 0.94);
+      _navM.setPosition(g.minX + (c + 0.5) * g.cell, y + 0.02, g.minZ + (r + 0.5) * g.cell);
+      mesh.setMatrixAt(k, _navM);
+      _navC.setHSL(0.42, 0.6, 0.4 + 0.25 * Math.min(1, Math.max(0, y / 4)));
+      mesh.setColorAt(k, _navC);
+      k++;
+    }
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  return mesh;
+}
+
+/** The path line for one Foamer, as a BufferGeometry rewritten in place. */
+interface NavLine {
+  line: THREE.Line;
+  pos: Float32Array;
+}
+const navLines = new Map<number, NavLine>();
+const NAV_LINE_POINTS = 256;
+
+function navLineFor(f: number): NavLine {
+  let l = navLines.get(f);
+  if (l) return l;
+  const pos = new Float32Array(NAV_LINE_POINTS * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setDrawRange(0, 0);
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffd166 }));
+  line.frustumCulled = false;
+  navPathLines.add(line);
+  l = { line, pos };
+  navLines.set(f, l);
+  return l;
+}
+
+function showNavGrid(on: boolean) {
+  if (!on) {
+    if (navMesh) navMesh.visible = false;
+    navPathLines.visible = false;
+    return;
+  }
+  // Rebuilt on every switch-on (cheap, and the grid may have re-baked): one
+  // InstancedMesh, not one mesh per cell.
+  if (!navMesh) {
+    navMesh = buildNavMesh();
+    scene.add(navMesh);
+  } else {
+    scene.remove(navMesh);
+    navMesh.geometry.dispose();
+    (navMesh.material as THREE.Material).dispose();
+    navMesh = buildNavMesh();
+    scene.add(navMesh);
+  }
+  navMesh.visible = true;
+  navPathLines.visible = true;
+}
+
+/** Redraw every Foamer's path line, while the switch is on. */
+function updateNavPaths() {
+  if (!switches.nav) return;
+  const seen = new Set<number>();
+  foamers.list.forEach((f, i) => {
+    seen.add(i);
+    const l = navLineFor(i);
+    const path: PathPoints | undefined = f.agent?.path;
+    const n = path ? Math.min(path.count, NAV_LINE_POINTS) : 0;
+    for (let k = 0; k < n; k++) {
+      l.pos[k * 3] = path!.xs[k]!;
+      l.pos[k * 3 + 1] = (levelAI.grid.groundAt(path!.xs[k]!, path!.zs[k]!) || 0) + 0.12;
+      l.pos[k * 3 + 2] = path!.zs[k]!;
+    }
+    l.line.geometry.setDrawRange(0, n);
+    (l.line.geometry.getAttribute("position") as THREE.BufferAttribute).needsUpdate = true;
+    l.line.geometry.computeBoundingSphere();
+  });
+  for (const [k, l] of navLines) {
+    if (seen.has(k)) continue;
+    l.line.removeFromParent();
+    l.line.geometry.dispose();
+    navLines.delete(k);
+  }
+}
+
+// The director's token state, for the report (ENG-08 stage 3b).
+function directorReport(): string {
+  const st = levelAI.director.stats();
+  return `melee ${st.melee.inUse}/${st.melee.cap} ranged ${st.ranged.inUse}/${st.ranged.cap} waiting ${st.waiting}`;
+}
+
 // Report and copy.
 const reportEl = document.querySelector<HTMLPreElement>("#report")!;
 function reportText(): string {
@@ -317,6 +450,7 @@ function reportText(): string {
     autoStrafe: switches.strafe ? "on" : "off",
     infiniteAmmo: switches.infiniteAmmo ? "on" : "off",
     keepAlive: foamers.spawnCount,
+    director: directorReport(),
     blaster: loadout.activeId(),
     dartType: loadout.active.dartType,
     voices: engine ? engine.playingCount : 0,
@@ -453,7 +587,10 @@ loopCtl = startLoop({
     if (input.wasPressed("pause")) setPaused(!paused);
     if (!paused) {
       player.update(dt, input);
-      if (switches.foamers) foamers.update(dt, player.eye(1, _eye));
+      if (switches.foamers) {
+        foamers.update(dt, player.eye(1, _eye));
+        updateNavPaths();
+      }
       // Switch: wheel down is next, up is prev; keys 1 to 3 select directly.
       for (let i = 0; i < WEAPON_KEYS.length; i++)
         if (input.wasPressed(WEAPON_KEYS[i])) loadout.select(i);
