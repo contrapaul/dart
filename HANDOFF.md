@@ -111,6 +111,28 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: LVL-01 review, played through in watch mode (Claude)
+
+- Played `arena.html?watch` end to end by stepping by hand: the doors
+  lock on entering the pit, wave 1 (3 Slowmers) comes from the two north
+  rifts, wave 2 (5) from all three once wave 1 is down, both doors open
+  on clear, and the exit pad shows Level complete. Try again restarts at
+  the pit entry with the arena reset.
+- Fixed: Try again kept the ammo left at the pop, and there are no
+  pickups yet, so a retry could be unwinnable; the checkpoint now resets
+  every blaster to its starting magazine and reserve. Added
+  `dartArena.aimNearest()` for review (points at the nearest standing
+  Foamer's body).
+- Not a bug, but worth knowing: at 13 m the pump's spread and dart drop
+  miss a Slowmer more often than they hit; up close it goes down fast.
+- `src/arena/main.ts` is still mostly a copy of `src/main.ts` (only the
+  attack damage and carve bounds moved to `src/game/`). Fine for one
+  arena; fold the shared wiring into `src/game/` before a second page.
+- Pre-existing (UI-01, same on index.html): the title overlay shows
+  through behind "You popped!".
+- Unverified: frame cost of the pit at 60 fps, how the pit looks and
+  reads by eye (it is all greybox), and the lock-in banner timing.
+
 ### 2026-11-03: LVL-01 the first arena (DeepSeek via Pi, review pending)
 
 - Built in three stages, one commit each: `be844ca` format, validator,

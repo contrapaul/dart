@@ -230,6 +230,12 @@ async function run() {
     player.pitch = 0;
     foamers.clear();
     hud.clearFlash();
+    // Back to the ammo the player had at the start: there are no pickups
+    // yet, so a retry with what was left could not win the arena.
+    for (const b of loadout.blasters) {
+      b.refill();
+      b.reserve = b.spec.reserveStart;
+    }
     if (resetArena) {
       runner.reset();
       rifts.setAll("dim");
@@ -497,6 +503,20 @@ async function run() {
         look: (yaw: number, pitch: number) => {
           player.yaw = yaw;
           player.pitch = THREE.MathUtils.clamp(pitch, -1.5, 1.5);
+        },
+        /** Point the view at the body of the nearest Foamer still standing. */
+        aimNearest: () => {
+          const eye = player.eye(1, _move);
+          let best: THREE.Vector3 | null = null;
+          for (const f of foamers.list) {
+            if (foamers.downed.includes(f)) continue;
+            if (!best || f.centre.distanceToSquared(eye) < best.distanceToSquared(eye)) best = f.centre;
+          }
+          if (!best) return false;
+          const dx = best.x - eye.x, dy = best.y + 1.2 - eye.y, dz = best.z - eye.z; // centre is the feet
+          player.yaw = Math.atan2(-dx, -dz);
+          player.pitch = Math.atan2(dy, Math.hypot(dx, dz));
+          return [best.x, best.y, best.z].map((n) => Number(n.toFixed(2)));
         },
         pause: (on: boolean) => setPaused(on),
         fire: () => {
