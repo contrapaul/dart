@@ -50,6 +50,16 @@ function rig() {
   return { world, darts, debris, targets, foamers };
 }
 
+/** A fixed Math.random stream, for tests that must not depend on the
+ *  process's random state at that moment in time (QA flaky). */
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
 /** One game step: darts, Foamers, world, then refresh the dart instances. */
 function tick(r: ReturnType<typeof rig>, player: THREE.Vector3, dt = DT) {
   r.darts.update(dt);
@@ -187,14 +197,26 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     // (it only pops when the killing damage is a burst, ENG-10 stage 3),
     // so each round fires three darts close together: they land in the
     // same step, count as one blast and clear the catastrophic share.
-    let rounds = 0;
-    while (r.foamers.stats.popped === 0 && rounds++ < 20) {
-      r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
-      r.darts.fire(new THREE.Vector3(0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
-      r.darts.fire(new THREE.Vector3(-0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
-      for (let i = 0; i < 120 && r.foamers.stats.popped === 0 && f.health > 0; i++) {
-        tick(r, player);
+    // Chunks a carve throws out are kicked with Math.random
+    // (src/voxel/debris.ts), so where the rebounding darts fly is set by
+    // the random state of the process at that moment; that flaked the
+    // test when the killing darts struck chunks instead of the part and
+    // the Foamer went down instead of popping (QA flaky). Pin the seed
+    // around the fight and restore the process random after.
+    const origRandom = Math.random;
+    Math.random = seededRandom(0x1bdcb3d2);
+    try {
+      let rounds = 0;
+      while (r.foamers.stats.popped === 0 && rounds++ < 20) {
+        r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+        r.darts.fire(new THREE.Vector3(0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+        r.darts.fire(new THREE.Vector3(-0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+        for (let i = 0; i < 120 && r.foamers.stats.popped === 0 && f.health > 0; i++) {
+          tick(r, player);
+        }
       }
+    } finally {
+      Math.random = origRandom;
     }
     expect(r.foamers.stats.popped).toBe(1);
     expect(f.health).toBeLessThanOrEqual(0);
