@@ -126,7 +126,7 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-03: GAME-04 stage 1 review, shield played in watch mode (Claude)
+### 2026-11-03: GAME-04 stage 1 review, shield played in watch mode, merged (Claude)
 
 - Played on `arena.html?watch`: the raised disc reads well (purple face,
   orange rim, low left, clear of the crosshair). Blocking a Slowmer's

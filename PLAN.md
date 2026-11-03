@@ -528,7 +528,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 
 | ID | Task | Owner | Depends on |
 |---|---|---|---|
-| GAME-04 | Shield: block, parry (bounce-back), throw. Stage 1 done 2026-11-03 (`tasks/GAME-04.md`): viewmodel, block, movement gates, ricochet throw, return, cooldown. Parry stage 2 waits for GAME-10 (the ranged Foamer). | A / F | P0 gate |
+| GAME-04 | Shield: block, parry (bounce-back), throw. Stage 1 done 2026-11-03 (`tasks/GAME-04.md`): viewmodel, block, movement gates, ricochet throw, return, cooldown. Parry stage 2 waits for GAME-10 (the ranged Foamer). | Stage 1 done (Qwen 3.8 Flash Next via Pi + Claude review, Paul approved) | P0 gate |
 | GAME-05 | Shield charge | F | GAME-04 |
 | GAME-06 | Melee weapon + charges | F | GAME-04 |
 | GAME-07 | Stagger + Pop finishers + health drops | Done 2026-11-03 (card: `tasks/GAME-07.md`; Qwen 3.8-27B via Pi + Claude review, Paul approved) | GAME-03 |
