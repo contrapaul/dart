@@ -426,6 +426,7 @@ The full list of sounds, with IDs, takes and delivery format, is `design/SOUNDS.
 - **Destruction in level design:** cover that wears down, walls that can be blasted through to secrets, Foam growths that block paths until destroyed.
 - **Building levels (Proposed):** start with code-authored blockout levels (JSON of boxes, arenas, spawn points) so models can build and edit levels as text. Later, a simple in-browser level editor if needed (post P2).
 - **Level list:** [Paul], see section 6.1.
+- **Direction (decided 2026-11-03, Paul): semi-open linear.** One clear critical path from start to exit, never a maze, as in the modern Doom games. Each stretch opens into wide, multi-level spaces with optional side areas, vertical routes, overlooks and secrets off the path. Arenas lock until cleared and then open the way on; the next goal is always visible; backtracking is short and optional. Concepts, the space kit with metric sizes, and the blockout format are in `design/levels/` (LVL-00).
 
 ---
 
@@ -547,6 +548,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ART-03 | (card: `tasks/ART-03.md`) Code-generated blocky voxel Foamers (3 types: F01, F02, F05 in the palette), Paul approves | Done 2026-11-03 (Kimi via Pi + Claude review, Paul approved) | PRE-05 |
 | ART-04 | The 3 slice blasters modelled in Blender by script (Kimi), named moving parts, to the section 5.2 contract; the other 5 in Phase 3 | Kimi via Pi (slice 3 done 2026-11-01; other 5 in Phase 3) | ART-00, ART-01 |
 | ART-05 | Procedural first person animations | F | ART-04 |
+| LVL-00 | Level design concepts: pillars, space kit, Act 1 concepts, Acts 2 and 3 outlines, blockout format proposal (`design/levels/`) | DeepSeek via Pi (review) | CONTENT-PLAN 2 |
 | LVL-01 | One arena blockout with destructible cover and a lock-in | F + P | ENG-06 |
 | AUD-00 | Record Paul's blasters (session list in 8.3) | P | |
 | AUD-01 | (card: `tasks/AUD-01.md`) Sound system: Web Audio mixer, sound bank in `data/sounds.json` keyed by the IDs in `design/SOUNDS.md`, code-made placeholders for every sound, spatial one-shots and loops, hooks for blasters, darts, Foamers and the player, a Sound panel on the range | Done 2026-11-02 (Pi + Claude review) | GAME-09 |
@@ -618,6 +620,7 @@ All twelve answered 2026-10-29.
 
 | Date | Decision | Section |
 |---|---|---|
+| 2026-11-03 | Levels are semi-open linear (Paul): one critical path from start to exit, never a maze, with each stretch opening into wide multi-level spaces, optional side areas, vertical routes, overlooks and secrets off the path, as in the modern Doom games. Arenas lock until cleared, then open the way on; the next goal is always visible; backtracking is short and optional. Concepts and a space kit with sizes taken from `data/player.json` are in `design/levels/`. | 9 |
 | 2026-10-29 | Project created. Name: DART. Browser 3D FPS, Nerf-inspired dart blasters, Foamers from the Foam dimension, no blood or gore, combat modelled on DOOM (2016) and DOOM: The Dark Ages. | 1 |
 | 2026-10-29 | Paul writes weapons, story, Foamer designs and the logo; AI models assist and build. | 0 |
 | 2026-10-29 | Hybrid movement: sprint, dash, mantle, no double jump. | 3.1 |

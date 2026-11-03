@@ -102,6 +102,35 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: LVL-00 level design concepts (DeepSeek via Pi, review)
+
+- New `design/levels/`: `README.md` (pillars with checks, the 10 beat
+  rhythm for a 17 to 19 minute level, where secrets, stations, placed
+  ammo, blaster pickups and rifts sit, 10 wayfinding rules), `KIT.md`
+  (the player ruler from `data/player.json`, 8 arena archetypes with
+  ASCII sketches and metre sizes, 9 connectors, 6 secret types, the
+  destructible piece table with 3.2 m voxel-zone limits from
+  `data/destruction.json`, and the arena budgets from `data/ai.json`),
+  `LEVEL-1-1.md` to `LEVEL-1-4.md`, `BOSS-1.md`, `ACTS-2-3.md` and
+  `BLOCKOUT.md` (JSON proposal only, one worked arena, no loader code).
+- Bucket limits the concepts respect: a destructible zone is 3.2 x 3.2 x
+  3.2 m (32 voxels of 0.1 m), 6 zones per arena, 12 Foamers alive,
+  arena footprint 44 x 36 m so the nav grid and the 2 melee tokens hold.
+- Decisions: PLAN 9 direction line added (semi-open linear, Paul) and a
+  section 14 row dated 2026-11-03. LVL-00 row added to the Phase 2 table
+  above LVL-01.
+- Proposed, needs Paul: every place name, act setting and boss look
+  ([Paul] left in each file); the act accent colour; whether 1-3 gets a
+  blaster (table 2 is blank there, `LEVEL-1-3.md` section 8 argues for
+  none); the 1-2 blaster order clash between CONTENT-PLAN table 2 (B02)
+  and D04 (Shredder); whether A7 in 1-2 is allowed to make the way on
+  the way back.
+- Unverified: none of the metrics are playtested. The boss plinth and
+  its 2 m shield-charge reach (BOSS-1 section 8), and the Swarmer
+  debris load (LEVEL-1-3 section 7) are the first things to check in a
+  blockout. `npx tsc --noEmit` and `npx vitest run` pass; no game code
+  or data changed.
+
 ### 2026-11-03: ART-03 reviewed and merged (Claude)
 
 - Round 3 left the Slowmer's pupils as a 1 by 2 strip at one side of each
