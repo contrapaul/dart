@@ -185,18 +185,23 @@ export class FoamerSystem {
     // spawned (arena alert, range idle). Without a director there is no pool
     // to bid to, so the Foamer keeps its pre-brain behaviour (walk in,
     // attack in range), which the older tests and tools rely on.
-    if (this.director) {
+    // With every agent id taken (maxAgents Foamers at once, capped by
+    // SPAWNER.max anyway) it spawns without an agent, the pre-brain way,
+    // rather than share another Foamer's id in the director.
+    const agentId = this.director ? this.nextAgentId() : -1;
+    if (this.director && agentId >= 0) {
       f.state = this.spawnState;
       f.stateTime = 0;
       f.agent = new FoamerAgent(
         this.director,
         { tokenKind: this.tokenKind(), initial: this.spawnState },
-        this.nextAgentId(),
+        agentId,
       );
       f.agentInput = {
         x: feet.x, z: feet.z, playerX: feet.x, playerZ: feet.z,
         attackRange: SPEC.attackRange, lineOfSight: false,
         tookDamage: false, nearbyAlert: false,
+        crawlInReach: false, keepToken: false,
       };
     }
     this.group.add(f.group);
@@ -358,6 +363,8 @@ export class FoamerSystem {
         sound(this, "attack", f, f.centre);
       }
     } else if (f.stateTime >= SPEC.recover) {
+      // Attack end: the token goes home, so the next Foamer in line gets it.
+      f.agent?.release("attackEnd");
       // A prone Foamer goes back to the crawl, not to its feet.
       f.state = f.prone ? "crawl" : "approach";
       f.stateTime = 0;
@@ -434,6 +441,13 @@ export class FoamerSystem {
     input.lineOfSight = this.lineOfSight(f, player);
     input.tookDamage = f.damageSinceStep;
     input.nearbyAlert = this.nearbyAlert(f);
+    // A crawl is not one of the brain's states, so the brain never asks for
+    // a token while prone: the Foamer says when the crawl is in reach.
+    input.crawlInReach = f.prone && this.headDist(f, player) <= SPEC.attackRange;
+    // An attack keeps the token it holds: the brain stopped wanting one as
+    // soon as the windup began, and taking it back now would let it be
+    // granted to another Foamer mid swing.
+    input.keepToken = f.state === "windup" || f.state === "strike" || f.state === "recover";
     f.damageSinceStep = false;
     a.step(dt, input);
     // The brain's state is the Foamer's while the Foamer is in one of the
@@ -519,8 +533,11 @@ export class FoamerSystem {
       // ring rather than drifting away.
       const want = BRAIN.holdRangeMetres;
       const err = d - want;
-      const k = Math.min(1, Math.abs(err) / 0.5) * 0.6;
-      if (Math.abs(err) > 0.15) {
+      // The step in or out ramps up over circleRampMetres and keeps
+      // circleStrafeShare of the speed, and does nothing inside the
+      // deadband, so the sidle settles on the ring (data/ai.json brain).
+      const k = Math.min(1, Math.abs(err) / BRAIN.circleRampMetres) * BRAIN.circleStrafeShare;
+      if (Math.abs(err) > BRAIN.circleDeadbandMetres) {
         vx -= (dx / d) * Math.sign(err) * speed * k;
         vz -= (dz / d) * Math.sign(err) * speed * k;
       }
@@ -563,15 +580,15 @@ export class FoamerSystem {
     return (t === "ranged" ? "ranged" : "melee") as TokenKind;
   }
 
-  /** The next free agent id, in [0, maxAgents). */
+  /** The next free agent id, in [0, maxAgents), or -1 if every one is taken. */
   private nextAgentId(): number {
-    const max = 64;
-    for (let id = 0; id < max; id++) {
+    for (let id = 0; id < aiData.maxAgents; id++) {
       if (!this.list.some((f) => f.agent?.agentId === id)) return id;
-      // Downed Foamers are out of the fight; their id is free again once
-      // the director has forgotten them (it does that when they go down).
+      // Downed Foamers keep their id until they are removed: going down
+      // forgets them in the director, but a new Foamer reusing a downed
+      // one's id would fight over the same table slot when it is removed.
     }
-    return 0;
+    return -1;
   }
 
   private respawnSpawn(player: THREE.Vector3) {
@@ -1139,10 +1156,12 @@ export class FoamerSystem {
         f.legs().length < SPEC.handicaps.fallBelowLegs)
       this.startFall(f, part.spec.id);
     else if (!f.prone) {
-      // Stagger; a stagger during a windup cancels the attack. A prone
-      // Foamer cannot stagger, it only loses the attack (GAME-11).
+      // Stagger; a stagger during a windup cancels the attack, so the token
+      // goes back too. A prone Foamer cannot stagger, it only loses the
+      // attack (GAME-11).
       f.state = "stagger";
       f.stateTime = 0;
+      f.agent?.release("stagger");
     }
     if (f.attack()) f.setAttack(null);
   }

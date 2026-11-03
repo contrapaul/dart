@@ -116,4 +116,48 @@ describe("an F01 on the nav grid (ENG-08 stage 3b)", () => {
     expect(most, "the cap is reached").toBe(MELEE_CAP);
     expect(r.foamers.stats.bonks, "somebody attacked").toBeGreaterThan(0);
   });
+
+  it("gives the token back, so every one of 4 F01s attacks in 20 s", () => {
+    // Two steps per frame, so 20 s of game time is 1200 steps, not 3600.
+    const twoSteps = (r: ReturnType<typeof rig>, player: THREE.Vector3) => {
+      tick(r, player);
+      tick(r, player);
+    };
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const fs = [0, 1, 2, 3].map((i) =>
+      r.foamers.spawn(new THREE.Vector3(-1.2 + 0.8 * i, 0, -1.6))!,
+    );
+    const attacked = fs.map(() => false);
+    let most = 0;
+    for (let i = 0; i < 600; i++) {
+      twoSteps(r, player);
+      let n = 0;
+      for (let j = 0; j < fs.length; j++) {
+        const f = fs[j]!;
+        if (f.state === "windup" || f.state === "strike" || f.state === "recover") attacked[j] = true;
+        if (f.state === "windup" || f.state === "strike") n++;
+      }
+      most = Math.max(most, n);
+      expect(r.director.stats().melee.inUse, "tokens in use").toBeLessThanOrEqual(MELEE_CAP);
+      expect(r.director.stats().ranged.inUse, "ranged tokens in use").toBe(0);
+    }
+    expect(attacked, "every one attacked").toEqual([true, true, true, true]);
+    expect(most, "at most the cap attack at once").toBeLessThanOrEqual(MELEE_CAP);
+  });
+
+  it("does not hold a token while idle out of sight", () => {
+    const r = rig();
+    // Out of sight range, nobody else about: it stays idle.
+    r.foamers.spawnState = "idle";
+    const player = new THREE.Vector3(0, 1.6, -40);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 9))!;
+    expect(f.agent, "it has a brain").not.toBeNull();
+    for (let i = 0; i < 60 * 3; i++) {
+      tick(r, player);
+      expect(f.state, "idle").toBe("idle");
+      expect(f.agent!.hasToken, "no token while idle").toBe(false);
+      expect(r.director.stats().melee.inUse, "tokens in use").toBe(0);
+    }
+  });
 });

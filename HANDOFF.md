@@ -149,6 +149,20 @@ the stage 2 measurement was 70 ms for 40 by 40 m at 0.25 m cells. The arena
 alert spawn means the main page starts with Foamers already closing in, which
 is new behaviour and has not been played.
 
+Review (same day, after the stage 3b review). One real bug: tokens were never
+given back, because the release on attack end and on stagger was only
+promised and never called, and every living Foamer bid every step, so the
+first Foamers to win a token kept it for good. Now `FoamerAgent.ask` bids
+only while it wants one (hold, a crawl in reach, an attack in progress, or an
+approach carrying the token it won) and calls `director.release` otherwise,
+which frees a stale bid too; `recover` end releases `attackEnd` and a stagger
+releases `stagger`. `nextAgentId` uses `aiData.maxAgents` and returns -1 when
+all are taken, so that Foamer spawns without an agent instead of sharing id
+0. `navigate` reuses two scratch points. The circle's 0.5, 0.6 and 0.15 are
+now `circleRampMetres`, `circleStrafeShare` and `circleDeadbandMetres` in
+`data/ai.json`. Two more real-physics tests: 4 F01s all attack within 20 s of
+sim time, and an idle F01 out of sight holds no token.
+
 ### 2026-11-03: ENG-08 stage 3a (DeepSeek V4.1 Flash)
 
 The parts of stage 3 that do not touch the Foamer code, so it could land

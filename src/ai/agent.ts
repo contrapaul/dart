@@ -46,6 +46,12 @@ export interface AgentInput {
   tookDamage: boolean;
   /** A Foamer inside alertRadius went alert since the last step. */
   nearbyAlert: boolean;
+  /** Prone with its head in reach: a crawl wants a token like a hold does,
+   *  though the brain's states do not cover it. */
+  crawlInReach: boolean;
+  /** It is in an attack (windup, strike, recover): keep the token it has,
+   *  even though the brain no longer wants a new one. */
+  keepToken: boolean;
 }
 
 export class FoamerAgent {
@@ -61,6 +67,11 @@ export class FoamerAgent {
   private readonly director: Director | null;
   /** Seconds spent asking for a token without one (feeds the bid). */
   private waited = 0;
+  /** The brain wanted a token on its last step. */
+  private wants = false;
+  /** Two scratch points for navigate(), so a re-path allocates nothing. */
+  private readonly from: Point2 = { x: 0, z: 0 };
+  private readonly to: Point2 = { x: 0, z: 0 };
   /** Seconds until the next re-path. */
   private repathIn = 0;
   /** The grid version the current path was made on. */
@@ -99,8 +110,9 @@ export class FoamerAgent {
   /**
    * Ask the director for a token. A bid, not a grant: every agent bids before
    * the director's own update, so the best bid wins the free tokens and the
-   * Foamer reads the answer back on its next step. Always call this every
-   * step, even with a token already held: the director returns it as is.
+   * Foamer reads the answer back on its next step. Only an agent that wants a
+   * token bids: an idle or alert one, or an approaching one still short of the
+   * hold ring, does not, so the tokens go to the Foamers in the fight.
    */
   bid(input: AgentInput): void {
     const i = this.ctx.input;
@@ -108,11 +120,7 @@ export class FoamerAgent {
     i.distance = this.distance;
     i.lineOfSight = input.lineOfSight;
     i.attackRange = input.attackRange;
-    if (this.director) {
-      i.hasToken = this.director.request(
-        this.agentId, this.tokenKind, tokenScore(this.distance, input.lineOfSight, this.waited),
-      );
-    }
+    this.ask(input);
   }
 
   /** One step of the brain, after the director's update: it reads the token
@@ -122,14 +130,33 @@ export class FoamerAgent {
     i.tookDamage = input.tookDamage;
     i.nearbyAlert = input.nearbyAlert;
     this.brain.update(dt, this.ctx);
-    const wants = this.ctx.decision.wantsToken;
-    if (this.director) {
+    this.ask(input);
+    if (this.wants && !i.hasToken) this.waited += dt;
+    else if (i.hasToken) this.waited = 0;
+  }
+
+  /**
+   * Ask while the agent wants a token; otherwise let it go, which also clears
+   * a stale bid (the director sets a waiting agent free at once). It wants
+   * one when the brain says so (hold, or approach at the ring), when a crawl
+   * is in reach, while it is in an attack (keepToken: the brain stops
+   * flagging one the moment it holds it), and along an approach, which keeps
+   * the token it won on the walk in. Idle, alert and a far approach do not.
+   */
+  private ask(input: AgentInput): void {
+    const i = this.ctx.input;
+    this.wants = this.ctx.decision.wantsToken || input.crawlInReach ||
+      input.keepToken || this.state === "approach";
+    if (!this.director) return;
+    if (this.wants) {
       i.hasToken = this.director.request(
         this.agentId, this.tokenKind, tokenScore(this.distance, input.lineOfSight, this.waited),
       );
+    } else {
+      this.director.release(this.agentId);
+      i.hasToken = false;
+      this.waited = 0;
     }
-    if (wants && !i.hasToken) this.waited += dt;
-    else if (i.hasToken) this.waited = 0;
   }
 
   /** Give the token back when it ends an attack, staggers, falls or goes
@@ -159,9 +186,11 @@ export class FoamerAgent {
     this.pathVersion = grid.version;
     this.goalX = input.playerX;
     this.goalZ = input.playerZ;
-    const from: Point2 = { x: input.x, z: input.z };
-    const to: Point2 = { x: input.playerX, z: input.playerZ };
-    grid.findPath(from, to, this.path);
+    this.from.x = input.x;
+    this.from.z = input.z;
+    this.to.x = input.playerX;
+    this.to.z = input.playerZ;
+    grid.findPath(this.from, this.to, this.path);
     return this.path;
   }
 
