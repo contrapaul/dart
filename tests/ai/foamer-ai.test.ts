@@ -201,6 +201,7 @@ describe("an F02 thrower on the director (GAME-10a)", () => {
     const player = new THREE.Vector3(0, 1.6, 10);
     const f = r.foamers.spawn(new THREE.Vector3(4, 0, 3), undefined, "F02")!;
     expect(f.spec.rig, "the type picked its own rig").toBe("F02");
+    expect(f.maxHealth, "the F02's health from its rig").toBe(8);
     let most = 0;
     let least = 99;
     for (let i = 0; i < 60 * 12; i++) {

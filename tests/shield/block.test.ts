@@ -118,4 +118,27 @@ describe("Shield blocking (front arc, share, walk)", () => {
     expect(t).toBeGreaterThanOrEqual(T.block.raiseTime - DT);
     expect(t).toBeLessThanOrEqual(T.block.raiseTime + 2 * DT);
   });
+
+  it("4. a foam ball is blocked by its direction of travel, like a bonk (GAME-10a)", () => {
+    // The game's ball handler asks blocksAttackFrom for the point the ball
+    // came from (its position minus its velocity direction), so a ball
+    // flying at the player's front counts as coming from the front even
+    // from behind the player's shoulder line, and one travelling away does
+    // not. Same rig as the bonk checks above, same numbers the handler uses.
+    const g = makeShield();
+    raise(g);
+    const _from = new THREE.Vector3();
+    const fromOf = (px: number, py: number, pz: number, vx: number, vy: number, vz: number) => {
+      const s = Math.hypot(vx, vy, vz);
+      return _from.set(px - (vx / s) * 0.5, py - (vy / s) * 0.5, pz - (vz / s) * 0.5);
+    };
+    // A ball 3 m in front travelling straight at the player: came from the
+    // front.
+    expect(g.shield.blocksAttackFrom(fromOf(0, EYE, -3, 0, 0, 1))).toBe(true);
+    // A ball beside the player travelling away (it missed): not a front hit.
+    expect(g.shield.blocksAttackFrom(fromOf(0, EYE, 1, 0, 0, 1))).toBe(false);
+    // A ball crossing the view from the front-left, seen from where it came
+    // (inside the arc once its travel is taken into account).
+    expect(g.shield.blocksAttackFrom(fromOf(-0.5, EYE, -1, 0.5, 0, 1))).toBe(true);
+  });
 });
