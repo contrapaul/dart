@@ -9,7 +9,7 @@ import type { VoxelTarget } from "../weapons/impacts";
 import dartTuning from "../../data/darts.json";
 import { materialId, EMPTY } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
-import { Foamer, type GameRig } from "./foamer";
+import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
@@ -25,13 +25,56 @@ import { SIGHT_QUERY_GROUPS } from "../physics/world";
 // Foamer (rig F01). One shared Rapier character controller serves every
 // Foamer: it is stateless between steps. ENG-10 stage 3.
 
-const SPEC = foamerData.test;
+// GAME-10a: one spec per Foamer type. `test` in the data file is the shared
+// base every type starts from; `types` holds the overrides (its rig, its
+// attacks, its ranged distances). The merged spec is built once per type and
+// cached: nested objects (popTypes, handicaps, ...) stay shared with the
+// base, so a test that pushes into `foamerData.test.catastrophic.popTypes`
+// is seen by every type, as it was when there was only one spec.
+const BASE = foamerData.test;
+const OVERRIDES = foamerData.types as Record<string, Partial<FoamerSpec> & { rig?: string }>;
 const SPAWNER = foamerData.spawner;
-/** Dart types whose damage can pop a Foamer (none of the starter types). */
-const POP_TYPES: string[] = SPEC.catastrophic.popTypes;
 // One source for rig shape, speed and health: data/foamer-rigs.json.
-const RIG = (rigData.rigs as unknown as GameRig[]).find((r) => r.id === SPEC.rig)!;
+const RIGS = rigData.rigs as unknown as GameRig[];
 const CORE = materialId("foam-core");
+
+/** The merged spec of one Foamer type: the base with the type's overrides on
+ *  top. An unknown type falls back to the base (which is rig F01), so a page
+ *  naming a type the data does not have still gets a Foamer. */
+export function specFor(type: string): FoamerSpec {
+  const cached = SPECS.get(type);
+  if (cached) return cached;
+  const o = OVERRIDES[type] ?? {};
+  const spec: FoamerSpec = {
+    ...BASE,
+    ...o,
+    attacks: (o.attacks as FoamerSpec["attacks"]) ?? BASE.attacks,
+    rig: o.rig ?? BASE.rig,
+  };
+  SPECS.set(type, spec);
+  return spec;
+}
+const SPECS = new Map<string, FoamerSpec>();
+
+/** The rig a type draws its shape, speed and health from. */
+function rigFor(spec: FoamerSpec): GameRig {
+  return RIGS.find((r) => r.id === spec.rig) ?? RIGS[0]!;
+}
+
+/** How far an attack's reach is measured to: its own `range` (a throw is
+ *  measured to its throw range), else the spec's `attackRange` (a bonk). */
+function attackRange(spec: FoamerSpec, attack: { id: string } | null): number {
+  const a = attack ? spec.attacks.find((x) => x.id === attack.id) : null;
+  return (a as { range?: number } | undefined)?.range ?? spec.attackRange;
+}
+
+/** The token pool a type's attacks draw from (data/foamers.json): the token
+ *  of its first attack that declares one (a thrower throws with a ranged
+ *  token). GAME-10a. */
+function tokenKindOf(spec: FoamerSpec): TokenKind {
+  const t = spec.attacks.find((a) => a.token)?.token;
+  return (t === "ranged" ? "ranged" : "melee") as TokenKind;
+}
 
 /** One fallen piece: a part and its children. One dynamic body carries one
  *  cuboid collider per part; each part's draw group is re-parented under
@@ -176,9 +219,10 @@ export class FoamerSystem {
 
   /** Spawn at a feet position. Returns null at the `max` cap. With
    *  `facing` (a world point), it starts turned toward that point. */
-  spawn(feet: THREE.Vector3, facing?: THREE.Vector3): Foamer | null {
+  spawn(feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01"): Foamer | null {
     if (this.list.length >= SPAWNER.max) return null;
-    const f = new Foamer(this.rapier, this.world, this.mesher, SPEC, RIG, feet);
+    const spec = specFor(type);
+    const f = new Foamer(this.rapier, this.world, this.mesher, spec, rigFor(spec), feet);
     if (facing) f.yaw = Math.atan2(facing.x - feet.x, facing.z - feet.z);
     f.setSystem(this);
     // ENG-08 stage 3b: the brain. Its token pool comes from what its attacks
@@ -195,12 +239,12 @@ export class FoamerSystem {
       f.stateTime = 0;
       f.agent = new FoamerAgent(
         this.director,
-        { tokenKind: this.tokenKind(), initial: this.spawnState },
+        { tokenKind: tokenKindOf(spec), initial: this.spawnState },
         agentId,
       );
       f.agentInput = {
         x: feet.x, z: feet.z, playerX: feet.x, playerZ: feet.z,
-        attackRange: SPEC.attackRange, lineOfSight: false,
+        attackRange: spec.attackRange, lineOfSight: false,
         tookDamage: false, nearbyAlert: false,
         crawlInReach: false, keepToken: false,
       };
@@ -252,7 +296,7 @@ export class FoamerSystem {
         for (const part of f.parts.values()) {
           if (part.spec.kind === "body") continue;
           if (part.hp <= 0 ||
-              part.voxelCount <= part.startVoxels * (1 - SPEC.partDamage.wearBreak))
+              part.voxelCount <= part.startVoxels * (1 - f.spec.partDamage.wearBreak))
             this.breakPart(f, part);
         }
         if (!f.parts.has("head") && this.anyArmGone(f)) this.goDown(f);
@@ -330,7 +374,7 @@ export class FoamerSystem {
     } else if (f.state === "hold" || f.state === "idle" || f.state === "alert") {
       // The brain's own states: it moves on the intents below, no attack.
     } else if (f.state === "approach") {
-      if (this.mayAttack(f, dist)) {
+      if (this.mayAttack(f, dist, this.engagementRange(f))) {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
@@ -347,7 +391,7 @@ export class FoamerSystem {
         const dy = Math.abs(player.y - f.centre.y);
         // GAME-11: a prone Foamer strikes from its head, ahead of the feet.
         const reach = f.prone ? this.headDist(f, player) : dist;
-        if (reach <= SPEC.attackRange + 0.3 && dy < 2) f.bonk(atk.id);
+        if (reach <= attackRange(f.spec, atk) + 0.3 && dy < 2) f.bonk(atk.id);
         f.state = "strike";
         f.stateTime = 0;
       }
@@ -358,7 +402,7 @@ export class FoamerSystem {
       }
     } else if (f.state === "fall") {
       const landed = f.fallBounced;
-      if (f.stepFall(dt, SPEC.gravity)) {
+      if (f.stepFall(dt, f.spec.gravity)) {
         f.state = "crawl";
         f.stateTime = 0;
       }
@@ -369,13 +413,13 @@ export class FoamerSystem {
       // ground with what its arms allow (a Foamer with none headbutts). It
       // still needs a token: a crawl is an attack state's doorway, not a
       // bypass.
-      if (this.mayAttack(f, this.headDist(f, player))) {
+      if (this.mayAttack(f, this.headDist(f, player), this.engagementRange(f))) {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
         sound(this, "attack", f, f.centre);
       }
-    } else if (f.stateTime >= SPEC.recover) {
+    } else if (f.stateTime >= f.spec.recover) {
       // Attack end: the token goes home, so the next Foamer in line gets it.
       f.agent?.release("attackEnd");
       // A prone Foamer goes back to the crawl, not to its feet.
@@ -386,7 +430,7 @@ export class FoamerSystem {
     // Gravity: vertical speed, reset by the ground. Without legs it never
     // falls: the floor fit below holds it on the ground. A crawl keeps
     // pulling itself along, so it is not grounded-limited like a walk.
-    f.vy = Math.max(f.vy - SPEC.gravity * dt, -50);
+    f.vy = Math.max(f.vy - f.spec.gravity * dt, -50);
     const crawling = f.state === "crawl";
     // Prone, it closes until its head (the part that reaches) is in range.
     const reach = crawling ? this.headDist(f, player) : dist;
@@ -394,7 +438,7 @@ export class FoamerSystem {
       // GAME-07: while being finished the view turns and time runs out;
       // the finisher owns the Foamer, it cannot keep stalking.
       ? f.state === "finish" ? false : this.brainMoving(f)
-      : f.state === "approach" || crawling ? reach > SPEC.attackRange : false;
+      : f.state === "approach" || crawling ? reach > this.engagementRange(f) : false;
     this._wish.set(0, 0, 0);
     if (moving) {
       const speed = crawling ? f.crawlSpeed() : f.speed();
@@ -452,13 +496,13 @@ export class FoamerSystem {
     input.z = f.centre.z;
     input.playerX = player.x;
     input.playerZ = player.z;
-    input.attackRange = SPEC.attackRange;
+    input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
     input.tookDamage = f.damageSinceStep;
     input.nearbyAlert = this.nearbyAlert(f);
     // A crawl is not one of the brain's states, so the brain never asks for
     // a token while prone: the Foamer says when the crawl is in reach.
-    input.crawlInReach = f.state === "crawl" && this.headDist(f, player) <= SPEC.attackRange;
+    input.crawlInReach = f.state === "crawl" && this.headDist(f, player) <= attackRange(f.spec, f.attack());
     // An attack keeps the token it holds: the brain stopped wanting one as
     // soon as the windup began, and taking it back now would let it be
     // granted to another Foamer mid swing.
@@ -483,16 +527,23 @@ export class FoamerSystem {
     input.z = f.centre.z;
     input.playerX = player.x;
     input.playerZ = player.z;
-    input.attackRange = SPEC.attackRange;
+    input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
     f.agent!.bid(input);
+  }
+
+  /** How far the Foamer closes to before it attacks: the range of the
+   *  attack it would choose (a thrower's is its throw range, a bonker's the
+   *  spec's attackRange). GAME-10a. */
+  private engagementRange(f: Foamer): number {
+    return attackRange(f.spec, { id: this.chooseAttack(f) });
   }
 
   /** True if the Foamer may start an attack now: in range and, with a
    *  director, holding a token. Without a director it always may (the
    *  pre-brain behaviour, which the older tests and tools rely on). */
-  private mayAttack(f: Foamer, reach: number): boolean {
-    if (reach > SPEC.attackRange) return false;
+  private mayAttack(f: Foamer, reach: number, range: number): boolean {
+    if (reach > range) return false;
     if (!f.agent || !this.director) return true;
     return f.agent.hasToken;
   }
@@ -594,12 +645,6 @@ export class FoamerSystem {
     return false;
   }
 
-  /** The token pool the rig's attacks draw from (data/foamers.json). */
-  private tokenKind(): TokenKind {
-    const t = SPEC.attacks.find((a) => a.token)?.token;
-    return (t === "ranged" ? "ranged" : "melee") as TokenKind;
-  }
-
   /** The next free agent id, in [0, maxAgents), or -1 if every one is taken. */
   private nextAgentId(): number {
     for (let id = 0; id < aiData.maxAgents; id++) {
@@ -634,10 +679,10 @@ export class FoamerSystem {
   /** The first spec attack whose needs are met (at least one of each id
    *  still attached; needs [] always). */
   private chooseAttack(f: Foamer): string {
-    for (const a of SPEC.attacks) {
+    for (const a of f.spec.attacks) {
       if (a.needs.every((id) => f.parts.has(id))) return a.id;
     }
-    return "headbutt";
+    return f.spec.attacks[f.spec.attacks.length - 1]?.id ?? "headbutt";
   }
 
   /** Per-part damage for a dart hit. Chained after DartImpacts carved the
@@ -666,32 +711,32 @@ export class FoamerSystem {
     // for the "foamer" surface. This runs even below the damage speed, so
     // a soft graze still thumps like foam.
     hit.material = "foamer";
-    if (hit.speed < SPEC.minDamageSpeed) return;
-    const d = SPEC.damage[hit.type];
-    const kind = SPEC.partDamage.kinds[part.spec.kind];
+    if (hit.speed < f.spec.minDamageSpeed) return;
+    const d = f.spec.damage[hit.type];
+    const kind = f.spec.partDamage.kinds[part.spec.kind];
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= d * kind.hit;
     f.health -= d * kind.hit * kind.total;
     // Only dart types that can pop count toward a catastrophic hit.
-    if (POP_TYPES.includes(hit.type)) f.addDamage(this.time, d * kind.hit * kind.total);
+    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, d * kind.hit * kind.total);
     this.stats.hits++;
     // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
     f.damageSinceStep = true;
-    this.paintWound(part, hit);
+    this.paintWound(f, part, hit);
     sound(this, "wound", f, partPoint(part));
     // Breaking: hp <= 0, or the carve took the part to wearBreak of its
     // starting voxels. The body never breaks; wear from slow chipping is
     // checked once per step in update.
-    const worn = part.voxelCount <= part.startVoxels * (1 - SPEC.partDamage.wearBreak);
+    const worn = part.voxelCount <= part.startVoxels * (1 - f.spec.partDamage.wearBreak);
     if (f.health <= 0) {
       // The card: pop if the damage taken in the last catastrophic.window
       // seconds (the killing hit plus anything at the same moment) is at
       // least catastrophic.share of the max health, otherwise go down.
       // Only popTypes damage is in recentDamage.
-      const cutoff = this.time - SPEC.catastrophic.window;
+      const cutoff = this.time - f.spec.catastrophic.window;
       let recent = 0;
       for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
-      if (recent >= SPEC.catastrophic.share * f.maxHealth) this.pop(f);
+      if (recent >= f.spec.catastrophic.share * f.maxHealth) this.pop(f);
       else this.goDown(f, hit); // the killing hit pushes the ragdoll
       return;
     }
@@ -703,7 +748,7 @@ export class FoamerSystem {
     // that is being carried elsewhere (fall, down, finisher) already.
     if (
       !f.finishWeakened && f.health > 0
-      && f.health <= SPEC.finisher.weakenShare * f.maxHealth
+      && f.health <= f.spec.finisher.weakenShare * f.maxHealth
       && !f.prone && f.state !== "finish" && f.state !== "down"
     ) {
       f.finishWeakened = true;
@@ -716,7 +761,7 @@ export class FoamerSystem {
    *  goes back too. The wobble and glow read the flags this sets. A short
    *  stagger lasts `seconds` (GAME-04: the thrown shield's stun), by
    *  default the data's stagger.time. */
-  startStagger(f: Foamer, long: boolean, seconds = SPEC.stagger.time) {
+  startStagger(f: Foamer, long: boolean, seconds = f.spec.stagger.time) {
     f.state = "stagger";
     f.stateTime = 0;
     f.staggerLong = long;
@@ -786,7 +831,7 @@ export class FoamerSystem {
    *  over away from the shooter. Runs once per death, so it allocates
    *  freely rather than reusing the per-step scratch. */
   private buildRagdoll(f: Foamer, hit?: DartHit) {
-    const rag = SPEC.down.ragdoll;
+    const rag = f.spec.down.ragdoll;
     const vs = f.rig.voxelSize;
     const dt = Math.max(this.dtPrev, 1 / 240);
     for (const part of f.parts.values()) {
@@ -941,11 +986,11 @@ export class FoamerSystem {
         prev.q.set(r.x, r.y, r.z, r.w);
       }
     }
-    if (f.sinkingNow || f.stateTime >= SPEC.down.lie) {
+    if (f.sinkingNow || f.stateTime >= f.spec.down.lie) {
       if (f.ragdoll.length > 0) this.lockRagdollForSink(f);
       if (f.sinkDepth < 0) f.sinkDepth = this.topYOf(f) + 0.05; // out of sight
       if (!f.sinkingNow) { f.sinkingNow = true; sound(this, "sink", f, f.centre); }
-      const drop = SPEC.down.sinkSpeed * dt;
+      const drop = f.spec.down.sinkSpeed * dt;
       for (const part of f.parts.values()) {
         const t = part.body.translation();
         part.body.setNextKinematicTranslation({ x: t.x, y: t.y - drop, z: t.z });
@@ -962,7 +1007,7 @@ export class FoamerSystem {
    *  come off at the first sink step) and skips the lie. */
   private enforceDownCap() {
     for (const d of this.downed) {
-      if (this.notSinkingCount() <= SPEC.down.max) break;
+      if (this.notSinkingCount() <= d.spec.down.max) break;
       if (d.sinkDrop > 0 || d.sinkingNow) continue;
       d.sinkingNow = true;
       sound(this, "sink", d, d.centre);
@@ -1049,10 +1094,10 @@ export class FoamerSystem {
   /** Paint the wound: every solid voxel of the part within the dart's carve
    *  radius plus coreShell voxels of the hit becomes foam-core (the
    *  card's coreShell, as RigView.carve drew it). */
-  private paintWound(part: FoamerPart, hit: DartHit) {
+  private paintWound(f: Foamer, part: FoamerPart, hit: DartHit) {
     const vs = part.volume.voxelSize;
     const scale = THREE.MathUtils.clamp(hit.speed / dartTuning.types[hit.type].speed, 0.3, 1);
-    const r = (dartTuning.types[hit.type].carveRadius * scale) / vs + SPEC.wound.coreShell;
+    const r = (dartTuning.types[hit.type].carveRadius * scale) / vs + f.spec.wound.coreShell;
     // The carve centre, part-local metres, slightly inside the surface as
     // DartImpacts placed it.
     const c = _v.copy(hit.point).addScaledVector(hit.direction, vs * 0.5);
@@ -1092,7 +1137,7 @@ export class FoamerSystem {
    *  pivot end foam-core (as RigView.breakOff drew it). */
   private paintStumps(f: Foamer, part: FoamerPart) {
     const vs = part.volume.voxelSize;
-    const r = SPEC.wound.stumpRadius;
+    const r = f.spec.wound.stumpRadius;
     const parent = part.spec.parent ? f.parts.get(part.spec.parent) : undefined;
     if (parent) {
       const at = part.spec.at ?? [0, 0, 0];
@@ -1168,7 +1213,7 @@ export class FoamerSystem {
           Math.max(0.02, sz[0] * vs / 2 - 0.02),
           Math.max(0.02, sz[1] * vs / 2 - 0.02),
           Math.max(0.02, sz[2] * vs / 2 - 0.02),
-        ).setTranslation(cc0.x, cc0.y, cc0.z).setDensity(SPEC.brokenParts.density)
+        ).setTranslation(cc0.x, cc0.y, cc0.z).setDensity(f.spec.brokenParts.density)
           .setCollisionGroups(DEBRIS_GROUPS),
         body,
       );
@@ -1189,7 +1234,7 @@ export class FoamerSystem {
     }
     // Cap at brokenParts.max, the oldest disposed first (its stuck darts
     // drop as its bodies go away).
-    while (this.broken.length >= SPEC.brokenParts.max) this.removeBroken(0);
+    while (this.broken.length >= f.spec.brokenParts.max) this.removeBroken(0);
     this.broken.push({
       body, groups,
       owner: f,
@@ -1201,7 +1246,7 @@ export class FoamerSystem {
     // GAME-11: down to too few legs, a living Foamer falls over instead of
     // staggering. It does not fall twice, and a downed one is not here.
     if (part.spec.kind === "leg" && !f.prone &&
-        f.legs().length < SPEC.handicaps.fallBelowLegs)
+        f.legs().length < f.spec.handicaps.fallBelowLegs)
       this.startFall(f, part.spec.id);
     else if (!f.prone) {
       // The part break's stagger is always the short one, even on a
@@ -1243,13 +1288,13 @@ export class FoamerSystem {
       p.prevQ.set(r.x, r.y, r.z, r.w);
       for (const g of p.groups) g.part.mesh.update();
       if (p.sinking) {
-        if (p.sinkSpeed <= 0) p.sinkSpeed = Math.max(p.topY, 0.2) / SPEC.brokenParts.sinkTime;
+        if (p.sinkSpeed <= 0) p.sinkSpeed = Math.max(p.topY, 0.2) / p.owner.spec.brokenParts.sinkTime;
         p.body.setTranslation({ x: t.x, y: t.y - p.sinkSpeed * dt, z: t.z }, false);
         if (t.y + p.topY <= 0) this.removeBroken(i);
         continue;
       }
       p.age += dt;
-      if (p.age < SPEC.brokenParts.lifetime) continue;
+      if (p.age < p.owner.spec.brokenParts.lifetime) continue;
       p.sinking = true;
       // Sink: a fixed body with disabled colliders collides with nothing.
       p.body.setBodyType(this.rapier.RigidBodyType.Fixed, false);
@@ -1297,13 +1342,13 @@ export class FoamerSystem {
       if (voxels.length === 0) continue;
       const size = part.spec.size;
       const centre = { x: size[0] / 2, y: size[1] / 2, z: size[2] / 2 };
-      const slice = Math.ceil(voxels.length / SPEC.popBursts);
+      const slice = Math.ceil(voxels.length / f.spec.popBursts);
       const vs = f.rig.voxelSize;
-      for (let i = 0; i < SPEC.popBursts; i++) {
+      for (let i = 0; i < f.spec.popBursts; i++) {
         const burst = voxels.slice(i * slice, (i + 1) * slice);
         if (burst.length === 0) continue;
         this.debris.spawn(burst, new THREE.Vector3(centre.x, centre.y, centre.z),
-          vs * SPEC.popChunkScale, (v) => part.voxelToWorld(v));
+          vs * f.spec.popChunkScale, (v) => part.voxelToWorld(v));
       }
     }
     const i = this.list.indexOf(f);
