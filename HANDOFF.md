@@ -16,6 +16,13 @@ toggles. Mods are not checked by eye in first person yet. AUD-01 (sound
 system) is done (merged 2026-11-02): every game event plays
 its sound ID from `data/sounds.json`, as a code-made placeholder until
 Paul's recordings land in `public/audio/` (AUD-01b). M mutes.
+UI-01 is done (merged 2026-11-03): the player has 100 health, Foamer
+attacks hurt (with a 0.5 s grace), the HUD shows a health bar and a cream
+hit flash, and at 0 the player pops with a Try again button. Esc opens a
+pause menu (Resume, Settings, Restart); Settings has the four difficulty
+presets, damage taken, sensitivity, invert, FOV, volume, mute and the
+reduce shake, flashes and head bob switches, saved in localStorage. The
+range has a God mode switch.
 
 A test course: click to capture the mouse, then walk, sprint, jump, dash
 and mantle. Left mouse fires the active blaster, R reloads, 1 to 3 or
@@ -34,8 +41,9 @@ the player: it walks at you, winds up, and bonks, takes dart damage that
 carves visible chunks and lowers its health, and at zero pops into four
 bursts of foam chunks. A new one walks in about 3 s later from the spawn
 point farthest from the player. Suction darts stick to it and ride along
-while it walks, then drop when it pops. The bonk only logs for now; player
-health comes later.
+while it walks, then drop when it pops. The bonk costs player health (UI-01). A Foamer that loses a leg falls
+over and crawls at you, attacking from the ground (GAME-11, merged
+2026-11-03; the range has a Break leg button).
 
 Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
 occlusion into the vertex colours (inside corners, crater floors, the seam
@@ -241,6 +249,220 @@ rig in `data/ai.json`?
 
 Unverified: nothing in the game calls the director yet (stage 3 wires it).
 No range report field yet either. Stage 2 (nav grid, steering) not started.
+
+### 2026-11-03: GAME-11 merged (Claude)
+
+- Merged `game-11` into main after Paul's approval. Review: matches the
+  card; the three changed old assertions are right (one lost leg now
+  falls, it no longer limps). One indent restored.
+- Left in code, small: the crawl's arm angles (-1.4, -0.6), the lying
+  capsule's 0.45 m offset and the half turn rate. Move them to
+  `data/foamers.json` when the crawl is tuned by eye.
+- Unverified: the fall and crawl seen in motion. The range needs pointer
+  lock, which the in-app browser cannot take; watch it on the range with
+  Break leg.
+
+### 2026-11-03: GAME-11 stage 2, crawl, attacks from the ground, sound and range button (DeepSeek V4.1 Flash via Pi)
+
+The prone Foamer now moves and fights. `crawlMotion(rig, gait, out)` in
+`src/foamers/rig-states.ts`, the signature the card names, adds the crawl
+to the pose the Foamer already has: the arms reaching forward in turn
+(`-1.4` plus and minus `0.5 * sin(gait * PI)`), the leg it has left
+dragging at `-0.5 + 0.12 * cos`, and a small body rock in pitch. It does
+not set pitch, roll or y itself: `poseParts` calls `proneMotion` for the
+prone tilt first (which splits it with the fall's own `sideShare`, so the
+crawl takes over from exactly where the fall ended and no part turns
+over), then lays the crawl on top. A prone attack lays
+`windupMotion`/`strikeMotion` over the same prone base pose, so it attacks
+from where it lies instead of standing up to do it.
+
+`Foamer.prone` is set by `startFall` and outlives the `crawl` state,
+because the attack states are not prone states: every pose, floor fit and
+reach check asks `prone`, not `state`. Speed is `Foamer.crawlSpeed()` =
+`rig.speed * handicaps.crawlSpeed` (0.3 m/s measured on F01), and the turn
+rate is halved while prone (`CRAWL_TURN` 0.5 in `foamers.ts`). It does not
+turn at all during the fall, which is what the card's "no movement during
+the fall" says.
+
+Reach from the ground uses `Foamer.headPos`, the head's box centre taken
+from the pose the Foamer was just solved into. Both the decision to attack
+and the strike's own `dist <= attackRange + 0.3` check use it while prone,
+so a crawl whose feet are still 1.8 m out attacks as soon as its head is
+in range. With no forearms, `chooseAttack` already fell through to the
+headbutt (`needs: []`), so no new data was needed. A prone Foamer cannot
+stagger: an arm break on the ground only cancels the attack, because a
+stagger would stand it back up.
+
+The fall sound and the lying capsule came in stage 1 (`FoamerSoundKind`
+`fall` -> `FX-topple`, no fizz-out; `setCapsuleLying`), and the range's
+Break leg button and `breakLegForTest()` did too, so stage 2 only had to
+keep them working. Footsteps were already gated on `state === "approach"`
+in `src/audio/foamer-sounds.ts`, which covers the fall and the crawl; test
+7 now pins that.
+
+Tests: card 4 (closing speed within 15% of `rig.speed * crawlSpeed` and an
+attack in range, then the same crawl with both forearms gone headbutting),
+6 (a crawling Foamer killed by darts ragdolls and stays down; the test also
+covers a kill mid-fall) and 7 (`onSound` gets `fall` once at the body, and
+through the real `FoamerSounds` `FX-topple` plays once, with no
+`FX-fizz-out` and no `FX-step-medium` during the fall or the crawl). Card
+tests 1, 2, 3, 5 and 8 were built in stage 1 and are unchanged. One old
+assertion had to change: `tests/foamers/parts.test.ts` 7 asserted that a
+fallen Foamer "holds still prone" (stage 1's placeholder), which the card's
+own crawl supersedes; it now checks that it crawls, more slowly than it
+walked. None of the card's numbers changed.
+
+Unverified: how the crawl reads on screen (the arm reach, the drag, the
+pitch rock) and whether the prone attack's head reach feels right, both by
+eye on the range. The card's numbers are the reviewer's to tune.
+
+### 2026-11-03: GAME-11 stage 1, the fall (DeepSeek V4.1 Flash via Pi, from a Qwen 27b start)
+
+A Foamer that is left with fewer than `handicaps.fallBelowLegs` (2) legs
+now falls over: the attack is cancelled, it enters the new `fall` state
+and tips as an inverted pendulum about the foot it still stands on,
+`a'' = (gravity / pivotHeight) * sin(a)` in `Foamer.stepFall`, starting at
+`fall.startTilt` and stopping at `fall.proneTilt`. It bounces once (back
+less than `fall.bounce * proneTilt`), settles, and then enters `crawl`,
+which for stage 1 holds still prone (`crawlSpeed` and moving come in
+stage 2). `pivotHeight` is the body box centre found by solving the rest
+pose once in the constructor, so the card's formula has a measured
+number behind it. The tilt drives `RigMotion`: `pitch = a * (1 -
+sideShare)` and `roll = a * sideShare * side`, where `side` is negative
+for a lost left leg, the same sign the removed 0.15 rad per missing leg
+used; the arms swing forward (`x` to -1.4 * reach) as it goes down. The
+pose blends through the usual `poseBlend`, so a spring drop can cut in
+and the whole thing goes down as one. `poseParts` fits the prone body to
+the floor for `fall` and `crawl` as it already did for no legs and
+`down`, so the fall ends on the ground and not in it.
+
+`FoamerSoundKind` gains `fall`: one FX-topple at the body when it first
+lands, no FX-fizz-out (it is not down). Foamers do not turn toward the
+player or step while falling or crawling. `goDown` still works from both
+states (a killing dart builds the ragdoll from the pose it was in).
+`breakPart` only falls on a leg, only when it is not already down or
+under, and the stagger sweep now runs after the head and arms check so
+the same step cannot fall and stagger. The range panel has a Break leg
+button (`breakLegForTest`).
+
+Collision fix found while doing this: a severed part spawns inside the
+voxels of the body it left, so the falling hips squashed a fresh leg
+piece into the floor and it never rose (old parts test 6). A live
+Foamer's part colliders are now `FOAMER_GROUPS` (kinematic VolumeMesh
+only) and broken pieces are `DEBRIS_GROUPS`, so debris passes through a
+living Foamer's own part boxes. The level's VolumeMesh is fixed, so it
+keeps the default groups.
+
+Tests: new `tests/foamers/fall.test.ts` covers the card's 1, 2, 3, 5 and
+8 (fall then crawl in under 2 s, the pendulum speeding up and bouncing
+at proneTilt, mirrored roll per leg, no joint moving over 0.35 rad in a
+step through the transition, darts still hitting a falling Foamer) plus
+the once-per-fall sound and going down from a fall and from the crawl.
+The card's numbers were not changed. Three old tests did have to change,
+because the card's own design supersedes them: `tests/foamers/parts.test.ts`
+7 (one leg gone was a 50% limp; a two-legged Foamer now falls) and 11
+(it staggered on a leg break, so it staggers on an arm break instead),
+and `tests/audio/game-sounds.test.ts` (a leg break used to play no
+topple; it now plays one). Unverified: how the fall reads on screen at
+60 fps, the bounce size and timing by eye, and the crawl's silhouette
+(stage 2 adds the movement).
+### 2026-11-03: UI-01 merged (Claude)
+
+- Merged `ui-01` into main after Paul's approval. Review fixes on the
+  branch: the hit flash is found on the document (it sits outside the HUD
+  root; the main page crashed on load), and `data/difficulty.json` has no
+  note key, since every key becomes a preset button.
+- Checked in the browser: settings open and save, the Hard preset sticks
+  over a reload, the hit grace works, the range loads. 183 tests pass.
+- Unverified: gamepad Start into the menu, and how damage feels in a real
+  fight; tune `data/player.json` and `data/foamers.json` when arenas exist.
+
+### 2026-11-02: UI-01 stage 2, pause menu and settings (Qwen 3.8 Flash-next via Pi)
+
+- `src/core/settings.ts`: `SettingsStore`, one `Settings` object loaded
+  from and saved to `localStorage` under `dart.settings` as
+  `{ ...values, version: 1 }`. Every storage access is in try/catch: a
+  blocked storage or broken JSON falls back to `DEFAULTS`. An older save
+  merges over the defaults so new keys gain theirs; unknown `difficulty`
+  values fall back to `normal`. `set(key, value)` and
+  `setDifficulty(key)` save and call every `onChange` listener. Moving
+  `damageTaken` by hand sets `difficulty` to `custom`; other keys do not.
+  `applySettings` in `src/main.ts` is the one page subscriber: it pushes
+  sensitivity and invert into `settings` from `src/core/input.ts`, FOV onto
+  the camera, `damageTaken` onto `health`, `reduceFlashes` onto the HUD, and
+  volume/mute onto the engine (re-applied when the engine loads).
+- `data/difficulty.json`: Story 0.5, Normal 1, Hard 1.5, Foam Fury 2
+  damage taken, each with the `director` key (`story`, `normal`, `hard`,
+  `fury`) ENG-08's director will read. Names as in D10.
+- `src/ui/menus.ts`: `SettingsPanel`, plain DOM built once into
+  `#settingsRows`: four preset buttons plus a readout that shows "Custom",
+  sliders for damage taken (25 to 200%), mouse sensitivity (shown as a
+  percent of the default 0.0022), FOV (60 to 100), volume, and switches for
+  invert look, mute, reduce screen shake, reduce flashes, reduce head bob
+  (shake and head bob stored for later tasks). Subscribes to the store so it
+  always mirrors it. Keyboard and mouse only; Tab follows element order.
+- `index.html` + `src/style.css`: `#pausemenu` (Resume, Settings, Restart)
+  and `#settings` (panel with `#settingsRows` and Back) over a dimmed
+  screen, and a Settings button on the title overlay. Foam colours, system
+  fonts.
+- `src/main.ts` flow: `started` becomes true on the first pointer lock. The
+  pause menu shows when paused, started and not popped; before the first
+  click only the title (with its Settings button) shows. Resume, a click on
+  the dimmed background, or the canvas plays on; Restart shares the Try
+  again respawn (`restart()`). The M key now toggles `muted` through the
+  store so the panel and storage stay in step.
+- Tests: `tests/core/settings.test.ts` (6): defaults on empty and broken
+  storage; round-trip; presets set damage taken; a slider move marks
+  Custom; an old version gains new keys with defaults. `npm test` 183
+  passed, `tsc --noEmit` and `npm run build` pass.
+- Decisions: sensitivity is stored in rad/px (the input's unit) and shown
+  as a percent of the default, so no second source of truth. FOV applies
+  live via `camera.updateProjectionMatrix()`. The store is per page; the
+  range page keeps its own panel and does not read the store yet (the card
+  scopes the panels to the main page).
+- Unverified: everything visual (tab order, the panels' look, live FOV and
+  volume) awaits the reviewer's browser pass; no browser check was run
+  here.
+
+### 2026-11-02: UI-01 stage 1, player health, damage and HUD v1 (Qwen 3.8 Flash-next via Pi)
+
+- `src/player/health.ts`: `PlayerHealth`, pure (no DOM, no THREE). `hp`,
+  `max`, `damage(amount, from?)`, `heal(amount)`, `dead`, `reset()`,
+  `update(dt)` for the grace timer, `damageTaken` (1 until stage 2 sets it
+  from the difficulty). Numbers from `data/player.json`: new `health` block
+  `{ "max": 100, "hitGrace": 0.5 }`. `damage` returns the hp actually lost
+  (0 while in the grace or already dead), clamped so hp cannot go below 0;
+  `heal` cannot pass max.
+- `data/foamers.json`: each attack gained `"damage"` (bonk 12, headbutt 8),
+  the only change to that file. Both pages read the id into a Map at load.
+- Game page (`src/main.ts`): `foamers.onBonk` keeps the old chain (the AUD-01
+  wrapper wraps our handler, the console log stays) and applies the attack's
+  damage, skipping it while paused. On a hit the HUD flashes; at 0 hp the
+  game pauses into a `#popped` panel ("You popped!" plus **Try again**), and
+  a foam burst (10 foam blocks from the player's eye) plus a longer
+  foam-core edge glow and FX-pop plays. No red anywhere. Try again respawns
+  at SPAWN with full health and calls `foamers.clear()`; while popped, the
+  lock change cannot unpause.
+- HUD v1 (`src/ui/hud.ts`, DOM): health bottom-left (rounded foam-lime bar,
+  cream border, number beside it; amber under 30%), bar flashes white on a
+  hit, cream `#hitflash` edge glow outside the HUD root so it shows over the
+  dimmed pop. `reduceFlashes` (stage 2 wires it) turns the edge glow off.
+  Ammo bottom-right unchanged in behaviour, restyled alongside. Writes only
+  when a value changed (`setHealth` compares hp and max).
+- Range page: same bar via `#hud` markup in `range.html` plus a copy of the
+  health CSS in `src/range/range.css`; a **God mode** switch (in the
+  Switches group) makes bonks do nothing and tops the player back up.
+- Tests: `tests/player/health.test.ts`, 8 cases (lower hp, grace blocks
+  inside 0.5 s and allows after, 0/max clamps, `dead`, the multiplier). Old
+  tests untouched. `npx tsc --noEmit`, `npm test` (177 pass, 2 skipped),
+  `npm run build` pass.
+- Unverified by eye: the pop panel and burst, the bar's look, Tab order
+  around the Try again button. The reviewer plays it.
+- Decisions: the grace blocks the hit entirely (rather than halving it) so
+  a crowd cannot drain the bar in one second; the pop panel is its own
+  element, not the title `#overlay`, so the title copy cannot leak into
+  death; `onHit()` is called by the page, not the HUD watching health, so
+  the HUD stays a pure view.
 
 ### 2026-11-02: AUD-01 stage 3b and final review (Pi, Claude)
 

@@ -17,5 +17,6 @@
   "dashTime": 0.16,
   "dashCooldown": 0.7,
   "mantleMaxHeight": 1.5,
-  "mantleTime": 0.28
+  "mantleTime": 0.28,
+  "health": { "max": 100, "hitGrace": 0.5 }
 }

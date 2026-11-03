@@ -80,6 +80,61 @@ body {
 #ammo {
   white-space: pre;
 }
+
+/* Health, UI-01 stage 1: a chunky rounded foam-lime bar bottom-left with
+   the number beside it. A hit flashes the bar white; the screen edges
+   glow cream (never red). */
+#health {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+#health .bar {
+  position: relative;
+  width: clamp(10rem, 22vw, 16rem);
+  height: 1.4rem;
+  border-radius: 0.7rem;
+  background: rgb(0 0 0 / 45%);
+  border: 2px solid #fff6e8;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+  overflow: hidden;
+}
+#health .bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  border-radius: 0.55rem;
+  background: #b6ff3b;
+  transition: width 120ms linear;
+}
+#health .bar.hit i {
+  background: #fff6e8;
+}
+#health .bar.low i {
+  background: #ffd23f;
+}
+#health .num {
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  color: #fff6e8;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+  font-variant-numeric: tabular-nums;
+}
+#hitflash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 18vmin 6vmin rgb(255 246 232 / 55%);
+}
+#hitflash.on {
+  opacity: 1;
+  transition: opacity 140ms ease-out;
+}
 #ammo .pips {
   display: flex;
   gap: 0.3rem;
@@ -95,4 +150,171 @@ body {
 }
 #ammo .pips i.full {
   background: #ff7a1a;
+}
+
+#hitflash.pop {
+  opacity: 1;
+  box-shadow: inset 0 0 26vmin 10vmin rgb(255 233 168 / 70%);
+  transition: opacity 500ms ease-out;
+}
+
+/* UI-01 stage 2: the pause menu and the settings panel, both a dimmed
+   full screen with a chunky toy-like panel. Foam colours, no red. The
+   overlay keeps pointer-events none, so its Settings button re-enables
+   them for itself. */
+#overlay button {
+  pointer-events: auto;
+  margin-top: 1rem;
+}
+
+#pausemenu,
+#settings {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  background: rgb(27 20 48 / 70%);
+}
+#pausemenu[hidden],
+#settings[hidden] {
+  display: none;
+}
+#pausemenu .panel,
+#settings .panel {
+  display: grid;
+  gap: 0.8rem;
+  justify-items: center;
+  padding: 2rem 2.5rem;
+  border-radius: 1.2rem;
+  border: 3px solid #fff6e8;
+  background: #2a1f4d;
+  box-shadow: 0 0.1em 0.4em rgb(0 0 0 / 60%);
+}
+#pausemenu h2,
+#settings h2 {
+  margin: 0 0 0.4rem;
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #b6ff3b;
+  text-shadow: 0 0.04em 0 #4d730f;
+}
+#pausemenu button,
+#settings button {
+  font: inherit;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  padding: 0.55rem 2rem;
+  border-radius: 999px;
+  border: 3px solid #fff6e8;
+  background: #ff7a1a;
+  color: #fff6e8;
+  cursor: pointer;
+}
+#pausemenu button:hover,
+#pausemenu button:focus-visible,
+#settings button:hover,
+#settings button:focus-visible {
+  background: #ff9a4d;
+}
+#settings .panel {
+  justify-items: stretch;
+  min-width: min(30rem, 90vw);
+}
+#settings h2 {
+  justify-self: center;
+}
+#settings .row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+}
+#settings .row > span:first-child {
+  grid-column: 1 / -1;
+}
+#settings .row .val {
+  min-width: 3.4rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #b6ff3b;
+}
+#settings .row.presets {
+  grid-template-columns: repeat(4, auto);
+  justify-content: center;
+}
+#settings .row.presets > span:first-child {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+#settings .row.presets button {
+  padding: 0.3rem 0.9rem;
+  font-size: 0.95rem;
+  opacity: 0.6;
+}
+#settings .row.presets button.on {
+  opacity: 1;
+  background: #b6ff3b;
+  color: #1b1430;
+  border-color: #1b1430;
+}
+#settings .row.presets .val {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+#settings .row.toggle {
+  grid-template-columns: 1fr auto;
+}
+#settings input[type="range"] {
+  width: 12rem;
+  accent-color: #ff7a1a;
+}
+#settings input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: #b6ff3b;
+}
+#settingsBack {
+  margin-top: 0.6rem;
+  justify-self: center;
+}
+
+/* UI-01: the "You popped!" panel over the dimmed game. Foam colours only. */
+#popped {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+  background: rgb(27 20 48 / 70%);
+}
+#popped[hidden] {
+  display: none;
+}
+#popped h2 {
+  margin: 0;
+  font-size: clamp(2.5rem, 9vw, 6rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #b6ff3b;
+  text-shadow: 0 0.05em 0 #4d730f, 0 0.1em 0.3em rgb(0 0 0 / 50%);
+}
+#popped button {
+  font: inherit;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+  padding: 0.7rem 2.2rem;
+  border-radius: 999px;
+  border: 3px solid #fff6e8;
+  background: #ff7a1a;
+  color: #fff6e8;
+  cursor: pointer;
+}
+#popped button:hover,
+#popped button:focus-visible {
+  background: #ff9a4d;
 }

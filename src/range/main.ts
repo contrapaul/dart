@@ -10,6 +10,7 @@ import { createPhysics } from "../physics/world";
 import { startLoop, type FrameStats } from "../core/loop";
 import { Input } from "../core/input";
 import { PlayerController } from "../player/controller";
+import { PlayerHealth } from "../player/health";
 import { DartSystem } from "../weapons/darts";
 import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
@@ -22,6 +23,7 @@ import { MesherPool } from "../voxel/mesher-pool";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
 import rangeJson from "../../data/range.json";
+import foamerData from "../../data/foamers.json";
 import dartsJson from "../../data/darts.json";
 import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
@@ -88,6 +90,13 @@ for (let m = 5; m <= 30; m += 5)
   addBox(0, 0.01, R.playerSpawn[2] - m, 0.5, 0.02, 2, MARK, false);
 
 const player = new PlayerController(rapier, world, SPAWN_POSE);
+// UI-01 stage 1: health on the range too, with a God mode switch. The
+// attack damage comes from data/foamers.json (attacks[].damage).
+const health = new PlayerHealth();
+const ATTACK_DAMAGE = new Map<string, number>(
+  (foamerData.test as unknown as { attacks: { id: string; damage: number }[] })
+    .attacks.map((a) => [a.id, a.damage]),
+);
 const darts = new DartSystem(scene, world, rapier, player.collider);
 // Sound (AUD-01 stage 2): the engine opens on the first click (the range Play
 // button, or the canvas), and GameSounds gets it as its sink. The panel's
@@ -127,7 +136,12 @@ const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxel
 foamers.spawnCount = R.spawn.count;
 foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
 scene.add(foamers.group);
-foamers.onBonk = () => {};
+foamers.onBonk = (_f, attack) => {
+  if (switches.godMode || paused) return;
+  const lost = health.damage(ATTACK_DAMAGE.get(attack) ?? 0, attack);
+  if (lost <= 0) return;
+  hud.onHit();
+};
 
 // Blaster and mod panel rows, built after the loadout resolves. The mod
 // row is rebuilt whenever the active blaster changes or a mod is toggled.
@@ -169,7 +183,7 @@ renderModRow();
 // Switches, each listed in the report.
 const switches = {
   foamers: true, shadows: true, pixelRatio: true, snap: true,
-  strafe: false, infiniteAmmo: false,
+  strafe: false, infiniteAmmo: false, godMode: false,
 };
 // Infinite ammo refills the active blaster's magazine after every shot.
 function applyInfiniteAmmoHooks() {
@@ -230,6 +244,12 @@ function setSwitch(name: keyof typeof switches, on: boolean) {
       break;
     case "infiniteAmmo":
       break;
+    case "godMode":
+      if (on) {
+        health.reset();
+        hud.clearFlash();
+      }
+      break;
   }
 }
 document.querySelectorAll<HTMLButtonElement>("button[data-switch]").forEach((b) =>
@@ -281,6 +301,9 @@ for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#sp
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));
 document.querySelector<HTMLButtonElement>("#clearFoamers")!.addEventListener("click", () =>
   foamers.clear());
+// GAME-11: break the nearest living Foamer's left leg, to watch a fall.
+document.querySelector<HTMLButtonElement>("#breakLeg")!.addEventListener("click", () =>
+  foamers.breakLegForTest());
 
 // Report and copy.
 const reportEl = document.querySelector<HTMLPreElement>("#report")!;
@@ -481,6 +504,7 @@ loopCtl = startLoop({
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
     hud.setAmmo(loadout.active, loadout.active.state);
+    hud.setHealth(health.hp, health.max);
     if (engine) engine.updateListener();
     renderer.render(scene, camera);
   },

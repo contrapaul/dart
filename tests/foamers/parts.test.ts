@@ -419,7 +419,7 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(r.foamers.broken[1]!.groups.map((g) => g.part.spec.id)).toEqual(["foreArmR"]);
   });
 
-  it("7. one leg gone: 50% (within 15%) of intact distance over 60 steps; both gone: 25%, and its lowest part is within 0.1 m of the floor", async () => {
+  it("7. a leg break falls instead of limping (GAME-11): it goes over and crawls, slower than it walked; the prone body stays on the floor", async () => {
     const player = new THREE.Vector3(0, 1.6, 4);
     const run = async (breakParts: string[]) => {
       const r = rig();
@@ -427,24 +427,29 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
       r.world.step();
       await settleAll(r, f);
       for (const id of breakParts) await breakOff(r, player, f, id);
-      // Let the post-break stagger pass, then measure 60 approach steps.
-      await untilApproach(r, player, f);
+      // The fall, then the crawl, then measure 60 steps of it.
+      for (let i = 0; i < 240 && f.state !== "crawl"; i++) tick(r, player);
       const start = f.centre.clone();
       for (let i = 0; i < 60; i++) tick(r, player);
       return { f, d: f.centre.distanceTo(start) };
     };
-    const intactD = (await run([])).d;
-    expect(intactD, "the intact one walks").toBeGreaterThan(0.4);
-    const one = (await run(["legL"])).d;
-    expect(one / intactD, "one leg ~50%").toBeGreaterThanOrEqual(0.35);
-    expect(one / intactD, "one leg ~50%").toBeLessThanOrEqual(0.65);
-    const none = await run(["legL", "legR"]);
-    expect(none.d / intactD, "both gone ~25%").toBeGreaterThanOrEqual(0.10);
-    expect(none.d / intactD, "both gone ~25%").toBeLessThanOrEqual(0.40);
-    // With no legs it skids on the floor: the lowest attached voxel lies
-    // within 0.1 m of it.
+    const intact = await run([]);
+    expect(intact.d, "the intact one walks").toBeGreaterThan(0.4);
+    // GAME-11: fallBelowLegs 2, so a two-legged Foamer that loses one leg
+    // falls, which replaces the old 50% limp. Prone, it crawls: slower than
+    // it walked (crawlSpeed 0.3 of the rig's speed), but it closes on the
+    // player. Stage 1 held it still; the card's crawl moves it.
+    const one = await run(["legL"]);
+    expect(one.f.state, "one leg gone: it fell").toBe("crawl");
+    expect(one.f.parts.has("legL"), "the leg is off").toBe(false);
+    expect(one.d, "it crawls").toBeGreaterThan(0.1);
+    expect(one.d / intact.d, "slower than it walked").toBeLessThan(0.7);
+    // Prone on the floor, not sunk into it (the old skid check, now on the
+    // body that fell). The pose fits each part's box to the floor, so the
+    // filled voxels of a part whose box corner is rounded sit slightly above
+    // it; the arms swung forward hold the body a little way up too.
     let low = Infinity;
-    for (const part of none.f.parts.values()) {
+    for (const part of one.f.parts.values()) {
       const [sx, sy, sz] = part.spec.size;
       for (const chunk of part.volume.chunks.values())
         for (let y = 0; y < sy; y++)
@@ -454,7 +459,7 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
               low = Math.min(low, part.voxelToWorld(new THREE.Vector3(x, y, z)).y);
             }
     }
-    expect(low, "lowest part within 0.1 m of the floor").toBeLessThan(0.1);
+    expect(low, "lowest part near the floor").toBeLessThan(0.2);
     expect(low, "not sunk into the floor").toBeGreaterThanOrEqual(-0.05);
   });
 
@@ -545,7 +550,9 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     r.world.step();
     await settleAll(r, f);
-    await breakOff(r, player, f, "legL");
+    // GAME-11: a leg break is a fall now, so the stagger is tested on an
+    // arm instead (a stagger is still what a survivable break does).
+    await breakOff(r, player, f, "armL");
     expect(f.state, "staggered").toBe("stagger");
     // Still for the whole stagger: under 1 mm of centre move on every step
     // that is still staggering when it ends. The one step that ends the

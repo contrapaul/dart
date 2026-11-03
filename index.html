@@ -12,8 +12,33 @@
     <div id="overlay">
       <h1>DART</h1>
       <p id="status">Loading</p>
+      <button id="titleSettings" type="button">Settings</button>
     </div>
-    <div id="hud" hidden><div id="crosshair"></div><div id="ammo"></div></div>
+    <div id="hud" hidden>
+      <div id="crosshair"></div>
+      <div id="ammo"></div>
+      <div id="health"><div class="bar"><i></i></div><span class="num"></span></div>
+    </div>
+    <div id="hitflash"></div>
+    <div id="popped" hidden>
+      <h2>You popped!</h2>
+      <button id="tryAgain" type="button">Try again</button>
+    </div>
+    <div id="pausemenu" hidden>
+      <div class="panel">
+        <h2>Paused</h2>
+        <button id="resumeBtn" type="button">Resume</button>
+        <button id="settingsBtn" type="button">Settings</button>
+        <button id="restartBtn" type="button">Restart</button>
+      </div>
+    </div>
+    <div id="settings" hidden>
+      <div class="panel">
+        <h2>Settings</h2>
+        <div id="settingsRows"></div>
+        <button id="settingsBack" type="button">Back</button>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
