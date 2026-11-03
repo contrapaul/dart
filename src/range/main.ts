@@ -32,6 +32,7 @@ import { damageOf } from "../game/attack";
 import dartsJson from "../../data/darts.json";
 import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
+import foamerData from "../../data/foamers.json";
 
 const R = (rangeJson as unknown as {
   range: {
@@ -344,6 +345,20 @@ for (const k of [0, 1, 4, 10]) {
   });
   keepRow.appendChild(b);
 }
+// GAME-10a: which type the spawn buttons and the keep-alive spawner make.
+const typeRow = document.querySelector<HTMLDivElement>("#foamerType")!;
+let foamerType = "F01";
+for (const t of Object.keys(foamerData.types)) {
+  const b = document.createElement("button");
+  b.textContent = t;
+  b.addEventListener("click", () => {
+    foamerType = t;
+    foamers.spawnType = t;
+    typeRow.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+  if (t === foamerType) b.classList.add("on");
+  typeRow.appendChild(b);
+}
 // Spawn a Foamer at set metres ahead of the player, on the floor.
 const _fwd = new THREE.Vector3();
 const _fwdxz = new THREE.Vector3();
@@ -352,7 +367,7 @@ function spawnAhead(m: number) {
   camera.getWorldDirection(_fwd);
   player.eye(1, _fwdxz);
   _feet.set(_fwdxz.x + _fwd.x * m, 0, _fwdxz.z + _fwd.z * m);
-  foamers.spawn(_feet, camera.position);
+  foamers.spawn(_feet, camera.position, foamerType);
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));
@@ -753,12 +768,16 @@ if (watch) {
         return e.thrown;
       },
       shieldState: () => shield.state,
-      state: () => foamers.list.map((f) => ({
-        state: f.state,
-        health: f.health,
-        position: [f.centre.x, f.centre.y, f.centre.z].map((n) => Number(n.toFixed(3))) as [number, number, number],
-        parts: [...f.parts.keys()],
-      })),
+      state: () => ({
+        foamers: foamers.list.map((f) => ({
+          type: f.spec.rig,
+          state: f.state,
+          health: f.health,
+          position: [f.centre.x, f.centre.y, f.centre.z].map((n) => Number(n.toFixed(3))) as [number, number, number],
+          parts: [...f.parts.keys()],
+        })),
+        balls: projectiles.list.length,
+      }),
     },
   });
 }

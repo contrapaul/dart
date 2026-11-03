@@ -174,6 +174,9 @@ export class FoamerSystem {
   spawnCount = SPAWNER.count;
   /** Where the spawner picks from, in feet metres. */
   spawnPoints: [number, number, number][] = SPAWNER.points.map((p) => [p[0], p[1], p[2]]);
+  /** The type the keep-alive spawner makes (GAME-10a; the range page sets
+   *  it from its type row). */
+  spawnType = "F01";
   private dtPrev = 1 / 60;
   /** Caps on the ragdoll seed velocity (a walking stride is a few m/s at
    *  most; a near-instant kill would otherwise divide a near-zero dt over
@@ -713,7 +716,7 @@ export class FoamerSystem {
         best = p;
       }
     }
-    this.spawn(new THREE.Vector3(best[0], best[1], best[2]));
+    this.spawn(new THREE.Vector3(best[0], best[1], best[2]), undefined, this.spawnType);
   }
 
   /** GAME-11: horizontal distance from a prone Foamer's head (the part

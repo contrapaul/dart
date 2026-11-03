@@ -539,7 +539,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
           const p = feet(_feet);
           return [p.x, p.y, p.z].map((n) => Number(n.toFixed(3)));
         })(),
-        foamers: { live: foamers.live, downed: foamers.downed.length },
+        foamers: { live: foamers.live, downed: foamers.downed.length,
+          // GAME-10a: each Foamer's type (its rig id), and the live balls.
+          types: foamers.list.map((f) => f.spec.rig),
+          balls: projectiles.list.length },
         // GAME-07: the watch gets pickup counts and each Foamer's
         // finishable flag (a stagger is what the finisher acts on).
         pickups: { health: pickups.count("health") },
