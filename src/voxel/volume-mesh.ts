@@ -3,6 +3,7 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { CHUNK_SIZE, chunkCoords, type VoxelVolume } from "./chunk";
 import { voxelFoamMaterial } from "../render/foam-material";
+import { FOAMER_GROUPS } from "../physics/world";
 import { buildPadded, type MeshData } from "./mesher";
 import type { Mesher } from "./pieces";
 
@@ -154,6 +155,11 @@ export class VolumeMesh {
       verts[i + 1] = data.positions[i + 1] * size + mesh.position.y;
       verts[i + 2] = data.positions[i + 2] * size + mesh.position.z;
     }
-    view.collider = this.world.createCollider(this.rapier.ColliderDesc.trimesh(verts, data.indices), this.body);
+    const desc = this.rapier.ColliderDesc.trimesh(verts, data.indices);
+    // A kinematic VolumeMesh is one part of a live Foamer (the level's is
+    // fixed): off the world group, so debris (a broken piece) flies out of
+    // it rather than being crushed by the body tipping over it (GAME-11).
+    if (this.body.isKinematic()) desc.setCollisionGroups(FOAMER_GROUPS);
+    view.collider = this.world.createCollider(desc, this.body);
   }
 }

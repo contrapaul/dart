@@ -81,6 +81,57 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-02: GAME-11 stage 1, the fall (Pi)
+
+A Foamer that is left with fewer than `handicaps.fallBelowLegs` (2) legs
+now falls over: the attack is cancelled, it enters the new `fall` state
+and tips as an inverted pendulum about the foot it still stands on,
+`a'' = (gravity / pivotHeight) * sin(a)` in `Foamer.stepFall`, starting at
+`fall.startTilt` and stopping at `fall.proneTilt`. It bounces once (back
+less than `fall.bounce * proneTilt`), settles, and then enters `crawl`,
+which for stage 1 holds still prone (`crawlSpeed` and moving come in
+stage 2). `pivotHeight` is the body box centre found by solving the rest
+pose once in the constructor, so the card's formula has a measured
+number behind it. The tilt drives `RigMotion`: `pitch = a * (1 -
+sideShare)` and `roll = a * sideShare * side`, where `side` is negative
+for a lost left leg, the same sign the removed 0.15 rad per missing leg
+used; the arms swing forward (`x` to -1.4 * reach) as it goes down. The
+pose blends through the usual `poseBlend`, so a spring drop can cut in
+and the whole thing goes down as one. `poseParts` fits the prone body to
+the floor for `fall` and `crawl` as it already did for no legs and
+`down`, so the fall ends on the ground and not in it.
+
+`FoamerSoundKind` gains `fall`: one FX-topple at the body when it first
+lands, no FX-fizz-out (it is not down). Foamers do not turn toward the
+player or step while falling or crawling. `goDown` still works from both
+states (a killing dart builds the ragdoll from the pose it was in).
+`breakPart` only falls on a leg, only when it is not already down or
+under, and the stagger sweep now runs after the head and arms check so
+the same step cannot fall and stagger. The range panel has a Break leg
+button (`breakLegForTest`).
+
+Collision fix found while doing this: a severed part spawns inside the
+voxels of the body it left, so the falling hips squashed a fresh leg
+piece into the floor and it never rose (old parts test 6). A live
+Foamer's part colliders are now `FOAMER_GROUPS` (kinematic VolumeMesh
+only) and broken pieces are `DEBRIS_GROUPS`, so debris passes through a
+living Foamer's own part boxes. The level's VolumeMesh is fixed, so it
+keeps the default groups.
+
+Tests: new `tests/foamers/fall.test.ts` covers the card's 1, 2, 3, 5 and
+8 (fall then crawl in under 2 s, the pendulum speeding up and bouncing
+at proneTilt, mirrored roll per leg, no joint moving over 0.35 rad in a
+step through the transition, darts still hitting a falling Foamer) plus
+the once-per-fall sound and going down from a fall and from the crawl.
+The card's numbers were not changed. Three old tests did have to change,
+because the card's own design supersedes them: `tests/foamers/parts.test.ts`
+7 (one leg gone was a 50% limp; a two-legged Foamer now falls) and 11
+(it staggered on a leg break, so it staggers on an arm break instead),
+and `tests/audio/game-sounds.test.ts` (a leg break used to play no
+topple; it now plays one). Unverified: how the fall reads on screen at
+60 fps, the bounce size and timing by eye, and the crawl's silhouette
+(stage 2 adds the movement).
+
 ### 2026-11-02: AUD-01 stage 3b and final review (Pi, Claude)
 
 Pi (Qwen 3.8) built the Foamer sounds: one `FoamerSystem.onSound(kind, f,

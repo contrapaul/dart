@@ -13,7 +13,7 @@ import { FoamerPart } from "./foamer-part";
 // the rig is re-posed from solvePose and each part body is moved to the
 // translation and rotation of its part matrix.
 
-export type FoamerState = "approach" | "windup" | "strike" | "recover" | "stagger" | "down";
+export type FoamerState = "approach" | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down";
 export type FoamerSpec = typeof foamerData.test;
 /** Rigs in the data file carry `health`; the base rig type does not. */
 export type GameRig = RigSpec & { health: number };
@@ -28,13 +28,21 @@ const _pL = new THREE.Vector3();
 const _pL2 = new THREE.Vector3();
 const _qL = new THREE.Quaternion();
 const _qL2 = new THREE.Quaternion();
+/** The lying capsule's rotation: its own y axis along the rig's +z. */
+const LYING_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+/** Where the lying capsule's centre sits ahead of the feet (GAME-11). Its
+ *  rear cap must clear the legs' own space: a leg that breaks on the step
+ *  the fall starts would spawn inside the cap and be shoved instead of
+ *  flung. 0.45 m is clear of the feet and of the hips. */
+const LYING_Z = 0.45;
 
 export class Foamer {
   readonly spec: FoamerSpec;
   readonly rig: GameRig;
   /** The movement capsule; parts have bodies of their own. */
   readonly root: RAPIER.RigidBody;
-  readonly capsule: RAPIER.Collider;
+  /** The movement capsule: upright, then lying from the fall on (GAME-11). */
+  capsule: RAPIER.Collider;
   /** Attached parts, by part id. */
   readonly parts = new Map<string, FoamerPart>();
   /** A render group under the system's group; it draws every part group. */
@@ -73,8 +81,25 @@ export class Foamer {
   readonly motion: RigMotion = restMotion();
   /** Times and amounts of recent damage, for the catastrophic window. */
   readonly recentDamage: { time: number; amount: number }[] = [];
+  /** GAME-11: the fall, an inverted pendulum about the foot it still stands
+   *  on. a is the tilt in radians from upright, integrated per fixed step
+   *  (semi-implicit Euler); -1 means no fall has started. w is the angular
+   *  speed. side is the roll sign: the left leg lost rolls the body toward
+   *  its own left (-x), which is a positive roll. bounced is set at the
+   *  landing; settle counts the seconds it then lies at rest. */
+  fallA = -1;
+  fallW = 0;
+  fallSide = 1;
+  fallBounced = false;
+  fallSettle = 0;
+  /** The body's centre height over the ground at rest: the pendulum's pivot
+   *  length, filled once at spawn (GAME-11). */
+  pivotHeight = 0;
 
   private poseBlend: number;
+  /** The upright capsule's radius, kept for the lying capsule (GAME-11). */
+  private readonly capsuleR: number;
+  private readonly rapier: Rapier;
   /** The attack chosen for the current windup/strike cycle, or null. */
   private attackId: string | null = null;
   attack() {
@@ -126,11 +151,23 @@ export class Foamer {
 
     const body = rig.parts.find((p) => p.parent === null)!;
     const vs = rig.voxelSize;
+    this.rapier = rapier;
+    // The fall's pivot (GAME-11): the body's box centre over the ground at
+    // rest, which is the length of the inverted pendulum. solvePose already
+    // puts the feet on the ground, so the centre's own y is the height.
+    {
+      const rest = solvePose(rig, new THREE.Vector3(), 0, restMotion(), new Map());
+      const c = new THREE.Vector3(
+        (body.size[0] * vs) / 2, (body.size[1] * vs) / 2, (body.size[2] * vs) / 2,
+      ).applyMatrix4(rest.get(body.id)!);
+      this.pivotHeight = Math.max(0.1, c.y);
+    }
     // Movement capsule: radius capsuleShare times half the NARROWER of the
     // body part's x and z size (it must sit inside the body's voxels, so
     // darts hit the parts, not the capsule), height the rig's height, on
     // the body centre line (the body voxel is centred on the root's origin).
     const radius = spec.capsuleShare * (Math.min(body.size[0], body.size[2]) * vs) / 2;
+    this.capsuleR = radius;
     const height = rigHeight(rig);
     this.root = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased());
     this.capsule = world.createCollider(
@@ -156,6 +193,51 @@ export class Foamer {
     this.root.setRotation({ x: _quat.x, y: _quat.y, z: _quat.z, w: _quat.w }, true);
     solvePose(rig, this.centre, this.yaw, this.motion, _poses);
     for (const [id, part] of this.parts) part.setInPlace(_poses.get(id)!);
+  }
+
+  /** GAME-11: swap the upright capsule for the lying one a prone body needs.
+   *  Its axis lies along the Foamer's forward, the radius is the upright
+   *  one, the length is the rig's height times crawlLength, and it rests on
+   *  the ground (bottom at the root's origin, the feet). So the character
+   *  controller moves the prone shape from the fall on. */
+  setCapsuleLying(world: RAPIER.World) {
+    world.removeCollider(this.capsule, false);
+    const r = this.capsuleR;
+    const len = this.height * this.spec.handicaps.crawlLength;
+    this.capsule = world.createCollider(
+      this.rapier.ColliderDesc.capsule(Math.max(0.01, len / 2 - r), r)
+        .setTranslation(0, r, LYING_Z)
+        .setRotation(LYING_Q),
+      this.root,
+    );
+  }
+
+  /** GAME-11: one step of the fall's pendulum. Returns true once it has
+   *  settled at prone and the Foamer may crawl. */
+  stepFall(dt: number, gravity: number): boolean {
+    const h = this.spec.handicaps.fall;
+    if (this.fallA < 0) {
+      this.fallA = h.startTilt;
+      this.fallW = 0;
+      return false;
+    }
+    // Semi-implicit Euler on a'' = (gravity / pivotHeight) sin(a): the tip
+    // speeds up as it goes over, so the fall is not a linear ease.
+    this.fallW += (gravity / this.pivotHeight) * Math.sin(this.fallA) * dt;
+    this.fallA += this.fallW * dt;
+    if (this.fallA < h.proneTilt) return false;
+    this.fallA = h.proneTilt;
+    if (!this.fallBounced) {
+      // The landing: the angular speed reverses at fall.bounce of itself,
+      // once, so it rocks back a little and gravity brings it down again.
+      this.fallBounced = true;
+      this.fallW = -h.bounce * this.fallW;
+      return false;
+    }
+    // Down again: the floor holds it, and it lies still for settle seconds.
+    this.fallW = 0;
+    this.fallSettle += dt;
+    return this.fallSettle >= h.settle;
   }
 
   /** True while the part with this id is still attached. */
@@ -206,11 +288,9 @@ export class Foamer {
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
     else if (this.state === "stagger") staggerMotion(this.stateTime, t);
     else if (this.state === "down") restInto(t); // ENG-12: physics carries it now
+    else if (this.state === "fall" || this.state === "crawl") this.proneMotion(t, this.state === "fall" ? this.fallTilt() : this.spec.handicaps.fall.proneTilt);
     else if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
     else restInto(t);
-    // Missing legs: roll the body 0.15 rad toward each missing side.
-    const start = this.startLegs();
-    for (const id of start) if (!this.parts.has(id)) t.roll += id.endsWith("L") ? -0.15 : 0.15;
     const k = 1 - Math.exp(-dt / this.poseBlend);
     const m = this.motion;
     m.y += (t.y - m.y) * k;
@@ -227,10 +307,12 @@ export class Foamer {
     }
     for (const id of [...m.rot.keys()]) if (!t.rot.has(id)) m.rot.delete(id);
     solvePose(this.rig, this.centre, this.yaw, m, _poses);
-    // All legs gone, or down: the attached parts' lowest corner (box
-    // corners move with the roll) must sit on the floor (a downed body
-    // shifted down by its sinkDrop): bring the whole rig to the ground.
-    if (this.legs().length === 0 || this.state === "down") {
+    // All legs gone, down, or on the ground in a fall or crawl: the
+    // attached parts' lowest corner (box corners move with the roll) must
+    // sit on the floor (a downed body shifted down by its sinkDrop): bring
+    // the whole rig to the ground.
+    if (this.legs().length === 0 || this.state === "down" ||
+        this.state === "fall" || this.state === "crawl") {
       let low = Infinity;
       for (const [pid, pm] of _poses) {
         if (!this.parts.has(pid)) continue;
@@ -245,6 +327,36 @@ export class Foamer {
       solvePose(this.rig, this.centre, this.yaw, m, _poses);
     }
     for (const [id, part] of this.parts) part.setPose(_poses.get(id)!);
+  }
+
+  /** The tilt the fall has reached, radians from upright (0 before it
+   *  starts). */
+  fallTilt() {
+    return this.fallA < 0 ? 0 : this.fallA;
+  }
+
+  /** Target motion for a fall at tilt a, and for the crawl at prone
+   *  (GAME-11). sideShare of the tilt is roll toward the lost leg and the
+   *  rest is forward pitch, so the body goes down mostly forward and a
+   *  little to the side of the leg it lost. The arms swing forward to meet
+   *  the ground as it lands. y is not set here: poseParts fits the body to
+   *  the floor, which is right whether it is tipping or prone. */
+  private proneMotion(t: RigMotion, a: number) {
+    restInto(t);
+    const h = this.spec.handicaps.fall;
+    t.pitch = a * (1 - h.sideShare);
+    t.roll = a * h.sideShare * this.fallSide;
+    // The arms reach the ground: the reach scales in as it rolls over, so
+    // the joints never jump at the start of the fall.
+    const reach = h.proneTilt > h.startTilt
+      ? Math.min(1, Math.max(0, (a - h.startTilt) / (h.proneTilt - h.startTilt)))
+      : 1;
+    const arm = -1.4 * reach;
+    const fore = -0.6 * reach;
+    for (const id of ["armL", "armR"])
+      if (this.parts.has(id)) t.rot.set(id, [arm, 0, 0]);
+    for (const id of ["foreArmL", "foreArmR"])
+      if (this.parts.has(id)) t.rot.set(id, [fore, 0, 0]);
   }
 
   /** Render frame. Approach, attacks and staggers: every part draws

@@ -522,11 +522,10 @@ describe("card test 8: Foamers", () => {
     ).toBe(1);
     const p = R.sink.log.find((x) => x.id === "FX-part-off")!;
     expect(p.opts?.position, "spatial, at the part").toBeDefined();
-    // A one-leg loss is a handicap, not a down: no topple unless the other
-    // arm went too.
-    if (f.state !== "down") {
-      expect(countOf(seen, "FX-topple")).toBe(0);
-    }
+    // GAME-11: a broken leg now knocks it over, so FX-topple comes once,
+    // when the body lands. It is not a down, so no fizz-out follows.
+    expect(countOf(seen, "FX-topple"), "one topple for the fall").toBe(1);
+    expect(countOf(seen, "FX-fizz-out"), "no fizz-out, it is not down").toBe(0);
   });
 
   it("a pop plays FX-pop and FX-chunk", async () => {

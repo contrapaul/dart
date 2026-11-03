@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
-import { RAGDOLL_GROUPS } from "../physics/world";
+import { DEBRIS_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
 import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import type { DebrisSystem } from "../voxel/debris";
@@ -66,7 +66,7 @@ const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b). */
 export type FoamerSoundKind =
-  | "spawn" | "wound" | "part-off" | "attack" | "down" | "sink" | "pop";
+  | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -269,6 +269,16 @@ export class FoamerSystem {
         f.state = "recover";
         f.stateTime = 0;
       }
+    } else if (f.state === "fall") {
+      const landed = f.fallBounced;
+      if (f.stepFall(dt, SPEC.gravity)) {
+        f.state = "crawl";
+        f.stateTime = 0;
+      }
+      // One FX-topple per fall, at the body when it first hits (GAME-11).
+      if (!landed && f.fallBounced) sound(this, "fall", f, f.centre);
+    } else if (f.state === "crawl") {
+      // GAME-11 stage 1: the crawl holds still where the fall left it.
     } else if (f.stateTime >= SPEC.recover) {
       f.state = "approach";
       f.stateTime = 0;
@@ -396,6 +406,16 @@ export class FoamerSystem {
     if (f.state !== "down" && !f.parts.has("head") && this.anyArmGone(f)) this.goDown(f);
   }
 
+  /** GAME-11 range only: break the left leg of the nearest living Foamer, so
+   *  the reviewer can watch a fall on demand. Returns the Foamer it broke,
+   *  or null when none is alive. */
+  breakLegForTest(): Foamer | null {
+    const f = this.list.find((x) => x.state !== "down" && x.parts.has("legL"));
+    if (!f) return null;
+    this.breakPart(f, f.parts.get("legL")!);
+    return f;
+  }
+
   /** Any part of kind arm that is not attached any more. */
   private anyArmGone(f: Foamer): boolean {
     return f.rig.parts.some((p) => p.kind === "arm" && !f.parts.has(p.id));
@@ -480,7 +500,7 @@ export class FoamerSystem {
       // of it (a rising limb was being raised, it does not keep rising)
       // and every rotation (the last swing's wind-up must not start the
       // fall).
-      body.setLinvel({ x: lvx0 * k * rag.keepStride, y: 0, z: lvz0 * k * rag.keepStride }, true);
+    body.setLinvel({ x: lvx0 * k * rag.keepStride, y: 0, z: lvz0 * k * rag.keepStride }, true);
       body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     }
     // One hinge per attached part with a parent. Rapier initialises a new
@@ -796,7 +816,12 @@ export class FoamerSystem {
       z: (st2.z - _p.z) / this.dtPrev + out2.z * 1.5,
     }, true);
     // One cuboid collider per part: its voxel bounds, inset 0.02 m, at the
-    // part's density.
+    // part's density. Debris group: world only. A severed leg still overlaps
+    // the body voxels it was joined to, and from GAME-11 the body keeps
+    // pivoting over the fall while the piece is in the air, so contacting
+    // the Foamer's own kinematic parts punts the piece instead of flinging
+    // it. The other Foamers keep their capsules on the world group too, so
+    // nothing that matters is lost.
     const groups: BrokenPiece["groups"] = [];
     const vs = rig.voxelSize;
     let bottom = Infinity, top = -Infinity;
@@ -814,7 +839,8 @@ export class FoamerSystem {
           Math.max(0.02, sz[0] * vs / 2 - 0.02),
           Math.max(0.02, sz[1] * vs / 2 - 0.02),
           Math.max(0.02, sz[2] * vs / 2 - 0.02),
-        ).setTranslation(cc0.x, cc0.y, cc0.z).setDensity(SPEC.brokenParts.density),
+        ).setTranslation(cc0.x, cc0.y, cc0.z).setDensity(SPEC.brokenParts.density)
+          .setCollisionGroups(DEBRIS_GROUPS),
         body,
       );
       // The fallen part is still drawn as its own group, but it is moved by
@@ -843,10 +869,34 @@ export class FoamerSystem {
       bottomY: bottom, topY: top,
       age: 0, sinking: false, sinkSpeed: 0,
     });
-    // Stagger; a stagger during a windup cancels the attack.
-    f.state = "stagger";
-    f.stateTime = 0;
+    // GAME-11: down to too few legs, a living Foamer falls over instead of
+    // staggering. It does not fall twice, and a downed one is not here.
+    if (part.spec.kind === "leg" && f.state !== "fall" && f.state !== "crawl" &&
+        f.legs().length < SPEC.handicaps.fallBelowLegs)
+      this.startFall(f, part.spec.id);
+    else if (f.state !== "fall" && f.state !== "crawl") {
+      // Stagger; a stagger during a windup cancels the attack.
+      f.state = "stagger";
+      f.stateTime = 0;
+    }
     if (f.attack()) f.setAttack(null);
+  }
+
+  /** GAME-11: start the fall after the leg with this id broke. The roll goes
+   *  toward the side of the lost leg (a left leg rolls it onto its left), it
+   *  starts tipped fall.startTilt, and the upright capsule becomes the lying
+   *  one so the controller moves the prone shape. */
+  private startFall(f: Foamer, lostLeg: string) {
+    f.state = "fall";
+    f.stateTime = 0;
+    f.fallA = -1; // stepFall sets startTilt on its first step
+    f.fallW = 0;
+    f.fallBounced = false;
+    f.fallSettle = 0;
+    // The sign the removed 0.15 rad per missing leg used: a lost left leg
+    // rolls the body toward that side, a negative roll.
+    f.fallSide = lostLeg.endsWith("L") ? -1 : 1;
+    f.setCapsuleLying(this.world);
   }
 
   /** Fall the pieces: each lies for brokenParts.lifetime, then sinks
