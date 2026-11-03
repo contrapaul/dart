@@ -525,7 +525,7 @@ export class FoamerSystem {
       // of it (a rising limb was being raised, it does not keep rising)
       // and every rotation (the last swing's wind-up must not start the
       // fall).
-    body.setLinvel({ x: lvx0 * k * rag.keepStride, y: 0, z: lvz0 * k * rag.keepStride }, true);
+      body.setLinvel({ x: lvx0 * k * rag.keepStride, y: 0, z: lvz0 * k * rag.keepStride }, true);
       body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     }
     // One hinge per attached part with a parent. Rapier initialises a new
