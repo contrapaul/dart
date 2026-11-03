@@ -44,6 +44,12 @@ point farthest from the player. Suction darts stick to it and ride along
 while it walks, then drop when it pops. The bonk costs player health (UI-01). A Foamer that loses a leg falls
 over and crawls at you, attacking from the ground (GAME-11, merged
 2026-11-03; the range has a Break leg button).
+Foamers now think (ENG-08, merged 2026-11-03): each has a brain that
+notices the player by sight or by a neighbour's alert, walks round walls on
+a nav grid that re-bakes around carves, and takes turns attacking through
+the director's tokens (normal difficulty: 2 melee at once); the rest circle
+at the hold ring. `range.html?watch` runs the range without pointer lock,
+with console helpers in `window.dartRange`, for automated checks.
 
 Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
 occlusion into the vertex colours (inside corners, crater floors, the seam
@@ -88,6 +94,14 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: ENG-08, QA-watch and QA-flaky merged (Claude)
+
+- Merged `eng-08`, `qa-watch` and `qa-flaky` into main after Paul's
+  approval. HANDOFF conflicts only, both sides kept. 240 tests pass, build
+  clean.
+- Still unverified by eye at 60 fps: the prone attack (head rises to about
+  standing height in the windup) and the feel of the hold circle.
 
 ### 2026-11-03: QA-flaky test 7 was seeded (Qwen3.8-27B via Pi)
 
