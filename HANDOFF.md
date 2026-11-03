@@ -85,6 +85,19 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ART-03 reviewed and merged (Claude)
+
+- Round 3 left the Slowmer's pupils as a 1 by 2 strip at one side of each
+  eye, cut by the top of the head: the eye centres fell between voxels and
+  sat too high on the 11 voxel head. `buildPartVolume` now snaps eye centres
+  to a voxel, and a new `eyeHeight` part field (fraction of the part's
+  height; default 0.22 round, 0.12 others) moves them. F01 uses 0.12 at
+  scale 1: two 3 by 3 eyes, one centred pupil each, a lime gap between.
+  F02 and F05 re-rendered and checked; the Darter crown is clean.
+- Unverified: the Slowmer eyes are small at 11 voxels; bigger eyes would
+  need a bigger head, which changes its hit volume. Two eye white voxels
+  show on the crown from behind.
+
 ### 2026-11-03: ART-03 round 3 face fixes (Kimi via Pi)
 
 - Slowmer now has two separate cream eyes with centred 2 x 2 ink pupils, and Darter's lowered brow leaves no lime sliver on its crown. Re-rendered and checked all three sheets; all 174 active tests, TypeScript checking and the production build pass.

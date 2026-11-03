@@ -41,6 +41,9 @@ export interface PartSpec {
   eyes?: boolean | EyeStyle;
   /** Scale the painted eyes without changing the collision volume. */
   eyeScale?: number;
+  /** Eye centre height above the part's middle, as a fraction of its height
+   *  (default 0.22 for round eyes, 0.12 for the others). */
+  eyeHeight?: number;
   /** Paint scattered light foam nubs on exposed surfaces. */
   shag?: boolean;
   /** A toothless mouth on the +z face, under the eyes: a painted grin, or
@@ -157,8 +160,10 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
   // get eyes of a readable size, not saucers.
   const eyes: EyeStyle | null = part.eyes === true ? "round" : part.eyes || null;
   const eyeR = Math.min(3, Math.max(1.5, Math.min(sx / 6, sy / 4))) * (eyes === "slit" ? 1.3 : 1) * (part.eyeScale ?? 1);
-  const eyeY = cy + sy * (eyes === "round" ? 0.22 : 0.12);
-  const eyeXs = [cx - sx * 0.2, cx + sx * 0.2];
+  // Centres snap to a voxel, so a pupil is one symmetric block in the
+  // middle of its eye, not a strip down one side.
+  const eyeY = Math.round(cy + sy * (part.eyeHeight ?? (eyes === "round" ? 0.22 : 0.12)));
+  const eyeXs = [Math.round(cx - sx * 0.2), Math.round(cx + sx * 0.2)];
   const eyeAt = (x: number, y: number): number => {
     for (const ex of eyeXs) {
       const fy = eyes === "slit" ? 2.5 : 1;

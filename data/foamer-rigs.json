@@ -44,7 +44,7 @@
                     -0.4
                 ],
                 "eyes": "round",
-                "eyeScale": 1.15,
+                "eyeHeight": 0.12,
                 "mouth": "grin",
                 "taper": [
                     1.65,
