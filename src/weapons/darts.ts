@@ -5,7 +5,7 @@ import tuning from "../../data/darts.json";
 import { buildDartGeometry } from "./dart-model";
 import type { DartTypeSpec, DartTypeName } from "./dart-model";
 import { DART_TYPES } from "./dart-model";
-import { RAGDOLL_GROUPS } from "../physics/world";
+import { CAPSULE_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
 
 export type { DartTypeName } from "./dart-model";
 
@@ -277,8 +277,13 @@ export class DartSystem {
       this._ray, maxDist, true, EXCLUDE_SENSORS, undefined, this.ignore, undefined,
       // Ragdolls are scenery: darts fly through them. Only the ragdoll part
       // builders set RAGDOLL_GROUPS, so an exact-match check cannot exclude
-      // any default-group collider.
-      (c) => c.collisionGroups() !== RAGDOLL_GROUPS,
+      // any default-group collider. A Foamer's movement capsule is not drawn
+      // and its parts take the hits, so darts pass it too (exact match
+      // again: a default collider's membership has every bit set).
+      (c) => {
+        const g = c.collisionGroups();
+        return g !== RAGDOLL_GROUPS && g !== CAPSULE_GROUPS;
+      },
     );
     if (hit) {
       // timeOfImpact is a distance in metres along the unit ray, already

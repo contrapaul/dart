@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
-import type { Rapier } from "../physics/world";
+import { CAPSULE_GROUPS, type Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
@@ -199,7 +199,8 @@ export class Foamer {
     this.root = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased());
     this.capsule = world.createCollider(
       rapier.ColliderDesc.capsule(height / 2 - radius, radius)
-        .setTranslation(0, height / 2, 0),
+        .setTranslation(0, height / 2, 0)
+        .setCollisionGroups(CAPSULE_GROUPS),
       this.root,
     );
 
@@ -234,7 +235,8 @@ export class Foamer {
     this.capsule = world.createCollider(
       this.rapier.ColliderDesc.capsule(Math.max(0.01, len / 2 - r), r)
         .setTranslation(0, r, LYING_Z)
-        .setRotation(LYING_Q),
+        .setRotation(LYING_Q)
+        .setCollisionGroups(CAPSULE_GROUPS),
       this.root,
     );
   }

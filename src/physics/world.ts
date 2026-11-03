@@ -33,6 +33,13 @@ export const DEBRIS_GROUPS = groups(GROUP_DEBRIS, GROUP_WORLD);
  *  Foamer's part boxes overlap where they join, and colliding them threw
  *  the whole ragdoll on the step it formed (ENG-12 review). */
 export const RAGDOLL_GROUPS = groups(GROUP_RAGDOLL, GROUP_WORLD);
+export const GROUP_CAPSULE = 1 << 5;
+/** A live Foamer's movement capsule. Still a world member, so everything
+ *  that met it before still does (every filter in the game includes the
+ *  world bit); the capsule bit only lets darts pass it. Nothing draws the
+ *  capsule, and on a walking Foamer it shows between the legs and arms, so
+ *  a dart that stopped on it did no damage (ENG-13 review). */
+export const CAPSULE_GROUPS = groups(GROUP_WORLD | GROUP_CAPSULE, 0xffff);
 /** Groups for queries that should ignore debris and ragdolls. */
 export const SOLID_QUERY_GROUPS = groups(0xffff, 0xffff & ~(GROUP_DEBRIS | GROUP_RAGDOLL));
 /** Groups for a Foamer's line of sight: solid level geometry only, not

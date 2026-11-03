@@ -115,17 +115,39 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: darts pass Foamer capsules, and aim at what the crosshair is on (Claude)
+
+- `CAPSULE_GROUPS` (`src/physics/world.ts`): a live Foamer's movement
+  capsule, upright and lying, is a world member as before plus a capsule
+  bit, and darts skip it by exact match (like ragdolls). Nothing draws the
+  capsule, and between the legs and arms a dart could stop on it and do no
+  damage. Test: `tests/foamers/dart-capsule.test.ts`, a fan of 56 darts at
+  a standing Slowmer; 1 stopped on the capsule before, 0 after.
+- `updateAim` (`src/weapons/aim.ts`): the shot used to converge on a point
+  50 m down the view, so from the muzzle (below and right of the eye) a
+  dart landed about 0.2 m low and right at 4 to 10 m. It now aims at the
+  first solid thing under the crosshair (past capsules, at least 2 m, at
+  most 50 m). Test: `tests/weapons/aim.test.ts` (0.23 m off before).
+- Arena, same scripted fight on both builds: main cleared both waves in
+  26 shots, this branch in 22.
+- Watch-mode lesson: Foamer part colliders come from the mesher worker,
+  whose results land only between JavaScript tasks. A console script that
+  steps in one long synchronous loop never gets them, so darts pass
+  through every Foamer. Scripts must yield (await a setTimeout) between
+  steps after a spawn. That, not the capsule, caused the "every shot hits
+  the capsule" reading in the ENG-13 review.
+- Unverified by hand: how the aim feels at 60 fps, close to walls and
+  over cover edges (the dart now leaves the muzzle toward the crosshair
+  point, so a lip in front of the muzzle can still catch it).
+
 ### 2026-11-03: ENG-13 reviewed and merged (Claude)
 
 - Merged after Paul's approval. The shared step keeps the old order; the
   same arena script on main and on eng-13 gave identical Foamer positions
   step for step, and `index.html?watch` spawns, walks and takes a hit.
-- Found in review, on main before ENG-13 too: darts often hit a Foamer's
-  movement capsule and bounce off with no damage. In one run, 30 body-aimed
-  shots at a walking Slowmer from 6 to 12 m all hit the capsule and none a
-  part. Likely the capsule pokes out in front of the body as it walks.
-  Next fix: darts skip the capsule, or the capsule stays inside the body,
-  with a test that fails first.
+- Found in review: darts sometimes stopped on a Foamer's movement capsule.
+  The first measurement (every shot on the capsule) was a watch-mode
+  artifact, see the capsule fix entry above; the real effect is smaller.
 
 ### 2026-11-03: ENG-13, one shared game module for the playable pages (DeepSeek via Pi)
 
