@@ -89,8 +89,8 @@ github.com/contrapaul/dart (public), MIT licence.
 
 - Round 3 left the Slowmer's pupils as a 1 by 2 strip at one side of each
   eye, cut by the top of the head: the eye centres fell between voxels and
-  sat too high on the 11 voxel head. `buildPartVolume` now snaps eye centres
-  to a voxel, and a new `eyeHeight` part field (fraction of the part's
+  sat too high on the 11 voxel head. `buildPartVolume` now snaps round eye
+  centres to a voxel (only F01 has round eyes; the others are unchanged), and a new `eyeHeight` part field (fraction of the part's
   height; default 0.22 round, 0.12 others) moves them. F01 uses 0.12 at
   scale 1: two 3 by 3 eyes, one centred pupil each, a lime gap between.
   F02 and F05 re-rendered and checked; the Darter crown is clean.

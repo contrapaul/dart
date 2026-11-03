@@ -111,6 +111,7 @@ describe("Foamer rigs", () => {
   it("eyeScale enlarges only painted eyes, not the part volume", () => {
     const head = RIGS.find((entry) => entry.id === "F01")!.parts.find((part) => part.id === "head")!;
     const plain = { ...head, eyeScale: 1 };
+    const big = { ...head, eyeScale: 1.3 };
     const count = (part: PartSpec, wanted: number) => {
       const volume = new VoxelVolume(0.05);
       buildPartVolume(volume, part, "foam-lime");
@@ -119,8 +120,8 @@ describe("Foamer rigs", () => {
         if (volume.get(x, y, z) && (!wanted || volume.get(x, y, z) === wanted)) n++;
       return n;
     };
-    expect(count(head, 0)).toBe(count(plain, 0));
-    expect(count(head, materialId("foam-white"))).toBeGreaterThan(count(plain, materialId("foam-white")));
+    expect(count(big, 0)).toBe(count(plain, 0));
+    expect(count(big, materialId("foam-white"))).toBeGreaterThan(count(plain, materialId("foam-white")));
   });
 
   it("shag changes only surface paint, not the part volume", () => {
