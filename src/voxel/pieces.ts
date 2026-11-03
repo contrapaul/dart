@@ -18,6 +18,8 @@ import tuning from "../../data/destruction.json";
 const T = tuning.islands;
 // Same shared material settings as VolumeMesh's chunks.
 const meshMaterial = voxelFoamMaterial();
+/** Scratch for onRest's centre (only read during the callback). */
+const _restC = new THREE.Vector3();
 
 /** The volume a carve happened in. A VolumeMesh matches this directly. */
 export interface PieceSource {
@@ -46,6 +48,10 @@ interface Piece {
   prevQ: THREE.Quaternion;
   held: boolean;
   holdTime: number;
+  /** Reported to onRest already (a piece rests once). */
+  rested: boolean;
+  /** Bounding radius of the piece (metres), for the rest report. */
+  radius: number;
   fading: boolean;
   fade: number;
   /** Mesh jobs for this piece not yet come back. */
@@ -60,6 +66,9 @@ export class FallingPieces {
   /** Called once per island removed from a source, with a world-space
    *  bounding sphere (main uses it to drop darts stuck there). */
   onBreak: (centre: THREE.Vector3, radius: number) => void = () => {};
+  /** Called once when a piece comes to rest, with its centre and the radius
+   *  it covers: the AI's nav grid re-bakes that patch (ENG-08 stage 3b). */
+  onRest: (centre: THREE.Vector3, radius: number) => void = () => {};
   readonly stats = { islands: 0, pieces: 0, toDebris: 0, searchMs: 0 };
 
   private list: Piece[] = [];
@@ -142,8 +151,18 @@ export class FallingPieces {
         }
         continue;
       }
-      if (!pc.body || pc.body.translation().y < -20) this.dispose(pc, i);
-      else this.keepPrev(pc);
+      if (!pc.body || pc.body.translation().y < -20) {
+        this.dispose(pc, i);
+        continue;
+      }
+      // A piece that has come to rest may block a nav cell now: report it
+      // once (ENG-08 stage 3b).
+      if (!pc.rested && pc.body.isSleeping()) {
+        pc.rested = true;
+        const t = pc.body.translation();
+        this.onRest(_restC.set(t.x, t.y, t.z), pc.radius);
+      }
+      this.keepPrev(pc);
     }
   }
 
@@ -204,6 +223,8 @@ export class FallingPieces {
       prevQ: new THREE.Quaternion(),
       held: true,
       holdTime: 0,
+      rested: false,
+      radius: 0,
       fading: false,
       fade: 0,
       meshJobs: 0,
@@ -214,6 +235,11 @@ export class FallingPieces {
       ((island.max[0] - island.min[0]) / 2) * size,
       ((island.max[1] - island.min[1]) / 2) * size,
       ((island.max[2] - island.min[2]) / 2) * size,
+    );
+    piece.radius = 0.5 * Math.hypot(
+      (island.max[0] - island.min[0]) * size,
+      (island.max[1] - island.min[1]) * size,
+      (island.max[2] - island.min[2]) * size,
     );
     piece.group.position.copy(origin);
     piece.group.visible = false;

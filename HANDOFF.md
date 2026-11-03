@@ -89,6 +89,66 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ENG-08 stage 3b (DeepSeek V4.1 Flash)
+
+The Foamer brain on the director and the nav grid. Stage 3a built the pure
+logic; this is the wiring into `src/foamers/` now that GAME-11 has merged,
+plus the two pages and the range overlay.
+
+- `data/foamers.json`: both test attacks (bonk, headbutt) declare
+  `"token": "melee"`. The rig's pool is read from the attacks when a Foamer
+  spawns, so a ranged rig will draw from the ranged pool with no code change.
+- `src/ai/agent.ts`: one class per Foamer, `FoamerAgent`, holding the brain,
+  its context, the token bid and one reused path. `bid` and `step` are split
+  so every agent bids before `Director.update` resolves the bids (the best
+  bid wins, not the first caller), then reads the answer back. `navigate`
+  re-paths on `repathSeconds`, when `grid.version` changed (a carve or a
+  rest re-bake), or when the player moved more than 0.5 m. Nothing from
+  Three.js or Rapier is imported.
+- `src/ai/level.ts`: `makeLevelAI(rapier, world, bounds, difficulty)` builds
+  one director and one grid per level, with `carveChanged` and `pieceRested`
+  re-bake helpers. The director's difficulty comes from the settings preset's
+  `director` key (`DIFFICULTIES[...].director` in `data/difficulty.json`),
+  so a preset that should feel harder can cap more tokens.
+- `src/foamers/foamers.ts`: each Foamer gets an agent at spawn, with its
+  first state from `spawnState` (arena alert, range idle). The brain runs
+  before the state machine each step and owns idle, alert, approach and hold;
+  windup, strike, recover, stagger, fall, crawl and down stay in the Foamer.
+  An attack needs a token; the token is released on attack end, on stagger,
+  on fall, and forgotten on down. Approach follows the grid path with
+  separation steering; hold strides along the ring at `holdRange`. A crawl
+  follows the same path at crawl speed. Line of sight is a ray from chest to
+  player, with debris and ragdoll bodies excluded. Being shot wakes it
+  (`tookDamage`), and an idle Foamer picks up a neighbour's alert inside
+  `alertRadius`.
+- `src/voxel/pieces.ts`: `onRest(centre, radius)` fires once when a fallen
+  piece sleeps, so the grid can re-bake under it.
+- `src/main.ts` and `src/range/main.ts`: one `makeLevelAI` each, assigned to
+  the Foamer system; main bakes over the course and starts spawns alert, the
+  range bakes over its floor and starts spawns idle so the sight test can be
+  watched. Carves and resting pieces re-bake their patch in both.
+- Range: a Nav grid switch draws the walkable cells as one InstancedMesh
+  (built when first switched on, cells tinted by height) and each Foamer's
+  path as a line; the report gains the director's `stats()` (melee and
+  ranged tokens in use, and how many are waiting).
+- Tests: `tests/ai/foamer-ai.test.ts`, two real-physics tests: an F01 behind
+  a wall with one far gap reaches the player, and 4 F01s on the player never
+  have more than the normal melee token count attacking at once while the
+  director never issues more than its cap.
+
+Decisions. A Foamer with no director keeps the pre-brain behaviour (walk in,
+attack in range). That is deliberate: the older Foamer tests and the debug
+tools spawn without one, and it keeps the change surgical. `NavGrid.findPath`
+gained a fallback for an agent standing in a cell the bake calls unwalkable
+(pressed against a wall): it paths from the nearest walkable cell on its own
+level. Without that a Foamer that walked into a wall stood still for ever.
+
+Still unverified. The overlay is not checked by eye in the browser, and the
+bake over the main course's bounds (x -20 to 70) has not been timed there;
+the stage 2 measurement was 70 ms for 40 by 40 m at 0.25 m cells. The arena
+alert spawn means the main page starts with Foamers already closing in, which
+is new behaviour and has not been played.
+
 ### 2026-11-03: ENG-08 stage 3a (DeepSeek V4.1 Flash)
 
 The parts of stage 3 that do not touch the Foamer code, so it could land

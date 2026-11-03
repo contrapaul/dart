@@ -59,6 +59,8 @@ export class NavGrid {
   readonly ground: Float32Array;
   /** 1 where an agent of the given size can stand. */
   readonly walkable: Uint8Array;
+  /** Bumped by every bake and rebake: an agent re-paths when it changes. */
+  version = 0;
 
   private readonly ray: RAPIER.Ray;
   private readonly shape: RAPIER.Shape;
@@ -117,6 +119,7 @@ export class NavGrid {
   /** Bake every cell. */
   bake(): void {
     for (let i = 0; i < this.walkable.length; i++) this.bakeCell(i);
+    this.version++;
   }
 
   /** Bake the cells inside a world rectangle, plus one agent radius around it
@@ -131,6 +134,7 @@ export class NavGrid {
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) this.bakeCell(r * this.cols + c);
     }
+    this.version++;
   }
 
   /** 1 if an agent can stand in the cell under (x, z). */
@@ -153,8 +157,17 @@ export class NavGrid {
    */
   findPath(from: Point2, to: Point2, out: PathPoints): number {
     out.count = 0;
-    const start = this.cellAt(from.x, from.z);
-    if (start < 0 || this.walkable[start] !== 1) return 0;
+    let start = this.cellAt(from.x, from.z);
+    if (start < 0) return 0;
+    // An agent pressed against a wall stands in a cell the bake calls
+    // unwalkable (its own radius reaches the wall). Path from the nearest
+    // walkable cell instead, or it would stand still for ever: the first
+    // waypoint back is the cell it is already standing beside.
+    if (this.walkable[start] !== 1) {
+      const near = this.nearestWalkable(start, this.ground[start]!);
+      if (near < 0) return 0;
+      start = near;
+    }
     const goalCell = this.cellAt(to.x, to.z);
     if (goalCell < 0) return 0;
     if (this.walkable[goalCell] === 1) {
@@ -234,6 +247,37 @@ export class NavGrid {
     const r = Math.floor((z - this.minZ) / this.cell);
     if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return -1;
     return r * this.cols + c;
+  }
+
+  /** The walkable cell nearest `cell` within a few cells of it, or -1.
+   *  Nearest by cell centre distance, searched in rings so a wall beside the
+   *  agent does not win over free floor a cell further out, and only cells on
+   *  the agent's own level (`nearGround`, +/- maxStep): a cell on top of the
+   *  wall it is leaning against is not a step it can take. */
+  private nearestWalkable(cell: number, nearGround: number): number {
+    if (cell < 0) return -1;
+    const cx = cell % this.cols;
+    const cz = Math.floor(cell / this.cols);
+    for (let ring = 1; ring <= 4; ring++) {
+      let best = -1;
+      let bestD = Infinity;
+      for (let r = cz - ring; r <= cz + ring; r++) {
+        if (r < 0 || r >= this.rows) continue;
+        for (let c = cx - ring; c <= cx + ring; c++) {
+          if (c < 0 || c >= this.cols) continue;
+          const i = r * this.cols + c;
+          if (this.walkable[i] !== 1) continue;
+          if (Math.abs(this.ground[i]! - nearGround) > NAV.maxStepMetres) continue;
+          const d = (c - cx) ** 2 + (r - cz) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        }
+      }
+      if (best >= 0) return best;
+    }
+    return -1;
   }
 
   /** Whether a step between two cells is walkable: both stand-able, and a

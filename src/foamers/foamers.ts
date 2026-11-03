@@ -13,6 +13,12 @@ import { Foamer, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
+import aiData from "../../data/ai.json";
+import { Director, type TokenKind } from "../ai/director";
+import { FoamerAgent } from "../ai/agent";
+import { steer, type Neighbour, type Velocity } from "../ai/steer";
+import type { NavGrid } from "../ai/nav-grid";
+import { SOLID_QUERY_GROUPS } from "../physics/world";
 
 // Spawning, per-part dart damage with foam-core wounds, breaking,
 // handicaps, attacks, stagger, going down and popping for the test
@@ -63,8 +69,14 @@ const _kbB = new THREE.Vector3(); // kill push: a part's centre
 const _kbV = new THREE.Vector3(); // kill push: the shot's horizontal direction
 const _one = new THREE.Vector3(1, 1, 1);
 const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
+// ENG-08 stage 3b: the line of sight ray's ends, and the direction between.
+const _losFrom = new THREE.Vector3();
+const _losTo = new THREE.Vector3();
+const _losDir = new THREE.Vector3();
 /** GAME-11: a prone Foamer turns at this share of its turn rate. */
 const CRAWL_TURN = 0.5;
+/** The brain's data (ENG-08 stage 3). */
+const BRAIN = aiData.brain;
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b). */
 export type FoamerSoundKind =
@@ -123,6 +135,21 @@ export class FoamerSystem {
   private respawn = SPAWNER.respawnDelay; // start full, so the first Foamer appears straight away
   private _wish = new THREE.Vector3();
   private _vel = new THREE.Vector3();
+  private _velXZ: Velocity = { x: 0, z: 0 };
+  /** Neighbour scratch for steering, reused every step. */
+  private readonly neighbours: Neighbour[] = [];
+  private readonly agentAgent: { x: number; z: number; speed: number } = { x: 0, z: 0, speed: 0 };
+  /** Attack tokens (ENG-08 stage 3b). Null until a page sets one: without a
+   *  director a Foamer walks in and attacks, as it did before the brain. */
+  director: Director | null = null;
+  /** The level's walkable grid, for paths. Null: a Foamer walks straight. */
+  navGrid: NavGrid | null = null;
+  /** The ray that decides line of sight to the player. */
+  private losRay: RAPIER.Ray;
+  /** The state a new Foamer's brain starts in. Arena spawns (the main page)
+   *  start alert, so a fight is on from the first frame; range spawns start
+   *  idle, so the sight test can be watched. */
+  spawnState: "idle" | "alert" = "alert";
 
   constructor(
     private rapier: Rapier,
@@ -143,6 +170,7 @@ export class FoamerSystem {
     this.cc = world.createCharacterController(0.02);
     this.cc.enableAutostep(0.3, 0.2, false);
     this.cc.enableSnapToGround(0.3);
+    this.losRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
   }
 
   /** Spawn at a feet position. Returns null at the `max` cap. With
@@ -152,6 +180,25 @@ export class FoamerSystem {
     const f = new Foamer(this.rapier, this.world, this.mesher, SPEC, RIG, feet);
     if (facing) f.yaw = Math.atan2(facing.x - feet.x, facing.z - feet.z);
     f.setSystem(this);
+    // ENG-08 stage 3b: the brain. Its token pool comes from what its attacks
+    // declare in data/foamers.json, and its first state from where it
+    // spawned (arena alert, range idle). Without a director there is no pool
+    // to bid to, so the Foamer keeps its pre-brain behaviour (walk in,
+    // attack in range), which the older tests and tools rely on.
+    if (this.director) {
+      f.state = this.spawnState;
+      f.stateTime = 0;
+      f.agent = new FoamerAgent(
+        this.director,
+        { tokenKind: this.tokenKind(), initial: this.spawnState },
+        this.nextAgentId(),
+      );
+      f.agentInput = {
+        x: feet.x, z: feet.z, playerX: feet.x, playerZ: feet.z,
+        attackRange: SPEC.attackRange, lineOfSight: false,
+        tookDamage: false, nearbyAlert: false,
+      };
+    }
     this.group.add(f.group);
     this.list.push(f);
     // Every part is a voxel target of its own, so darts carve the part
@@ -166,6 +213,14 @@ export class FoamerSystem {
   update(dt: number, player: THREE.Vector3): void {
     this.time += dt;
     this.dtPrev = dt;
+    // ENG-08 stage 3b: every living Foamer bids for a token before the
+    // director resolves the bids, so the best bid wins a free token rather
+    // than the first caller. Without a director none of this runs and the
+    // Foamers walk in and attack as they did before the brain.
+    if (this.director) {
+      for (const f of this.list) if (f.state !== "down") this.bidAgent(f, player);
+      this.director.update(dt);
+    }
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
       // Downed Foamers keep stepping (lie, sink) but no longer walk.
@@ -243,13 +298,21 @@ export class FoamerSystem {
     }
 
     const dist = Math.hypot(player.x - f.centre.x, player.z - f.centre.z);
+    // ENG-08 stage 3b: with an agent the brain owns idle, alert, approach and
+    // hold; the attack and damage states stay here. The brain hands over to
+    // windup once the Foamer may attack (in range with a token), and every
+    // way back out of an attack, a stagger or a fall lands in approach or
+    // crawl, which the brain picks up again on the next step.
+    if (f.agent) this.stepBrain(f, dt, player);
     if (f.state === "stagger") {
       if (f.stateTime >= SPEC.stagger.time) {
         f.state = "approach";
         f.stateTime = 0;
       }
+    } else if (f.state === "hold" || f.state === "idle" || f.state === "alert") {
+      // The brain's own states: it moves on the intents below, no attack.
     } else if (f.state === "approach") {
-      if (dist <= SPEC.attackRange) {
+      if (this.mayAttack(f, dist)) {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
@@ -285,8 +348,10 @@ export class FoamerSystem {
       if (!landed && f.fallBounced) sound(this, "fall", f, f.centre);
     } else if (f.state === "crawl") {
       // GAME-11: prone, it pulls itself at the player and attacks from the
-      // ground with what its arms allow (a Foamer with none headbutts).
-      if (this.headDist(f, player) <= SPEC.attackRange) {
+      // ground with what its arms allow (a Foamer with none headbutts). It
+      // still needs a token: a crawl is an attack state's doorway, not a
+      // bypass.
+      if (this.mayAttack(f, this.headDist(f, player))) {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
@@ -305,11 +370,20 @@ export class FoamerSystem {
     const crawling = f.state === "crawl";
     // Prone, it closes until its head (the part that reaches) is in range.
     const reach = crawling ? this.headDist(f, player) : dist;
-    const moving = f.state === "approach" || crawling ? reach > SPEC.attackRange : false;
+    const moving = f.agent
+      ? this.brainMoving(f)
+      : f.state === "approach" || crawling ? reach > SPEC.attackRange : false;
     this._wish.set(0, 0, 0);
     if (moving) {
       const speed = crawling ? f.crawlSpeed() : f.speed();
-      this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
+      if (f.agent) {
+        // ENG-08 stage 3b: a path from the nav grid, steered with
+        // separation, instead of straight at the player. A hold strides
+        // sideways either way around the player.
+        this.steerAgent(f, dt, speed, player);
+      } else {
+        this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
+      }
     }
     let stepDist = 0;
     if (f.legs().length === 0) {
@@ -342,6 +416,162 @@ export class FoamerSystem {
     if (stepDist > 1e-4) f.gait += stepDist * 4 / (2 * Math.PI);
     f.applyPose();
     f.poseParts(dt, moving);
+  }
+
+  /** ENG-08 stage 3b: one step of the brain, before the state machine acts
+   * on it. Fills the context from the world (distance, line of sight,
+   * damage, neighbours), steps the brain on the decision it made last step,
+   * and copies the brain's state onto the Foamer's when the Foamer is in one
+   * of the brain's own states. Attack states are left alone. */
+  private stepBrain(f: Foamer, dt: number, player: THREE.Vector3) {
+    const a = f.agent!;
+    const input = f.agentInput!;
+    input.x = f.centre.x;
+    input.z = f.centre.z;
+    input.playerX = player.x;
+    input.playerZ = player.z;
+    input.attackRange = SPEC.attackRange;
+    input.lineOfSight = this.lineOfSight(f, player);
+    input.tookDamage = f.damageSinceStep;
+    input.nearbyAlert = this.nearbyAlert(f);
+    f.damageSinceStep = false;
+    a.step(dt, input);
+    // The brain's state is the Foamer's while the Foamer is in one of the
+    // brain's own; an attack, stagger, fall or crawl keeps the Foamer's.
+    if (f.state === "idle" || f.state === "alert" || f.state === "approach" || f.state === "hold") {
+      f.state = a.state;
+      f.stateTime = a.brain.stateTime;
+    }
+    // Entering alert this step (the brain resets stateTime on a transition):
+    // a neighbour of an idle one picks the alarm up on its next step.
+    f.justAlerted = a.state === "alert" && a.brain.stateTime === 0;
+  }
+
+  /** A step of the bid: what the agent's token request and distance read. */
+  private bidAgent(f: Foamer, player: THREE.Vector3) {
+    const input = f.agentInput!;
+    input.x = f.centre.x;
+    input.z = f.centre.z;
+    input.playerX = player.x;
+    input.playerZ = player.z;
+    input.attackRange = SPEC.attackRange;
+    input.lineOfSight = this.lineOfSight(f, player);
+    f.agent!.bid(input);
+  }
+
+  /** True if the Foamer may start an attack now: in range and, with a
+   *  director, holding a token. Without a director it always may (the
+   *  pre-brain behaviour, which the older tests and tools rely on). */
+  private mayAttack(f: Foamer, reach: number): boolean {
+    if (reach > SPEC.attackRange) return false;
+    if (!f.agent || !this.director) return true;
+    return f.agent.hasToken;
+  }
+
+
+  /** Whether the brain's movement intent means walking this step. */
+  private brainMoving(f: Foamer): boolean {
+    const m = f.agent!.move;
+    return m === "followPath" || m === "circleLeft" || m === "circleRight";
+  }
+
+  /**
+   * A steered velocity for this step. Follow: the path's next waypoint, plus
+   * separation from the other Foamers. Circling: a stride along the
+   * tangential of the circle round the player at holdRange, which is the
+   * sidle the card asks for; it keeps the distance it has, so a holding
+   * Foamer does not creep in or out.
+   */
+  private steerAgent(f: Foamer, dt: number, speed: number, player: THREE.Vector3) {
+    const a = f.agent!;
+    this.neighbours.length = 0;
+    for (const o of this.list) {
+      if (o === f || o.state === "down") continue;
+      this.neighbours.push({ x: o.centre.x, z: o.centre.z });
+    }
+    const move = a.move;
+    if (move === "followPath" || move === "stand") {
+      // A crawl follows the same path at its crawl speed: navigate() does
+      // not care which, the caller scales the speed it steers at.
+      const path = a.navigate(dt, this.navGrid, f.agentInput!);
+      this.agentAgent.x = f.centre.x;
+      this.agentAgent.z = f.centre.z;
+      this.agentAgent.speed = speed;
+      steer(this.agentAgent, path, this.neighbours, this._velXZ);
+      this._wish.set(this._velXZ.x * dt, 0, this._velXZ.z * dt);
+      return;
+    }
+    // Circle: stride round the player at the distance it has, at holdRange
+    // if it is further out than that (holding is a step in, not a strafe
+    // from 10 m). Left is -x from forward, so the tangent is the radius
+    // turned a quarter turn.
+    const dx = f.centre.x - player.x;
+    const dz = f.centre.z - player.z;
+    const d = Math.hypot(dx, dz);
+    let vx = 0;
+    let vz = 0;
+    if (d > 1e-4) {
+      const side = move === "circleLeft" ? 1 : -1;
+      vx = (dz / d) * side * speed;
+      vz = (-dx / d) * side * speed;
+      // A step in to holdRange when it is outside it, and a step out when it
+      // is crowded closer than a share of it, so the sidle settles at the
+      // ring rather than drifting away.
+      const want = BRAIN.holdRangeMetres;
+      const err = d - want;
+      const k = Math.min(1, Math.abs(err) / 0.5) * 0.6;
+      if (Math.abs(err) > 0.15) {
+        vx -= (dx / d) * Math.sign(err) * speed * k;
+        vz -= (dz / d) * Math.sign(err) * speed * k;
+      }
+    }
+    this._wish.set(vx * dt, 0, vz * dt);
+  }
+
+  /** Ray from the Foamer's chest to the player's chest: nothing solid in
+   *  between means it can see. Debris and ragdolls do not count. */
+  private lineOfSight(f: Foamer, player: THREE.Vector3): boolean {
+    const from = _losFrom.set(f.centre.x, f.centre.y + f.height * 0.7, f.centre.z);
+    const to = _losTo.set(player.x, player.y, player.z);
+    _losDir.subVectors(to, from);
+    const len = _losDir.length();
+    if (len < 1e-4) return true;
+    _losDir.multiplyScalar(1 / len);
+    this.losRay.origin = from;
+    this.losRay.dir = _losDir;
+    const hit = this.world.castRay(
+      this.losRay, len, true, 8 /* EXCLUDE_SENSORS */, SOLID_QUERY_GROUPS,
+    );
+    return !hit;
+  }
+
+  /** A Foamer inside alertRadius went alert since the last step, so an idle
+   *  one takes it up too. */
+  private nearbyAlert(f: Foamer): boolean {
+    for (const o of this.list) {
+      if (o === f || !o.justAlerted) continue;
+      if (o.centre.distanceToSquared(f.centre) <= BRAIN.alertRadiusMetres * BRAIN.alertRadiusMetres) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** The token pool the rig's attacks draw from (data/foamers.json). */
+  private tokenKind(): TokenKind {
+    const t = SPEC.attacks.find((a) => a.token)?.token;
+    return (t === "ranged" ? "ranged" : "melee") as TokenKind;
+  }
+
+  /** The next free agent id, in [0, maxAgents). */
+  private nextAgentId(): number {
+    const max = 64;
+    for (let id = 0; id < max; id++) {
+      if (!this.list.some((f) => f.agent?.agentId === id)) return id;
+      // Downed Foamers are out of the fight; their id is free again once
+      // the director has forgotten them (it does that when they go down).
+    }
+    return 0;
   }
 
   private respawnSpawn(player: THREE.Vector3) {
@@ -408,6 +638,8 @@ export class FoamerSystem {
     // Only dart types that can pop count toward a catastrophic hit.
     if (POP_TYPES.includes(hit.type)) f.addDamage(this.time, d * kind.hit * kind.total);
     this.stats.hits++;
+    // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
+    f.damageSinceStep = true;
     this.paintWound(part, hit);
     sound(this, "wound", f, partPoint(part));
     // Breaking: hp <= 0, or the carve took the part to wearBreak of its
@@ -456,6 +688,10 @@ export class FoamerSystem {
     if (f.state === "down") return;
     f.state = "down";
     f.stateTime = 0;
+    // Down is the end of this Foamer: the director forgets it outright, so
+    // the next in line does not wait out a dead one's cooldown.
+    f.agent?.release("down");
+    f.agent = null;
     sound(this, "down", f, f.centre);
     if (f.attack()) f.setAttack(null);
     this.world.removeCollider(f.capsule, false);
@@ -713,6 +949,9 @@ export class FoamerSystem {
    *  Its broken pieces are kept. Stuck darts drop as its bodies go away
    *  (darts.ts handles that). */
   private removeFoamer(f: Foamer) {
+    // A Foamer removed while it still bids (clear(), or a despawn) leaves
+    // nothing behind in the director's table.
+    if (f.state !== "down") f.agent?.release("down");
     this.lockRagdollForSink(f);
     const i = this.list.indexOf(f);
     if (i >= 0) this.list.splice(i, 1);
@@ -914,6 +1153,7 @@ export class FoamerSystem {
    *  one so the controller moves the prone shape. */
   private startFall(f: Foamer, lostLeg: string) {
     f.state = "fall";
+    f.agent?.release("fall");
     f.prone = true;
     f.stateTime = 0;
     f.fallA = -1; // stepFall sets startTilt on its first step

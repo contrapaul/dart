@@ -60,8 +60,8 @@
       "fall": { "startTilt": 0.12, "proneTilt": 1.35, "sideShare": 0.35, "bounce": 0.25, "settle": 0.25 }
     },
     "attacks": [
-      { "id": "bonk", "damage": 12, "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
-      { "id": "headbutt", "damage": 8, "needs": [], "windup": 0.9, "strike": 0.2 }
+      { "id": "bonk", "damage": 12, "token": "melee", "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
+      { "id": "headbutt", "damage": 8, "token": "melee", "needs": [], "windup": 0.9, "strike": 0.2 }
     ]
   },
   "spawner": {
