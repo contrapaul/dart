@@ -353,6 +353,12 @@ window.addEventListener("pointerdown", startAudio, { capture: true });
 window.addEventListener("keydown", startAudio, { capture: true });
 document.querySelector<HTMLButtonElement>("#play")!.addEventListener("click", () => input.requestLock());
 setPaused(true);
+// QA watch (task QA-watch): range.html?watch starts unpaused without
+// pointer lock, for the reviewer's automated browser, which cannot take
+// it. The panel stays hidden, the HUD shows, and the sim steps as when
+// playing. Absent ?watch this page behaves exactly as before.
+const watch = new URLSearchParams(location.search).has("watch");
+if (watch) setPaused(false);
 
 // The Sound section of the panel (AUD-01): the master volume, a mute for
 // this page only, and one row per sound ID with a Play button and a
@@ -513,3 +519,29 @@ loopCtl = startLoop({
 
 // Dev-only hook for automated checks in the browser.
 if (import.meta.env.DEV) Object.assign(window, { __range: { log, foamers, darts, loadout, player, camera, loop: loopCtl } });
+
+// In watch mode only: window.dartRange, plain functions the reviewer calls
+// from the console. They reuse the panel's own handlers (spawnAhead,
+// breakLegForTest, setPaused, the player's pose), so the automation sees
+// exactly what the buttons do.
+if (watch) {
+  const _moveTo = new THREE.Vector3();
+  Object.assign(window, {
+    dartRange: {
+      spawn: (distanceMetres: number) => spawnAhead(distanceMetres),
+      breakLeg: () => foamers.breakLegForTest() ?? null,
+      look: (yawRadians: number, pitchRadians: number) => {
+        player.yaw = yawRadians;
+        player.pitch = THREE.MathUtils.clamp(pitchRadians, -1.5, 1.5);
+      },
+      moveTo: (x: number, z: number) => player.teleport(_moveTo.set(x, 0, z)),
+      pause: (on: boolean) => setPaused(on),
+      state: () => foamers.list.map((f) => ({
+        state: f.state,
+        health: f.health,
+        position: [f.centre.x, f.centre.y, f.centre.z].map((n) => Number(n.toFixed(3))) as [number, number, number],
+        parts: [...f.parts.keys()],
+      })),
+    },
+  });
+}

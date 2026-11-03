@@ -89,6 +89,22 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: QA-watch, range watch mode for the in-app browser (Qwen3.8-27B via Pi)
+
+`range.html?watch` starts the range unpaused without pointer lock, which
+the reviewer's automated in-app browser cannot take. The overlay is
+hidden, the HUD shows and the sim steps as when playing; Esc and pointer
+lock work as before when `?watch` is absent (same code path, no other
+page or module changed).
+
+In watch mode only, `window.dartRange` holds plain console functions that
+reuse the panel's own handlers: `spawn(distanceMetres)`, `breakLeg()`,
+`look(yawRadians, pitchRadians)` (sets the player's yaw and pitch, the
+render step points the camera), `moveTo(x, z)` (teleport on the floor
+grid), `pause(on)` and `state()` (each Foamer's state, health, feet
+position and attached part ids). Unverified: whether the in-app browser
+calls them and reads `state()` back as the reviewer expects.
+
 ### 2026-11-03: GAME-11 merged (Claude)
 
 - Merged `game-11` into main after Paul's approval. Review: matches the
