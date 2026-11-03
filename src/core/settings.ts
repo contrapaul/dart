@@ -33,6 +33,9 @@ export interface Settings {
   reduceShake: boolean;
   reduceFlashes: boolean;
   reduceHeadBob: boolean;
+  /** GAME-04: true raises the shield on one press and lowers it on the
+   *  next, false holds the action to keep it up. */
+  shieldMode: boolean;
 }
 
 export const STORAGE_KEY = "dart.settings";
@@ -49,6 +52,7 @@ export const DEFAULTS: Settings = {
   reduceShake: false,
   reduceFlashes: false,
   reduceHeadBob: false,
+  shieldMode: false,
 };
 
 /** Defaults a fresh player gets; the values the sliders clamp to live in

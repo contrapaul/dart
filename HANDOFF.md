@@ -6,6 +6,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-04 stage 1 done 2026-11-03: the shield (`src/player/shield.ts`,
+`data/shield.json`) blocks from the front arc, slows the walk, and throws
+a ricocheting disc that returns to the arm; the range watch can drive it.
+Parry (stage 2) waits for GAME-10. Look and feel checks in a real browser
+are still open (see the Log entry).
+
 GAME-07 done 2026-11-03: the weakened (finishable) stagger, the Pop
 finisher and the health drops are in the shared game; the course and
 arena pick them up through `src/game/`. Browser checks are still open
@@ -119,6 +125,81 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: GAME-04 stage 1 review, shield played in watch mode (Claude)
+
+- Played on `arena.html?watch`: the raised disc reads well (purple face,
+  orange rim, low left, clear of the crosshair). Blocking a Slowmer's
+  bonk from the front took 1.8 health against 12 with the disc down. A
+  throw at three Slowmers left the arm, hit and staggered two of them
+  (one twice, not in a row), flew home and lowered.
+- Merged main (GAME-07) in. One stagger start now serves both: the
+  Foamer system's `startStagger(f, long, seconds)` sets the stagger's
+  length, and the shield calls it. Before, the shield wrote its own
+  stagger time that never reset, so after one disc hit every later
+  part-break stagger would have lasted the disc's stun. A disc stagger
+  also opens a finisher (it is a stagger).
+- Throw damage 4 to 1 in `data/shield.json`: 4 was two thirds of a
+  Slowmer, and the card asks for a small damage.
+- No shooting during a finisher holds with the shield too. The carve
+  sound hook is set once, not every step.
+- Unverified: feel at 60 fps (raise time, walk slow, kick), the
+  placeholder sounds, the hold or toggle setting by hand, and that the
+  flying disc (a plain orange ring) reads against arena walls.
+
+### 2026-11-03: GAME-04 stage 1, the shield: block, movement gates, ricochet throw, return (Claude)
+
+- `src/player/shield.ts` (new): one `Shield` class, all numbers in
+  `data/shield.json` (new). States `lowered / raised / thrown / returning`;
+  `update(dt, controls)` runs on the fixed step and returns the step's news
+  (a reused events object: `raised, lowered, thrown, hits, caught`). The
+  viewmodel (foam rim, face, boss from `createFoamMaterial`) hangs off the
+  camera; the disc in flight is a scene mesh. `blocksAttackFrom` +
+  `damageShare` for the block, `kick` for the view kick, `blocksFire` and
+  `usedFirePress` for the blaster gate, `speedScale`/`allowSprint` written
+  onto the controller each step, `forcedHold` for the range's watch helper.
+- Blocking: `game.ts` and `range/main.ts` `onBonk` ask
+  `shield.blocksAttackFrom(f.centre)` (raised, disc over halfway, inside
+  the front arc from the view); a blocked bonk costs `damageShare`, plays
+  `SH-block` at the attacker, and is not a hit (no HUD flash). The
+  attacker's own logic is untouched.
+- The throw (press fire while fully raised, not during a blaster switch):
+  the disc flies from the left hand along the view at `throw.speed`,
+  striking centres within `hitRadius` of the swept step, nearest first,
+  `1 + bounces` hits, then home at `returnSpeed`, caught within
+  `homeRange`, cooldown before the next throw. Each ricochet picks the
+  nearest living Foamer in sight within `ricochetRange` (a clear ray from
+  the disc to its middle), so it may strike one again with another
+  between: the card's rule is never the same one twice in a row. It
+  staggers (the Foamer's own `staggerTime`, new field; `stun` 0 in the
+  data reuses it) and takes `damage` per hit but cannot kill: health
+  floors at 0.0001 (the kill stays with darts and finishers). Voxel cover
+  in the path carves a `carveRadius` crater (capped `debrisMax` chunks a
+  flight) and turns it home.
+- The disc's own rays treat a Foamer's movement capsule as neither cover
+  nor sight block (exact-match `CAPSULE_GROUPS`, as darts do; plus
+  excluding the two capsules either side of a ricochet): the disc leaves a
+  struck body's capsule sitting inside it, and a ricochet's sight ray
+  starts inside the one it just hit. Without this the disc threw itself
+  home a step after every hit.
+- Pages: both fixed steps call `shield.update` before the loadout and
+  gate the blaster with `canFire`; `camera.rotation` adds `shield.kick`
+  with the blaster's climb; restart hooks call `shield.reset()`. The range
+  watch gets `block(on)` and `throwShield()`. Settings get "Shield:
+  toggle, not hold" (`shieldMode`), and `data/sounds.json` gains the five
+  `SH-*` placeholder sounds (SOUNDS.md updated).
+- Tests: `tests/shield/block.test.ts` (front reduced, rear full, arc
+  edge, walk speed, sprint off, raise time) and `throw.test.ts` (hit
+  count, order, no repeat in a row, stagger damage, block again after a
+  catch, cooldown, wall carve, range turn, sight behind cover) on a real
+  Rapier world with real Foamers and voxel walls. `tsc`, `vitest` (302
+  pass) and `build` pass.
+- Not checked by eye (no browser here): the disc's look and placement
+  (size, rim/face/boss proportions, hand offset), raise/lower feel,
+  the kick feel, the `SH-*` placeholder sounds, toggle in the Settings
+  panel, and that the disc reads well against arena walls in flight.
+- Decisions in PLAN section 14; the GAME-04 row says stage 1 done, parry
+  stage 2 waits for GAME-10.
 
 ### 2026-11-03: GAME-07 review, finisher played in watch mode, merged (Claude)
 

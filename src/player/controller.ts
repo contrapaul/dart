@@ -38,6 +38,12 @@ export class PlayerController {
    *  usefully then, and a mantle's fall is not a landing). */
   get mantling(): boolean { return this.mantle !== null; }
 
+  /** GAME-04: while the shield is raised the walk is slower (speedScale,
+   *  data/shield.json block.walkShare) and sprinting is not allowed. The
+   *  shield sets both every fixed step; nothing else touches them. */
+  speedScale = 1;
+  allowSprint = true;
+
   private body: RAPIER.RigidBody;
   readonly collider: RAPIER.Collider;
   private cc: RAPIER.KinematicCharacterController;
@@ -119,7 +125,8 @@ export class PlayerController {
       this.vel.set(this.dashDir.x * P.dashSpeed, 0, this.dashDir.z * P.dashSpeed);
       if (this.dashLeft <= 0) this.vel.setLength(P.sprintSpeed);
     } else {
-      const speed = input.isDown("sprint") ? P.sprintSpeed : P.walkSpeed;
+      const speed = input.isDown("sprint") && this.allowSprint
+        ? P.sprintSpeed : P.walkSpeed * this.speedScale;
       const accel = (this.grounded ? P.groundAccel : P.airAccel) * dt;
       // Move horizontal velocity toward the wished velocity.
       const dx = this.wish.x * speed - this.vel.x;

@@ -11,6 +11,7 @@ import { startLoop, type FrameStats } from "../core/loop";
 import { Input } from "../core/input";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
+import { Shield } from "../player/shield";
 import { DartSystem } from "../weapons/darts";
 import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
@@ -132,6 +133,11 @@ const voxelTargets: VoxelTarget[] = [];
 // Dart hits on the Foamer parts carve craters and throw foam debris.
 const impacts = new DartImpacts(darts, debris, voxelTargets);
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+// GAME-04 stage 1: the shield on the range too, so its panel and watch
+// can drive it. Same class and data as the game pages; the wiring here is
+// this page's own loop, not a copy of game logic.
+const shield = new Shield(rapier, world, scene, camera, player, loadout, foamers, debris, voxelTargets);
+camera.add(shield.group);
 foamers.spawnCount = R.spawn.count;
 foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
 // ENG-08 stage 3b: one director (its difficulty from the settings preset's
@@ -146,8 +152,16 @@ foamers.spawnState = "idle"; // range spawns start idle, so the sight test works
 scene.add(foamers.group);
 foamers.onBonk = (_f, attack) => {
   if (switches.godMode || paused) return;
-  const lost = health.damage(damageOf(attack), attack);
+  // GAME-04: an attack from the front arc behind the raised disc costs
+  // only its data share; a blocked hit is not a hit, so no HUD flash.
+  const blocked = shield.blocksAttackFrom(_f.centre);
+  const lost = health.damage(damageOf(attack) * (blocked ? shield.damageShare : 1), attack);
   if (lost <= 0) return;
+  if (blocked) {
+    shield.noteBlocked();
+    if (engine) engine.play("SH-block", { position: _f.centre });
+    return;
+  }
   hud.onHit();
 };
 
@@ -602,18 +616,36 @@ loopCtl = startLoop({
       // then the loadout's fixed step, then the darts.
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
       updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+      // GAME-04: the shield first, so it can take this step's fire press
+      // as the throw before the blaster sees it (as on the game pages).
+      shield.toggleMode = store.value.shieldMode;
+      const se = shield.update(dt, {
+        fireHeld: input.isDown("fire"),
+        firePressed: input.wasPressed("fire"),
+        shieldHeld: input.isDown("shield"),
+        shieldPressed: input.wasPressed("shield"),
+        reloadPressed: input.wasPressed("reload"),
+      });
+      if (engine) {
+        if (se.raised) engine.play("SH-raise");
+        if (se.thrown) engine.play("SH-throw", { position: shield.discPosition });
+        for (const p of se.hits) engine.play("SH-ricochet", { position: p });
+        if (se.caught) engine.play("SH-catch");
+      }
+      shield.onCarveAt = (p) => { if (engine) engine.play("DT-carve", { position: p }); };
+      const canFire = !shield.blocksFire && !shield.usedFirePress;
       loadout.update(
         dt,
         {
-          fireHeld: input.isDown("fire"),
-          firePressed: input.wasPressed("fire"),
+          fireHeld: canFire && input.isDown("fire"),
+          firePressed: canFire && input.wasPressed("fire"),
           reloadPressed: input.wasPressed("reload"),
         },
         _aimDir,
       );
       if (sounds) sounds.update(dt, {
-        fireHeld: input.isDown("fire"),
-        firePressed: input.wasPressed("fire"),
+        fireHeld: canFire && input.isDown("fire"),
+        firePressed: canFire && input.wasPressed("fire"),
         reloadPressed: input.wasPressed("reload"),
         sprintHeld: input.isDown("sprint"),
       });
@@ -638,7 +670,7 @@ loopCtl = startLoop({
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own
     // pitch is unchanged, so releasing the trigger brings the view back).
-    const climb = loadout.active.climb;
+    const climb = loadout.active.climb + shield.kick;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
@@ -669,6 +701,25 @@ if (watch) {
       },
       moveTo: (x: number, z: number) => player.teleport(_moveTo.set(x, 0, z)),
       pause: (on: boolean) => setPaused(on),
+      /** GAME-04: hold the disc up (or drop it), and throw it. */
+      block: (on: boolean) => {
+        shield.forcedHold = on;
+      },
+      throwShield: () => {
+        shield.forcedHold = true;
+        // Rise first (block.raiseTime), then the press is the throw.
+        for (let i = 0; i < 30 && (shield.state !== "raised" || shield.raise < 1); i++)
+          shield.update(1 / 60, {
+            fireHeld: false, firePressed: false, shieldHeld: true, shieldPressed: false,
+            reloadPressed: false,
+          });
+        const e = shield.update(1 / 60, {
+          fireHeld: true, firePressed: true, shieldHeld: true, shieldPressed: false,
+          reloadPressed: false,
+        });
+        return e.thrown;
+      },
+      shieldState: () => shield.state,
       state: () => foamers.list.map((f) => ({
         state: f.state,
         health: f.health,

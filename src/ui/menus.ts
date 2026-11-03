@@ -63,6 +63,7 @@ export class SettingsPanel {
   private shake: ReturnType<typeof addToggle>;
   private flashes: ReturnType<typeof addToggle>;
   private bob: ReturnType<typeof addToggle>;
+  private shieldToggle: ReturnType<typeof addToggle>;
 
   constructor(
     private root: HTMLElement,
@@ -128,6 +129,13 @@ export class SettingsPanel {
     this.bob = addToggle(rows, "Reduce head bob");
     this.bob.box.addEventListener("change", () => this.store.set("reduceHeadBob", this.bob.box.checked));
 
+    // GAME-04: accessibility (PLAN.md section 10). Off holds the shield
+    // action to keep the disc up; on raises it with one press and lowers
+    // it with the next, for players who cannot hold a button.
+    this.shieldToggle = addToggle(rows, "Shield: toggle, not hold");
+    this.shieldToggle.box.addEventListener("change", () =>
+      this.store.set("shieldMode", this.shieldToggle.box.checked));
+
     store.onChange(() => this.sync());
   }
 
@@ -143,6 +151,7 @@ export class SettingsPanel {
     this.shake.box.checked = s.reduceShake;
     this.flashes.box.checked = s.reduceFlashes;
     this.bob.box.checked = s.reduceHeadBob;
+    this.shieldToggle.box.checked = s.shieldMode;
     const preset = DIFFICULTIES[s.difficulty];
     this.difficultyLabel.textContent = preset ? preset.name : "Custom";
     for (const [key, b] of this.presetButtons) {

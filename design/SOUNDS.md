@@ -255,9 +255,9 @@ The other Foamers (IDs given when each is built):
 | SH-block | Attack blocked | Yes | 6 | Foley: hit the disc with foam |
 | SH-parry | Parry (the "boing") | Yes | 4 | Foley: a spring or ruler twang, or Code |
 | SH-parry-return | Parried shot flying back | Yes | 3 | Code |
-| SH-throw | Shield thrown (frisbee whoosh) | Later | 4 | Foley: throw a frisbee |
-| SH-ricochet | Thrown shield bouncing off a Foamer | Later | 6 | Foley |
-| SH-catch | Shield caught back on the arm | Later | 3 | Foley |
+| SH-throw | Shield thrown (frisbee whoosh) | Yes | 4 | Foley: throw a frisbee |
+| SH-ricochet | Thrown shield bouncing off a Foamer | Yes | 6 | Foley |
+| SH-catch | Shield caught back on the arm | Yes | 3 | Foley |
 | SH-charge | Shield charge rush and impact | Later | 3 each | Foley |
 | ML1-swing, ML1-hit | [Melee 1], fast and light: swing, hit | Later | 6 each | Foley: a pool noodle |
 | ML2-swing, ML2-hit | [Melee 2], slow and big: swing, hit | Later | 4 each | Foley |

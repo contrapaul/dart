@@ -67,6 +67,9 @@ export class Foamer {
   state: FoamerState = "approach";
   /** Seconds spent in the current state. */
   stateTime = 0;
+  /** How long a short stagger lasts, seconds: set by startStagger (the
+   *  data's stagger.time, or the thrown shield's stun, GAME-04). */
+  staggerTime = foamerData.test.stagger.time;
   /** The brain and its token bid (ENG-08 stage 3b). Null when the system has
    *  no director: then the Foamer attacks on approach range as it did before
    *  the director, which is what the older tests and tools expect. */
@@ -411,7 +414,7 @@ export class Foamer {
    *  finishable one lingers so a finisher can be aimed; a part break's
    *  stagger stays the short one. */
   staggerDuration() {
-    return this.staggerLong ? this.spec.finisher.weakenStaggerTime : this.spec.stagger.time;
+    return this.staggerLong ? this.spec.finisher.weakenStaggerTime : this.staggerTime;
   }
 
   /** GAME-07: it glows and wobbles while it staggers and is finishable.

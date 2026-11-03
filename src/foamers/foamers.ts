@@ -713,11 +713,14 @@ export class FoamerSystem {
 
   /** GAME-07: start a stagger, long (the finishable one) or short (a part
    *  break). A stagger during a windup cancels the attack, so the token
-   *  goes back too. The wobble and glow read the flags this sets. */
-  private startStagger(f: Foamer, long: boolean) {
+   *  goes back too. The wobble and glow read the flags this sets. A short
+   *  stagger lasts `seconds` (GAME-04: the thrown shield's stun), by
+   *  default the data's stagger.time. */
+  startStagger(f: Foamer, long: boolean, seconds = SPEC.stagger.time) {
     f.state = "stagger";
     f.stateTime = 0;
     f.staggerLong = long;
+    f.staggerTime = seconds;
     f.agent?.release("stagger");
     if (f.attack()) f.setAttack(null);
     // FX-stagger (SOUNDS.md 5.1): the wobble that tells the finisher is
