@@ -81,6 +81,56 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ENG-08 stage 3a (DeepSeek V4.1 Flash)
+
+The parts of stage 3 that do not touch the Foamer code, so it could land
+while GAME-11 rewrites `src/foamers/`:
+
+- `src/ai/brain.ts`: a small state machine base. States are a string union
+  given as a type parameter, each with optional `enter`, `update`, `exit`
+  hooks over a caller context, `stateTime` (reset on every transition) and a
+  fixed-size transition ring the tests read (`logLength`, `logAt`, `log`,
+  `statesEntered`). A state that returns itself is not a transition, so
+  nothing is logged for standing still. The hooks get `(dt, stateTime, ctx)`
+  so they never have to read `brain.stateTime` back.
+- `src/ai/f01-brain.ts`: idle, alert, approach and hold as pure functions
+  (`decideF01`) over a five field input struct plus attack range and
+  `holdRange`, returning the wanted state and a movement intent (`stand`,
+  `followPath`, `circleLeft`, `circleRight`). `makeF01Brain` wires the four
+  states onto the base machine; `makeF01Context` makes the one allocation per
+  Foamer. `updateToken` and `releaseToken` talk to the stage 1 director.
+  Nothing from `src/foamers/` is imported.
+- `data/ai.json`: the `brain` block with sightRange 20, alertRadius 8,
+  alertTime 0.4, repath 0.5 and holdRange 2.2, each explained in the `_note`.
+  `repathSeconds` is data only in 3a: the brain has no path yet, so the
+  Foamer side schedules re-paths in 3b.
+- `tests/ai/brain.test.ts`, 17 tests: the state machine base (time, enter and
+  exit, the ring wrapping); idle stays idle when the player is out of sight
+  and goes alert when shot or when a neighbour alerts; alert holds for the
+  telegraph then approaches; approach follows a path and asks for a token in
+  reach only; without a token it goes to hold, circles (odd ids the other way
+  so two Foamers do not mirror) and asks again every step; hold ends on a
+  token or when the player walks away; token scores put a closer agent ahead
+  and let a waiting one catch up; `down` forgets a token at once, attack end
+  releases it; 4 simulated F01s on the player never exceed the 2 normal
+  melee tokens attacking at once over 10 s, and every one attacks at least
+  once in 20 s.
+
+Decisions. Hold and circle live in the brain, not in the Foamer, so the
+"never attack without a token" rule is testable without a physics world. The
+brain never leaves `idle` for anything but `alert`: the log check asserts a
+real brain driven at point blank distance only ever logs `idle` to `alert`.
+`down` calls `Director.forget` rather than `release`, because down is terminal
+and the cooldown would otherwise look like a stall to the next Foamer.
+
+Still unverified. The card's "an F01 behind a wall walks round it" test waits
+for stage 3b, where the Foamer owns position, path and the nav grid; nothing
+here observes a real Foamer, so the walk round a wall is not tested yet.
+Attack range (1.3 m from `data/foamers.json`) is passed in by the caller and
+is not yet read from the rig; 3b wires it. Stages 3b and the range overlay
+(the Nav grid switch, the per Foamer path lines, the director `stats()` in
+the report) are still to do after GAME-11 merges.
+
 ### 2026-11-03: ENG-08 stage 2 (DeepSeek V4.1 Flash)
 
 Grid navigation and steering: `src/ai/nav-grid.ts`, `src/ai/steer.ts`, the
