@@ -115,6 +115,18 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ENG-13 reviewed and merged (Claude)
+
+- Merged after Paul's approval. The shared step keeps the old order; the
+  same arena script on main and on eng-13 gave identical Foamer positions
+  step for step, and `index.html?watch` spawns, walks and takes a hit.
+- Found in review, on main before ENG-13 too: darts often hit a Foamer's
+  movement capsule and bounce off with no damage. In one run, 30 body-aimed
+  shots at a walking Slowmer from 6 to 12 m all hit the capsule and none a
+  part. Likely the capsule pokes out in front of the body as it walks.
+  Next fix: darts skip the capsule, or the capsule stays inside the body,
+  with a test that fails first.
+
 ### 2026-11-03: ENG-13, one shared game module for the playable pages (DeepSeek via Pi)
 
 - `src/main.ts` and `src/arena/main.ts` were near copies (501 and 537
