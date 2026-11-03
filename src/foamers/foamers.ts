@@ -61,11 +61,17 @@ function rigFor(spec: FoamerSpec): GameRig {
   return RIGS.find((r) => r.id === spec.rig) ?? RIGS[0]!;
 }
 
-/** How far an attack's reach is measured to: its own `range` (a throw is
- *  measured to its throw range), else the spec's `attackRange` (a bonk). */
+/** How far an attack's reach is measured to: its own `range` when it has
+ *  one, else, for a ranged token, the distance the type keeps (a throw is
+ *  thrown from its ring), else the spec's `attackRange` (a bonk). */
 function attackRange(spec: FoamerSpec, attack: { id: string } | null): number {
   const a = attack ? spec.attacks.find((x) => x.id === attack.id) : null;
-  return (a as { range?: number } | undefined)?.range ?? spec.attackRange;
+  if (!a) return spec.attackRange;
+  // A type override may pin an explicit `range` (not in the base JSON, so
+  // the inferred spec type does not carry it).
+  const pinned = (a as { range?: number }).range;
+  if (pinned !== undefined) return pinned;
+  return a.token === "ranged" ? spec.preferredDistanceMetres : spec.attackRange;
 }
 
 /** The token pool a type's attacks draw from (data/foamers.json): the token
@@ -239,7 +245,12 @@ export class FoamerSystem {
       f.stateTime = 0;
       f.agent = new FoamerAgent(
         this.director,
-        { tokenKind: tokenKindOf(spec), initial: this.spawnState },
+        {
+          tokenKind: tokenKindOf(spec),
+          initial: this.spawnState,
+          // A type whose attacks use the ranged pool runs the ranged brain.
+          brain: tokenKindOf(spec) === "ranged" ? "f02" : "f01",
+        },
         agentId,
       );
       f.agentInput = {
@@ -247,6 +258,13 @@ export class FoamerSystem {
         attackRange: spec.attackRange, lineOfSight: false,
         tookDamage: false, nearbyAlert: false,
         crawlInReach: false, keepToken: false,
+        throwRange: spec.throwRangeMetres,
+        preferredDistance: spec.preferredDistanceMetres,
+        retreatDistance: spec.retreatDistanceMetres,
+        // A thrower sidles on the ring at the distance it keeps; a bonker on
+        // the shared hold ring.
+        holdRange:
+          tokenKindOf(spec) === "ranged" ? spec.preferredDistanceMetres : BRAIN.holdRangeMetres,
       };
     }
     this.group.add(f.group);
@@ -552,7 +570,7 @@ export class FoamerSystem {
   /** Whether the brain's movement intent means walking this step. */
   private brainMoving(f: Foamer): boolean {
     const m = f.agent!.move;
-    return m === "followPath" || m === "circleLeft" || m === "circleRight";
+    return m === "followPath" || m === "circleLeft" || m === "circleRight" || m === "backOff";
   }
 
   /**
@@ -570,6 +588,16 @@ export class FoamerSystem {
       this.neighbours.push({ x: o.centre.x, z: o.centre.z });
     }
     const move = a.move;
+    if (move === "backOff") {
+      // Straight away from the player (a thrower whose ring was crowded):
+      // the brain only asks for this while the player is inside the retreat
+      // distance, and stops when the distance is back over it.
+      const dx = f.centre.x - player.x;
+      const dz = f.centre.z - player.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 1e-4) this._wish.set((dx / d) * speed * dt, 0, (dz / d) * speed * dt);
+      return;
+    }
     if (move === "followPath" || move === "stand") {
       // A crawl follows the same path at its crawl speed: navigate() does
       // not care which, the caller scales the speed it steers at.
@@ -594,10 +622,11 @@ export class FoamerSystem {
       const side = move === "circleLeft" ? 1 : -1;
       vx = (dz / d) * side * speed;
       vz = (-dx / d) * side * speed;
-      // A step in to holdRange when it is outside it, and a step out when it
+      // A step in to the ring when it is outside it, and a step out when it
       // is crowded closer than a share of it, so the sidle settles at the
-      // ring rather than drifting away.
-      const want = BRAIN.holdRangeMetres;
+      // ring rather than drifting away. The ring is the agent's holdRange:
+      // the shared one for a bonker, the preferred distance for a thrower.
+      const want = a.ctx.input.holdRange;
       const err = d - want;
       // The step in or out ramps up over circleRampMetres and keeps
       // circleStrafeShare of the speed, and does nothing inside the

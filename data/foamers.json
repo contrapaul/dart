@@ -1,5 +1,5 @@
 {
-  "_note": "ENG-10/GAME-10a: one Foamer spec per type. `test` is the shared base spec every type starts from (the name is kept: the F01 tests read it directly). `types` holds one entry per type with only what differs from the base: its rig id in data/foamer-rigs.json, its attacks, and its ranged distances. An attack's `range` is how far its reach is measured to (default: the base attackRange); its `token` is the director pool it draws from. A part listed in `needs` must still be attached.",
+  "_note": "ENG-10/GAME-10a: one Foamer spec per type. `test` is the shared base spec every type starts from (the name is kept: the F01 tests read it directly). `types` holds one entry per type with only what differs from the base: its rig id in data/foamer-rigs.json and its attacks. An attack's `token` is the director pool it draws from; its `needs` are parts that must still be attached; its `range`, when it has one, is how far its reach is measured to (default: an attack with a melee token uses the base attackRange, one with a ranged token the preferred distance). The three *DistanceMetres fields belong to the base so every spec has them; only a ranged type reads them: the distance at which it stops walking in and keeps the ring (throwRangeMetres), the distance it tries to keep and throws from (preferredDistanceMetres), and the distance it backs off to when the player closes inside it (retreatDistanceMetres).",
   "test": {
     "rig": "F01",
     "damage": {
@@ -11,6 +11,9 @@
     "turnRate": 6,
     "gravity": 22,
     "attackRange": 1.3,
+    "throwRangeMetres": 12.0,
+    "preferredDistanceMetres": 8.0,
+    "retreatDistanceMetres": 5.0,
     "recover": 0.8,
     "popChunkScale": 2.5,
     "popBursts": 4,
@@ -178,15 +181,11 @@
     },
     "F02": {
       "rig": "F02",
-      "throwRangeMetres": 12.0,
-      "preferredDistanceMetres": 8.0,
-      "retreatDistanceMetres": 5.0,
       "attacks": [
         {
           "id": "throw",
           "damage": 4,
           "token": "ranged",
-          "range": 12.0,
           "needs": [
             "foreArmR",
             "ball"

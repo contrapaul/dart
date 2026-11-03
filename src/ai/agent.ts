@@ -7,12 +7,12 @@ import {
   tokenScore,
   releaseToken,
   circleSide,
-  type F01Context,
   type F01Decision,
   type F01State,
   type MoveIntent,
   type ReleaseReason,
 } from "./f01-brain";
+import { makeF02Brain, type F02Context } from "./f02-brain";
 import { makePath, NavGrid, type PathPoints, type Point2 } from "./nav-grid";
 
 // One Foamer's brain on a director and a nav grid (ENG-08 stage 3b). The
@@ -21,13 +21,15 @@ import { makePath, NavGrid, type PathPoints, type Point2 } from "./nav-grid";
 // positions in and reads the movement intent and the waypoints back. No
 // Three.js and no Rapier: the grid is passed as one argument.
 
-/** How the agent's mind is set up: which pool it draws from and where it
- *  starts. Arena spawns start alert, range spawns idle. */
+/** How the agent's mind is set up: which pool it draws from, which brain it
+ *  runs, and where it starts. Arena spawns start alert, range spawns idle. */
 export interface AgentSetup {
   /** The token pool its attacks draw from (their data `token` field). */
   tokenKind: TokenKind;
   /** The state it starts in. */
   initial: F01State;
+  /** GAME-10a: the ranged brain for a thrower, the F01 one otherwise. */
+  brain?: "f01" | "f02";
 }
 
 /** What the Foamer tells its agent each step. */
@@ -52,12 +54,24 @@ export interface AgentInput {
   /** It is in an attack (windup, strike, recover): keep the token it has,
    *  even though the brain no longer wants a new one. */
   keepToken: boolean;
+  /** GAME-10a, the F02 brain only: the distance at which it stops walking in
+   *  (its throw range). For a bonker this is `attackRange` itself. */
+  throwRange: number;
+  /** GAME-10a, the F02 brain only: the distance it tries to keep. */
+  preferredDistance: number;
+  /** GAME-10a, the F02 brain only: closer than this it backs off. */
+  retreatDistance: number;
+  /** The distance the circle stride keeps (metres): the bonker's hold ring,
+   *  or the thrower's preferred distance. Filled by the system. */
+  holdRange: number;
 }
 
 export class FoamerAgent {
   readonly agentId: number;
-  readonly brain: Brain<F01State, F01Context>;
-  readonly ctx: F01Context;
+  /** Either brain: an F02 context is an F01 one plus the three ranged
+   *  distances, which an F01 brain does not read, so one field serves both. */
+  readonly brain: Brain<F01State, F02Context>;
+  readonly ctx: F02Context;
   /** The path it follows, reused by every re-path: nothing allocates. */
   readonly path: PathPoints = makePath();
   /** Metres to the player, filled by bid(). */
@@ -85,8 +99,8 @@ export class FoamerAgent {
     this.director = director;
     this.tokenKind = setup.tokenKind;
     this.agentId = agentId;
-    this.brain = makeF01Brain(setup.initial, 32);
-    this.ctx = makeF01Context(agentId);
+    this.brain = setup.brain === "f02" ? makeF02Brain(setup.initial, 32) : makeF01Brain(setup.initial, 32);
+    this.ctx = makeF01Context(agentId) as F02Context;
   }
 
   get decision(): F01Decision {
@@ -120,6 +134,10 @@ export class FoamerAgent {
     i.distance = this.distance;
     i.lineOfSight = input.lineOfSight;
     i.attackRange = input.attackRange;
+    i.holdRange = input.holdRange;
+    i.throwRange = input.throwRange;
+    i.preferredDistance = input.preferredDistance;
+    i.retreatDistance = input.retreatDistance;
     this.ask(input);
   }
 
@@ -129,6 +147,10 @@ export class FoamerAgent {
     const i = this.ctx.input;
     i.tookDamage = input.tookDamage;
     i.nearbyAlert = input.nearbyAlert;
+    i.holdRange = input.holdRange;
+    i.throwRange = input.throwRange;
+    i.preferredDistance = input.preferredDistance;
+    i.retreatDistance = input.retreatDistance;
     this.brain.update(dt, this.ctx);
     this.ask(input);
     if (this.wants && !i.hasToken) this.waited += dt;
