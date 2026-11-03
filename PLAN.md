@@ -531,7 +531,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | GAME-04 | Shield: block, parry (bounce-back), throw | A / F | P0 gate |
 | GAME-05 | Shield charge | F | GAME-04 |
 | GAME-06 | Melee weapon + charges | F | GAME-04 |
-| GAME-07 | Stagger + Pop finishers + health drops | Done 2026-11-03 (card: `tasks/GAME-07.md`; Qwen 3.8-27B via Pi) | GAME-03 |
+| GAME-07 | Stagger + Pop finishers + health drops | Done 2026-11-03 (card: `tasks/GAME-07.md`; Qwen 3.8-27B via Pi + Claude review, Paul approved) | GAME-03 |
 | GAME-08 | Ammo-for-kills tool | F | GAME-07 |
 | GAME-09 | (card: `tasks/GAME-09.md`) Weapon framework from JSON data: per-blaster data from the cards, fire types (pump, semi, full-auto with growing recoil, spin-up, break-action double), new dart types (precision, mega, foam ball, slug), `popTypes` per type, a `.glb` viewmodel from the named nodes; the 3 slice blasters in level order B01, B04, B03 (D04), tested on the range | Done 2026-11-02 (Pi + Claude review) | ART-04 for the models (placeholder models until then) |
 | GAME-09b | Catastrophic hits and explosions (D12): a close B03 blast or a B01 slug blows a big chunk out of a mid-tier, weakened elite or boss and finishes it in a large foam burst without popping the whole body; area blasts carve terrain and Foamers, push, and can pop (B05 and B06 mods, B07) | Pi + Claude review | GAME-09 |

@@ -120,7 +120,7 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-03: GAME-07 review, finisher played in watch mode (Claude)
+### 2026-11-03: GAME-07 review, finisher played in watch mode, merged (Claude)
 
 - Played on `index.html?watch`: shot a Slowmer to the weakened stagger,
   walked up, the F prompt showed, the finisher held the view, squeezed
