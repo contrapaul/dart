@@ -548,7 +548,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | ART-03 | (card: `tasks/ART-03.md`) Code-generated blocky voxel Foamers (3 types: F01, F02, F05 in the palette), Paul approves | Done 2026-11-03 (Kimi via Pi + Claude review, Paul approved) | PRE-05 |
 | ART-04 | The 3 slice blasters modelled in Blender by script (Kimi), named moving parts, to the section 5.2 contract; the other 5 in Phase 3 | Kimi via Pi (slice 3 done 2026-11-01; other 5 in Phase 3) | ART-00, ART-01 |
 | ART-05 | Procedural first person animations | F | ART-04 |
-| LVL-00 | Level design concepts: pillars, space kit, Act 1 concepts, Acts 2 and 3 outlines, blockout format proposal (`design/levels/`) | DeepSeek via Pi (review) | CONTENT-PLAN 2 |
+| LVL-00 | Level design concepts: pillars, space kit, Act 1 concepts, Acts 2 and 3 outlines, blockout format proposal (`design/levels/`) | Done 2026-11-03 (DeepSeek via Pi + Claude review, Paul approved) | CONTENT-PLAN 2 |
 | LVL-01 | One arena blockout with destructible cover and a lock-in | F + P | ENG-06 |
 | AUD-00 | Record Paul's blasters (session list in 8.3) | P | |
 | AUD-01 | (card: `tasks/AUD-01.md`) Sound system: Web Audio mixer, sound bank in `data/sounds.json` keyed by the IDs in `design/SOUNDS.md`, code-made placeholders for every sound, spatial one-shots and loops, hooks for blasters, darts, Foamers and the player, a Sound panel on the range | Done 2026-11-02 (Pi + Claude review) | GAME-09 |

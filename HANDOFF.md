@@ -57,6 +57,9 @@ with console helpers in `window.dartRange`, for automated checks.
 The slice Foamers (F01 Slowmer, F02 Roamer, F05 Darter) have their factory
 palette looks (ART-03, merged 2026-11-03); turnaround sheets are in
 `design/foamers/`, rendered by `npx tsx tools/render-rig.ts F01`.
+Level design concepts (LVL-00, merged 2026-11-03) are in `design/levels/`:
+semi-open but linear, after the modern Doom games (Paul). Next is LVL-01,
+the first arena blockout.
 
 Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
 occlusion into the vertex colours (inside corners, crater floors, the seam
@@ -101,6 +104,19 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: LVL-00 reviewed and merged (Claude)
+
+- Merged after Paul's approval. Review fixes: an arena's way on is across
+  the room from the way in (README contradicted itself), one alive cap of
+  12 at Normal in every file, and Boss 1's weak points made consistent
+  (two launchers and the back tank; the crown is the last target).
+- Open for Paul: the 1-2 blaster clash (level table B02, D04 answer the
+  Shredder), 1-2's Crossroads exception to pillar 2, act settings and
+  accent colours, and the BOSS 1 working name "Foam Demon" against the no
+  demonic imagery rule. Not yet good: the 1-1 map is a schematic stack,
+  and Boss 1 phase 3 (charge the knee in a 1 s window, then mantle) may be
+  too fiddly for 10+.
 
 ### 2026-11-03: LVL-00 level design concepts (DeepSeek via Pi, review)
 
