@@ -339,6 +339,21 @@ body {
   text-shadow: 0 2px 4px rgb(0 0 0 / 70%);
 }
 
+/* GAME-05: the charge lock marker, a ring at the crosshair while a
+   *  charge target is locked (the disc is up). Reads the lock only.
+   */
+#lockmarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 2px solid #f5f2e9;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgb(0 0 0 / 60%);
+}
+
 /* GAME-07: the heal flash, cream-lime edges, like #hitflash but green. */
 #healflash {
   position: fixed;

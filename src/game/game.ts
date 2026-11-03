@@ -333,21 +333,37 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         // squeeze sound goes with the start below.
         finisher.update(dt, player);
       } else {
-        player.update(dt, input);
-        // Melee: a finishable Foamer in reach and in the view is finished.
-        // When none is, the key stays for the page's old behaviour (the
-        // course's debug blast).
-        if (input.wasPressed("melee")) {
-          const eye = player.eye(1, _playerPos);
-          const fwd = camera.getWorldDirection(_aimDir);
-          for (const f of foamers.list) {
-            if (f.state !== "stagger") continue;
-            if (!finisher.attempt(f, eye, fwd, _muzzle)) continue;
-            finisher.start(f, player, eye);
-            input.consumePress("melee");
-            // The squeeze; the pop's FX-pop comes with the pop itself.
-            audio.play("FN-finisher", { position: f.centre });
-            break;
+        // GAME-05: the dash goes to the shield first. The disc is up and
+        // a target is locked, so it is the charge instead of the normal
+        // dash: the shield takes the press and spends it here, before the
+        // player's own step gets to start a dash with it. A charge that
+        // starts here drives the player to the target itself (see the
+        // shield's step); during it the player's own step and the melee
+        // are suspended (a finisher cannot start mid-charge).
+        if (input.wasPressed("dash") && shield.tryCharge()) {
+          input.consumePress("dash");
+          // The lock's blip; the rush's whoosh plays with the charge's
+          // first step (se.chargeStart below), so holding the disc on a
+          // locked Foamer stays quiet until the dash.
+          audio.play("SH-lock");
+        }
+        if (!shield.charging) {
+          player.update(dt, input);
+          // Melee: a finishable Foamer in reach and in the view is
+          // finished. When none is, the key stays for the page's old
+          // behaviour (the course's debug blast).
+          if (input.wasPressed("melee")) {
+            const eye = player.eye(1, _playerPos);
+            const fwd = camera.getWorldDirection(_aimDir);
+            for (const f of foamers.list) {
+              if (f.state !== "stagger") continue;
+              if (!finisher.attempt(f, eye, fwd, _muzzle)) continue;
+              finisher.start(f, player, eye);
+              input.consumePress("melee");
+              // The squeeze; the pop's FX-pop comes with the pop itself.
+              audio.play("FN-finisher", { position: f.centre });
+              break;
+            }
           }
         }
       }
@@ -363,9 +379,11 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       }
       if (input.wasPressed("weaponNext")) loadout.next();
       if (input.wasPressed("weaponPrev")) loadout.prev();
-      // GAME-04: the shield first, so it can take this step's fire press as
-      // the throw before the blaster sees it. Its own gate says when the
-      // blaster may not fire (the disc is up, or out in the world).
+      // GAME-04: the shield after the player, so it can take this step's
+      // fire press as the throw before the blaster sees it. Its own gate
+      // says when the blaster may not fire (the disc is up, or out in the
+      // world). A running charge drives the player in here instead (the
+      // step above skipped it).
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
       updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
       const se = shield.update(dt, {
@@ -379,6 +397,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       if (se.thrown) audio.play("SH-throw", { position: shield.discPosition });
       for (const p of se.hits) audio.play("SH-ricochet", { position: p });
       if (se.caught) audio.play("SH-catch");
+      // GAME-05: the charge's sounds: the whoosh on the first step, the
+      // thud where it meets the Foamer.
+      if (se.chargeStart) audio.play("SH-charge");
+      if (se.chargeVictim) audio.play("SH-charge-hit", { position: se.chargeVictim.centre });
       // No shooting while the disc is up or a finisher holds the player.
       const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active;
       loadout.update(
@@ -439,6 +461,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       const eye = player.eye(ui.paused ? 1 : alpha, _playerPos);
       const fwd = camera.getWorldDirection(_aimDir);
       hud.setFinishPrompt(!ui.paused && !finisher.active && finisher.has(eye, fwd), meleeKey());
+      // GAME-05: the lock marker at the crosshair, on while a charge
+      // target is locked (the lock only lives while the disc is up).
+      hud.setChargeLock(!ui.paused && shield.lockedTarget != null);
     }
     h.renderLate?.(dt, alpha);
     darts.syncRender(alpha);
@@ -492,6 +517,14 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         popped: ui.poppedOut,
         health: health.hp,
         shield: shield.state,
+        // GAME-05: the charge state for the watch: which Foamer it is
+        // locked on and which one the running charge is driving at (they
+        // agree while it runs).
+        charge: {
+          locked: shield.lockedTarget ? shield.lockedTarget.centre.toArray() : null,
+          target: shield.chargeTarget ? shield.chargeTarget.centre.toArray() : null,
+          running: shield.charging,
+        },
         player: (() => {
           const p = feet(_feet);
           return [p.x, p.y, p.z].map((n) => Number(n.toFixed(3)));
@@ -554,6 +587,13 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
        *  (the page's debug blast gets it). */
       finish: () => {
         input.simulatePress("melee");
+        fixedStep(STEP);
+      },
+      /** GAME-05: press the dash once. With the disc up and a target
+       *  locked it is a charge; otherwise it is the normal dash (the
+       *  state's charge fields say which one ran). */
+      charge: () => {
+        input.simulatePress("dash");
         fixedStep(STEP);
       },
       step: (n: number) => {
