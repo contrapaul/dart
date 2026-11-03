@@ -107,6 +107,9 @@ export class FoamerSounds {
         this.sink.play("FX-pop", p);
         this.sink.play("FX-chunk", p);
         break;
+      case "stagger":
+        this.sink.play("FX-stagger", p);
+        break;
     }
   }
 }

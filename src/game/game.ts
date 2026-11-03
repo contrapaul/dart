@@ -12,6 +12,9 @@ import { Loadout } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import { PickupSystem } from "../pickups/pickups";
+import { Finisher } from "./finisher";
+import inputJson from "../../data/input.json";
 import { makeLevelAI, type LevelAI } from "../ai/level";
 import type { NavBounds } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
@@ -112,6 +115,8 @@ export interface Game<T extends BuiltGame = BuiltGame> {
   player: PlayerController;
   darts: DartSystem;
   loadout: Loadout;
+  pickups: PickupSystem;
+  finisher: Finisher;
   impacts: DartImpacts;
   debris: DebrisSystem;
   pieces: FallingPieces;
@@ -211,6 +216,14 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   foamers.navGrid = levelAI.grid;
   foamers.spawnState = "alert"; // an arena spawn is already in the fight
   scene.add(foamers.group);
+  // GAME-07: the health pickups on the floor and the finisher that drops
+  // them. A collected blob sounds and flashes the HUD here.
+  const pickups = new PickupSystem(rapier, world, scene, health);
+  const finisher = new Finisher(foamers, pickups);
+  pickups.onCollected = (_kind, pos) => {
+    audio.play("PU-health", { position: pos });
+    hud.healFlash();
+  };
 
   // Scratch vectors for the aim math; allocated once (aim.ts carries its
   // own).
@@ -218,6 +231,13 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const _muzzle = new THREE.Vector3();
   const _aimDir = new THREE.Vector3();
   const _playerPos = new THREE.Vector3();
+
+  /** The bound key as a label for the finisher prompt (data-driven, the
+   *  card: from the input map): F, not KeyF. */
+  function meleeKey() {
+    const k = (inputJson.keyboard as Record<string, string[]>).melee?.[0] ?? "KeyF";
+    return k.startsWith("Key") ? k.slice(3) : k;
+  }
 
   let ui: UIController;
   // The audio engine can arrive before the UI controller exists (a click
@@ -257,7 +277,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
 
   const game = {
     renderer, scene, camera, rapier, world, input, hud, store, health, player,
-    darts, loadout, impacts, debris, pieces, mesherPool, foamers, levelAI,
+    darts, loadout, pickups, finisher, impacts, debris, pieces, mesherPool, foamers, levelAI,
     voxels, voxelMesh, audio, ui: null as unknown as UIController, built,
     loop: null as unknown as ReturnType<typeof startLoop>,
   };
@@ -288,7 +308,31 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   function fixedStep(dt: number): void {
     if (!ui.paused) {
       health.update(dt);
-      player.update(dt, input);
+      // GAME-07: the finisher holds the player for its whole run; while it
+      // is active the controller is not stepped at all.
+      if (finisher.active) {
+        // The pop step sounds FX-pop itself (FoamerSystem.pop); only the
+        // squeeze sound goes with the start below.
+        finisher.update(dt, player);
+      } else {
+        player.update(dt, input);
+        // Melee: a finishable Foamer in reach and in the view is finished.
+        // When none is, the key stays for the page's old behaviour (the
+        // course's debug blast).
+        if (input.wasPressed("melee")) {
+          const eye = player.eye(1, _playerPos);
+          const fwd = camera.getWorldDirection(_aimDir);
+          for (const f of foamers.list) {
+            if (f.state !== "stagger") continue;
+            if (!finisher.attempt(f, eye, fwd, _muzzle)) continue;
+            finisher.start(f, player, eye);
+            input.consumePress("melee");
+            // The squeeze; the pop's FX-pop comes with the pop itself.
+            audio.play("FN-finisher", { position: f.centre });
+            break;
+          }
+        }
+      }
       // Foamer on a fixed step, before world.step().
       foamers.update(dt, player.eye(1, _playerPos));
       h.step?.(dt);
@@ -303,19 +347,21 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       if (input.wasPressed("weaponPrev")) loadout.prev();
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
       updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+      // No shooting while a finisher holds the player (GAME-07 review).
+      const canFire = !finisher.active;
       loadout.update(
         dt,
         {
-          fireHeld: input.isDown("fire"),
-          firePressed: input.wasPressed("fire"),
+          fireHeld: canFire && input.isDown("fire"),
+          firePressed: canFire && input.wasPressed("fire"),
           reloadPressed: input.wasPressed("reload"),
         },
         _aimDir,
       );
       // The blaster, player and level hooks, one step per fixed step.
       audio.sounds?.update(dt, {
-        fireHeld: input.isDown("fire"),
-        firePressed: input.wasPressed("fire"),
+        fireHeld: canFire && input.isDown("fire"),
+        firePressed: canFire && input.wasPressed("fire"),
         reloadPressed: input.wasPressed("reload"),
         sprintHeld: input.isDown("sprint"),
       });
@@ -325,6 +371,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       darts.update(dt);
       h.beforeWorld?.();
       world.step();
+      // GAME-07: after the step, so the collect reads where physics left
+      // the blob; the feet come out of the eye helper (it is the only way
+      // to read the controller's position).
+      pickups.update(dt, _playerPos.setY(player.feet));
       h.afterWorld?.(dt);
     }
     input.endStep();
@@ -341,6 +391,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     debris.syncRender(alpha);
     pieces.syncRender(alpha);
     foamers.syncRender(alpha);
+    pickups.syncRender(alpha);
     h.render?.(dt, alpha);
     camera.position.copy(player.eye(ui.paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own
@@ -351,6 +402,12 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     loadout.render(dt, input.isDown("fire"));
     hud.setAmmo(loadout.active, loadout.active.state);
     hud.setHealth(health.hp, health.max);
+    // GAME-07: the prompt by the crosshair, with the bound key's label.
+    {
+      const eye = player.eye(ui.paused ? 1 : alpha, _playerPos);
+      const fwd = camera.getWorldDirection(_aimDir);
+      hud.setFinishPrompt(!ui.paused && !finisher.active && finisher.has(eye, fwd), meleeKey());
+    }
     h.renderLate?.(dt, alpha);
     darts.syncRender(alpha);
     // The spatial listener follows the camera each render frame.
@@ -407,6 +464,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
           return [p.x, p.y, p.z].map((n) => Number(n.toFixed(3)));
         })(),
         foamers: { live: foamers.live, downed: foamers.downed.length },
+        // GAME-07: the watch gets pickup counts and each Foamer's
+        // finishable flag (a stagger is what the finisher acts on).
+        pickups: { health: pickups.count("health") },
+        finishable: foamers.list.map((f) => f.state === "stagger"),
       }),
       moveTo: (x: number, y: number, z: number) => player.teleport(_move.set(x, y, z)),
       look: (yaw: number, pitch: number) => {
@@ -434,6 +495,13 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         loadout.update(STEP, { fireHeld: false, firePressed: true, reloadPressed: false }, _aimDir);
         darts.update(STEP);
         world.step();
+      },
+      /** GAME-07: press the melee key against the view: a finishable
+       *  Foamer in reach and in the view is finished, or the key is left
+       *  (the page's debug blast gets it). */
+      finish: () => {
+        input.simulatePress("melee");
+        fixedStep(STEP);
       },
       step: (n: number) => {
         for (let i = 0; i < n; i++) fixedStep(STEP);

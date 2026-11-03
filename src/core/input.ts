@@ -137,6 +137,16 @@ export class Input {
   wasReleased(a: Action) {
     return this.released.has(a);
   }
+  /** Drop one press edge: the finisher spent the melee key, the page's
+   *  hook (the course's debug blast) should not act on it too. */
+  consumePress(a: Action) {
+    this.pressed.delete(a);
+  }
+  /** Record a press edge as if a real source had fired (the watch's
+   *  finish, the player's held key). Cleared by endStep like the rest. */
+  simulatePress(a: Action) {
+    this.pressed.add(a);
+  }
 
   /** Movement as x (right) and y (forward), length at most 1. */
   move() {

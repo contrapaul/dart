@@ -1,0 +1,10 @@
+{
+  "_note": "GAME-07. Generic pickup kinds (health now, ammo later on D08). shift: metres the blob hops out with. Distances in metres, times in seconds.",
+  "health": {
+    "_note": "A finisher sprays count blobs of amount health each. They hop out, settle, and bob. collectRadius: collected within this of the feet. attractRadius: closer than this (and the player not full health) they drift to the player at attractSpeed. max: live blobs across the whole level, the oldest first. lifetime: seconds before a blob dissolves.",
+    "amount": 10, "count": 3, "max": 24, "lifetime": 30,
+    "collectRadius": 1, "attractRadius": 2, "attractSpeed": 6,
+    "radius": 0.12, "hopSpeed": 3, "shift": 0.8, "settleSpeed": 0.5,
+    "bobHeight": 0.04, "bobRate": 4, "color": "#fff4e0"
+  }
+}
