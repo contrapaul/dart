@@ -283,7 +283,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // the disc's own sound plays instead of the hurt one.
     const blocked = shield.blocksAttackFrom(f.centre);
     const share = blocked ? shield.damageShare : 1;
-    const lost = health.damage(damageOf(attack) * share, attack);
+    const lost = health.damage(damageOf(attack, f.spec) * share, attack);
     if (lost <= 0) return;
     if (blocked) {
       shield.noteBlocked();

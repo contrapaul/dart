@@ -165,7 +165,7 @@ foamers.onBonk = (_f, attack) => {
   // GAME-04: an attack from the front arc behind the raised disc costs
   // only its data share; a blocked hit is not a hit, so no HUD flash.
   const blocked = shield.blocksAttackFrom(_f.centre);
-  const lost = health.damage(damageOf(attack) * (blocked ? shield.damageShare : 1), attack);
+  const lost = health.damage(damageOf(attack, _f.spec) * (blocked ? shield.damageShare : 1), attack);
   if (lost <= 0) return;
   if (blocked) {
     shield.noteBlocked();

@@ -134,6 +134,23 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-04: GAME-10a review, Roamers played in the arena (Claude)
+
+- Played `arena.html?watch`: wave 2 is 3 F01 and 2 F02. The Roamers
+  held at 5.5 to 8.4 m and cycled windup, throw and recover while the
+  Slowmers closed in; balls were in the air during the throws. On the
+  range an F02 spawns with health 8 and its own rig.
+- Fixed: the attack damage map was keyed by attack id alone, so the F02's
+  own "bonk" (10) replaced the F01's (12) for every Foamer. `damageOf`
+  now reads the attacking Foamer's spec, with the base spec winning the
+  fallback map. Test: `tests/game/attack.test.ts` (failed before).
+- Noted by the Spark, not fixed: an F01 walking straight down the exact
+  x = 0 grid line can stall (pre-existing, its tests avoid it); worth a
+  bug card.
+- Unverified by eye: the ball's look and glow, the throw pose (no throw
+  motion in rig-states yet, the arm does not wind up visibly), the four
+  sounds, and the range's type buttons by hand.
+
 ### 2026-11-04: GAME-10a, per-type Foamer specs and the F02 Roamer (Qwen 3.8 Flash Next via Pi)
 
 Task card `tasks/GAME-10a.md`, branch `game-10a`, four commits: per-type
