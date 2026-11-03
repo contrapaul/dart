@@ -85,6 +85,10 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ART-03 round 3 face fixes (Kimi via Pi)
+
+- Slowmer now has two separate cream eyes with centred 2 x 2 ink pupils, and Darter's lowered brow leaves no lime sliver on its crown. Re-rendered and checked all three sheets; all 174 active tests, TypeScript checking and the production build pass.
+
 ### 2026-11-03: ART-03 round 2 review fixes (Kimi via Pi)
 
 - Fixed turnaround raster cracks by overlapping projected faces and sampling
