@@ -6,6 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+ART-03 done 2026-11-03: Slowmer, Roamer and Darter have palette rigs,
+deterministic turnaround renders and sheets in `design/foamers/`; Paul's
+visual approval is still pending.
+
 PRE-09, ENG-01 to ENG-07, GAME-01, GAME-02 (placeholder blaster) and
 GAME-03 (test Foamer) done. GAME-09 done (merged 2026-11-02): the three
 blasters (B01 pump, B04 full-auto, B03 break action) are in the game
@@ -50,6 +54,9 @@ a nav grid that re-bakes around carves, and takes turns attacking through
 the director's tokens (normal difficulty: 2 melee at once); the rest circle
 at the hold ring. `range.html?watch` runs the range without pointer lock,
 with console helpers in `window.dartRange`, for automated checks.
+The slice Foamers (F01 Slowmer, F02 Roamer, F05 Darter) have their factory
+palette looks (ART-03, merged 2026-11-03); turnaround sheets are in
+`design/foamers/`, rendered by `npx tsx tools/render-rig.ts F01`.
 
 Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
 occlusion into the vertex colours (inside corners, crater floors, the seam
@@ -94,6 +101,54 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: ART-03 reviewed and merged (Claude)
+
+- Round 3 left the Slowmer's pupils as a 1 by 2 strip at one side of each
+  eye, cut by the top of the head: the eye centres fell between voxels and
+  sat too high on the 11 voxel head. `buildPartVolume` now snaps round eye
+  centres to a voxel (only F01 has round eyes; the others are unchanged), and a new `eyeHeight` part field (fraction of the part's
+  height; default 0.22 round, 0.12 others) moves them. F01 uses 0.12 at
+  scale 1: two 3 by 3 eyes, one centred pupil each, a lime gap between.
+  F02 and F05 re-rendered and checked; the Darter crown is clean.
+- Unverified: the Slowmer eyes are small at 11 voxels; bigger eyes would
+  need a bigger head, which changes its hit volume. Two eye white voxels
+  show on the crown from behind.
+
+### 2026-11-03: ART-03 round 3 face fixes (Kimi via Pi)
+
+- Slowmer now has two separate cream eyes with centred 2 x 2 ink pupils, and Darter's lowered brow leaves no lime sliver on its crown. Re-rendered and checked all three sheets; all 174 active tests, TypeScript checking and the production build pass.
+
+### 2026-11-03: ART-03 round 2 review fixes (Kimi via Pi)
+
+- Fixed turnaround raster cracks by overlapping projected faces and sampling
+  pixel centres explicitly. Uniform face shading removes the remaining false
+  streaks from exposed voxel rows.
+- Slowmer keeps every original gameplay part box and combat behaviour. Big
+  round cream eyes, a separate grin, head nubs and light body-shag paint give
+  it the requested foam-zombie look. `eyeScale` and `shag` change paint only;
+  body nubs and mixed-material shag were rejected because they broke hits.
+- Roamer now holds its ball at shoulder height with a raised forearm, and has
+  angry cream eyes above a separate ink grin.
+- Darter has one curved chest plate and one curved brow plate fitted into the
+  body, with no floating slabs or overhang. Its gape and orange back remain.
+- Re-rendered and visually checked all 12 views. All 174 active tests,
+  TypeScript checking and the production build pass. Paul's visual approval
+  and in-game framing remain unverified.
+
+### 2026-11-03: ART-03 Slowmer, Roamer and Darter (Kimi via Pi)
+
+- Added the light and deep purple, orange and lime palette materials and
+  rebuilt F01, F02 and F05 to their CONTENT-PLAN silhouettes and colours.
+- Added `tools/render-rig.ts`: real rig volumes and rest poses become four
+  orthographic PNG views and a labelled sheet, with no new dependencies.
+- Slowmer keeps its original part sizes and combat volumes. Longer arms and
+  body nubs broke existing hit and ragdoll tests, so its shaggy nubs are on
+  the head. Darter has split front armour, a rear orange weak point and a
+  paint-only `gapeScale` option for a readable mouth.
+- Added palette, F01 gameplay-contract and deterministic-PNG tests. All
+  172 active tests and TypeScript checking pass; final sheets were checked
+  visually. Paul's approval and in-game framing remain unverified.
 
 ### 2026-11-03: ENG-08, QA-watch and QA-flaky merged (Claude)
 

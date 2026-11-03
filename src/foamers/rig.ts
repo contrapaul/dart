@@ -39,9 +39,18 @@ export interface PartSpec {
   nubs?: [number, number, number][];
   /** Two eyes on the +z face. true means "round". */
   eyes?: boolean | EyeStyle;
+  /** Scale the painted eyes without changing the collision volume. */
+  eyeScale?: number;
+  /** Eye centre height above the part's middle, as a fraction of its height
+   *  (default 0.22 for round eyes, 0.12 for the others). */
+  eyeHeight?: number;
+  /** Paint scattered light foam nubs on exposed surfaces. */
+  shag?: boolean;
   /** A toothless mouth on the +z face, under the eyes: a painted grin, or
    *  a gaping hole (ellipsoids only; others get it painted). */
   mouth?: "grin" | "gape";
+  /** Scale a gaping mouth without changing the part's collision box. */
+  gapeScale?: number;
   /** Paint the bottom `length` voxels (the muzzle of a barrel that hangs
    *  from its pivot) another material. */
   tip?: { material: string; length: number };
@@ -94,6 +103,8 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
   const white = materialId("foam-white");
   const ink = materialId("foam-ink");
   const tipMat = part.tip ? materialId(part.tip.material) : 0;
+  const baseMaterial = part.material ?? rigMaterial;
+  const shagLight = part.shag ? materialId(`${baseMaterial}-light`) : 0;
   const cx = (sx - 1) / 2, cy = (sy - 1) / 2, cz = (sz - 1) / 2;
   const rx = sx / 2, ry = sy / 2, rz = sz / 2;
   const taper = part.taper ?? (part.shape === "cone" ? [1, 0.15] : [1, 1]);
@@ -148,9 +159,12 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
   // least 3 voxels wide so they read as round, capped at 3 so big Foamers
   // get eyes of a readable size, not saucers.
   const eyes: EyeStyle | null = part.eyes === true ? "round" : part.eyes || null;
-  const eyeR = Math.min(3, Math.max(1.5, Math.min(sx / 6, sy / 4))) * (eyes === "slit" ? 1.3 : 1);
-  const eyeY = cy + sy * 0.12;
-  const eyeXs = [cx - sx * 0.2, cx + sx * 0.2];
+  const eyeR = Math.min(3, Math.max(1.5, Math.min(sx / 6, sy / 4))) * (eyes === "slit" ? 1.3 : 1) * (part.eyeScale ?? 1);
+  // Round eye centres snap to a voxel, so the pupil is one symmetric block
+  // in the middle of its eye, not a strip down one side.
+  const snap = (n: number) => (eyes === "round" ? Math.round(n) : n);
+  const eyeY = snap(cy + sy * (part.eyeHeight ?? (eyes === "round" ? 0.22 : 0.12)));
+  const eyeXs = [snap(cx - sx * 0.2), snap(cx + sx * 0.2)];
   const eyeAt = (x: number, y: number): number => {
     for (const ex of eyeXs) {
       const fy = eyes === "slit" ? 2.5 : 1;
@@ -161,12 +175,13 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
         const toMid = (cx - ex) > 0 ? x - ex : ex - x;
         if (y - eyeY > eyeR * 0.3 - toMid * 0.7) return 0;
       }
-      const pupil = eyes === "angry" ? 0.45 : 0.5;
+      const pupil = eyes === "angry" ? 0.45 : eyes === "round" ? 0.4 : 0.5;
       return d2 <= (eyeR * pupil) ** 2 ? ink : white;
     }
     return 0;
   };
-  const mouthY = cy - sy * 0.22, mouthW = sx * 0.26, mouthH = Math.max(1.5, sy * 0.13);
+  const mouthScale = part.mouth === "gape" ? (part.gapeScale ?? 1) : 1;
+  const mouthY = cy - sy * (part.mouth === "grin" ? 0.28 : 0.22), mouthW = sx * 0.26 * mouthScale, mouthH = Math.max(1.5, sy * 0.13) * mouthScale;
   const inMouth = (x: number, y: number): boolean => {
     if (!part.mouth || Math.abs(x - cx) > mouthW) return false;
     if (part.mouth === "grin") {
@@ -186,6 +201,11 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
       for (let z = 0; z < sz; z++) {
         if (!inside(x, y, z)) continue;
         let mat = m;
+        if (part.shag && (!inside(x + 1, y, z) || !inside(x - 1, y, z) || !inside(x, y + 1, z) ||
+          !inside(x, y - 1, z) || !inside(x, y, z + 1) || !inside(x, y, z - 1))) {
+          const n = (x * 11 + y * 7 + z * 5) % 19;
+          if (n === 0) mat = shagLight;
+        }
         if (tipMat && y < part.tip!.length) mat = tipMat;
         if (gape && inMouth(x, y) && z >= cz) {
           if (z > zf - 2) continue; // the open mouth

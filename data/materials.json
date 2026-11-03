@@ -1,5 +1,5 @@
 {
-  "_note": "Voxel materials. id 0 is empty space. hardness scales how much a hit carves (1 = normal foam); indestructible voxels anchor structures and never break. Foam colours are placeholders until Paul picks Foamer colours.",
+  "_note": "Voxel materials. id 0 is empty space. hardness scales how much a hit carves (1 = normal foam); indestructible voxels anchor structures and never break. Foam colours are the Foamer palette from design/CONTENT-PLAN.md section 3.4.",
   "materials": [
     { "id": 1, "name": "foam-orange", "color": "#ff7a1a", "hardness": 1 },
     { "id": 2, "name": "foam-blue", "color": "#2ec4ff", "hardness": 1 },
@@ -12,6 +12,12 @@
     { "id": 9, "name": "greybox", "color": "#bdb5cf", "hardness": 1 },
     { "id": 10, "name": "greybox-dark", "color": "#6f6788", "hardness": 1 },
     { "id": 11, "name": "foam-core", "color": "#ffe9a8", "hardness": 1 },
+    { "id": 12, "name": "foam-purple-light", "color": "#c9a4ff", "hardness": 1 },
+    { "id": 13, "name": "foam-purple-deep", "color": "#5b2fb8", "hardness": 1 },
+    { "id": 14, "name": "foam-orange-light", "color": "#ffb070", "hardness": 1 },
+    { "id": 15, "name": "foam-orange-deep", "color": "#c24e00", "hardness": 1 },
+    { "id": 16, "name": "foam-lime-light", "color": "#d4ff7a", "hardness": 1 },
+    { "id": 17, "name": "foam-lime-deep", "color": "#6fae12", "hardness": 1 },
     { "id": 20, "name": "cardboard", "color": "#c89a5b", "hardness": 0.7 },
     { "id": 21, "name": "plastic", "color": "#e8e4f0", "hardness": 1.5 },
     { "id": 22, "name": "wood", "color": "#a0673a", "hardness": 2.5 },

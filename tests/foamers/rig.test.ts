@@ -2,11 +2,23 @@ import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { VoxelVolume } from "../../src/voxel/chunk";
 import { materialId } from "../../src/voxel/materials";
-import { buildPartVolume, restMotion, solvePose, type RigSpec } from "../../src/foamers/rig";
+import { buildPartVolume, restMotion, rigHeight, solvePose, type PartSpec, type RigSpec } from "../../src/foamers/rig";
 import { MOVEMENT_STYLES, rigMotion } from "../../src/foamers/rig-motion";
 import rigData from "../../data/foamer-rigs.json";
+import { encodePng, renderRigViews, renderSheet, VIEW_SIZE, VIEWS } from "../../tools/render-rig";
 
 const RIGS = rigData.rigs as unknown as RigSpec[];
+const ORIGINAL_F01_PARTS = [
+  { id: "body", kind: "body", parent: null, size: [14, 15, 12] },
+  { id: "head", kind: "head", parent: "body", size: [11, 10, 11] },
+  { id: "armL", kind: "arm", parent: "body", size: [5, 10, 5] },
+  { id: "foreArmL", kind: "arm", parent: "armL", size: [5, 10, 5] },
+  { id: "armR", kind: "arm", parent: "body", size: [5, 10, 5] },
+  { id: "foreArmR", kind: "arm", parent: "armR", size: [5, 10, 5] },
+  { id: "club", kind: "weapon", parent: "foreArmR", size: [8, 15, 8] },
+  { id: "legL", kind: "leg", parent: "body", size: [6, 8, 6] },
+  { id: "legR", kind: "leg", parent: "body", size: [6, 8, 6] },
+] as const;
 
 /** World position of a part's box point (-1..1 per axis) under a pose. */
 function boxPoint(rig: RigSpec, id: string, at: [number, number, number], pose: Map<string, THREE.Matrix4>) {
@@ -94,6 +106,115 @@ describe("Foamer rigs", () => {
         expect(inkSeen, `${rig.id}.${p.id}`).toBe(true);
         expect(whiteXs.size, `${rig.id}.${p.id}`).toBeGreaterThanOrEqual(6); // two eyes, 3 each
       }
+  });
+
+  it("eyeScale enlarges only painted eyes, not the part volume", () => {
+    const head = RIGS.find((entry) => entry.id === "F01")!.parts.find((part) => part.id === "head")!;
+    const plain = { ...head, eyeScale: 1 };
+    const big = { ...head, eyeScale: 1.3 };
+    const count = (part: PartSpec, wanted: number) => {
+      const volume = new VoxelVolume(0.05);
+      buildPartVolume(volume, part, "foam-lime");
+      let n = 0;
+      for (let y = 0; y < part.size[1]; y++) for (let z = 0; z < part.size[2]; z++) for (let x = 0; x < part.size[0]; x++)
+        if (volume.get(x, y, z) && (!wanted || volume.get(x, y, z) === wanted)) n++;
+      return n;
+    };
+    expect(count(big, 0)).toBe(count(plain, 0));
+    expect(count(big, materialId("foam-white"))).toBeGreaterThan(count(plain, materialId("foam-white")));
+  });
+
+  it("shag changes only surface paint, not the part volume", () => {
+    const body = RIGS.find((entry) => entry.id === "F01")!.parts.find((part) => part.id === "body")!;
+    const plain = new VoxelVolume(0.05), shag = new VoxelVolume(0.05);
+    buildPartVolume(plain, { ...body, shag: false }, "foam-lime");
+    buildPartVolume(shag, { ...body, shag: true }, "foam-lime");
+    let different = 0;
+    for (let y = 0; y < body.size[1]; y++) for (let z = 0; z < body.size[2]; z++) for (let x = 0; x < body.size[0]; x++) {
+      expect(Boolean(shag.get(x, y, z))).toBe(Boolean(plain.get(x, y, z)));
+      if (shag.get(x, y, z) !== plain.get(x, y, z)) different++;
+    }
+    expect(different).toBeGreaterThan(0);
+  });
+
+  it("F01, F02 and F05 use only the palette trio and foam accents", () => {
+    const roles = {
+      F01: ["foam-lime", "foam-purple", "foam-orange"],
+      F02: ["foam-orange", "foam-purple", "foam-lime"],
+      F05: ["foam-purple-deep", "foam-lime", "foam-orange"],
+    } as const;
+    const allowed = new Set([
+      "foam-purple", "foam-purple-light", "foam-purple-deep", "foam-orange", "foam-orange-light", "foam-orange-deep",
+      "foam-lime", "foam-lime-light", "foam-lime-deep", "foam-white", "foam-ink", "foam-core",
+    ]);
+    for (const [id, trio] of Object.entries(roles)) {
+      const rig = RIGS.find((entry) => entry.id === id)!;
+      const counts = new Map<string, number>();
+      for (const part of rig.parts) {
+        const volume = new VoxelVolume(rig.voxelSize);
+        buildPartVolume(volume, part, rig.material);
+        const name = part.material ?? rig.material;
+        expect(allowed.has(name), `${id}.${part.id}: ${name}`).toBe(true);
+        for (let y = 0; y < part.size[1]; y++) for (let z = 0; z < part.size[2]; z++) for (let x = 0; x < part.size[0]; x++)
+          if (volume.get(x, y, z)) counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+      const total = trio.reduce((sum, name) => sum + (counts.get(name) ?? 0), 0);
+      for (const name of trio) expect(counts.get(name), `${id} has ${name}`).toBeGreaterThan(0);
+      expect(counts.get(trio[0])! / total, `${id} primary share`).toBeGreaterThan(0.45);
+      expect(counts.get(trio[0])! / total, `${id} primary share`).toBeLessThan(0.7);
+      expect(counts.get(trio[1])! / total, `${id} secondary share`).toBeGreaterThan(0.2);
+      expect(counts.get(trio[1])! / total, `${id} secondary share`).toBeLessThan(0.45);
+      expect(counts.get(trio[2])! / total, `${id} third share`).toBeGreaterThan(0.05);
+      expect(counts.get(trio[2])! / total, `${id} third share`).toBeLessThan(0.2);
+    }
+    const body = RIGS.find((entry) => entry.id === "F05")!.parts.find((part) => part.id === "body")!;
+    const count = (part: PartSpec) => {
+      const volume = new VoxelVolume(0.05);
+      buildPartVolume(volume, part, "foam-purple-deep");
+      let n = 0;
+      for (let y = 0; y < part.size[1]; y++) for (let z = 0; z < part.size[2]; z++) for (let x = 0; x < part.size[0]; x++)
+        if (volume.get(x, y, z)) n++;
+      return n;
+    };
+    expect(count(body), "gapeScale opens more of the face").toBeLessThan(count({ ...body, gapeScale: 1 }));
+  });
+
+  it("F01 keeps the greybox gameplay contract and original proportions", () => {
+    const rig = RIGS.find((entry) => entry.id === "F01")! as RigSpec & { health: number };
+    expect(rig.speed).toBe(1.0);
+    expect(rig.health).toBe(6);
+    expect(rig.parts.map((p) => [p.id, p.kind, p.parent])).toEqual(ORIGINAL_F01_PARTS.map((p) => [p.id, p.kind, p.parent]));
+    expect(rigHeight(rig)).toBeGreaterThanOrEqual(1.3 * 0.8);
+    expect(rigHeight(rig)).toBeLessThanOrEqual(1.3 * 1.2);
+    for (const original of ORIGINAL_F01_PARTS) {
+      const part = rig.parts.find((p) => p.id === original.id)!;
+      for (let axis = 0; axis < 3; axis++) {
+        expect(part.size[axis], `F01.${part.id}[${axis}]`).toBeGreaterThanOrEqual(original.size[axis] * 0.8);
+        expect(part.size[axis], `F01.${part.id}[${axis}]`).toBeLessThanOrEqual(original.size[axis] * 1.2);
+      }
+    }
+    expect(rig.parts.find((p) => p.id === "club")?.parent).toBe("foreArmR");
+    expect(rig.parts.find((p) => p.id === "head")?.mouth).toBe("grin");
+  });
+
+  it("renders F01 to valid deterministic PNGs", () => {
+    const rig = RIGS.find((entry) => entry.id === "F01")!;
+    const first = renderRigViews(rig);
+    const second = renderRigViews(rig);
+    const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+    for (const view of VIEWS) {
+      const png = encodePng(first[view]);
+      expect([...png.subarray(0, 8)]).toEqual(signature);
+      const header = new DataView(png.buffer, png.byteOffset, png.byteLength);
+      expect(header.getUint32(16)).toBe(VIEW_SIZE);
+      expect(header.getUint32(20)).toBe(VIEW_SIZE);
+      expect(encodePng(second[view])).toEqual(png);
+    }
+    const sheet = encodePng(renderSheet(rig, first));
+    const header = new DataView(sheet.buffer, sheet.byteOffset, sheet.byteLength);
+    expect(header.getUint32(16)).toBe(VIEW_SIZE * 4);
+    expect(header.getUint32(20)).toBe(VIEW_SIZE + 58);
+    expect(encodePng(renderSheet(rig, second))).toEqual(sheet);
   });
 
   it("every movement style gives finite poses and ground speeds over a full minute", () => {
