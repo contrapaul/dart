@@ -88,15 +88,17 @@ export function decideF01(
       return out;
     }
     case "approach": {
-      out.move = "followPath";
-      out.wantsToken = dist <= input.attackRange;
-      if (input.hasToken && dist <= input.attackRange) {
-        // It may attack: the Foamer's windup takes over from here.
-        out.move = "stand";
+      if (input.hasToken) {
+        // With a token it walks all the way in and stands for the attack.
+        out.move = dist <= input.attackRange ? "stand" : "followPath";
         return out;
       }
-      if (!input.hasToken && dist <= input.attackRange) {
-        // In reach but without a token: back off to holdRange and wait.
+      // Without one it holds at holdRange, so it does not crowd the player
+      // and then bounce back out: approach hands over at holdRange, not at
+      // attackRange, and hold only gives up once the player is a margin past
+      // holdRange. Both sides of the boundary then agree on one distance.
+      out.move = "followPath";
+      if (dist <= input.holdRange) {
         out.state = "hold";
         out.move = circleSide(agentId);
         out.wantsToken = true;
@@ -106,10 +108,13 @@ export function decideF01(
     case "hold": {
       out.wantsToken = true;
       out.move = circleSide(agentId);
-      // A token, or the player walking away, sends it back to approach.
-      if (input.hasToken || dist > input.holdRange) {
+      // A token, or the player walking a margin past holdRange, sends it
+      // back to approach. The margin is the hysteresis that stops the pair
+      // of states flapping at the boundary.
+      if (input.hasToken || dist > input.holdRange + BRAIN.holdExitMarginMetres) {
         out.state = "approach";
-        out.move = "followPath";
+        out.wantsToken = !input.hasToken;
+        out.move = input.hasToken && dist <= input.attackRange ? "stand" : "followPath";
       }
       return out;
     }
@@ -120,11 +125,11 @@ export function decideF01(
  * The bid for a token: closer agents win, an agent in view beats one that is
  * not, and every second of waiting adds to the score so no Foamer starves
  * (the director grants to the highest score). `waited` is seconds spent
- * asking without a token.
+ * asking without a token. The three weights are data/ai.json brain values.
  */
 export function tokenScore(distance: number, lineOfSight: boolean, waited: number): number {
-  const closeness = 1 / Math.max(distance, 0.5);
-  return closeness + (lineOfSight ? 1 : 0) + waited * 0.5;
+  const closeness = 1 / Math.max(distance, BRAIN.tokenMinDistanceMetres);
+  return closeness + (lineOfSight ? BRAIN.tokenSightScore : 0) + waited * BRAIN.tokenWaitPerSecond;
 }
 
 /** Ask the director while the brain wants a token. True once it holds one. */

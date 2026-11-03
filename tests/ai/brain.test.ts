@@ -242,13 +242,46 @@ describe("F01 approach and hold", () => {
     expect(out.state).toBe("approach");
   });
 
-  it("leaves hold when the player walks away", () => {
+  it("leaves hold only once the player is a margin past holdRange", () => {
     const ctx = ctxFor(0);
-    ctx.input.distance = BRAIN.holdRangeMetres + 1;
     const out: F01Decision = { state: "hold", move: "stand", wantsToken: false };
+    // Past holdRange but inside the margin: still holding, so the two states
+    // do not trade the same distance back and forth.
+    ctx.input.distance = BRAIN.holdRangeMetres + BRAIN.holdExitMarginMetres - 0.1;
+    decideF01("hold", 1, ctx.input, 0, out);
+    expect(out.state).toBe("hold");
+    ctx.input.distance = BRAIN.holdRangeMetres + BRAIN.holdExitMarginMetres + 0.1;
     decideF01("hold", 1, ctx.input, 0, out);
     expect(out.state).toBe("approach");
     expect(out.move).toBe("followPath");
+  });
+
+  it("does not oscillate when a tokenless agent follows its own intent", () => {
+    // The distance follows the movement intent: while it follows the path it
+    // closes in, while it circles it keeps the distance it has. A tokenless
+    // agent must settle in hold and stay there.
+    const id = 0;
+    const ctx = ctxFor(id);
+    ctx.input.lineOfSight = true;
+    const brain = makeF01Brain("approach", 64);
+    let distance = 8;
+    for (let s = 0; s < Math.round(5 / DT); s++) {
+      ctx.input.distance = distance;
+      ctx.input.hasToken = false;
+      brain.update(DT, ctx);
+      // The distance follows the intent: approach closes at 1.5 m/s, hold
+      // steps out to its ring at the same speed, and circling keeps it there.
+      const speed = 1.5 * DT;
+      if (brain.state === "approach") distance = Math.max(0, distance - speed);
+      else if (distance < BRAIN.holdRangeMetres) {
+        distance = Math.min(BRAIN.holdRangeMetres, distance + speed);
+      }
+    }
+    expect(brain.state).toBe("hold");
+    // It entered hold once and stayed: no flapping at the boundary.
+    const holds = brain.statesEntered().filter((s) => s === "hold").length;
+    expect(holds).toBe(1);
+    expect(brain.transitions).toBe(1);
   });
 });
 

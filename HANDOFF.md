@@ -131,6 +131,17 @@ is not yet read from the rig; 3b wires it. Stages 3b and the range overlay
 (the Nav grid switch, the per Foamer path lines, the director `stats()` in
 the report) are still to do after GAME-11 merges.
 
+Review fixes (same entry): approach without a token now hands over to hold at
+`holdRange` instead of `attackRange`, and hold only returns to approach on a
+token or once the player is past `holdRange + holdExitMarginMetres` (new data
+value, 1.0 m), so a tokenless Foamer settles at 2.2 m instead of walking in
+and being told to hold and approach on alternate steps. With a token,
+approach walks to `attackRange` and stands. `tokenScore`'s three weights moved
+to `data/ai.json` brain (`tokenMinDistanceMetres` 0.5, `tokenSightScore` 1,
+`tokenWaitPerSecond` 0.5, each in the `_note`) and are read from `BRAIN`. New
+test: a tokenless agent whose distance follows its own intent enters hold
+once and stays for 5 s (one transition, no flapping).
+
 ### 2026-11-03: ENG-08 stage 2 (DeepSeek V4.1 Flash)
 
 Grid navigation and steering: `src/ai/nav-grid.ts`, `src/ai/steer.ts`, the

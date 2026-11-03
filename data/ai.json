@@ -1,12 +1,16 @@
 {
   "_note": "AI director (ENG-08 stage 1), navigation (stage 2) and the Foamer brain (stage 3). Units: seconds, counts, metres, degrees. Attack tokens: a Foamer may only attack while it holds a token of its attack kind, so only a few Foamers attack at once and arenas stay intense but fair (PLAN.md 4.3).",
   "brain": {
-    "_note": "The Foamer brain (ENG-08 stage 3): idle, alert, approach, hold, then the attack and damage states the Foamer already had. sightRangeMetres: an idle Foamer goes alert when the player is this close and in line of sight. alertRadiusMetres: an idle Foamer also goes alert when another Foamer this close goes alert, so a fight spreads through the room. alertTimeSeconds: the telegraph at the start of alert, a head turn to the player, before it moves. repathSeconds: how often an approaching Foamer asks the nav grid for a new path (it also re-paths when the grid re-bakes). holdRangeMetres: without an attack token a Foamer circles the player at this distance instead of crowding, and asks for a token again every step.",
+    "_note": "The Foamer brain (ENG-08 stage 3): idle, alert, approach, hold, then the attack and damage states the Foamer already had. sightRangeMetres: an idle Foamer goes alert when the player is this close and in line of sight. alertRadiusMetres: an idle Foamer also goes alert when another Foamer this close goes alert, so a fight spreads through the room. alertTimeSeconds: the telegraph at the start of alert, a head turn to the player, before it moves. repathSeconds: how often an approaching Foamer asks the nav grid for a new path (it also re-paths when the grid re-bakes). holdRangeMetres: without an attack token a Foamer circles the player at this distance instead of crowding, and asks for a token again every step. holdExitMarginMetres: a holding Foamer only goes back to approach once the player is this far past holdRange, so the two states do not flap back and forth at the boundary. tokenMinDistanceMetres: a bid scores closeness as 1 / max(distance, this), so a Foamer standing on the player does not win by an unbounded margin. tokenSightScore: the score a bid adds when the player is in line of sight. tokenWaitPerSecond: the score a bid adds for every second spent asking without a token, so no Foamer starves.",
     "sightRangeMetres": 20,
     "alertRadiusMetres": 8,
     "alertTimeSeconds": 0.4,
     "repathSeconds": 0.5,
-    "holdRangeMetres": 2.2
+    "holdRangeMetres": 2.2,
+    "holdExitMarginMetres": 1.0,
+    "tokenMinDistanceMetres": 0.5,
+    "tokenSightScore": 1,
+    "tokenWaitPerSecond": 0.5
   },
   "default": "normal",
   "maxAgents": 64,
