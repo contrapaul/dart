@@ -75,11 +75,16 @@ export class ArenaRunner {
 
   get state(): ArenaState {
     const total = Math.max(1, this.arena.waves.length);
+    // "cleared" counts the waves that are done: all of them once the arena
+    // is clear, otherwise every wave before the one being fought.
+    const cleared = this.phase === "cleared"
+      ? this.arena.waves.length
+      : Math.max(0, this.waveIndex);
     return {
       phase: this.phase,
       waveIndex: this.waveIndex,
-      cleared: this.waveIndex >= 0 ? this.waveIndex + (this.phase === "cleared" ? 1 : 0) : 0,
-      progress: this.phase === "cleared" ? 1 : (this.waveIndex + 1) / total,
+      cleared,
+      progress: Math.min(1, cleared / total),
     };
   }
 

@@ -26,7 +26,7 @@ import { MesherPool } from "../voxel/mesher-pool";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
 import rangeJson from "../../data/range.json";
-import foamerData from "../../data/foamers.json";
+import { damageOf } from "../game/attack";
 import dartsJson from "../../data/darts.json";
 import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
@@ -96,10 +96,6 @@ const player = new PlayerController(rapier, world, SPAWN_POSE);
 // UI-01 stage 1: health on the range too, with a God mode switch. The
 // attack damage comes from data/foamers.json (attacks[].damage).
 const health = new PlayerHealth();
-const ATTACK_DAMAGE = new Map<string, number>(
-  (foamerData.test as unknown as { attacks: { id: string; damage: number }[] })
-    .attacks.map((a) => [a.id, a.damage]),
-);
 const darts = new DartSystem(scene, world, rapier, player.collider);
 // Sound (AUD-01 stage 2): the engine opens on the first click (the range Play
 // button, or the canvas), and GameSounds gets it as its sink. The panel's
@@ -150,7 +146,7 @@ foamers.spawnState = "idle"; // range spawns start idle, so the sight test works
 scene.add(foamers.group);
 foamers.onBonk = (_f, attack) => {
   if (switches.godMode || paused) return;
-  const lost = health.damage(ATTACK_DAMAGE.get(attack) ?? 0, attack);
+  const lost = health.damage(damageOf(attack), attack);
   if (lost <= 0) return;
   hud.onHit();
 };

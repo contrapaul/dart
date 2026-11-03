@@ -24,8 +24,9 @@ import { FallingPieces } from "./voxel/pieces";
 import { createFoamMaterial } from "./render/foam-material";
 import { AudioEngine } from "./audio/audio";
 import { GameSounds } from "./audio/game-sounds";
+import { carveBounds } from "./game/shared";
+import { damageOf } from "./game/attack";
 import renderJson from "../data/render.json";
-import foamerData from "../data/foamers.json";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -177,10 +178,6 @@ const eye = new THREE.Vector3();
 // UI-01 stage 1: the player's health. The damage of each Foamer attack comes
 // from data/foamers.json (attacks[].damage), looked up by id on the bonk.
 const health = new PlayerHealth();
-const ATTACK_DAMAGE = new Map<string, number>(
-  (foamerData.test as unknown as { attacks: { id: string; damage: number }[] })
-    .attacks.map((a) => [a.id, a.damage]),
-);
 
 // UI-01 stage 2: one settings store (localStorage, defaults on failure),
 // applied live to look, FOV, volume and damage taken. The panels subscribe
@@ -234,20 +231,11 @@ pieces.onRest = (c, r) => levelAI.pieceRested(c, r);
 impacts.onCarve = (target, removed) => {
   if (target !== voxelMesh) return;
   pieces.afterCarve(voxelMesh, removed);
-  // The grid re-bakes only where the carve was (ENG-08 stage 3b). The
-  // removed voxels are in the volume's own coordinates: convert the box's
-  // two corners to the world.
-  if (removed.length === 0) return;
-  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
-  for (const v of removed) {
-    if (v.x < x0) x0 = v.x;
-    if (v.x > x1) x1 = v.x;
-    if (v.z < z0) z0 = v.z;
-    if (v.z > z1) z1 = v.z;
-  }
-  const a = voxelMesh.voxelToWorld(_carveA.set(x0, 0, z0));
-  const b = voxelMesh.voxelToWorld(_carveB.set(x1, 0, z1));
-  levelAI.carveChanged(a.x, a.z, b.x, b.z);
+  // The grid re-bakes only where the carve was (ENG-08 stage 3b); the
+  // removed voxels are in the volume's own coordinates and carveBounds
+  // turns them into the world patch (src/game/shared.ts).
+  const box = carveBounds(voxelMesh, removed);
+  if (box) levelAI.carveChanged(box[0], box[1], box[2], box[3]);
 };
 // Foamer system: spawn, bonk, dart damage, pop. This is the first enemy,
 // GAME-03.
@@ -269,7 +257,7 @@ const logBonk = foamers.onBonk;
 foamers.onBonk = (f, attack) => {
   logBonk(f, attack);
   if (paused) return;
-  const lost = health.damage(ATTACK_DAMAGE.get(attack) ?? 0, attack);
+  const lost = health.damage(damageOf(attack), attack);
   if (lost <= 0) return;
   hud.onHit();
   if (health.dead) playerPopped();
@@ -279,8 +267,6 @@ foamers.onBonk = (f, attack) => {
 const _muzzleCam = new THREE.Vector3();
 const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
-const _carveA = new THREE.Vector3();
-const _carveB = new THREE.Vector3();
 const _playerPos = new THREE.Vector3();
 const _rot = new THREE.Quaternion();
 

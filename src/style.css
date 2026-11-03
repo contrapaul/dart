@@ -162,7 +162,8 @@ body {
    full screen with a chunky toy-like panel. Foam colours, no red. The
    overlay keeps pointer-events none, so its Settings button re-enables
    them for itself. */
-#overlay button {
+#overlay button,
+#overlay p.links {
   pointer-events: auto;
   margin-top: 1rem;
 }
@@ -317,4 +318,9 @@ body {
 #popped button:hover,
 #popped button:focus-visible {
   background: #ff9a4d;
+}
+
+/* The overlay's link to the arena page (LVL-01). */
+#overlay p.links a {
+  color: #ffd23f;
 }

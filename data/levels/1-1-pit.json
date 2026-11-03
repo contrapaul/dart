@@ -38,6 +38,8 @@
       "size": [4, 4.5, 1], "material": "greybox" },
     { "id": "doorway-s-lintel", "shape": "box", "pos": [0, 8.25, -13.5],
       "size": [4, 1.5, 1], "material": "greybox" },
+    { "id": "doorway-s-sill", "shape": "box", "pos": [0, 2, -13.5],
+      "size": [4, 4, 1], "material": "greybox" },
 
     { "id": "corridor-floor", "shape": "box", "pos": [0, 3.5, -19],
       "size": [4, 1, 10], "material": "greybox-dark" },
