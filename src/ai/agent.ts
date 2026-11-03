@@ -140,13 +140,15 @@ export class FoamerAgent {
    * a stale bid (the director sets a waiting agent free at once). It wants
    * one when the brain says so (hold, or approach at the ring), when a crawl
    * is in reach, while it is in an attack (keepToken: the brain stops
-   * flagging one the moment it holds it), and along an approach, which keeps
-   * the token it won on the walk in. Idle, alert and a far approach do not.
+   * flagging one the moment it holds it), and along an approach that already
+   * holds one, which keeps the token it won on the walk in. Idle, alert and
+   * an approach without a token do not bid: a Foamer far off must not win a
+   * token and carry it the whole way while closer ones hold.
    */
   private ask(input: AgentInput): void {
     const i = this.ctx.input;
     this.wants = this.ctx.decision.wantsToken || input.crawlInReach ||
-      input.keepToken || this.state === "approach";
+      input.keepToken || (this.state === "approach" && i.hasToken);
     if (!this.director) return;
     if (this.wants) {
       i.hasToken = this.director.request(
