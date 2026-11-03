@@ -347,19 +347,21 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       if (input.wasPressed("weaponPrev")) loadout.prev();
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
       updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+      // No shooting while a finisher holds the player (GAME-07 review).
+      const canFire = !finisher.active;
       loadout.update(
         dt,
         {
-          fireHeld: input.isDown("fire"),
-          firePressed: input.wasPressed("fire"),
+          fireHeld: canFire && input.isDown("fire"),
+          firePressed: canFire && input.wasPressed("fire"),
           reloadPressed: input.wasPressed("reload"),
         },
         _aimDir,
       );
       // The blaster, player and level hooks, one step per fixed step.
       audio.sounds?.update(dt, {
-        fireHeld: input.isDown("fire"),
-        firePressed: input.wasPressed("fire"),
+        fireHeld: canFire && input.isDown("fire"),
+        firePressed: canFire && input.wasPressed("fire"),
         reloadPressed: input.wasPressed("reload"),
         sprintHeld: input.isDown("sprint"),
       });

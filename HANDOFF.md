@@ -120,6 +120,25 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: GAME-07 review, finisher played in watch mode (Claude)
+
+- Played on `index.html?watch`: shot a Slowmer to the weakened stagger,
+  walked up, the F prompt showed, the finisher held the view, squeezed
+  and popped it, and the three health blobs drifted in and healed 60 to
+  90.
+- Fixed: a dart burst that popped the target mid-finisher made the
+  finisher pop it again on bodies already freed, which crashed Rapier
+  ("recursive use of an object"). The finisher now stands down when its
+  target has left the finish state, and the blaster cannot fire while a
+  finisher holds the player. Test 5.
+- Fixed: the view cone (cos 0.98) was measured to the chest, so at 1.5 m
+  looking at the head (18 degrees above the chest) gave no finisher. It
+  is now measured to the Foamer's upright line at the height the view
+  crosses it. Test 6.
+- Not decided: the player is not protected during the 0.8 s finisher, so
+  another Foamer can still bonk. The modern Doom games make the player
+  safe during a finisher; worth a call by Paul.
+
 ### 2026-11-03: GAME-07 the Pop finisher and the health drops (Qwen3.8-27B via Pi)
 
 - **The weakened stagger** (`src/foamers/`). A hit that pushes a live

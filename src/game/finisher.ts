@@ -31,11 +31,18 @@ export class Finisher {
     private pickups: PickupSystem,
   ) {}
 
-  /** The chest is where the view aims and where both the reach and the
-   *  cone are measured. out must not be eye or forward. */
+  /** The reach is measured to the chest. The cone is measured to the point
+   *  of the Foamer's upright line (feet to top) at the height the view
+   *  passes it, so looking at its head or its knees up close counts, not
+   *  only its chest (GAME-07 review: at 1.5 m the head is 18 degrees off
+   *  the chest). out must not be eye or forward. */
   attempt(f: Foamer, eye: THREE.Vector3, forward: THREE.Vector3, out: THREE.Vector3) {
-    const d = out.set(f.centre.x + 0, f.centre.y + f.height * 0.6, f.centre.z).distanceTo(eye);
+    const d = out.set(f.centre.x, f.centre.y + f.height * 0.6, f.centre.z).distanceTo(eye);
     if (d > F.reach) return false;
+    const flat = Math.hypot(f.centre.x - eye.x, f.centre.z - eye.z);
+    const along = Math.hypot(forward.x, forward.z);
+    const viewY = along > 1e-6 ? eye.y + (forward.y / along) * flat : eye.y;
+    out.y = THREE.MathUtils.clamp(viewY, f.centre.y, f.centre.y + f.height);
     out.sub(eye).normalize();
     return out.dot(forward) >= F.coneCos;
   }
@@ -63,6 +70,13 @@ export class Finisher {
   update(dt: number, player: PlayerController): Foamer | null {
     const f = this.target;
     if (!f) return null;
+    // Something else ended it first (a dart burst popped it, or it went
+    // down): stand down. Popping it again would free bodies that are gone.
+    if (f.state !== "finish" || !this.foamers.list.includes(f)) {
+      this.active = false;
+      this.target = null;
+      return null;
+    }
     this.t += dt;
     const k = Math.min(1, this.t / F.turnTime);
     const ease = k * k * (3 - 2 * k);

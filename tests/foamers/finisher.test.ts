@@ -193,4 +193,37 @@ describe("GAME-07: the weakened stagger and the finisher", () => {
       expect(t.y).toBeLessThan(1);
     }
   });
+  it("5. a target popped by something else mid-finisher is not popped again", async () => {
+    // Found in review: the blaster could still fire during a finisher, and
+    // a burst that popped the target left the finisher popping a Foamer
+    // whose bodies were already gone.
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 12))!;
+    await settle(f.parts.get("body")!.mesh, r.world);
+    f.state = "stagger";
+    const eye0 = new THREE.Vector3(f.centre.x, f.centre.y + f.height * 0.6, 14);
+    r.finisher.start(f, r.player, eye0);
+    r.finisher.update(DT, r.player);
+    r.foamers.pop(f);
+    let steps = 0;
+    expect(() => {
+      while (r.finisher.active && steps++ < 300) {
+        r.finisher.update(DT, r.player);
+        r.foamers.update(DT, eye0);
+        r.world.step();
+      }
+    }).not.toThrow();
+    expect(r.finisher.active).toBe(false);
+    expect(r.foamers.stats.popped).toBe(1);
+    expect(r.pickups.count("health")).toBe(0);
+  });
+  it("6. up close, looking at the head counts and looking well aside does not", () => {
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 12))!;
+    const eye0 = new THREE.Vector3(0, 1.6, 13.5);
+    const head = new THREE.Vector3(0, f.centre.y + f.height * 0.95, 12).sub(eye0).normalize();
+    expect(r.finisher.attempt(f, eye0, head, new THREE.Vector3())).toBe(true);
+    const aside = head.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.5);
+    expect(r.finisher.attempt(f, eye0, aside, new THREE.Vector3())).toBe(false);
+  });
 });
