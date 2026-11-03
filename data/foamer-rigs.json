@@ -20,7 +20,8 @@
                     15,
                     12
                 ],
-                "parent": null
+                "parent": null,
+                "shag": true
             },
             {
                 "id": "head",
@@ -43,7 +44,12 @@
                     -0.4
                 ],
                 "eyes": "round",
+                "eyeScale": 1.35,
                 "mouth": "grin",
+                "taper": [
+                    1.65,
+                    1.65
+                ],
                 "nubs": [
                     [
                         0,
@@ -51,14 +57,14 @@
                         0
                     ],
                     [
-                        -0.8,
-                        0.6,
-                        0
+                        -1,
+                        0.1,
+                        0.2
                     ],
                     [
-                        0.8,
-                        0.6,
-                        0
+                        1,
+                        0.1,
+                        0.2
                     ]
                 ]
             },
@@ -245,7 +251,7 @@
                 "shape": "ellipsoid",
                 "size": [
                     10,
-                    9,
+                    11,
                     10
                 ],
                 "parent": "body",
@@ -260,6 +266,7 @@
                     -0.2
                 ],
                 "eyes": "angry",
+                "eyeScale": 1.15,
                 "mouth": "grin"
             },
             {
@@ -366,7 +373,7 @@
                     0
                 ],
                 "rest": [
-                    -0.3,
+                    -2.15,
                     0,
                     0
                 ],
@@ -870,112 +877,54 @@
                 "gapeScale": 1.25
             },
             {
-                "id": "chestL",
+                "id": "chest",
                 "kind": "ability",
-                "shape": "box",
+                "shape": "ellipsoid",
                 "size": [
-                    5,
-                    3,
-                    10
+                    18,
+                    7,
+                    14
                 ],
                 "parent": "body",
                 "at": [
-                    -0.75,
-                    -0.05,
-                    0.45
+                    0,
+                    -0.8,
+                    -0.48
                 ],
                 "pivot": [
                     0,
                     0,
                     -1
                 ],
-                "material": "foam-lime"
-            },
-            {
-                "id": "chestR",
-                "kind": "ability",
-                "shape": "box",
-                "size": [
-                    5,
-                    3,
-                    10
-                ],
-                "parent": "body",
-                "at": [
-                    0.75,
-                    -0.05,
-                    0.45
-                ],
-                "pivot": [
-                    0,
-                    0,
-                    -1
-                ],
-                "material": "foam-lime"
-            },
-            {
-                "id": "bellyL",
-                "kind": "ability",
-                "shape": "box",
-                "size": [
-                    5,
-                    4,
-                    10
-                ],
-                "parent": "body",
-                "at": [
-                    -0.75,
-                    -0.72,
-                    0.45
-                ],
-                "pivot": [
-                    0,
-                    0,
-                    -1
-                ],
-                "material": "foam-lime"
-            },
-            {
-                "id": "bellyR",
-                "kind": "ability",
-                "shape": "box",
-                "size": [
-                    5,
-                    4,
-                    10
-                ],
-                "parent": "body",
-                "at": [
-                    0.75,
-                    -0.72,
-                    0.45
-                ],
-                "pivot": [
-                    0,
-                    0,
-                    -1
+                "taper": [
+                    0.65,
+                    1
                 ],
                 "material": "foam-lime"
             },
             {
                 "id": "brow",
                 "kind": "ability",
-                "shape": "box",
+                "shape": "ellipsoid",
                 "size": [
-                    20,
-                    3,
-                    10
+                    16,
+                    4,
+                    12
                 ],
                 "parent": "body",
                 "at": [
                     0,
-                    0.78,
-                    0.45
+                    0.45,
+                    -0.18
                 ],
                 "pivot": [
                     0,
                     0,
                     -1
+                ],
+                "taper": [
+                    1,
+                    0.55
                 ],
                 "material": "foam-lime"
             },

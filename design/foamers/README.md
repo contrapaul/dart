@@ -6,9 +6,9 @@ artwork.
 
 | Foamer | Silhouette and palette |
 | --- | --- |
-| F01 Slowmer | Round lime body and head, purple limbs, orange right-hand club. Rounded head nubs, round eyes and a wide toothless grin. |
-| F02 Roamer | Lean orange body, purple limbs, lime back satchel and an orange foam ball. Angry eyes and a throwing stance. |
-| F05 Darter | One large deep-purple body and head, two stout legs, lime brow, chest and belly armour, and an orange back weak point. Small angry eyes and a large toothless gape. |
+| F01 Slowmer | Round lime body and head, purple limbs, orange right-hand club. Light foam shag over the body, rounded head nubs, big round cream eyes and a separate toothless grin. |
+| F02 Roamer | Lean orange body, purple limbs, lime back satchel and an orange foam ball held at shoulder height. Angry cream eyes, a separate ink grin and a raised throwing forearm. |
+| F05 Darter | One large deep-purple body and head, two stout legs, curved lime brow and chest plates fitted to the body, and an orange back weak point. Small eyes and a large toothless gape. |
 
 Each Foamer has four 512 x 512 views: `front`, `side`, `back` and
 `three-quarter`. Each `sheet.png` places those views side by side at their
@@ -23,6 +23,12 @@ npx tsx tools/render-rig.ts F05
 ```
 
 The renderer uses the real rig volumes and rest pose, material colours and
-built-in Node zlib only. It adds no packages. `PartSpec.gapeScale` scales only
-the painted and hollowed gape, not the collision box; Darter uses it to keep
-its mouth readable between the armour plates.
+built-in Node zlib only. It adds no packages. Projected faces overlap slightly
+and pixel centres are sampled explicitly, so adjacent voxel faces leave no
+background cracks. A uniform face shade avoids false stripes from exposed
+voxel rows.
+
+`PartSpec.gapeScale` scales only the painted and hollowed gape, not the
+collision box. `PartSpec.eyeScale` changes only eye paint. `PartSpec.shag`
+adds light surface paint without changing occupied voxels; Slowmer uses it
+for body shag while preserving its combat volume.

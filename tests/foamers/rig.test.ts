@@ -108,6 +108,34 @@ describe("Foamer rigs", () => {
       }
   });
 
+  it("eyeScale enlarges only painted eyes, not the part volume", () => {
+    const head = RIGS.find((entry) => entry.id === "F01")!.parts.find((part) => part.id === "head")!;
+    const plain = { ...head, eyeScale: 1 };
+    const count = (part: PartSpec, wanted: number) => {
+      const volume = new VoxelVolume(0.05);
+      buildPartVolume(volume, part, "foam-lime");
+      let n = 0;
+      for (let y = 0; y < part.size[1]; y++) for (let z = 0; z < part.size[2]; z++) for (let x = 0; x < part.size[0]; x++)
+        if (volume.get(x, y, z) && (!wanted || volume.get(x, y, z) === wanted)) n++;
+      return n;
+    };
+    expect(count(head, 0)).toBe(count(plain, 0));
+    expect(count(head, materialId("foam-white"))).toBeGreaterThan(count(plain, materialId("foam-white")));
+  });
+
+  it("shag changes only surface paint, not the part volume", () => {
+    const body = RIGS.find((entry) => entry.id === "F01")!.parts.find((part) => part.id === "body")!;
+    const plain = new VoxelVolume(0.05), shag = new VoxelVolume(0.05);
+    buildPartVolume(plain, { ...body, shag: false }, "foam-lime");
+    buildPartVolume(shag, { ...body, shag: true }, "foam-lime");
+    let different = 0;
+    for (let y = 0; y < body.size[1]; y++) for (let z = 0; z < body.size[2]; z++) for (let x = 0; x < body.size[0]; x++) {
+      expect(Boolean(shag.get(x, y, z))).toBe(Boolean(plain.get(x, y, z)));
+      if (shag.get(x, y, z) !== plain.get(x, y, z)) different++;
+    }
+    expect(different).toBeGreaterThan(0);
+  });
+
   it("F01, F02 and F05 use only the palette trio and foam accents", () => {
     const roles = {
       F01: ["foam-lime", "foam-purple", "foam-orange"],

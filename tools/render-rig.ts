@@ -21,9 +21,9 @@ type Image = { width: number; height: number; pixels: Uint8Array };
 const YAWS: Record<View, number> = { front: 0, side: Math.PI / 2, back: Math.PI, "three-quarter": Math.PI / 4 };
 const CORNERS = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]];
 const FACE_DATA = [
-  { n: [1, 0, 0], c: [1, 5, 6, 2], shade: 0.78 }, { n: [-1, 0, 0], c: [4, 0, 3, 7], shade: 0.66 },
-  { n: [0, 1, 0], c: [3, 2, 6, 7], shade: 1.12 }, { n: [0, -1, 0], c: [4, 5, 1, 0], shade: 0.55 },
-  { n: [0, 0, 1], c: [5, 4, 7, 6], shade: 0.94 }, { n: [0, 0, -1], c: [0, 1, 2, 3], shade: 0.72 },
+  { n: [1, 0, 0], c: [1, 5, 6, 2], shade: 0.9 }, { n: [-1, 0, 0], c: [4, 0, 3, 7], shade: 0.9 },
+  { n: [0, 1, 0], c: [3, 2, 6, 7], shade: 0.9 }, { n: [0, -1, 0], c: [4, 5, 1, 0], shade: 0.9 },
+  { n: [0, 0, 1], c: [5, 4, 7, 6], shade: 0.9 }, { n: [0, 0, -1], c: [0, 1, 2, 3], shade: 0.9 },
 ] as const;
 const NORMAL_MATRIX = new THREE.Matrix3();
 
@@ -83,18 +83,26 @@ function pixel(im: Image, x: number, y: number, color: RGB): void {
   im.pixels[i] = color[0]; im.pixels[i + 1] = color[1]; im.pixels[i + 2] = color[2];
 }
 function fillPolygon(im: Image, points: [number, number][], color: RGB): void {
-  const minY = Math.max(0, Math.ceil(Math.min(...points.map((p) => p[1]))));
-  const maxY = Math.min(im.height - 1, Math.floor(Math.max(...points.map((p) => p[1]))));
+  // Adjacent cube faces must overlap slightly, or pixel-centre sampling leaves
+  // background-coloured cracks along their mathematically shared edges.
+  const cx = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+  const cy = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+  const solid = points.map(([x, y]): [number, number] => {
+    const length = Math.hypot(x - cx, y - cy) || 1;
+    return [x + ((x - cx) / length) * 0.35, y + ((y - cy) / length) * 0.35];
+  });
+  const minY = Math.max(0, Math.ceil(Math.min(...solid.map((p) => p[1])) - 0.5));
+  const maxY = Math.min(im.height - 1, Math.floor(Math.max(...solid.map((p) => p[1])) - 0.5));
   for (let y = minY; y <= maxY; y++) {
     const crossings: number[] = [], py = y + 0.5;
     for (let i = 0; i < points.length; i++) {
-      const a = points[i], b = points[(i + 1) % points.length];
+      const a = solid[i], b = solid[(i + 1) % solid.length];
       if ((py >= a[1] && py < b[1]) || (py >= b[1] && py < a[1]))
         crossings.push(a[0] + ((py - a[1]) / (b[1] - a[1])) * (b[0] - a[0]));
     }
     crossings.sort((a, b) => a - b);
     for (let i = 0; i + 1 < crossings.length; i += 2)
-      for (let x = Math.max(0, Math.ceil(crossings[i])); x <= Math.min(im.width - 1, Math.floor(crossings[i + 1])); x++) pixel(im, x, y, color);
+      for (let x = Math.max(0, Math.ceil(crossings[i] - 0.5)); x <= Math.min(im.width - 1, Math.floor(crossings[i + 1] - 0.5)); x++) pixel(im, x, y, color);
   }
 }
 

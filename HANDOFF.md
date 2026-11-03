@@ -85,6 +85,23 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ART-03 round 2 review fixes (Kimi via Pi)
+
+- Fixed turnaround raster cracks by overlapping projected faces and sampling
+  pixel centres explicitly. Uniform face shading removes the remaining false
+  streaks from exposed voxel rows.
+- Slowmer keeps every original gameplay part box and combat behaviour. Big
+  round cream eyes, a separate grin, head nubs and light body-shag paint give
+  it the requested foam-zombie look. `eyeScale` and `shag` change paint only;
+  body nubs and mixed-material shag were rejected because they broke hits.
+- Roamer now holds its ball at shoulder height with a raised forearm, and has
+  angry cream eyes above a separate ink grin.
+- Darter has one curved chest plate and one curved brow plate fitted into the
+  body, with no floating slabs or overhang. Its gape and orange back remain.
+- Re-rendered and visually checked all 12 views. All 174 active tests,
+  TypeScript checking and the production build pass. Paul's visual approval
+  and in-game framing remain unverified.
+
 ### 2026-11-03: ART-03 Slowmer, Roamer and Darter (Kimi via Pi)
 
 - Added the light and deep purple, orange and lime palette materials and
