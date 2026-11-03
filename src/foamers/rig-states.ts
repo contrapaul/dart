@@ -63,6 +63,28 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
   }
 }
 
+/** Prone crawl (GAME-11): the body lies at proneTilt (proneMotion's job) and
+ *  pulls itself along with its arms, which reach forward in turn, while the
+ *  leg it has left drags. gait advances with distance crawled, as the walk's
+ *  does. It adds to out, so it lays over the prone base pose. The small body
+ *  bob is in pitch, not y: poseParts fits the prone body to the floor and
+ *  would undo a y bob. */
+export function crawlMotion(rig: RigSpec, gait: number, out: RigMotion) {
+  const s = Math.sin(gait * Math.PI);
+  const c = Math.cos(gait * Math.PI);
+  const reach = 0.5;
+  // The arms take turns: one reaches forward as the other pushes back, so
+  // the reach is at rest when they pass each other.
+  if (rig.parts.some((p) => p.id === "armL")) out.rot.set("armL", [-1.4 + reach * s, 0, 0]);
+  if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [-1.4 - reach * s, 0, 0]);
+  if (rig.parts.some((p) => p.id === "foreArmL")) out.rot.set("foreArmL", [-0.6 + reach * 0.5 * s, 0, 0]);
+  if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.6 - reach * 0.5 * s, 0, 0]);
+  // The leg left drags behind, a little out of phase with the arms.
+  for (const id of ["legL", "legR"])
+    if (rig.parts.some((p) => p.id === id)) out.rot.set(id, [-0.5 + 0.12 * c, 0, 0]);
+  out.pitch += 0.05 * s; // the body rocks with the pull
+}
+
 /** Stagger wobble about z. t: seconds since the stagger began. */
 export function staggerMotion(t: number, out: RigMotion) {
   restInto(out);

@@ -301,6 +301,9 @@ for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#sp
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));
 document.querySelector<HTMLButtonElement>("#clearFoamers")!.addEventListener("click", () =>
   foamers.clear());
+// GAME-11: break the nearest living Foamer's left leg, to watch a fall.
+document.querySelector<HTMLButtonElement>("#breakLeg")!.addEventListener("click", () =>
+  foamers.breakLegForTest());
 
 // Report and copy.
 const reportEl = document.querySelector<HTMLPreElement>("#report")!;

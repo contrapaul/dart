@@ -17,6 +17,13 @@ export const GROUP_RAGDOLL = 1 << 4;
 export function groups(membership: number, filter: number) {
   return ((membership << 16) | filter) >>> 0;
 }
+export const GROUP_FOAMER = 1 << 3;
+/** A live Foamer's part boxes: darts and colliders still meet them, but they
+ *  are not part of the world, so a debris piece passes through them. A
+ *  piece breaks off inside the body's own space, and from GAME-11 the body
+ *  then tips over the very spot the piece is flying out of: without this the
+ *  falling hips squashed the piece into the floor. */
+export const FOAMER_GROUPS = groups(GROUP_FOAMER, 0xffff);
 /** Debris touches the world only. The player is still pushed through it by
  *  physics, but character movement queries skip it so it never trips anyone. */
 export const DEBRIS_GROUPS = groups(GROUP_DEBRIS, GROUP_WORLD);

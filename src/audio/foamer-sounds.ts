@@ -91,6 +91,10 @@ export class FoamerSounds {
       case "attack":
         this.sink.play("F01-swing", p);
         break;
+      case "fall":
+        // GAME-11: it toppled, but it is not down, so no fizz-out.
+        this.sink.play("FX-topple", p);
+        break;
       case "down":
         this.sink.play("FX-topple", p);
         if (this.fizz.length >= FIZZ_CAP) this.fizz.shift();

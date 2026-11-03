@@ -51,7 +51,14 @@
       }
     },
     "brokenParts": { "max": 24, "lifetime": 4, "sinkTime": 1, "density": 0.3 },
-    "handicaps": { "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5 },
+    "handicaps": {
+      "_note": "GAME-11. someLegsSpeed: ground speed with some legs gone but still enough to walk. noLegsSpeed: with none left. noHeadTurnRate: turn rate scale with no head. fallBelowLegs: a living Foamer left with fewer legs than this falls over. crawlSpeed: crawl speed as a share of the rig speed. crawlLength: the lying capsule's length as a share of the rig height. fall: the fall is an inverted pendulum about the foot it still stands on, a in radians from upright and a'' = (gravity / pivotHeight) * sin(a). startTilt: the tilt it starts from, so it tips at once. proneTilt: the tilt it lands at. sideShare: share of the tilt that is roll toward the lost leg, the rest is forward pitch. bounce: share of the landing angular speed it bounces back with, once. settle: seconds at rest after the bounce before it crawls.",
+      "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5,
+      "fallBelowLegs": 2,
+      "crawlSpeed": 0.3,
+      "crawlLength": 0.7,
+      "fall": { "startTilt": 0.12, "proneTilt": 1.35, "sideShare": 0.35, "bounce": 0.25, "settle": 0.25 }
+    },
     "attacks": [
       { "id": "bonk", "damage": 12, "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
       { "id": "headbutt", "damage": 8, "needs": [], "windup": 0.9, "strike": 0.2 }

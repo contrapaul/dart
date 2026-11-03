@@ -41,7 +41,9 @@ the player: it walks at you, winds up, and bonks, takes dart damage that
 carves visible chunks and lowers its health, and at zero pops into four
 bursts of foam chunks. A new one walks in about 3 s later from the spawn
 point farthest from the player. Suction darts stick to it and ride along
-while it walks, then drop when it pops. The bonk costs player health (UI-01).
+while it walks, then drop when it pops. The bonk costs player health (UI-01). A Foamer that loses a leg falls
+over and crawls at you, attacking from the ground (GAME-11, merged
+2026-11-03; the range has a Break leg button).
 
 Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
 occlusion into the vertex colours (inside corners, crater floors, the seam
@@ -87,6 +89,122 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: GAME-11 merged (Claude)
+
+- Merged `game-11` into main after Paul's approval. Review: matches the
+  card; the three changed old assertions are right (one lost leg now
+  falls, it no longer limps). One indent restored.
+- Left in code, small: the crawl's arm angles (-1.4, -0.6), the lying
+  capsule's 0.45 m offset and the half turn rate. Move them to
+  `data/foamers.json` when the crawl is tuned by eye.
+- Unverified: the fall and crawl seen in motion. The range needs pointer
+  lock, which the in-app browser cannot take; watch it on the range with
+  Break leg.
+
+### 2026-11-03: GAME-11 stage 2, crawl, attacks from the ground, sound and range button (DeepSeek V4.1 Flash via Pi)
+
+The prone Foamer now moves and fights. `crawlMotion(rig, gait, out)` in
+`src/foamers/rig-states.ts`, the signature the card names, adds the crawl
+to the pose the Foamer already has: the arms reaching forward in turn
+(`-1.4` plus and minus `0.5 * sin(gait * PI)`), the leg it has left
+dragging at `-0.5 + 0.12 * cos`, and a small body rock in pitch. It does
+not set pitch, roll or y itself: `poseParts` calls `proneMotion` for the
+prone tilt first (which splits it with the fall's own `sideShare`, so the
+crawl takes over from exactly where the fall ended and no part turns
+over), then lays the crawl on top. A prone attack lays
+`windupMotion`/`strikeMotion` over the same prone base pose, so it attacks
+from where it lies instead of standing up to do it.
+
+`Foamer.prone` is set by `startFall` and outlives the `crawl` state,
+because the attack states are not prone states: every pose, floor fit and
+reach check asks `prone`, not `state`. Speed is `Foamer.crawlSpeed()` =
+`rig.speed * handicaps.crawlSpeed` (0.3 m/s measured on F01), and the turn
+rate is halved while prone (`CRAWL_TURN` 0.5 in `foamers.ts`). It does not
+turn at all during the fall, which is what the card's "no movement during
+the fall" says.
+
+Reach from the ground uses `Foamer.headPos`, the head's box centre taken
+from the pose the Foamer was just solved into. Both the decision to attack
+and the strike's own `dist <= attackRange + 0.3` check use it while prone,
+so a crawl whose feet are still 1.8 m out attacks as soon as its head is
+in range. With no forearms, `chooseAttack` already fell through to the
+headbutt (`needs: []`), so no new data was needed. A prone Foamer cannot
+stagger: an arm break on the ground only cancels the attack, because a
+stagger would stand it back up.
+
+The fall sound and the lying capsule came in stage 1 (`FoamerSoundKind`
+`fall` -> `FX-topple`, no fizz-out; `setCapsuleLying`), and the range's
+Break leg button and `breakLegForTest()` did too, so stage 2 only had to
+keep them working. Footsteps were already gated on `state === "approach"`
+in `src/audio/foamer-sounds.ts`, which covers the fall and the crawl; test
+7 now pins that.
+
+Tests: card 4 (closing speed within 15% of `rig.speed * crawlSpeed` and an
+attack in range, then the same crawl with both forearms gone headbutting),
+6 (a crawling Foamer killed by darts ragdolls and stays down; the test also
+covers a kill mid-fall) and 7 (`onSound` gets `fall` once at the body, and
+through the real `FoamerSounds` `FX-topple` plays once, with no
+`FX-fizz-out` and no `FX-step-medium` during the fall or the crawl). Card
+tests 1, 2, 3, 5 and 8 were built in stage 1 and are unchanged. One old
+assertion had to change: `tests/foamers/parts.test.ts` 7 asserted that a
+fallen Foamer "holds still prone" (stage 1's placeholder), which the card's
+own crawl supersedes; it now checks that it crawls, more slowly than it
+walked. None of the card's numbers changed.
+
+Unverified: how the crawl reads on screen (the arm reach, the drag, the
+pitch rock) and whether the prone attack's head reach feels right, both by
+eye on the range. The card's numbers are the reviewer's to tune.
+
+### 2026-11-03: GAME-11 stage 1, the fall (DeepSeek V4.1 Flash via Pi, from a Qwen 27b start)
+
+A Foamer that is left with fewer than `handicaps.fallBelowLegs` (2) legs
+now falls over: the attack is cancelled, it enters the new `fall` state
+and tips as an inverted pendulum about the foot it still stands on,
+`a'' = (gravity / pivotHeight) * sin(a)` in `Foamer.stepFall`, starting at
+`fall.startTilt` and stopping at `fall.proneTilt`. It bounces once (back
+less than `fall.bounce * proneTilt`), settles, and then enters `crawl`,
+which for stage 1 holds still prone (`crawlSpeed` and moving come in
+stage 2). `pivotHeight` is the body box centre found by solving the rest
+pose once in the constructor, so the card's formula has a measured
+number behind it. The tilt drives `RigMotion`: `pitch = a * (1 -
+sideShare)` and `roll = a * sideShare * side`, where `side` is negative
+for a lost left leg, the same sign the removed 0.15 rad per missing leg
+used; the arms swing forward (`x` to -1.4 * reach) as it goes down. The
+pose blends through the usual `poseBlend`, so a spring drop can cut in
+and the whole thing goes down as one. `poseParts` fits the prone body to
+the floor for `fall` and `crawl` as it already did for no legs and
+`down`, so the fall ends on the ground and not in it.
+
+`FoamerSoundKind` gains `fall`: one FX-topple at the body when it first
+lands, no FX-fizz-out (it is not down). Foamers do not turn toward the
+player or step while falling or crawling. `goDown` still works from both
+states (a killing dart builds the ragdoll from the pose it was in).
+`breakPart` only falls on a leg, only when it is not already down or
+under, and the stagger sweep now runs after the head and arms check so
+the same step cannot fall and stagger. The range panel has a Break leg
+button (`breakLegForTest`).
+
+Collision fix found while doing this: a severed part spawns inside the
+voxels of the body it left, so the falling hips squashed a fresh leg
+piece into the floor and it never rose (old parts test 6). A live
+Foamer's part colliders are now `FOAMER_GROUPS` (kinematic VolumeMesh
+only) and broken pieces are `DEBRIS_GROUPS`, so debris passes through a
+living Foamer's own part boxes. The level's VolumeMesh is fixed, so it
+keeps the default groups.
+
+Tests: new `tests/foamers/fall.test.ts` covers the card's 1, 2, 3, 5 and
+8 (fall then crawl in under 2 s, the pendulum speeding up and bouncing
+at proneTilt, mirrored roll per leg, no joint moving over 0.35 rad in a
+step through the transition, darts still hitting a falling Foamer) plus
+the once-per-fall sound and going down from a fall and from the crawl.
+The card's numbers were not changed. Three old tests did have to change,
+because the card's own design supersedes them: `tests/foamers/parts.test.ts`
+7 (one leg gone was a 50% limp; a two-legged Foamer now falls) and 11
+(it staggered on a leg break, so it staggers on an arm break instead),
+and `tests/audio/game-sounds.test.ts` (a leg break used to play no
+topple; it now plays one). Unverified: how the fall reads on screen at
+60 fps, the bounce size and timing by eye, and the crawl's silhouette
+(stage 2 adds the movement).
 ### 2026-11-03: UI-01 merged (Claude)
 
 - Merged `ui-01` into main after Paul's approval. Review fixes on the
