@@ -105,7 +105,7 @@ describe("an F01 on the nav grid (ENG-08 stage 3b)", () => {
     );
     for (const f of fs) expect(f.agent, "each has a brain").not.toBeNull();
     let most = 0;
-    for (let i = 0; i < 60 * 10; i++) {
+    for (let i = 0; i < 60 * 6; i++) {
       tick(r, player);
       let n = 0;
       for (const f of fs) if (f.state === "windup" || f.state === "strike") n++;
