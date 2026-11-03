@@ -1,0 +1,135 @@
+{
+  "_note": "Level 1-1, arena 1 only (LVL-01): the Pit from design/levels/LEVEL-1-1.md section 4 and BLOCKOUT.md section 4, plus the start room, entry corridor and exit room the arena page needs. Origin is the pit's centre floor; Y 0 is the pit floor, the ring is 4 m up. Metres, Y up, positions are box centres, sizes are full extents. Tuning numbers (wave gaps, holds) live here, not in code.",
+  "meta": {
+    "id": "1-1",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 120,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+
+  "shell": [
+    { "id": "pit-floor", "shape": "box", "pos": [0, -0.5, 0],
+      "size": [34, 1, 26], "material": "greybox" },
+    { "id": "pit-wall-s-w", "shape": "box", "pos": [-9.5, 6, -13.5],
+      "size": [15, 12, 1], "material": "greybox" },
+    { "id": "pit-wall-s-e", "shape": "box", "pos": [9.5, 6, -13.5],
+      "size": [15, 12, 1], "material": "greybox" },
+    { "id": "pit-wall-n-w", "shape": "box", "pos": [-9.5, 6, 13.5],
+      "size": [15, 12, 1], "material": "greybox" },
+    { "id": "pit-wall-n-e", "shape": "box", "pos": [9.5, 6, 13.5],
+      "size": [15, 12, 1], "material": "greybox" },
+    { "id": "pit-wall-w", "shape": "box", "pos": [-17.5, 6, 0],
+      "size": [1, 12, 28], "material": "greybox" },
+    { "id": "pit-wall-e", "shape": "box", "pos": [17.5, 6, 0],
+      "size": [1, 12, 28], "material": "greybox" },
+
+    { "id": "ring-s", "shape": "box", "pos": [0, 3.5, -11],
+      "size": [34, 1, 4], "material": "greybox-dark" },
+    { "id": "ring-n", "shape": "box", "pos": [0, 3.5, 11],
+      "size": [34, 1, 4], "material": "greybox-dark" },
+    { "id": "ramp-n", "shape": "ramp", "pos": [13, 2, 5],
+      "size": [6, 4, 8], "rise": 4, "material": "greybox-dark" },
+    { "id": "ramp-s", "shape": "ramp", "pos": [-13, 2, -5], "rotY": 180,
+      "size": [6, 4, 8], "rise": 4, "material": "greybox-dark" },
+
+    { "id": "doorway-n-lintel", "shape": "box", "pos": [0, 9.75, 13.5],
+      "size": [4, 4.5, 1], "material": "greybox" },
+    { "id": "doorway-s-lintel", "shape": "box", "pos": [0, 8.25, -13.5],
+      "size": [4, 1.5, 1], "material": "greybox" },
+    { "id": "doorway-s-sill", "shape": "box", "pos": [0, 2, -13.5],
+      "size": [4, 4, 1], "material": "greybox" },
+
+    { "id": "corridor-floor", "shape": "box", "pos": [0, 3.5, -19],
+      "size": [4, 1, 10], "material": "greybox-dark" },
+    { "id": "corridor-wall-w", "shape": "box", "pos": [-2.5, 6.5, -18.5],
+      "size": [1, 5, 9], "material": "greybox" },
+    { "id": "corridor-wall-e", "shape": "box", "pos": [2.5, 6.5, -18.5],
+      "size": [1, 5, 9], "material": "greybox" },
+    { "id": "corridor-ceiling", "shape": "box", "pos": [0, 9.5, -19],
+      "size": [6, 1, 10], "material": "greybox" },
+
+    { "id": "start-floor", "shape": "box", "pos": [0, 3.5, -29],
+      "size": [8, 1, 10], "material": "greybox-dark" },
+    { "id": "start-wall-s", "shape": "box", "pos": [0, 6.5, -34.5],
+      "size": [10, 5, 1], "material": "greybox" },
+    { "id": "start-wall-n-w", "shape": "box", "pos": [-3, 6.5, -23.5],
+      "size": [2, 5, 1], "material": "greybox" },
+    { "id": "start-wall-n-e", "shape": "box", "pos": [3, 6.5, -23.5],
+      "size": [2, 5, 1], "material": "greybox" },
+    { "id": "start-wall-w", "shape": "box", "pos": [-4.5, 6.5, -29],
+      "size": [1, 5, 10], "material": "greybox" },
+    { "id": "start-wall-e", "shape": "box", "pos": [4.5, 6.5, -29],
+      "size": [1, 5, 10], "material": "greybox" },
+    { "id": "start-ceiling", "shape": "box", "pos": [0, 9.5, -29],
+      "size": [10, 1, 10], "material": "greybox" },
+
+    { "id": "exit-floor", "shape": "box", "pos": [0, 3.5, 16.5],
+      "size": [4, 1, 7], "material": "greybox-dark" },
+    { "id": "exit-wall-n", "shape": "box", "pos": [0, 6.5, 20.5],
+      "size": [6, 5, 1], "material": "greybox" },
+    { "id": "exit-wall-w", "shape": "box", "pos": [-2.5, 6.5, 17],
+      "size": [1, 5, 6], "material": "greybox" },
+    { "id": "exit-wall-e", "shape": "box", "pos": [2.5, 6.5, 17],
+      "size": [1, 5, 6], "material": "greybox" },
+    { "id": "exit-ceiling", "shape": "box", "pos": [0, 9.5, 17],
+      "size": [6, 1, 6], "material": "greybox" },
+    { "id": "exit-pad", "shape": "box", "pos": [0, 4.01, 17],
+      "size": [4, 0.02, 4], "material": "foam-white" }
+  ],
+
+  "pieces": [
+    { "id": "pit-block", "kind": "cover", "anchor": "floor",
+      "volumes": [
+        { "pos": [-3.2, 1.6, 4], "size": [3.2, 3.2, 3.2], "material": "foam-orange" },
+        { "pos": [0, 1.6, 4], "size": [3.2, 3.2, 3.2], "material": "foam-orange" },
+        { "pos": [3.2, 1.6, 4], "size": [3.2, 3.2, 3.2], "material": "foam-orange" }
+      ] },
+    { "id": "pit-pillar-w", "kind": "cover", "anchor": "floor",
+      "volumes": [
+        { "pos": [-9, 1.4, 1], "size": [1.6, 2.8, 1.6], "material": "foam-orange" }
+      ] },
+    { "id": "pit-pillar-e", "kind": "cover", "anchor": "floor",
+      "volumes": [
+        { "pos": [9, 1.4, 1], "size": [1.6, 2.8, 1.6], "material": "foam-orange" }
+      ] }
+  ],
+
+  "arenas": [
+    {
+      "id": "pit",
+      "archetype": "A1",
+      "trigger": { "pos": [0, 2, -6], "size": [20, 4, 6] },
+      "doors": [
+        { "id": "pit-in", "pos": [0, 5.75, -13.5], "size": [4, 3.5, 0.4],
+          "state": "open" },
+        { "id": "pit-out", "pos": [0, 5.75, 13.5], "size": [4, 3.5, 0.4],
+          "state": "locked" }
+      ],
+      "rifts": [
+        { "id": "pit-r1", "pos": [-8, 0.2, 7], "facing": [0, 1, 0] },
+        { "id": "pit-r2", "pos": [8, 0.2, 7], "facing": [0, 1, 0] },
+        { "id": "pit-r3", "pos": [0, 0.2, -6], "facing": [0, 1, 0] }
+      ],
+      "waves": [
+        { "id": "pit-w1", "rifts": ["pit-r1", "pit-r2"],
+          "spawns": [ { "foamer": "F01", "count": 3 } ],
+          "delaySeconds": 1.5, "holdSeconds": 1.5 },
+        { "id": "pit-w2", "rifts": ["pit-r1", "pit-r2", "pit-r3"],
+          "spawns": [ { "foamer": "F01", "count": 5 } ],
+          "delaySeconds": 6, "holdSeconds": 1.2 }
+      ],
+      "unlockOnClear": ["pit-out", "pit-in"],
+      "checkpoint": true,
+      "checkpointPos": [0, 4, -11]
+    }
+  ],
+
+  "pickups": [
+    { "id": "pit-ammo", "type": "darts-standard", "count": 4, "pos": [12, 0.4, -7] }
+  ],
+
+  "playerStart": { "pos": [0, 4, -29], "yaw": 3.141592653589793 },
+  "exit": { "pos": [0, 4.6, 17], "size": [4, 4, 4] }
+}

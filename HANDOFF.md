@@ -6,6 +6,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+LVL-01 done 2026-11-03: `arena.html` plays the 1-1 Pit from
+`data/levels/1-1-pit.json` (lock-in, two waves from rifts, exit pad);
+the format, validator, builder and arena state machine are in
+`src/level/`. Visual and frame-cost checks in a real browser are still
+open (see the Log entry).
+
 ART-03 done 2026-11-03: Slowmer, Roamer and Darter have palette rigs,
 deterministic turnaround renders and sheets in `design/foamers/`; Paul's
 visual approval is still pending.
@@ -104,6 +110,81 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: LVL-01 review, played through in watch mode (Claude)
+
+- Played `arena.html?watch` end to end by stepping by hand: the doors
+  lock on entering the pit, wave 1 (3 Slowmers) comes from the two north
+  rifts, wave 2 (5) from all three once wave 1 is down, both doors open
+  on clear, and the exit pad shows Level complete. Try again restarts at
+  the pit entry with the arena reset.
+- Fixed: Try again kept the ammo left at the pop, and there are no
+  pickups yet, so a retry could be unwinnable; the checkpoint now resets
+  every blaster to its starting magazine and reserve. Added
+  `dartArena.aimNearest()` for review (points at the nearest standing
+  Foamer's body).
+- Not a bug, but worth knowing: at 13 m the pump's spread and dart drop
+  miss a Slowmer more often than they hit; up close it goes down fast.
+- `src/arena/main.ts` is still mostly a copy of `src/main.ts` (only the
+  attack damage and carve bounds moved to `src/game/`). Fine for one
+  arena; fold the shared wiring into `src/game/` before a second page.
+- Pre-existing (UI-01, same on index.html): the title overlay shows
+  through behind "You popped!".
+- Unverified: frame cost of the pit at 60 fps, how the pit looks and
+  reads by eye (it is all greybox), and the lock-in banner timing.
+
+### 2026-11-03: LVL-01 the first arena (DeepSeek via Pi, review pending)
+
+- Built in three stages, one commit each: `be844ca` format, validator,
+  builder and the Pit file; `b0a88f3` arena lock-in and waves; `20993b5`
+  the arena page.
+- `src/level/format.ts` types the subset of BLOCKOUT.md LVL-01 uses;
+  `validate.ts` implements rules 1 to 6 and 9 to 12 as pure data checks
+  (no Three.js, so Node tests run them) and returns errors plus warnings;
+  `build.ts` builds the shell with fixed colliders, ramps as rotated
+  slabs on a real slope, one voxel volume for every piece with a bedrock
+  row under each anchor, and doors whose mesh and collider switch off
+  together.
+- `data/levels/1-1-pit.json` is the Pit from LEVEL-1-1 4: start room,
+  12 m corridor, 34 x 26 m pit floor 4 m below the entry ring, two ramps,
+  the centre block (3 volumes) and two pillars, three rifts, the lock
+  trigger plus entry door and exit door, and a lit exit pad. It validates
+  with one warning (5 piece volumes, close to the KIT cap of 6).
+- `src/level/arena.ts` is the lock-in state machine: waiting, locked,
+  waves with `delaySeconds` between them and `holdSeconds` between
+  spawns, cleared opens `unlockOnClear`. Twelve tests drive it with a
+  fake Foamer count; the spawn cap retries rather than dropping a spawn.
+- `arena.html` plays the level with the full game. Shared code moved to
+  `src/game/` (`attack.ts`, `shared.ts`) so `index.html` and
+  `range.html` use the same damage table and carve bounds; the test
+  course otherwise behaves as before (only `createRenderer` gained
+  options, with the old values as defaults).
+- HUD banners: "Clear the arena" on lock, "Wave n of m", "Arena clear".
+  Rifts are dim seams before the lock and glow while a wave comes out.
+  The exit pad shows Level complete with Play again. Six placeholder
+  sounds were added to `data/sounds.json` (LV-door, LV-arena-lock,
+  LV-rift-open, LV-wave, LV-arena-clear, LV-exit); all were already in
+  `design/SOUNDS.md`, so no doc change was needed.
+- `arena.html?watch` starts unpaused without pointer lock and
+  `window.dartArena` has `state()`, `moveTo`, `look`, `pause`, `fire()`
+  and `step(n)`.
+- Decisions (also in PLAN.md 14): doors may overlap a shell wall, since
+  the format has no doorway field; the arena voxel budget counts the
+  trigger, doors and rifts grown by 4 m; the arena page owns its spawns
+  with `spawnCount = 0`; a popped player restarts at `checkpointPos` with
+  the arena reset but carved voxels left as they are; `checkpointPos` was
+  added to BLOCKOUT.md with a line saying why.
+- Unverified: the card's end-to-end check (walk in, both waves, exit
+  opens, pad completes) was not run in a browser, because there is no
+  Chrome, Playwright or Puppeteer on this machine. The frame cost of the
+  Pit (voxel volume, nav bake, six waves of Foamers) was not measured
+  against the test course, so the card's frame budget question is still
+  open. The nav bake at load is asserted under 1 s in
+  `tests/level/pit-load.test.ts`, but no real frame graph exists yet.
+  Paul has not seen the Pit's look; everything visual is greybox.
+- Small fixes found while wiring the page: the south doorway stood over
+  a 1 m gap in the floor (a sill box was added), and the arena's
+  `state.cleared` / `progress` used the wrong index.
 
 ### 2026-11-03: LVL-00 reviewed and merged (Claude)
 

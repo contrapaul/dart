@@ -147,6 +147,7 @@ need: destructible volumes, waves, rifts, pickups, secrets, stations.
 | `waves` | array | See below |
 | `unlockOnClear` | string[] | Door IDs to open when the last wave's last Foamer is down |
 | `checkpoint` | boolean | Whether dying here restarts at the trigger, not the level start |
+| `checkpointPos` | [x, y, z] | Optional feet position for that restart. A station is the proper marker (below), but stations come after LVL-01 and an arena needs somewhere to put the player that is not the lock trigger itself |
 
 ### waves
 

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DART: the Pit</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/arena/arena.css" />
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="banner" hidden><span id="bannerText"></span></div>
+    <div id="overlay">
+      <h1>DART</h1>
+      <p id="status">Loading</p>
+      <button id="titleSettings" type="button">Settings</button>
+      <p class="links"><a href="/index.html">Test course</a></p>
+    </div>
+    <div id="hud" hidden>
+      <div id="crosshair"></div>
+      <div id="ammo"></div>
+      <div id="health"><div class="bar"><i></i></div><span class="num"></span></div>
+    </div>
+    <div id="hitflash"></div>
+    <div id="complete" hidden>
+      <div class="panel">
+        <h2>Level complete</h2>
+        <button id="playAgain" type="button">Play again</button>
+      </div>
+    </div>
+    <div id="popped" hidden>
+      <h2>You popped!</h2>
+      <button id="tryAgain" type="button">Try again</button>
+    </div>
+    <div id="pausemenu" hidden>
+      <div class="panel">
+        <h2>Paused</h2>
+        <button id="resumeBtn" type="button">Resume</button>
+        <button id="settingsBtn" type="button">Settings</button>
+        <button id="restartBtn" type="button">Restart</button>
+      </div>
+    </div>
+    <div id="settings" hidden>
+      <div class="panel">
+        <h2>Settings</h2>
+        <div id="settingsRows"></div>
+        <button id="settingsBack" type="button">Back</button>
+      </div>
+    </div>
+    <script type="module" src="/src/arena/main.ts"></script>
+  </body>
+</html>
