@@ -34,6 +34,9 @@ export function makeLevelAI(
   difficulty: string,
 ): LevelAI {
   const grid = new NavGrid(rapier, world, bounds);
+  // Rapier's query pipeline updates on step(), and both pages build this
+  // before their first frame: one step now, so the bake sees the level.
+  world.step();
   grid.bake();
   return {
     director: new Director(directorKey(difficulty)),

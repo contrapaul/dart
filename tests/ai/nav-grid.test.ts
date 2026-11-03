@@ -229,12 +229,21 @@ describe("NavGrid bake", () => {
     world.step();
     g.bake();
     const out = makePath();
-    const t1 = performance.now();
+    // One warm-up query: the first call allocates nothing, but the JIT has
+    // not seen the A* loop yet, and that first run is several times slower.
+    g.findPath({ x: -18, z: -18 }, { x: 18, z: 18 }, out);
     let found = 0;
-    for (let k = 0; k < 10; k++) {
+    // The median of 9 timed queries, not the mean: the test runner runs files
+    // in parallel, and one GC pause in one of them must not fail a timing
+    // budget (the game's own budget is the median case, not the worst).
+    const times: number[] = [];
+    for (let k = 0; k < 9; k++) {
+      const t = performance.now();
       found = g.findPath({ x: -18, z: -18 }, { x: 18, z: 18 }, out);
+      times.push(performance.now() - t);
     }
-    const queryMs = (performance.now() - t1) / 10;
+    times.sort((a, b) => a - b);
+    const queryMs = times[Math.floor(times.length / 2)]!;
     console.info(`nav bake 40x40 at ${CELL} m: ${bakeMs.toFixed(1)} ms; ` +
       `path query: ${queryMs.toFixed(3)} ms (${found} waypoints)`);
     expect(found).toBeGreaterThan(0);
