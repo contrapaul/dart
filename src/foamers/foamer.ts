@@ -4,7 +4,9 @@ import { CAPSULE_GROUPS, type Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
-import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion } from "./rig-states";
+import {
+  restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion, finishMotion,
+} from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
 
@@ -16,7 +18,7 @@ import type { AgentInput, FoamerAgent } from "../ai/agent";
 
 export type FoamerState =
   | "idle" | "alert" | "approach" | "hold"
-  | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down";
+  | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down" | "finish";
 export type FoamerSpec = typeof foamerData.test;
 /** Rigs in the data file carry `health`; the base rig type does not. */
 export type GameRig = RigSpec & { health: number };
@@ -32,6 +34,9 @@ const _pL = new THREE.Vector3();
 const _pL2 = new THREE.Vector3();
 const _qL = new THREE.Quaternion();
 const _qL2 = new THREE.Quaternion();
+const _gP = new THREE.Vector3(); // GAME-07: glow position scratch
+const _gS = new THREE.Vector3(); // GAME-07: glow scale scratch
+const GLOW_GEO = new THREE.SphereGeometry(0.6, 12, 8); // GAME-07: one geometry for every glow
 /** The lying capsule's rotation: its own y axis along the rig's +z. */
 const LYING_Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
 /** Where the lying capsule's centre sits ahead of the feet (GAME-11). Its
@@ -62,9 +67,8 @@ export class Foamer {
   state: FoamerState = "approach";
   /** Seconds spent in the current state. */
   stateTime = 0;
-  /** GAME-04: how long a stagger lasts, seconds. The data's stagger.time at
-   *  spawn; the thrown shield staggers for its own time from data/shield.json
-   *  (a stun of 0 keeps this value), which writes this field. */
+  /** How long a short stagger lasts, seconds: set by startStagger (the
+   *  data's stagger.time, or the thrown shield's stun, GAME-04). */
   staggerTime = foamerData.test.stagger.time;
   /** The brain and its token bid (ENG-08 stage 3b). Null when the system has
    *  no director: then the Foamer attacks on approach range as it did before
@@ -121,6 +125,21 @@ export class Foamer {
   /** The body's centre height over the ground at rest: the pendulum's pivot
    *  length, filled once at spawn (GAME-11). */
   pivotHeight = 0;
+  /** GAME-07: health has fallen to the finisher's weakenShare, once. While
+   *  finishWeakened the Foamer glows and wobbles while it staggers, and a
+   *  melee inside the finisher's reach ends it with the finisher. */
+  finishWeakened = false;
+  /** GAME-07: true while the current stagger is the long, finishable one
+   *  (weakenShare) rather than the short part-break one. Cleared each
+   *  time a stagger starts. Exposed for the HUD prompt. */
+  staggerLong = false;
+  /** GAME-07: the finishable glow shell: an additive soft shell over the
+   *  body. A child of the glowGroup (the part groups are world matrices,
+   *  so it cannot live under `this.group`). One shared geometry; the
+   *  scale is set per syncRender. */
+  readonly glow = new THREE.Mesh(GLOW_GEO, new THREE.MeshBasicMaterial({
+    color: 0xb6ff3b, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
 
   private poseBlend: number;
   /** The upright capsule's radius, kept for the lying capsule (GAME-11). */
@@ -319,7 +338,8 @@ export class Foamer {
     const t = _target;
     if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
-    else if (this.state === "stagger") staggerMotion(this.stateTime, t);
+    else if (this.state === "stagger") staggerMotion(this.stateTime, this.staggerDuration(), t);
+    else if (this.state === "finish") finishMotion(this.stateTime / this.spec.finisher.total, t);
     else if (this.state === "down") restInto(t); // ENG-12: physics carries it now
     else if (this.state === "fall") this.proneMotion(t, this.fallTilt());
     else if (this.prone) {
@@ -390,6 +410,19 @@ export class Foamer {
     return this.fallA < 0 ? 0 : this.fallA;
   }
 
+  /** GAME-07: the current stagger's whole length, seconds. The long,
+   *  finishable one lingers so a finisher can be aimed; a part break's
+   *  stagger stays the short one. */
+  staggerDuration() {
+    return this.staggerLong ? this.spec.finisher.weakenStaggerTime : this.staggerTime;
+  }
+
+  /** GAME-07: it glows and wobbles while it staggers and is finishable.
+   *  True during a long stagger and through the finisher itself. */
+  get glowActive() {
+    return this.finishWeakened && (this.state === "stagger" || this.state === "finish");
+  }
+
   /** Target motion for a fall at tilt a, and for the crawl at prone
    *  (GAME-11). sideShare of the tilt is roll toward the lost leg and the
    *  rest is forward pitch, so the body goes down mostly forward and a
@@ -419,7 +452,9 @@ export class Foamer {
    *  (ENG-12): the parts ride their ragdoll bodies, the body pose alpha
    *  of the way from the step's start to where physics left it. */
   syncRender(alpha: number) {
+    // GAME-07: a downed one never glows; its finishable window is over.
     if (this.state === "down") {
+      this.glowGroup.visible = false;
       for (const p of this.parts.values()) {
         const prev = this.ragdollPrev.get(p.spec.id);
         if (!prev) { p.syncRender(alpha); continue; }
@@ -433,12 +468,54 @@ export class Foamer {
       return;
     }
     for (const p of this.parts.values()) p.syncRender(alpha);
+    this.syncGlow(alpha);
   }
+
+  /** GAME-07: the finishable glow: a soft shell over the body, pulsing
+   *  and wobbling while the Foamer is finishable and staggering, steady
+   *  while the finisher runs. The foam material is one shared material
+   *  across every voxel mesh, so it cannot be pulsed per Foamer; this is
+   *  a child of the glowGroup, which FoamerSystem parks off-screen when
+   *  the glow is off. */
+  syncGlow(alpha: number) {
+    const on = this.glowActive;
+    this.glowGroup.visible = on;
+    if (!on) {
+      (this.glow.material as THREE.MeshBasicMaterial).opacity = 0;
+      return;
+    }
+    const body = this.parts.get("body");
+    if (body) {
+      const vs = this.rig.voxelSize;
+      const wob = 1 + (this.state === "stagger" ? Math.sin(this.stateTime * 22) * 0.03 : 0);
+      _gS.set(
+        body.spec.size[0] * vs / 1.2 * wob,
+        body.spec.size[1] * vs / 1.2,
+        body.spec.size[2] * vs / 1.2 * wob,
+      );
+      this.glowGroup.scale.copy(_gS);
+    } else {
+      _gS.set(this.height * 0.3, this.height * 0.4, this.height * 0.3);
+      this.glowGroup.scale.copy(_gS);
+    }
+    _gP.lerpVectors(this.prevCentre, this.centre, alpha);
+    this.glowGroup.position.set(_gP.x, _gP.y + this.pivotHeight, _gP.z);
+    if (this.state === "down") this.glowGroup.position.y -= this.sinkDrop;
+    const ramp = this.state === "finish" ? 1
+      : THREE.MathUtils.clamp(Math.min(this.stateTime / 0.15, (this.staggerDuration() - this.stateTime) / 0.4), 0, 1);
+    (this.glow.material as THREE.MeshBasicMaterial).opacity = ramp * (0.22 + 0.08 * Math.sin(this.stateTime * 6));
+  }
+
+  /** GAME-07: the glow's draw group, a world-space matrix placed by
+   *  syncRender (the part groups are world matrices, so the glow cannot live
+   *  under `this.group`; the system adds it to its own group at spawn). */
+  readonly glowGroup = new THREE.Group();
 
   /** Remove the parts, the root capsule and the bodies. */
   dispose(world: RAPIER.World) {
     for (const p of this.parts.values()) p.dispose(world);
     this.group.removeFromParent();
+    this.glowGroup.removeFromParent();
     world.removeRigidBody(this.root);
   }
 }

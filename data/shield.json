@@ -21,7 +21,7 @@
   "throw": {
     "speed": 25,
     "hitRadius": 0.55,
-    "damage": 4,
+    "damage": 1,
     "stun": 0,
     "bounces": 2,
     "ricochetRange": 8,

@@ -22,6 +22,13 @@ export class Hud {
   private flash: HTMLElement;
   private lastHp = -1;
   private lastMax = -1;
+  // GAME-07: the finisher prompt by the crosshair, and the heal flash
+  // (green, never red). Writes only on a change, like the rest of the
+  // HUD.
+  private prompt: HTMLElement;
+  private lastPrompt = "";
+  private heal: HTMLElement;
+  private healTimer = 0;
   /** Stage 2 wires this to the reduce flashes setting; while false the
    *  cream edge glow stays off (the bar's own flash still shows). */
   reduceFlashes = false;
@@ -37,10 +44,34 @@ export class Hud {
     // The edge glow sits outside the HUD root (it shows over the popped
     // overlay too), so it is looked up on the document.
     this.flash = document.querySelector<HTMLElement>("#hitflash")!;
+    this.prompt = root.querySelector<HTMLElement>("#finishprompt")!;
+    this.heal = document.querySelector<HTMLElement>("#healflash")!;
     this.setHealth(0, 0); // hides until the first real update
     this.lastHp = -1;
     this.lastMax = -1;
     this.show(false);
+  }
+
+  /** GAME-07: the finisher prompt by the crosshair, showing the bound key
+   *  while a weakened Foamer stands in reach and in the view. Writes only
+   *  on a change (the prompt flickers in and out as the view moves). */
+  setFinishPrompt(show: boolean, key: string) {
+    if (this.root.hidden) { this.lastPrompt = ""; return; }
+    const text = show ? key : "";
+    if (text === this.lastPrompt) return;
+    this.lastPrompt = text;
+    this.prompt.hidden = !show;
+    if (show) this.prompt.textContent = key;
+  }
+
+  /** GAME-07: the green edge glow on a pickup collect, never red (the
+   *  hit flash is cream). Suppressed by reduce flashes, like a hit. */
+  healFlash() {
+    if (this.root.hidden) return;
+    if (this.reduceFlashes) return;
+    this.heal.classList.add("on");
+    window.clearTimeout(this.healTimer);
+    this.healTimer = window.setTimeout(() => this.heal.classList.remove("on"), 200);
   }
 
   show(visible: boolean): void {

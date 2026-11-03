@@ -12,6 +12,11 @@ a ricocheting disc that returns to the arm; the range watch can drive it.
 Parry (stage 2) waits for GAME-10. Look and feel checks in a real browser
 are still open (see the Log entry).
 
+GAME-07 done 2026-11-03: the weakened (finishable) stagger, the Pop
+finisher and the health drops are in the shared game; the course and
+arena pick them up through `src/game/`. Browser checks are still open
+(see the Log entry).
+
 ENG-13 done 2026-11-03: the two playable pages share one game module in
 `src/game/`; neither page carries a copy any more. Browser checks are
 still open (see the Log entry).
@@ -174,6 +179,79 @@ github.com/contrapaul/dart (public), MIT licence.
   panel, and that the disc reads well against arena walls in flight.
 - Decisions in PLAN section 14; the GAME-04 row says stage 1 done, parry
   stage 2 waits for GAME-10.
+
+### 2026-11-03: GAME-07 review, finisher played in watch mode, merged (Claude)
+
+- Played on `index.html?watch`: shot a Slowmer to the weakened stagger,
+  walked up, the F prompt showed, the finisher held the view, squeezed
+  and popped it, and the three health blobs drifted in and healed 60 to
+  90.
+- Fixed: a dart burst that popped the target mid-finisher made the
+  finisher pop it again on bodies already freed, which crashed Rapier
+  ("recursive use of an object"). The finisher now stands down when its
+  target has left the finish state, and the blaster cannot fire while a
+  finisher holds the player. Test 5.
+- Fixed: the view cone (cos 0.98) was measured to the chest, so at 1.5 m
+  looking at the head (18 degrees above the chest) gave no finisher. It
+  is now measured to the Foamer's upright line at the height the view
+  crosses it. Test 6.
+- Not decided: the player is not protected during the 0.8 s finisher, so
+  another Foamer can still bonk. The modern Doom games make the player
+  safe during a finisher; worth a call by Paul.
+
+### 2026-11-03: GAME-07 the Pop finisher and the health drops (Qwen3.8-27B via Pi)
+
+- **The weakened stagger** (`src/foamers/`). A hit that pushes a live
+  Foamer to or below `finisher.weakenShare` (0.3) of its max health
+  marks it `finishWeakened` and gives it the long, finishable stagger
+  (`finisher.weakenStaggerTime`, 2.5 s); the normal part-break stagger
+  stays short, and the mark is set once and never re-set, so a wound
+  while finishable does not restart the clock. While finishable and
+  staggering, the Foamer glowes and wobbles: the glow is an additive
+  soft shell on its own world-space group, because the shared foam
+  material is one mesh material and cannot pulse per Foamer, and the
+  part-group matrices are world matrices so it cannot sit under the
+  Foamer's group (`Foamer.glow`, `Foamer.glowGroup`, `syncGlow`).
+- **The finisher** (`src/game/finisher.ts`, `finisher.*` tuning in
+  `data/foamers.json`): a melee on a finishing-enough stagger within
+  reach (2.5 m, eye to chest) inside the view cone (cos 0.98) holds the
+  player for 0.8 s, turns the view onto the Foamer, squeezes and
+  stretches it (the new `finish` state and `finishMotion`), then pops
+  it on schedule. `Finisher.attempt` is the pure geometry; `has` gates
+  the HUD prompt; `update` owns the view turn and the pop. The melee
+  key is consumed when the finisher spends it (`Input.consumePress`),
+  so the course's debug blast does not fire on the same press; a melee
+  with no finishable in reach keeps the page's old behaviour.
+- **The health drops** (`src/pickups/pickups.ts`, a new generic pickup
+  with `data/pickups.json`; health is the first kind, ammo comes at
+  D08). A pop sprays 3 cream blobs of 10 health; they hop out, settle
+  and bob, are collected walking within 1 m (drifted to the player
+  within 2 m), heal back to max but never past it, stay on the floor
+  at full health, cap at 24 live (oldest first) and dissolve after
+  30 s. The blobs carry their own colliders with the world and are
+  ignored by darts and by the player capsule.
+- **Shared wiring** (`src/game/game.ts`, not the pages): builds the
+  `PickupSystem` and `Finisher` on the Game, runs the finisher in place
+  of the player update while it is active, steps the pickups after
+  `world.step()`, renders and runs the HUD prompt and the green heal
+  flash (green, so it never reads as a hit). The course and arena reset
+  paths clear the blobs alongside the Foamers. `input.simulatePress`
+  backs the watch's `finish`; the watch also reports pickup counts and
+  a per-Foamer finishable flag.
+- **Sounds**: `FX-stagger` (the weakened stagger), `FN-finisher` (the
+  squeeze) and `PU-health` (the collect) are synthesised placeholders
+  in `data/sounds.json`; the lines were already in `design/SOUNDS.md`.
+- Tests: `tests/foamers/finisher.test.ts` (the crossing hit staggers
+  long, once, and holds beyond the short stagger; the part break keeps
+  its short stagger; the reach and cone gate the attempt; the full run
+  turns the view, pops on schedule and sprays blobs that settle on the
+  floor) and the existing `tests/pickups/pickups.test.ts`. `npx tsc
+  --noEmit`, `npx vitest run` and `npm run build` all pass; no em or
+  en dashes in any touched file.
+- Not checked by eye (no browser here): the glow's colour and shape,
+  the wobble amount, the finisher prompt's size and position, the heal
+  flash, the squeeze-stretch-pop by hand, the pickup look, and the 60
+  fps cost of the glow and the blobs on mid-range hardware.
 
 ### 2026-11-03: darts pass Foamer capsules, and aim at what the crosshair is on (Claude)
 

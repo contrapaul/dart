@@ -421,13 +421,8 @@ export class Shield {
   private stagger(f: Foamer): void {
     f.health -= T.throw.damage;
     if (f.health <= 0) f.health = 0.0001; // a stage 1 throw does not kill
-    if (!f.prone) {
-      f.state = "stagger";
-      f.stateTime = 0;
-      f.staggerTime = T.throw.stun > 0 ? T.throw.stun : f.spec.stagger.time;
-      f.agent?.release("stagger");
-      if (f.attack()) f.setAttack(null);
-    }
+    if (!f.prone)
+      this.foamers.startStagger(f, false, T.throw.stun > 0 ? T.throw.stun : f.spec.stagger.time);
   }
 
   /** A little foam where the disc hit voxel cover, capped per flight. */

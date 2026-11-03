@@ -80,7 +80,8 @@ const BRAIN = aiData.brain;
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b). */
 export type FoamerSoundKind =
-  | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop";
+  | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop"
+  | "stagger";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -205,6 +206,12 @@ export class FoamerSystem {
       };
     }
     this.group.add(f.group);
+    // GAME-07: the finishable glow is a world-space draft group (a child of
+    // f.group would carry world matrices and fight it), parked off-screen
+    // until it glows.
+    f.glowGroup.add(f.glow);
+    f.glowGroup.position.set(0, -1000, 0);
+    this.group.add(f.glowGroup);
     this.list.push(f);
     // Every part is a voxel target of its own, so darts carve the part
     // they actually hit.
@@ -223,7 +230,7 @@ export class FoamerSystem {
     // than the first caller. Without a director none of this runs and the
     // Foamers walk in and attack as they did before the brain.
     if (this.director) {
-      for (const f of this.list) if (f.state !== "down") this.bidAgent(f, player);
+      for (const f of this.list) if (f.state !== "down" && f.state !== "finish") this.bidAgent(f, player);
       this.director.update(dt);
     }
     for (let i = this.list.length - 1; i >= 0; i--) {
@@ -290,8 +297,9 @@ export class FoamerSystem {
     // Face the player (+z is forward, so the wanted yaw is atan2(dx, dz)),
     // at the turn rate with the no-head handicap. Not while staggering: a
     // stagger is stillness and wobble only. Not while falling either (the
-    // card: no movement in the fall); prone, it turns at half the rate.
-    if (f.state !== "stagger" && f.state !== "fall") {
+    // card: no movement in the fall), not while being finished (the view
+    // turns instead), and not while down (downed ones are not here).
+    if (f.state !== "stagger" && f.state !== "fall" && f.state !== "finish") {
       const dx = player.x - f.centre.x;
       const dz = player.z - f.centre.z;
       const wanted = Math.atan2(dx, dz);
@@ -310,10 +318,15 @@ export class FoamerSystem {
     // crawl, which the brain picks up again on the next step.
     if (f.agent) this.stepBrain(f, dt, player);
     if (f.state === "stagger") {
-      if (f.stateTime >= f.staggerTime) {
+      // GAME-07: the long, finishable stagger lingers for the finisher to
+      // land; a part break's stagger ends as before.
+      if (f.stateTime >= f.staggerDuration()) {
         f.state = "approach";
         f.stateTime = 0;
       }
+    } else if (f.state === "finish") {
+      // GAME-07: the finisher owns the view and the time up to the pop; the
+      // game's finisher does the pop and the pickups (src/game/finisher.ts).
     } else if (f.state === "hold" || f.state === "idle" || f.state === "alert") {
       // The brain's own states: it moves on the intents below, no attack.
     } else if (f.state === "approach") {
@@ -378,7 +391,9 @@ export class FoamerSystem {
     // Prone, it closes until its head (the part that reaches) is in range.
     const reach = crawling ? this.headDist(f, player) : dist;
     const moving = f.agent
-      ? this.brainMoving(f)
+      // GAME-07: while being finished the view turns and time runs out;
+      // the finisher owns the Foamer, it cannot keep stalking.
+      ? f.state === "finish" ? false : this.brainMoving(f)
       : f.state === "approach" || crawling ? reach > SPEC.attackRange : false;
     this._wish.set(0, 0, 0);
     if (moving) {
@@ -683,6 +698,34 @@ export class FoamerSystem {
     if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part);
     // The head and any arm part gone: it goes down whatever its health.
     if (f.state !== "down" && !f.parts.has("head") && this.anyArmGone(f)) this.goDown(f);
+    // GAME-07: crossing into the finishable band starts the long stagger,
+    // once, for the finisher to land. Not on the killing hit, and not one
+    // that is being carried elsewhere (fall, down, finisher) already.
+    if (
+      !f.finishWeakened && f.health > 0
+      && f.health <= SPEC.finisher.weakenShare * f.maxHealth
+      && !f.prone && f.state !== "finish" && f.state !== "down"
+    ) {
+      f.finishWeakened = true;
+      this.startStagger(f, true);
+    }
+  }
+
+  /** GAME-07: start a stagger, long (the finishable one) or short (a part
+   *  break). A stagger during a windup cancels the attack, so the token
+   *  goes back too. The wobble and glow read the flags this sets. A short
+   *  stagger lasts `seconds` (GAME-04: the thrown shield's stun), by
+   *  default the data's stagger.time. */
+  startStagger(f: Foamer, long: boolean, seconds = SPEC.stagger.time) {
+    f.state = "stagger";
+    f.stateTime = 0;
+    f.staggerLong = long;
+    f.staggerTime = seconds;
+    f.agent?.release("stagger");
+    if (f.attack()) f.setAttack(null);
+    // FX-stagger (SOUNDS.md 5.1): the wobble that tells the finisher is
+    // open.
+    sound(this, "stagger", f, f.centre);
   }
 
   /** GAME-11 range only: break the left leg of the nearest living Foamer, so
@@ -1161,14 +1204,10 @@ export class FoamerSystem {
         f.legs().length < SPEC.handicaps.fallBelowLegs)
       this.startFall(f, part.spec.id);
     else if (!f.prone) {
-      // Stagger; a stagger during a windup cancels the attack, so the token
-      // goes back too. A prone Foamer cannot stagger, it only loses the
-      // attack (GAME-11).
-      f.state = "stagger";
-      f.stateTime = 0;
-      f.agent?.release("stagger");
+      // The part break's stagger is always the short one, even on a
+      // finishable Foamer (GAME-07): the long stagger is the weaken's own.
+      this.startStagger(f, false);
     }
-    if (f.attack()) f.setAttack(null);
   }
 
   /** GAME-11: start the fall after the leg with this id broke. The roll goes
@@ -1242,7 +1281,7 @@ export class FoamerSystem {
   }
 
   /** The model bursts into foam debris per part and leaves the world. */
-  private pop(f: Foamer) {
+  pop(f: Foamer) {
     sound(this, "pop", f, f.centre);
     for (const part of f.parts.values()) {
       // Every remaining voxel, in the part volume's own (non-rotated) space.

@@ -39,7 +39,7 @@ export interface ArenaExtras {
 }
 
 export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
-  const { audio, foamers, hud, health, player, loadout, built, scene } = g;
+  const { audio, foamers, hud, health, player, loadout, built, scene, pickups } = g;
   // g.ui, not a destructured copy: the UI controller is built after this
   // hook returns (src/game/game.ts).
   const { level } = built;
@@ -134,6 +134,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     player.teleport(ENTRY);
     player.pitch = 0;
     foamers.clear();
+    pickups.clear();
     hud.clearFlash();
     // Back to the ammo the player had at the start: there are no pickups
     // yet, so a retry with what was left could not win the arena.
@@ -185,6 +186,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       if (player.feet < FALL_LIMIT) {
         player.teleport(start);
         foamers.clear();
+        pickups.clear();
         runner.reset();
         rifts.setAll("dim");
       }
