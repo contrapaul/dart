@@ -23,8 +23,8 @@ The shape of a level is a **spine with rooms hanging off it**:
 
 - The spine is the critical path. It is 1 to 3 minutes of walking at walk
   speed from end to end if nothing is in the way.
-- Every arena on the spine has one way in and one way on, and both are on
-  the same side of the room so the player crosses the space.
+- Every arena on the spine has one way in and one way on, and the way on is on
+  the far side from the way in, so the player crosses the space.
 - Side rooms hang off the spine and never off each other more than one
   deep. A secret inside a secret is fine if it is short.
 - The spine is never a corridor for more than 20 m at a time. Corridors
@@ -94,7 +94,7 @@ minutes. A player who runs past fights saves 2 to 3.
 **Time comes from walking, not from wave size.** At walk speed 7 m/s a
 40 m arena crossing is under 6 seconds. A wave of 6 Slowmers takes 25 to
 40 seconds to clear. So a 2 minute arena is 1 wave of 6 plus a wave of 8,
-not one wave of 14. More than 10 Foamers alive at once fights the
+not one wave of 14. More than 12 Foamers alive at once (KIT.md 6) fights the
 director (2 melee tokens at Normal) and the 64 agent cap, and reads as
 mush on a small screen.
 

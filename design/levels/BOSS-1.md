@@ -29,9 +29,9 @@ asks for the three skills of Act 1 in order:
   parried ball knocks the boss onto one knee for 3 s, which is the only
   window to hit its back tank (weak point 3). Waiting for the parry is
   faster than shooting through the armour.
-- **Phase 3 asks for the shield charge.** The boss's crown plate (weak
-  point 3 replaces the tank once the tank is gone, or the tank is the
-  third and the crown is the last) is on its head, 4 m up. No blaster in
+- **Phase 3 asks for the shield charge.** With all three weak points gone,
+  the boss can be finished, and the last target is its crown plate, on
+  its head 4 m up. No blaster in
   Act 1 can reach it reliably. The only way up is to shield charge into
   the boss's knee when it slams (a 1 s window) and mantle 1.5 m onto the
   plinth, then shoot down onto the crown from the plinth's 2 m lip.

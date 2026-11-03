@@ -32,8 +32,8 @@ on.
 - **The way on is lit.** Every exit is the brightest surface in its room,
   and the exit door of every arena is on the far wall from the entrance.
 
-Difficulty curve on Normal: max 2 Slowmers attacking at once, 8 alive at
-most. Nothing here can kill a player who keeps moving.
+Difficulty curve on Normal: max 2 Slowmers attacking at once, 10 alive at
+most (the gauntlet's second wave). Nothing here can kill a player who keeps moving.
 
 ## 2. Beat by beat
 
