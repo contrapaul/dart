@@ -30,6 +30,11 @@
     "catastrophic": { "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.", "share": 0.4, "window": 0.1, "popTypes": [] },
     "wound": { "coreShell": 1.0, "stumpRadius": 0.12 },
     "stagger": { "time": 0.5 },
+    "finisher": {
+      "_note": "GAME-07. weakenShare: when health first falls to or below this share of the max, the Foamer is finishable and staggers for weakenStaggerTime instead of stagger.time (a part break still gives the short stagger). reach: melee finishers work this far from the eye. coneCos: the view cone's cosine, the aim must be inside it. total: the finisher's lasting time. turnTime: the share of total the view spends turning onto the Foamer. CONTENT-PLAN 3.1 and 3.2: the finisher always pops.",
+      "reach": 2.5, "coneCos": 0.98, "weakenShare": 0.3,
+      "weakenStaggerTime": 2.5, "total": 0.8, "turnTime": 0.15
+    },
     "down": {
       "lie": 3.5, "sinkSpeed": 0.35, "max": 8,
       "ragdoll": {

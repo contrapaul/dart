@@ -85,10 +85,26 @@ export function crawlMotion(rig: RigSpec, gait: number, out: RigMotion) {
   out.pitch += 0.05 * s; // the body rocks with the pull
 }
 
-/** Stagger wobble about z. t: seconds since the stagger began. */
-export function staggerMotion(t: number, out: RigMotion) {
+/** Stagger wobble about z. t: seconds since the stagger began; dur the
+ *  whole stagger, so a long, finishable one keeps wobbling instead of
+ *  fading after half a second. */
+export function staggerMotion(t: number, dur: number, out: RigMotion) {
   restInto(out);
-  const env = Math.max(0, 1 - t / 0.5);
+  const env = Math.max(0, 1 - t / dur);
   out.roll = Math.sin(t * 22) * 0.14 * env;
   out.y = -Math.abs(Math.sin(t * 11)) * 0.02 * env;
+}
+
+/** GAME-07 finisher, k 0..1: the squeezed-toy. The body squashes down,
+ *  stretches back up, and pops loose at the end (the pop is the system's
+ *  job, at k 1). A little wobble keeps it toyish rather than flat. */
+export function finishMotion(k: number, out: RigMotion) {
+  k = clamp01(k);
+  restInto(out);
+  // Down over the first half, up and a stretch over the second.
+  out.squash = k < 0.5
+    ? 1 - 0.45 * ease(k / 0.5)
+    : 0.55 + 0.85 * ease((k - 0.5) / 0.5);
+  out.roll = 0.1 * Math.sin(k * 3 * Math.PI);
+  out.pitch = 0.08 * Math.sin(k * 2 * Math.PI);
 }
