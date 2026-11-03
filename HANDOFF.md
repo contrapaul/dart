@@ -6,6 +6,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-04 stage 1 done 2026-11-03: the shield (`src/player/shield.ts`,
+`data/shield.json`) blocks from the front arc, slows the walk, and throws
+a ricocheting disc that returns to the arm; the range watch can drive it.
+Parry (stage 2) waits for GAME-10. Look and feel checks in a real browser
+are still open (see the Log entry).
+
 ENG-13 done 2026-11-03: the two playable pages share one game module in
 `src/game/`; neither page carries a copy any more. Browser checks are
 still open (see the Log entry).
@@ -114,6 +120,60 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-03: GAME-04 stage 1, the shield: block, movement gates, ricochet throw, return (Claude)
+
+- `src/player/shield.ts` (new): one `Shield` class, all numbers in
+  `data/shield.json` (new). States `lowered / raised / thrown / returning`;
+  `update(dt, controls)` runs on the fixed step and returns the step's news
+  (a reused events object: `raised, lowered, thrown, hits, caught`). The
+  viewmodel (foam rim, face, boss from `createFoamMaterial`) hangs off the
+  camera; the disc in flight is a scene mesh. `blocksAttackFrom` +
+  `damageShare` for the block, `kick` for the view kick, `blocksFire` and
+  `usedFirePress` for the blaster gate, `speedScale`/`allowSprint` written
+  onto the controller each step, `forcedHold` for the range's watch helper.
+- Blocking: `game.ts` and `range/main.ts` `onBonk` ask
+  `shield.blocksAttackFrom(f.centre)` (raised, disc over halfway, inside
+  the front arc from the view); a blocked bonk costs `damageShare`, plays
+  `SH-block` at the attacker, and is not a hit (no HUD flash). The
+  attacker's own logic is untouched.
+- The throw (press fire while fully raised, not during a blaster switch):
+  the disc flies from the left hand along the view at `throw.speed`,
+  striking centres within `hitRadius` of the swept step, nearest first,
+  `1 + bounces` hits, then home at `returnSpeed`, caught within
+  `homeRange`, cooldown before the next throw. Each ricochet picks the
+  nearest living Foamer in sight within `ricochetRange` (a clear ray from
+  the disc to its middle), so it may strike one again with another
+  between: the card's rule is never the same one twice in a row. It
+  staggers (the Foamer's own `staggerTime`, new field; `stun` 0 in the
+  data reuses it) and takes `damage` per hit but cannot kill: health
+  floors at 0.0001 (the kill stays with darts and finishers). Voxel cover
+  in the path carves a `carveRadius` crater (capped `debrisMax` chunks a
+  flight) and turns it home.
+- The disc's own rays treat a Foamer's movement capsule as neither cover
+  nor sight block (exact-match `CAPSULE_GROUPS`, as darts do; plus
+  excluding the two capsules either side of a ricochet): the disc leaves a
+  struck body's capsule sitting inside it, and a ricochet's sight ray
+  starts inside the one it just hit. Without this the disc threw itself
+  home a step after every hit.
+- Pages: both fixed steps call `shield.update` before the loadout and
+  gate the blaster with `canFire`; `camera.rotation` adds `shield.kick`
+  with the blaster's climb; restart hooks call `shield.reset()`. The range
+  watch gets `block(on)` and `throwShield()`. Settings get "Shield:
+  toggle, not hold" (`shieldMode`), and `data/sounds.json` gains the five
+  `SH-*` placeholder sounds (SOUNDS.md updated).
+- Tests: `tests/shield/block.test.ts` (front reduced, rear full, arc
+  edge, walk speed, sprint off, raise time) and `throw.test.ts` (hit
+  count, order, no repeat in a row, stagger damage, block again after a
+  catch, cooldown, wall carve, range turn, sight behind cover) on a real
+  Rapier world with real Foamers and voxel walls. `tsc`, `vitest` (302
+  pass) and `build` pass.
+- Not checked by eye (no browser here): the disc's look and placement
+  (size, rim/face/boss proportions, hand offset), raise/lower feel,
+  the kick feel, the `SH-*` placeholder sounds, toggle in the Settings
+  panel, and that the disc reads well against arena walls in flight.
+- Decisions in PLAN section 14; the GAME-04 row says stage 1 done, parry
+  stage 2 waits for GAME-10.
 
 ### 2026-11-03: darts pass Foamer capsules, and aim at what the crosshair is on (Claude)
 

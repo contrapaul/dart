@@ -62,6 +62,10 @@ export class Foamer {
   state: FoamerState = "approach";
   /** Seconds spent in the current state. */
   stateTime = 0;
+  /** GAME-04: how long a stagger lasts, seconds. The data's stagger.time at
+   *  spawn; the thrown shield staggers for its own time from data/shield.json
+   *  (a stun of 0 keeps this value), which writes this field. */
+  staggerTime = foamerData.test.stagger.time;
   /** The brain and its token bid (ENG-08 stage 3b). Null when the system has
    *  no director: then the Foamer attacks on approach range as it did before
    *  the director, which is what the older tests and tools expect. */

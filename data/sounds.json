@@ -947,6 +947,133 @@
         ]
       }
     },
+    "SH-raise": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.06,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.14,
+              "attack": 0.005,
+              "decay": 0.11,
+              "lowpass": 2600,
+              "highpass": 300,
+              "lowpassEnd": 900
+            },
+            "gain": 0.5
+          },
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 320,
+              "f1": 520,
+              "wave": "triangle",
+              "attack": 0.005,
+              "decay": 0.07
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "SH-block": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.12,
+              "attack": 0.002,
+              "decay": 0.1,
+              "lowpass": 1400,
+              "highpass": 100,
+              "lowpassEnd": 300
+            },
+            "gain": 0.8
+          },
+          {
+            "click": {
+              "dur": 0.02,
+              "freq": 700
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "SH-throw": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.05,
+      "maxVoices": 1,
+      "synth": {
+        "noise": {
+          "dur": 0.22,
+          "attack": 0.02,
+          "decay": 0.18,
+          "lowpass": 1800,
+          "highpass": 250,
+          "lowpassEnd": 3500
+        },
+        "gain": 0.55
+      }
+    },
+    "SH-ricochet": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.08,
+      "maxVoices": 4,
+      "refDistance": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.09,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 2000,
+              "highpass": 200,
+              "lowpassEnd": 500
+            },
+            "gain": 0.7
+          },
+          {
+            "tone": {
+              "dur": 0.09,
+              "f0": 500,
+              "f1": 260,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.08
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "SH-catch": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.06,
+      "maxVoices": 1,
+      "synth": {
+        "noise": {
+          "dur": 0.08,
+          "attack": 0.003,
+          "decay": 0.07,
+          "lowpass": 800,
+          "highpass": 60,
+          "lowpassEnd": 200
+        },
+        "gain": 0.7
+      }
+    },
     "PL-step-hard": {
       "files": [],
       "volume": 0.7,

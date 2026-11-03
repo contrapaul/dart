@@ -528,7 +528,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 
 | ID | Task | Owner | Depends on |
 |---|---|---|---|
-| GAME-04 | Shield: block, parry (bounce-back), throw | A / F | P0 gate |
+| GAME-04 | Shield: block, parry (bounce-back), throw. Stage 1 done 2026-11-03 (`tasks/GAME-04.md`): viewmodel, block, movement gates, ricochet throw, return, cooldown. Parry stage 2 waits for GAME-10 (the ranged Foamer). | A / F | P0 gate |
 | GAME-05 | Shield charge | F | GAME-04 |
 | GAME-06 | Melee weapon + charges | F | GAME-04 |
 | GAME-07 | Stagger + Pop finishers + health drops | F | GAME-03 |
@@ -621,6 +621,7 @@ All twelve answered 2026-10-29.
 
 | Date | Decision | Section |
 |---|---|---|
+| 2026-11-03 | GAME-04 stage 1: the shield lives in `src/player/shield.ts` with every number in `data/shield.json`; pages own only wiring. A blocked bonk costs the data's `damageShare` and is not a hit (no HUD flash, `SH-block` instead of the hurt sound). The disc's own rays treat a Foamer's movement capsule as neither cover nor sight block (exact-match exclusion, as darts do): the disc leaves a struck body's capsule sitting inside it. The ricochet takes the nearest Foamer in sight each time, so it may strike one again with another between: the card's rule is never the same one twice in a row. A throw does not kill (a killed floor at 0.0001 health); the kill stays with darts and finishers. | 3.2 |
 | 2026-11-03 | Darts pass a Foamer's movement capsule (it is not drawn; the parts take hits), and a shot aims from the muzzle at the first solid thing under the crosshair, not at a point 50 m out, so darts land where the crosshair is at any range (Claude, ENG-13 review follow-up). | 3.3 |
 | 2026-11-03 | LVL-01 loads levels from `data/levels/*.json` through `src/level/`: a pure validator (no Three.js, so it runs in Node) refuses a level with errors and the page shows the list; the builder makes the shell (fixed colliders, ramps as rotated slabs) and one voxel volume for every piece with a bedrock row under each, so loose foam still breaks off the anchor (ENG-06 rule). A door may sit in a shell wall: the format has no doorway opening field, so validator rule 9 skips doors when testing overlap with the shell (rule 10 compares shell boxes only). `checkpointPos` was added to BLOCKOUT.md because an arena needs a restart point that is not its own lock trigger. |
 | 2026-11-03 | LVL-01 arena zones: the voxel budget of an arena is counted over the bounding box of its trigger, doors and rifts grown by 4 m, not over the trigger box alone, because `README` pillar 3 puts cover behind the trigger and a strict trigger box would count none of the Pit's block. |

@@ -310,7 +310,7 @@ export class FoamerSystem {
     // crawl, which the brain picks up again on the next step.
     if (f.agent) this.stepBrain(f, dt, player);
     if (f.state === "stagger") {
-      if (f.stateTime >= SPEC.stagger.time) {
+      if (f.stateTime >= f.staggerTime) {
         f.state = "approach";
         f.stateTime = 0;
       }

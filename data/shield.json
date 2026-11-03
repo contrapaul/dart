@@ -1,0 +1,35 @@
+{
+  "_note": "GAME-04 stage 1: the shield. Every number the shield is tuned by. look is in metres and camera space (a child of the camera): lowered hangs low left, raised sits across the view; diameter is the disc's. block is the hold-to-block: raiseTime seconds to raise, frontArcDeg the arc of cover in front of the view, damageShare the part of an attack's damage that still lands inside it, walkShare the walk-speed multiplier, kick the view kick in radians decaying over kickTime. throw is press fire while raised: speed m/s, damage per Foamer hit, stun the stagger time in seconds (0 reuses the Foamer's own stagger.time), bounces extra Foamers after the first, range and homeRange metres, returnSpeed on the way back, carveRadius metres of voxel cover with debris capped at debrisMax. cooldown is the seconds after a catch before the disc can be thrown again.",
+  "look": {
+    "diameter": 0.55,
+    "rimThickness": 0.07,
+    "bossRadius": 0.11,
+    "bossDepth": 0.06,
+    "colors": { "rim": "#ff7a1a", "face": "#9b5cff", "boss": "#e8e4f0" },
+    "lowered": { "position": [-0.42, -0.5, -0.62], "rotationDeg": [-18, 14, 8] },
+    "raised": { "position": [-0.16, -0.24, -0.72], "rotationDeg": [0, 10, 0] },
+    "handOffset": [-0.24, -0.16, -0.45]
+  },
+  "block": {
+    "raiseTime": 0.12,
+    "frontArcDeg": 120,
+    "damageShare": 0.15,
+    "walkShare": 0.6,
+    "kick": 0.02,
+    "kickTime": 0.18
+  },
+  "throw": {
+    "speed": 25,
+    "hitRadius": 0.55,
+    "damage": 4,
+    "stun": 0,
+    "bounces": 2,
+    "ricochetRange": 8,
+    "range": 20,
+    "homeRange": 0.5,
+    "returnSpeed": 25,
+    "carveRadius": 0.14,
+    "debrisMax": 4
+  },
+  "cooldown": 0.25
+}

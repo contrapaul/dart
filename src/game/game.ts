@@ -7,6 +7,7 @@ import { Input, settings as lookSettings } from "../core/input";
 import { SettingsStore, type Settings } from "../core/settings";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
+import { Shield } from "../player/shield";
 import { DartSystem } from "../weapons/darts";
 import { Loadout } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
@@ -112,6 +113,7 @@ export interface Game<T extends BuiltGame = BuiltGame> {
   player: PlayerController;
   darts: DartSystem;
   loadout: Loadout;
+  shield: Shield;
   impacts: DartImpacts;
   debris: DebrisSystem;
   pieces: FallingPieces;
@@ -130,8 +132,9 @@ export interface Game<T extends BuiltGame = BuiltGame> {
 /** The settings live: look, FOV, volume, damage taken, flashes. */
 function applySettings(
   s: Settings, camera: THREE.PerspectiveCamera, health: PlayerHealth,
-  hud: Hud, audio: GameAudio,
+  hud: Hud, audio: GameAudio, shield: Shield,
 ): void {
+  shield.toggleMode = s.shieldMode;
   lookSettings.mouseSensitivity = s.mouseSensitivity;
   lookSettings.invertY = s.invertY;
   camera.fov = s.fov;
@@ -207,6 +210,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // Foamer system: spawn, bonk, dart damage, pop. This is the first enemy,
   // GAME-03.
   const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+  // GAME-04 stage 1: the shield. Its viewmodel hangs off the camera (the
+  // same way the blaster's does); the disc in flight is a scene object.
+  const shield = new Shield(rapier, world, scene, camera, player, loadout, foamers, debris, voxelTargets);
+  camera.add(shield.group);
   foamers.director = levelAI.director;
   foamers.navGrid = levelAI.grid;
   foamers.spawnState = "alert"; // an arena spawn is already in the fight
@@ -226,12 +233,12 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const audio = createAudio({
     camera, loadout, player, darts, impacts, foamers,
     paused: () => paused,
-    onReady: () => applySettings(store.value, camera, health, hud, audio),
+    onReady: () => applySettings(store.value, camera, health, hud, audio, shield),
   });
 
   /** The settings live. */
   function applyAll(): void {
-    applySettings(store.value, camera, health, hud, audio);
+    applySettings(store.value, camera, health, hud, audio, shield);
   }
   store.onChange(applyAll);
   // The defaults from storage go onto the camera, look and health now; the
@@ -244,8 +251,18 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   foamers.onBonk = (f, attack) => {
     logBonk(f, attack);
     if (ui.paused) return;
-    const lost = health.damage(damageOf(attack), attack);
+    // GAME-04: an attack from the front arc behind the raised disc costs
+    // only its data share. A blocked hit is not a hit: no HUD flash, and
+    // the disc's own sound plays instead of the hurt one.
+    const blocked = shield.blocksAttackFrom(f.centre);
+    const share = blocked ? shield.damageShare : 1;
+    const lost = health.damage(damageOf(attack) * share, attack);
     if (lost <= 0) return;
+    if (blocked) {
+      shield.noteBlocked();
+      audio.play("SH-block", { position: f.centre });
+      return;
+    }
     hud.onHit();
     if (health.dead) ui.pop();
   };
@@ -257,7 +274,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
 
   const game = {
     renderer, scene, camera, rapier, world, input, hud, store, health, player,
-    darts, loadout, impacts, debris, pieces, mesherPool, foamers, levelAI,
+    darts, loadout, shield, impacts, debris, pieces, mesherPool, foamers, levelAI,
     voxels, voxelMesh, audio, ui: null as unknown as UIController, built,
     loop: null as unknown as ReturnType<typeof startLoop>,
   };
@@ -278,9 +295,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     {
       completeOpen: h.completeOpen,
       overlayAllowed: h.overlayAllowed,
-      onRestart: h.onRestart,
-      onTryAgain: h.onTryAgain,
-      onPlayAgain: h.onPlayAgain,
+      onRestart: () => { shield.reset(); h.onRestart?.(); },
+      onTryAgain: () => { shield.reset(); h.onTryAgain?.(); },
+      onPlayAgain: () => { shield.reset(); h.onPlayAgain?.(); },
     },
   );
   game.ui = ui;
@@ -301,21 +318,37 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       }
       if (input.wasPressed("weaponNext")) loadout.next();
       if (input.wasPressed("weaponPrev")) loadout.prev();
+      // GAME-04: the shield first, so it can take this step's fire press as
+      // the throw before the blaster sees it. Its own gate says when the
+      // blaster may not fire (the disc is up, or out in the world).
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
       updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+      const se = shield.update(dt, {
+        fireHeld: input.isDown("fire"),
+        firePressed: input.wasPressed("fire"),
+        shieldHeld: input.isDown("shield"),
+        shieldPressed: input.wasPressed("shield"),
+        reloadPressed: input.wasPressed("reload"),
+      });
+      if (se.raised) audio.play("SH-raise");
+      if (se.thrown) audio.play("SH-throw", { position: shield.discPosition });
+      for (const p of se.hits) audio.play("SH-ricochet", { position: p });
+      if (se.caught) audio.play("SH-catch");
+      shield.onCarveAt = (p) => audio.play("DT-carve", { position: p });
+      const canFire = !shield.blocksFire && !shield.usedFirePress;
       loadout.update(
         dt,
         {
-          fireHeld: input.isDown("fire"),
-          firePressed: input.wasPressed("fire"),
+          fireHeld: canFire && input.isDown("fire"),
+          firePressed: canFire && input.wasPressed("fire"),
           reloadPressed: input.wasPressed("reload"),
         },
         _aimDir,
       );
       // The blaster, player and level hooks, one step per fixed step.
       audio.sounds?.update(dt, {
-        fireHeld: input.isDown("fire"),
-        firePressed: input.wasPressed("fire"),
+        fireHeld: canFire && input.isDown("fire"),
+        firePressed: canFire && input.wasPressed("fire"),
         reloadPressed: input.wasPressed("reload"),
         sprintHeld: input.isDown("sprint"),
       });
@@ -345,7 +378,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     camera.position.copy(player.eye(ui.paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own
     // pitch is unchanged, so releasing the trigger brings the view back up).
-    const climb = loadout.active.climb;
+    const climb = loadout.active.climb + shield.kick;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
@@ -402,6 +435,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         paused: ui.paused,
         popped: ui.poppedOut,
         health: health.hp,
+        shield: shield.state,
         player: (() => {
           const p = feet(_feet);
           return [p.x, p.y, p.z].map((n) => Number(n.toFixed(3)));
@@ -434,6 +468,26 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         loadout.update(STEP, { fireHeld: false, firePressed: true, reloadPressed: false }, _aimDir);
         darts.update(STEP);
         world.step();
+      },
+      /** GAME-04: hold the disc up (or drop it), and throw it. The throw
+       *  presses fire once while the disc is up, as a player would. */
+      block: (on: boolean) => {
+        shield.forcedHold = on;
+      },
+      throwShield: () => {
+        shield.forcedHold = true;
+        // The disc rises over a few steps (block.raiseTime); run them, then
+        // the press below is the throw, as it is for a player who waits.
+        for (let i = 0; i < 30 && (shield.state !== "raised" || shield.raise < 1); i++)
+          fixedStep(STEP);
+        loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
+        updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+        // One fire press, one step: the shield turns it into the throw.
+        const e = shield.update(STEP, {
+          fireHeld: true, firePressed: true, shieldHeld: true, shieldPressed: false,
+          reloadPressed: false,
+        });
+        return e.thrown;
       },
       step: (n: number) => {
         for (let i = 0; i < n; i++) fixedStep(STEP);
