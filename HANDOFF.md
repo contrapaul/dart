@@ -64,8 +64,8 @@ The slice Foamers (F01 Slowmer, F02 Roamer, F05 Darter) have their factory
 palette looks (ART-03, merged 2026-11-03); turnaround sheets are in
 `design/foamers/`, rendered by `npx tsx tools/render-rig.ts F01`.
 Level design concepts (LVL-00, merged 2026-11-03) are in `design/levels/`:
-semi-open but linear, after the modern Doom games (Paul). Next is LVL-01,
-the first arena blockout.
+semi-open but linear, after the modern Doom games (Paul). LVL-01 (merged
+2026-11-03) plays the first arena, the 1-1 Pit, on `arena.html`.
 
 Foam surfaces have the ENG-07 look: the mesher bakes per-vertex ambient
 occlusion into the vertex colours (inside corners, crater floors, the seam
@@ -111,7 +111,7 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-03: LVL-01 review, played through in watch mode (Claude)
+### 2026-11-03: LVL-01 review, played through in watch mode, merged (Claude)
 
 - Played `arena.html?watch` end to end by stepping by hand: the doors
   lock on entering the pit, wave 1 (3 Slowmers) comes from the two north
@@ -133,7 +133,7 @@ github.com/contrapaul/dart (public), MIT licence.
 - Unverified: frame cost of the pit at 60 fps, how the pit looks and
   reads by eye (it is all greybox), and the lock-in banner timing.
 
-### 2026-11-03: LVL-01 the first arena (DeepSeek via Pi, review pending)
+### 2026-11-03: LVL-01 the first arena (DeepSeek via Pi)
 
 - Built in three stages, one commit each: `be844ca` format, validator,
   builder and the Pit file; `b0a88f3` arena lock-in and waves; `20993b5`
