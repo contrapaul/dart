@@ -89,6 +89,24 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ENG-08 review, seen on the range (Claude)
+
+- Watched on the range in watch mode (QA-watch branch, stepped by hand
+  because a hidden browser pane gets no animation frames): a range spawn
+  stands idle, sees the player at 8 m, alerts, approaches, takes a token at
+  the hold ring, winds up, strikes and recovers; with a leg broken it falls
+  in under 0.9 s, crawls and attacks from the ground.
+- Fixed in review: line of sight was always blocked (the ray started inside
+  the Foamer's own capsule and part boxes and ended inside the player's
+  capsule), so no Foamer ever saw the player; new `SIGHT_QUERY_GROUPS`, the
+  own capsule excluded, `sightEndMarginMetres` in `data/ai.json`, and a test
+  on the real system. An approach without a token no longer bids, and a
+  falling Foamer no longer bids until it is crawling.
+- Unverified: how the prone attack looks (the head rises to about standing
+  height in the windup) and the feel of the hold circle, by eye at 60 fps.
+- `tests/ai/nav-grid.test.ts` timing test still fails now and then under
+  load (wall clock); not touched.
+
 ### 2026-11-03: ENG-08 stage 3b (DeepSeek V4.1 Flash)
 
 The Foamer brain on the director and the nav grid. Stage 3a built the pure

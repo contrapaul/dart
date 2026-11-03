@@ -443,7 +443,7 @@ export class FoamerSystem {
     input.nearbyAlert = this.nearbyAlert(f);
     // A crawl is not one of the brain's states, so the brain never asks for
     // a token while prone: the Foamer says when the crawl is in reach.
-    input.crawlInReach = f.prone && this.headDist(f, player) <= SPEC.attackRange;
+    input.crawlInReach = f.state === "crawl" && this.headDist(f, player) <= SPEC.attackRange;
     // An attack keeps the token it holds: the brain stopped wanting one as
     // soon as the windup began, and taking it back now would let it be
     // granted to another Foamer mid swing.
