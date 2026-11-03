@@ -597,7 +597,8 @@ export class Shield {
 
   /** The card's knockback: about the data's distance along the charge,
    *  through the Foamer's own character controller so it never goes
-   *  through a wall, then the long stagger in its place. */
+   *  through a wall, then the short stagger in its place (a long one would
+   *  open a finisher on any Foamer, GAME-05 review). */
   private knockBack(f: Foamer): void {
     const T2 = T.charge;
     const dirX = this.chargeDir.x, dirZ = this.chargeDir.z;
@@ -610,7 +611,7 @@ export class Shield {
       left -= moved;
     }
     // The card's stagger: the existing stagger state, the data's own time.
-    this.foamers.startStagger(f, true, f.spec.stagger.time);
+    this.foamers.startStagger(f, false, f.spec.stagger.time);
   }
 
   private endCharge(e: ShieldEvents): void {

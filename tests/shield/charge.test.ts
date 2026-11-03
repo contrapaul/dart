@@ -183,6 +183,8 @@ describe("Shield charge (lock, rush, knockback, cooldown)", () => {
     // damage, and a charge does not kill.
     expect(f.centre.z).toBeLessThan(-4 - 2.5);
     expect(f.state).toBe("stagger");
+    // The short stagger, not the long finishable one (GAME-05 review).
+    expect(f.staggerLong).toBe(false);
     expect(f.health).toBeCloseTo(hp0 - T.charge.damage, 5);
     expect(f.health).toBeGreaterThan(0);
     // The cooldown: no second charge right away, and one once it is spent.

@@ -132,6 +132,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-04: GAME-05 review, charge played in watch mode (Claude)
+
+- Qwen 27b's first run spent 40 minutes reading, then hit its output
+  limit inside one long think and wrote nothing; resumed with `pi -c` and
+  a nudge to write in small steps, it finished in three commits.
+- Played on `arena.html?watch`: with the disc up, a Slowmer at 17.9 m
+  (past the 14 m range) gave no lock and dash was the normal dash; at
+  12.6 m the lock ring showed, the charge rushed in, knocked it back about
+  2 m, staggered it and took 2 of its 6 health.
+- Fixed: the charge started the long, finishable stagger, so any charge
+  opened an instant-kill finisher on a full-health Foamer. It is the
+  short stagger now; the test checks it.
+- Unverified: the rush's feel at 60 fps, the lock ring's size, the three
+  placeholder sounds.
+
 ### 2026-11-04: GAME-05 shield charge (Qwen 3.8-27B via Pi)
 
 - Built the charge in `src/player/shield.ts` (all numbers in the
