@@ -126,6 +126,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: GAME-04 stage 1 review, shield played in watch mode (Claude)
+
+- Played on `arena.html?watch`: the raised disc reads well (purple face,
+  orange rim, low left, clear of the crosshair). Blocking a Slowmer's
+  bonk from the front took 1.8 health against 12 with the disc down. A
+  throw at three Slowmers left the arm, hit and staggered two of them
+  (one twice, not in a row), flew home and lowered.
+- Merged main (GAME-07) in. One stagger start now serves both: the
+  Foamer system's `startStagger(f, long, seconds)` sets the stagger's
+  length, and the shield calls it. Before, the shield wrote its own
+  stagger time that never reset, so after one disc hit every later
+  part-break stagger would have lasted the disc's stun. A disc stagger
+  also opens a finisher (it is a stagger).
+- Throw damage 4 to 1 in `data/shield.json`: 4 was two thirds of a
+  Slowmer, and the card asks for a small damage.
+- No shooting during a finisher holds with the shield too. The carve
+  sound hook is set once, not every step.
+- Unverified: feel at 60 fps (raise time, walk slow, kick), the
+  placeholder sounds, the hold or toggle setting by hand, and that the
+  flying disc (a plain orange ring) reads against arena walls.
+
 ### 2026-11-03: GAME-04 stage 1, the shield: block, movement gates, ricochet throw, return (Claude)
 
 - `src/player/shield.ts` (new): one `Shield` class, all numbers in

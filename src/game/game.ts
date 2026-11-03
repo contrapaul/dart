@@ -219,6 +219,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // same way the blaster's does); the disc in flight is a scene object.
   const shield = new Shield(rapier, world, scene, camera, player, loadout, foamers, debris, voxelTargets);
   camera.add(shield.group);
+  shield.onCarveAt = (p) => audio.play("DT-carve", { position: p });
   foamers.director = levelAI.director;
   foamers.navGrid = levelAI.grid;
   foamers.spawnState = "alert"; // an arena spawn is already in the fight
@@ -378,7 +379,6 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       if (se.thrown) audio.play("SH-throw", { position: shield.discPosition });
       for (const p of se.hits) audio.play("SH-ricochet", { position: p });
       if (se.caught) audio.play("SH-catch");
-      shield.onCarveAt = (p) => audio.play("DT-carve", { position: p });
       // No shooting while the disc is up or a finisher holds the player.
       const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active;
       loadout.update(
