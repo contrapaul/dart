@@ -11,12 +11,25 @@ import { FoamerSystem, type FoamerSoundKind } from "../../src/foamers/foamers";
 import type { Foamer } from "../../src/foamers/foamer";
 import type { FoamerPart } from "../../src/foamers/foamer-part";
 import foamerData from "../../data/foamers.json";
+import { FoamerSounds } from "../../src/audio/foamer-sounds";
+import type { AudioSink, LoopHandle, PlayOptions } from "../../src/audio/sink";
 
 // GAME-11: the fall. A Foamer left with fewer legs than fallBelowLegs tips
 // over as an inverted pendulum about the foot it still stands on, bounces
 // once at prone, settles, then crawls.
 
 const DT = 1 / 60;
+
+/** Records every play call, so the sound test reads the whole order back. */
+class FakeSink implements AudioSink {
+  readonly log: { id: string; opts?: PlayOptions }[] = [];
+  play(id: string, opts?: PlayOptions): void {
+    this.log.push({ id, opts });
+  }
+  loop(_id: string, _opts?: PlayOptions): LoopHandle {
+    return { set() {}, setPosition() {}, stop() {} };
+  }
+}
 const SPEC = foamerData.test;
 const FALL = SPEC.handicaps.fall;
 
@@ -160,6 +173,53 @@ describe("GAME-11 the fall", () => {
     expect(left.roll, "mirrored").toBeCloseTo(-right.roll, 5);
   });
 
+  it("4. crawling, it closes at rig.speed * crawlSpeed and attacks in range; with no arms it headbutts", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 5);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    breakLeg(f, "legL");
+    for (let i = 0; i < 240 && f.state !== "crawl"; i++) tick(r, player);
+    expect(f.state, "crawling").toBe("crawl");
+    // Closing speed, measured from the feet over a stretch that is still
+    // out of reach (the head leads the feet by about a body).
+    const z0 = f.centre.z;
+    const t0 = r.foamers.time;
+    for (let i = 0; i < 120; i++) tick(r, player);
+    const speed = (f.centre.z - z0) / (r.foamers.time - t0);
+    const want = f.rig.speed * SPEC.handicaps.crawlSpeed;
+    expect(speed, "crawl speed").toBeGreaterThan(want * 0.85);
+    expect(speed, "crawl speed").toBeLessThan(want * 1.15);
+    // It keeps coming until its head is in range, then attacks with the
+    // arms it has (bonk).
+    let attacked = false;
+    for (let i = 0; i < 900 && !attacked; i++) {
+      tick(r, player);
+      if (f.state === "windup" || f.state === "strike") attacked = true;
+    }
+    expect(attacked, "it attacked from the ground").toBe(true);
+    expect(f.attack()?.id, "bonk, it still has its arms").toBe("bonk");
+    expect(f.prone, "still prone").toBe(true);
+    // The same crawl with both arms gone: it headbutts instead.
+    const r2 = rig();
+    const f2 = r2.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r2.world.step();
+    await settleAll(r2, f2);
+    breakLeg(f2, "legL");
+    for (let i = 0; i < 240 && f2.state !== "crawl"; i++) tick(r2, player);
+    expect(f2.state, "crawling").toBe("crawl");
+    f2.parts.get("foreArmL")!.hp = 0;
+    f2.parts.get("foreArmR")!.hp = 0;
+    let headbutt = false;
+    for (let i = 0; i < 1200 && !headbutt; i++) {
+      tick(r2, player);
+      if (f2.state === "windup" || f2.state === "strike") headbutt = true;
+    }
+    expect(headbutt, "it attacked with no arms").toBe(true);
+    expect(f2.attack()?.id, "headbutt, it has no arms left").toBe("headbutt");
+  });
+
   it("5. no joint jumps entering fall or crawl: no part turns more than 0.35 rad in a step", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 8);
@@ -225,7 +285,7 @@ describe("GAME-11 the fall", () => {
     expect(r.targets, "still a target in the crawl").toContain(f.parts.get("body")!);
   });
 
-  it("9. the fall sound: onSound gets fall once per fall, at the body", async () => {
+  it("7. the fall sound: onSound gets fall once per fall, and FX-topple plays once", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 8);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
@@ -237,9 +297,35 @@ describe("GAME-11 the fall", () => {
     expect(falls.length, "one fall line").toBe(1);
     // At the body, not at a part.
     expect(falls[0]!.point.distanceTo(f.centre)).toBeLessThan(0.2);
+    // Through the real audio path, FX-topple plays once and no fizz-out
+    // follows: it is not down.
+    const sink = new FakeSink();
+    const r2 = rig();
+    // FoamerSounds takes the system's onSound over, so this reads the real
+    // path: system event -> FoamerSounds -> sink.
+    const sounds = new FoamerSounds(sink, r2.foamers);
+    const f2 = r2.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r2.world.step();
+    await settleAll(r2, f2);
+    breakLeg(f2, "legL");
+    for (let i = 0; i < 240 && f2.state !== "crawl"; i++) {
+      tick(r2, player);
+      sounds.update(DT);
+    }
+    const ids = sink.log.map((x) => x.id);
+    expect(ids.filter((id) => id === "FX-topple").length, "one FX-topple").toBe(1);
+    expect(ids.filter((id) => id === "FX-fizz-out").length, "no fizz-out").toBe(0);
+    expect(ids, "no footsteps while it fell or crawls").not.toContain("FX-step-medium");
+    // And no footsteps once it crawls toward the player, either.
+    const before = ids.length;
+    for (let i = 0; i < 120; i++) {
+      tick(r2, player);
+      sounds.update(DT);
+    }
+    expect(sink.log.slice(before).map((x) => x.id), "no footsteps in the crawl").not.toContain("FX-step-medium");
   });
 
-  it("10. goDown still works from a fall and from the crawl: darts kill it and it ragdolls in place", async () => {
+  it("6. a crawling Foamer killed by darts goes down (ragdoll) as before, and stays down", async () => {
     for (const mode of ["fall", "crawl"] as const) {
       const r = rig();
       const player = new THREE.Vector3(0, 1.6, 8);

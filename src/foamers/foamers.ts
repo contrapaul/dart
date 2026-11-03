@@ -63,6 +63,8 @@ const _kbB = new THREE.Vector3(); // kill push: a part's centre
 const _kbV = new THREE.Vector3(); // kill push: the shot's horizontal direction
 const _one = new THREE.Vector3(1, 1, 1);
 const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
+/** GAME-11: a prone Foamer turns at this share of its turn rate. */
+const CRAWL_TURN = 0.5;
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b). */
 export type FoamerSoundKind =
@@ -227,15 +229,17 @@ export class FoamerSystem {
     f.stateTime += dt;
     // Face the player (+z is forward, so the wanted yaw is atan2(dx, dz)),
     // at the turn rate with the no-head handicap. Not while staggering: a
-    // stagger is stillness and wobble only.
-    if (f.state !== "stagger") {
+    // stagger is stillness and wobble only. Not while falling either (the
+    // card: no movement in the fall); prone, it turns at half the rate.
+    if (f.state !== "stagger" && f.state !== "fall") {
       const dx = player.x - f.centre.x;
       const dz = player.z - f.centre.z;
       const wanted = Math.atan2(dx, dz);
       let dyaw = wanted - f.yaw;
       while (dyaw > Math.PI) dyaw -= 2 * Math.PI;
       while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
-      f.yaw += THREE.MathUtils.clamp(dyaw, -f.turnRate() * dt, f.turnRate() * dt);
+      const tr = f.turnRate() * (f.prone ? CRAWL_TURN : 1);
+      f.yaw += THREE.MathUtils.clamp(dyaw, -tr * dt, tr * dt);
     }
 
     const dist = Math.hypot(player.x - f.centre.x, player.z - f.centre.z);
@@ -255,12 +259,14 @@ export class FoamerSystem {
       const atk = f.attack();
       if (!atk) {
         // The attack broke away mid windup (a stagger cancelled it) or the
-        // spec has none: back to approach.
-        f.state = "approach";
+        // spec has none: back to approach, or to the crawl if it is prone.
+        f.state = f.prone ? "crawl" : "approach";
         f.stateTime = 0;
       } else if (f.stateTime >= atk.windup) {
         const dy = Math.abs(player.y - f.centre.y);
-        if (dist <= SPEC.attackRange + 0.3 && dy < 2) f.bonk(atk.id);
+        // GAME-11: a prone Foamer strikes from its head, ahead of the feet.
+        const reach = f.prone ? this.headDist(f, player) : dist;
+        if (reach <= SPEC.attackRange + 0.3 && dy < 2) f.bonk(atk.id);
         f.state = "strike";
         f.stateTime = 0;
       }
@@ -278,19 +284,32 @@ export class FoamerSystem {
       // One FX-topple per fall, at the body when it first hits (GAME-11).
       if (!landed && f.fallBounced) sound(this, "fall", f, f.centre);
     } else if (f.state === "crawl") {
-      // GAME-11 stage 1: the crawl holds still where the fall left it.
+      // GAME-11: prone, it pulls itself at the player and attacks from the
+      // ground with what its arms allow (a Foamer with none headbutts).
+      if (this.headDist(f, player) <= SPEC.attackRange) {
+        f.state = "windup";
+        f.stateTime = 0;
+        f.setAttack(this.chooseAttack(f));
+        sound(this, "attack", f, f.centre);
+      }
     } else if (f.stateTime >= SPEC.recover) {
-      f.state = "approach";
+      // A prone Foamer goes back to the crawl, not to its feet.
+      f.state = f.prone ? "crawl" : "approach";
       f.stateTime = 0;
     }
 
     // Gravity: vertical speed, reset by the ground. Without legs it never
-    // falls: the floor fit below holds it on the ground.
+    // falls: the floor fit below holds it on the ground. A crawl keeps
+    // pulling itself along, so it is not grounded-limited like a walk.
     f.vy = Math.max(f.vy - SPEC.gravity * dt, -50);
-    const moving = f.state === "approach" && dist > SPEC.attackRange;
+    const crawling = f.state === "crawl";
+    // Prone, it closes until its head (the part that reaches) is in range.
+    const reach = crawling ? this.headDist(f, player) : dist;
+    const moving = f.state === "approach" || crawling ? reach > SPEC.attackRange : false;
     this._wish.set(0, 0, 0);
     if (moving) {
-      this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(f.speed() * dt);
+      const speed = crawling ? f.crawlSpeed() : f.speed();
+      this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
     }
     let stepDist = 0;
     if (f.legs().length === 0) {
@@ -337,6 +356,12 @@ export class FoamerSystem {
       }
     }
     this.spawn(new THREE.Vector3(best[0], best[1], best[2]));
+  }
+
+  /** GAME-11: horizontal distance from a prone Foamer's head (the part
+   *  that reaches) to the player, not from its feet. */
+  private headDist(f: Foamer, player: THREE.Vector3) {
+    return Math.hypot(player.x - f.headPos.x, player.z - f.headPos.z);
   }
 
   /** The first spec attack whose needs are met (at least one of each id
@@ -871,11 +896,12 @@ export class FoamerSystem {
     });
     // GAME-11: down to too few legs, a living Foamer falls over instead of
     // staggering. It does not fall twice, and a downed one is not here.
-    if (part.spec.kind === "leg" && f.state !== "fall" && f.state !== "crawl" &&
+    if (part.spec.kind === "leg" && !f.prone &&
         f.legs().length < SPEC.handicaps.fallBelowLegs)
       this.startFall(f, part.spec.id);
-    else if (f.state !== "fall" && f.state !== "crawl") {
-      // Stagger; a stagger during a windup cancels the attack.
+    else if (!f.prone) {
+      // Stagger; a stagger during a windup cancels the attack. A prone
+      // Foamer cannot stagger, it only loses the attack (GAME-11).
       f.state = "stagger";
       f.stateTime = 0;
     }
@@ -888,6 +914,7 @@ export class FoamerSystem {
    *  one so the controller moves the prone shape. */
   private startFall(f: Foamer, lostLeg: string) {
     f.state = "fall";
+    f.prone = true;
     f.stateTime = 0;
     f.fallA = -1; // stepFall sets startTilt on its first step
     f.fallW = 0;

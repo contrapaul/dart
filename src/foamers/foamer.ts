@@ -4,7 +4,7 @@ import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
-import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion } from "./rig-states";
+import { restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -22,6 +22,7 @@ export type GameRig = RigSpec & { health: number };
 // sequential update or render.
 const _poses = new Map<string, THREE.Matrix4>();
 const _target = restMotion();
+const _attack = restMotion(); // a prone attack's own motion, laid over the crawl
 const _quat = new THREE.Quaternion();
 const _fitV = new THREE.Vector3();
 const _pL = new THREE.Vector3();
@@ -77,6 +78,10 @@ export class Foamer {
   height = 0;
   /** Walk phase; the system advances it with distance walked. */
   gait = 0;
+  /** The head's box centre in world space, from the last solved pose
+   *  (GAME-11: a prone Foamer strikes and reaches from its head, which is
+   *  ahead of its feet). */
+  readonly headPos = new THREE.Vector3();
   /** The eased motion, one step toward its state's target. */
   readonly motion: RigMotion = restMotion();
   /** Times and amounts of recent damage, for the catastrophic window. */
@@ -92,6 +97,9 @@ export class Foamer {
   fallSide = 1;
   fallBounced = false;
   fallSettle = 0;
+  /** GAME-11: it is on the ground from the fall on, so its attacks and its
+   *  crawl are posed prone. */
+  prone = false;
   /** The body's centre height over the ground at rest: the pendulum's pivot
    *  length, filled once at spawn (GAME-11). */
   pivotHeight = 0;
@@ -117,6 +125,11 @@ export class Foamer {
   /** Attach the system that owns this Foamer (set after construction). */
   setSystem(s: { onBonk: (f: Foamer, attack: string) => void; stats: { bonks: number } }): void {
     this.system = s;
+  }
+
+  /** Crawl speed in m/s (GAME-11): rig.speed * handicaps.crawlSpeed. */
+  crawlSpeed() {
+    return this.rig.speed * this.spec.handicaps.crawlSpeed;
   }
 
   /** Ground speed in m/s, with leg handicaps (some legs: 0.5, none: 0.25). */
@@ -288,7 +301,21 @@ export class Foamer {
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
     else if (this.state === "stagger") staggerMotion(this.stateTime, t);
     else if (this.state === "down") restInto(t); // ENG-12: physics carries it now
-    else if (this.state === "fall" || this.state === "crawl") this.proneMotion(t, this.state === "fall" ? this.fallTilt() : this.spec.handicaps.fall.proneTilt);
+    else if (this.state === "fall") this.proneMotion(t, this.fallTilt());
+    else if (this.prone) {
+      // On the ground: the crawl's base pose, with the attack's own swing
+      // laid over it (a prone Foamer attacks from where it lies, it does
+      // not stand up to do it).
+      this.proneMotion(t, this.spec.handicaps.fall.proneTilt);
+      if (this.state === "crawl") crawlMotion(this.rig, this.gait, t);
+      const atk = this.attack();
+      if ((this.state === "windup" || this.state === "strike") && atk) {
+        const u = _attack;
+        if (this.state === "windup") windupMotion(this.rig, atk.id, this.stateTime / atk.windup, u);
+        else strikeMotion(this.rig, atk.id, this.stateTime / atk.strike, u);
+        for (const [id, r] of u.rot) t.rot.set(id, r);
+      }
+    }
     else if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
     else restInto(t);
     const k = 1 - Math.exp(-dt / this.poseBlend);
@@ -311,8 +338,7 @@ export class Foamer {
     // attached parts' lowest corner (box corners move with the roll) must
     // sit on the floor (a downed body shifted down by its sinkDrop): bring
     // the whole rig to the ground.
-    if (this.legs().length === 0 || this.state === "down" ||
-        this.state === "fall" || this.state === "crawl") {
+    if (this.legs().length === 0 || this.state === "down" || this.prone) {
       let low = Infinity;
       for (const [pid, pm] of _poses) {
         if (!this.parts.has(pid)) continue;
@@ -327,6 +353,15 @@ export class Foamer {
       solvePose(this.rig, this.centre, this.yaw, m, _poses);
     }
     for (const [id, part] of this.parts) part.setPose(_poses.get(id)!);
+    // The head's box centre, for the reach of a prone attack (GAME-11).
+    const headM = _poses.get("head");
+    if (headM && this.parts.has("head")) {
+      const hs = this.rig.parts.find((p) => p.id === "head")!.size;
+      this.headPos.set(hs[0] / 2, hs[1] / 2, hs[2] / 2)
+        .multiplyScalar(this.rig.voxelSize).applyMatrix4(headM);
+    } else {
+      this.headPos.copy(this.centre).setY(this.centre.y + this.height * 0.7);
+    }
   }
 
   /** The tilt the fall has reached, radians from upright (0 before it

@@ -419,7 +419,7 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(r.foamers.broken[1]!.groups.map((g) => g.part.spec.id)).toEqual(["foreArmR"]);
   });
 
-  it("7. a leg break falls instead of limping (GAME-11): it goes over and, in stage 1, holds still prone; the prone body stays on the floor", async () => {
+  it("7. a leg break falls instead of limping (GAME-11): it goes over and crawls, slower than it walked; the prone body stays on the floor", async () => {
     const player = new THREE.Vector3(0, 1.6, 4);
     const run = async (breakParts: string[]) => {
       const r = rig();
@@ -436,11 +436,14 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     const intact = await run([]);
     expect(intact.d, "the intact one walks").toBeGreaterThan(0.4);
     // GAME-11: fallBelowLegs 2, so a two-legged Foamer that loses one leg
-    // falls, which replaces the old 50% limp. Stage 1 crawls in place.
+    // falls, which replaces the old 50% limp. Prone, it crawls: slower than
+    // it walked (crawlSpeed 0.3 of the rig's speed), but it closes on the
+    // player. Stage 1 held it still; the card's crawl moves it.
     const one = await run(["legL"]);
     expect(one.f.state, "one leg gone: it fell").toBe("crawl");
     expect(one.f.parts.has("legL"), "the leg is off").toBe(false);
-    expect(one.d / intact.d, "prone, it holds still").toBeLessThan(0.05);
+    expect(one.d, "it crawls").toBeGreaterThan(0.1);
+    expect(one.d / intact.d, "slower than it walked").toBeLessThan(0.7);
     // Prone on the floor, not sunk into it (the old skid check, now on the
     // body that fell). The pose fits each part's box to the floor, so the
     // filled voxels of a part whose box corner is rounded sit slightly above

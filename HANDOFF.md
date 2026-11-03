@@ -81,6 +81,60 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: GAME-11 stage 2, crawl, attacks from the ground, sound and range button (Pi)
+
+The prone Foamer now moves and fights. `crawlMotion(rig, gait, out)` in
+`src/foamers/rig-states.ts`, the signature the card names, adds the crawl
+to the pose the Foamer already has: the arms reaching forward in turn
+(`-1.4` plus and minus `0.5 * sin(gait * PI)`), the leg it has left
+dragging at `-0.5 + 0.12 * cos`, and a small body rock in pitch. It does
+not set pitch, roll or y itself: `poseParts` calls `proneMotion` for the
+prone tilt first (which splits it with the fall's own `sideShare`, so the
+crawl takes over from exactly where the fall ended and no part turns
+over), then lays the crawl on top. A prone attack lays
+`windupMotion`/`strikeMotion` over the same prone base pose, so it attacks
+from where it lies instead of standing up to do it.
+
+`Foamer.prone` is set by `startFall` and outlives the `crawl` state,
+because the attack states are not prone states: every pose, floor fit and
+reach check asks `prone`, not `state`. Speed is `Foamer.crawlSpeed()` =
+`rig.speed * handicaps.crawlSpeed` (0.3 m/s measured on F01), and the turn
+rate is halved while prone (`CRAWL_TURN` 0.5 in `foamers.ts`). It does not
+turn at all during the fall, which is what the card's "no movement during
+the fall" says.
+
+Reach from the ground uses `Foamer.headPos`, the head's box centre taken
+from the pose the Foamer was just solved into. Both the decision to attack
+and the strike's own `dist <= attackRange + 0.3` check use it while prone,
+so a crawl whose feet are still 1.8 m out attacks as soon as its head is
+in range. With no forearms, `chooseAttack` already fell through to the
+headbutt (`needs: []`), so no new data was needed. A prone Foamer cannot
+stagger: an arm break on the ground only cancels the attack, because a
+stagger would stand it back up.
+
+The fall sound and the lying capsule came in stage 1 (`FoamerSoundKind`
+`fall` -> `FX-topple`, no fizz-out; `setCapsuleLying`), and the range's
+Break leg button and `breakLegForTest()` did too, so stage 2 only had to
+keep them working. Footsteps were already gated on `state === "approach"`
+in `src/audio/foamer-sounds.ts`, which covers the fall and the crawl; test
+7 now pins that.
+
+Tests: card 4 (closing speed within 15% of `rig.speed * crawlSpeed` and an
+attack in range, then the same crawl with both forearms gone headbutting),
+6 (a crawling Foamer killed by darts ragdolls and stays down; the test also
+covers a kill mid-fall) and 7 (`onSound` gets `fall` once at the body, and
+through the real `FoamerSounds` `FX-topple` plays once, with no
+`FX-fizz-out` and no `FX-step-medium` during the fall or the crawl). Card
+tests 1, 2, 3, 5 and 8 were built in stage 1 and are unchanged. One old
+assertion had to change: `tests/foamers/parts.test.ts` 7 asserted that a
+fallen Foamer "holds still prone" (stage 1's placeholder), which the card's
+own crawl supersedes; it now checks that it crawls, more slowly than it
+walked. None of the card's numbers changed.
+
+Unverified: how the crawl reads on screen (the arm reach, the drag, the
+pitch rock) and whether the prone attack's head reach feels right, both by
+eye on the range. The card's numbers are the reviewer's to tune.
+
 ### 2026-11-02: GAME-11 stage 1, the fall (Pi)
 
 A Foamer that is left with fewer than `handicaps.fallBelowLegs` (2) legs
