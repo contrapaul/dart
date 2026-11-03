@@ -89,6 +89,29 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: QA-flaky test 7 was seeded (Qwen3.8-27B via Pi)
+
+- `tests/foamers/foamers.test.ts` test 7 (a burst kills and pops it) failed
+  once under heavy machine load. Cause: the carved debris chunks are kicked
+  with `Math.random` (`src/voxel/debris.ts` chunk speeds, directions and
+  spin). A chunk can rebound into the dart flight path, so which of the
+  dying round's darts hit the Foamer versus a chunk varied with the
+  process's random state at that moment. When the killing darts landed on
+  chunks or carved ground, the round dealt less than the catastrophic
+  share (0.4 x max health in 0.1 s), so the Foamer went down instead of
+  popping and the test's `popped === 1` failed. Game code is correct (the
+  burst window is exact and the damage is what the game intends); the test
+  depended on randomness it never seeded.
+- Reproduced with a seeded copy that swapped `Math.random` for an LCG:
+  2 of 80 seeds failed (downed instead of popped, health 0, popped 0).
+- Fixed in the test only: test 7 now wraps the fight loop in a seeded
+  `Math.random` (seed 0x1bdcb3d2) and restores the process random after.
+  No step, timing or wall-clock dependence remains: steps are fixed
+  `DT = 1/60` and the loop is deterministic.
+- Verified: 25 runs of the file alone and several full-suite runs under
+  extra load, all green; `npx tsc --noEmit` and `npm test` pass.
+
+
 ### 2026-11-03: QA-watch, range watch mode for the in-app browser (Qwen3.8-27B via Pi)
 
 `range.html?watch` starts the range unpaused without pointer lock, which
