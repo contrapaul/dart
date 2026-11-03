@@ -14,6 +14,14 @@
     "throwRangeMetres": 12.0,
     "preferredDistanceMetres": 8.0,
     "retreatDistanceMetres": 5.0,
+    "ball": {
+      "speed": 9.0,
+      "gravity": 5.0,
+      "radius": 0.09,
+      "chunks": 4,
+      "maxLive": 8,
+      "lifetime": 4.0
+    },
     "recover": 0.8,
     "popChunkScale": 2.5,
     "popBursts": 4,

@@ -17,6 +17,7 @@ import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import { ProjectileSystem } from "../foamers/projectiles";
 import { makeLevelAI } from "../ai/level";
 import { SettingsStore } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
@@ -133,6 +134,14 @@ const voxelTargets: VoxelTarget[] = [];
 // Dart hits on the Foamer parts carve craters and throw foam debris.
 const impacts = new DartImpacts(darts, debris, voxelTargets);
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+// GAME-10a: the F02's foam balls (kinematic raycasts, no physics bodies).
+const projectiles = new ProjectileSystem(rapier, world, debris, player.collider);
+scene.add(projectiles.group);
+foamers.projectiles = projectiles;
+projectiles.onSound = (kind, at) => {
+  if (!engine) return;
+  if (kind === "burst") engine.play("FB-burst", { position: at });
+};
 // GAME-04 stage 1: the shield on the range too, so its panel and watch
 // can drive it. Same class and data as the game pages; the wiring here is
 // this page's own loop, not a copy of game logic.
@@ -162,6 +171,28 @@ foamers.onBonk = (_f, attack) => {
     if (engine) engine.play("SH-block", { position: _f.centre });
     return;
   }
+  hud.onHit();
+};
+// GAME-10a: a foam ball that reaches the player costs health like a bonk,
+// the disc blocking its direction of travel (the point it came from).
+const _fromBall = new THREE.Vector3();
+projectiles.onHitPlayer = (b) => {
+  if (switches.godMode || paused) return;
+  const speed = Math.hypot(b.vel.x, b.vel.y, b.vel.z);
+  _fromBall.set(
+    b.pos.x - (b.vel.x / speed) * 0.5,
+    b.pos.y - (b.vel.y / speed) * 0.5,
+    b.pos.z - (b.vel.z / speed) * 0.5,
+  );
+  const blocked = shield.blocksAttackFrom(_fromBall);
+  const lost = health.damage(damageOf("throw") * (blocked ? shield.damageShare : 1), "throw");
+  if (lost <= 0) return;
+  if (blocked) {
+    shield.noteBlocked();
+    if (engine) engine.play("SH-block", { position: b.pos });
+    return;
+  }
+  if (engine) engine.play("FB-hit", { position: b.pos });
   hud.onHit();
 };
 
@@ -605,6 +636,8 @@ loopCtl = startLoop({
       player.update(dt, input);
       if (switches.foamers) {
         foamers.update(dt, player.eye(1, _eye));
+        // GAME-10a: the foam balls fly on their own rays, no bodies.
+        projectiles.update(dt);
         updateNavPaths();
       }
       // Switch: wheel down is next, up is prev; keys 1 to 3 select directly.

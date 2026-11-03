@@ -189,6 +189,9 @@ describe("an F02 thrower on the director (GAME-10a)", () => {
   it("keeps its ring and throws from it", () => {
     const r = rig();
     const thrown: string[] = [];
+    // A throw is the ranged attack: no onBonk (the ball does the damage), so
+    // a throw is seen as the windup of the attack whose token is ranged.
+    let seenWindup: string | null = null;
     r.foamers.onBonk = (f, attack) => {
       thrown.push(attack);
       void f;
@@ -202,11 +205,18 @@ describe("an F02 thrower on the director (GAME-10a)", () => {
     let least = 99;
     for (let i = 0; i < 60 * 12; i++) {
       tick(r, player);
+      if (f.state === "windup" && f.attack()?.token === "ranged" && seenWindup !== "windup") {
+        thrown.push("throw");
+        seenWindup = "windup";
+      } else if (f.state !== "windup") {
+        seenWindup = null;
+      }
       const d = Math.hypot(player.x - f.centre.x, player.z - f.centre.z);
       most = Math.max(most, d);
       least = Math.min(least, d);
     }
     expect(thrown.filter((a) => a === "throw").length, "it threw").toBeGreaterThan(0);
+    expect(thrown.includes("bonk"), "a thrower does not bonk from its ring").toBe(false);
     expect(least, "it never walked into bonking range").toBeGreaterThan(3);
     expect(most, "it never wandered past its throw range").toBeLessThan(13.5);
     expect(r.director.stats().ranged.inUse).toBeLessThanOrEqual(aiData.difficulties.normal.ranged);

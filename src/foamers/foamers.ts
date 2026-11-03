@@ -18,6 +18,7 @@ import { Director, type TokenKind } from "../ai/director";
 import { FoamerAgent } from "../ai/agent";
 import { steer, type Neighbour, type Velocity } from "../ai/steer";
 import type { NavGrid } from "../ai/nav-grid";
+import type { ProjectileSystem } from "./projectiles";
 import { SIGHT_QUERY_GROUPS } from "../physics/world";
 
 // Spawning, per-part dart damage with foam-core wounds, breaking,
@@ -127,10 +128,11 @@ const CRAWL_TURN = 0.5;
 /** The brain's data (ENG-08 stage 3). */
 const BRAIN = aiData.brain;
 
-/** The Foamer one-shot events in the order the card names them (AUD-01 3b). */
+/** The Foamer one-shot events in the order the card names them (AUD-01 3b),
+ *  plus GAME-10a's "throw": the ball leaving the hand. */
 export type FoamerSoundKind =
   | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop"
-  | "stagger";
+  | "stagger" | "throw";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -194,6 +196,10 @@ export class FoamerSystem {
   director: Director | null = null;
   /** The level's walkable grid, for paths. Null: a Foamer walks straight. */
   navGrid: NavGrid | null = null;
+  /** GAME-10a: where a finished throw releases its foam ball. Null (the
+   *  unit tests, the sandbox): a throw still winds up and strikes, but no
+   *  ball flies. The pages set it to their ProjectileSystem. */
+  projectiles: ProjectileSystem | null = null;
   /** The ray that decides line of sight to the player. */
   private losRay: RAPIER.Ray;
   /** The state a new Foamer's brain starts in. Arena spawns (the main page)
@@ -409,7 +415,18 @@ export class FoamerSystem {
         const dy = Math.abs(player.y - f.centre.y);
         // GAME-11: a prone Foamer strikes from its head, ahead of the feet.
         const reach = f.prone ? this.headDist(f, player) : dist;
-        if (reach <= attackRange(f.spec, atk) + 0.3 && dy < 2) f.bonk(atk.id);
+        if (reach <= attackRange(f.spec, atk) + 0.3 && dy < 2) {
+          if (atk.token === "ranged") {
+            // A throw is not a hit: the ball does the damage when it lands
+            // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
+            // Without a projectile system (the unit tests, the sandbox) the
+            // windup and the throw pose still play, and nothing flies.
+            this.projectiles?.launch(f, player);
+            sound(this, "throw", f, f.centre);
+          } else {
+            f.bonk(atk.id);
+          }
+        }
         f.state = "strike";
         f.stateTime = 0;
       }

@@ -89,7 +89,12 @@ export class FoamerSounds {
         this.sink.play("FX-part-off", p);
         break;
       case "attack":
-        this.sink.play("F01-swing", p);
+        // A thrower's windup shows before the ball leaves the hand
+        // (GAME-10a); a bonker's swing keeps its own whoosh.
+        this.sink.play(f.attack()?.token === "ranged" ? "F02-windup" : "F01-swing", p);
+        break;
+      case "throw":
+        this.sink.play("F02-throw", p);
         break;
       case "fall":
         // GAME-11: it toppled, but it is not down, so no fizz-out.
