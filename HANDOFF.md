@@ -6,6 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+ENG-13 done 2026-11-03: the two playable pages share one game module in
+`src/game/`; neither page carries a copy any more. Browser checks are
+still open (see the Log entry).
+
 LVL-01 done 2026-11-03: `arena.html` plays the 1-1 Pit from
 `data/levels/1-1-pit.json` (lock-in, two waves from rifts, exit pad);
 the format, validator, builder and arena state machine are in
@@ -111,6 +115,35 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-03: ENG-13, one shared game module for the playable pages (DeepSeek via Pi)
+
+- `src/main.ts` and `src/arena/main.ts` were near copies (501 and 537
+  lines). Everything both pages did is now `src/game/game.ts`:
+  `createGame` takes a page's `build`, its hooks and its scene options,
+  and owns renderer, physics, input, player, health, settings store and
+  panels, HUD, loadout, darts, impacts, carving, debris, falling pieces,
+  Foamers on the level AI, sound, the fixed step, render and the loop.
+  `src/game/ui.ts` holds the pause menu, settings and popped screen;
+  `src/game/audio.ts` holds the engine start and its volume and pause
+  wiring.
+- Page code moved to `src/course/extras.ts` (throwable foam blocks, the
+  melee debug blast, the pop burst, the course respawn) and
+  `src/arena/extras.ts` (level build, the lock-in runner, rifts, exit
+  pad, banner, checkpoint restart, the `dartArena` watch fields). Each
+  page file is now its geometry and a call: `src/main.ts` 112 lines,
+  `src/arena/main.ts` 50 lines.
+- The step and render order is unchanged and lives in one place now:
+  health, player, Foamers, the page step hook, blaster and aim, sounds,
+  debris, pieces, the page's after-pieces hook, darts, the page's
+  before-world hook, `world.step`, the page's after-world hook. Render:
+  debris, pieces, Foamers, page render hook, camera, viewmodel, HUD,
+  page late hook, darts, listener, draw.
+- `index.html?watch` now exists alongside the arena's, with one shared
+  set of console helpers (`state`, `moveTo`, `look`, `aimNearest`,
+  `fire`, `step`, `pause`); each page adds its own fields to `state()`.
+- Not verified here: the pages have not been run in a browser. The
+  checks are tsc, the 289 unit tests and the build. The arena's two
+  waves and the course's Foamer spawns still want a watch-mode pass.
 ### 2026-11-03: LVL-01 review, played through in watch mode, merged (Claude)
 
 - Played `arena.html?watch` end to end by stepping by hand: the doors
