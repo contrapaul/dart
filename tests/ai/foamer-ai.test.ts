@@ -146,6 +146,29 @@ describe("an F01 on the nav grid (ENG-08 stage 3b)", () => {
     expect(most, "at most the cap attack at once").toBeLessThanOrEqual(MELEE_CAP);
   });
 
+  it("an idle F01 sees the player in the open, and not through a wall", () => {
+    const r = rig();
+    r.foamers.spawnState = "idle";
+    // A capsule where the player stands, like the real one (radius 0.35):
+    // the eye is inside it, so the ray must not count the player's own body.
+    const pb = r.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    r.world.createCollider(RAPIER.ColliderDesc.capsule(0.55, 0.35).setTranslation(0, 0.9, 8), pb);
+    // A wall on the far side shields a second Foamer.
+    addBox(r.world, 2, 2, 0.25, 0, 2, -12);
+    r.world.step();
+    const player = new THREE.Vector3(0, 1.6, 8);
+    const seen = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    const hidden = r.foamers.spawn(new THREE.Vector3(0, 0, -14))!;
+    let alertAt = -1;
+    for (let i = 0; i < 60; i++) {
+      tick(r, player);
+      if (alertAt < 0 && seen.state !== "idle") alertAt = i;
+    }
+    expect(alertAt, "the one in the open goes alert at once").toBeGreaterThanOrEqual(0);
+    expect(alertAt).toBeLessThan(5);
+    expect(hidden.state, "the one behind the wall stays idle").toBe("idle");
+  });
+
   it("does not hold a token while idle out of sight", () => {
     const r = rig();
     // Out of sight range, nobody else about: it stays idle.

@@ -18,7 +18,7 @@ import { Director, type TokenKind } from "../ai/director";
 import { FoamerAgent } from "../ai/agent";
 import { steer, type Neighbour, type Velocity } from "../ai/steer";
 import type { NavGrid } from "../ai/nav-grid";
-import { SOLID_QUERY_GROUPS } from "../physics/world";
+import { SIGHT_QUERY_GROUPS } from "../physics/world";
 
 // Spawning, per-part dart damage with foam-core wounds, breaking,
 // handicaps, attacks, stagger, going down and popping for the test
@@ -545,8 +545,11 @@ export class FoamerSystem {
     this._wish.set(vx * dt, 0, vz * dt);
   }
 
-  /** Ray from the Foamer's chest to the player's chest: nothing solid in
-   *  between means it can see. Debris and ragdolls do not count. */
+  /** Ray from the Foamer's chest to the player's eye: nothing solid in
+   *  between means it can see. Debris, ragdolls and Foamer parts do not
+   *  count, the Foamer's own capsule is skipped (the ray starts inside it),
+   *  and the ray stops sightEndMarginMetres short of the eye, which sits
+   *  inside the player's own capsule. */
   private lineOfSight(f: Foamer, player: THREE.Vector3): boolean {
     const from = _losFrom.set(f.centre.x, f.centre.y + f.height * 0.7, f.centre.z);
     const to = _losTo.set(player.x, player.y, player.z);
@@ -556,8 +559,10 @@ export class FoamerSystem {
     _losDir.multiplyScalar(1 / len);
     this.losRay.origin = from;
     this.losRay.dir = _losDir;
+    const reach = len - BRAIN.sightEndMarginMetres;
+    if (reach <= 0) return true;
     const hit = this.world.castRay(
-      this.losRay, len, true, 8 /* EXCLUDE_SENSORS */, SOLID_QUERY_GROUPS,
+      this.losRay, reach, true, 8 /* EXCLUDE_SENSORS */, SIGHT_QUERY_GROUPS, f.capsule,
     );
     return !hit;
   }
