@@ -131,11 +131,14 @@ export function courseExtras(g: Game): CourseExtras {
     },
 
     /** The Try again / Restart respawn: full health, back at the spawn, the
-     *  Foamers cleared (the range keeps its own respawn rules). */
+     *  Foamers cleared (the range keeps its own respawn rules). Left-over
+     *  pickup blobs would collect at the next spawn, so they go too
+     *  (GAME-07). */
     onRestart() {
       g.health.reset();
       player.teleport(spawn);
       g.foamers.clear();
+      g.pickups.clear();
       g.hud.clearFlash();
     },
 

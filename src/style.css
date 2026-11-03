@@ -324,3 +324,30 @@ body {
 #overlay p.links a {
   color: #ffd23f;
 }
+
+/* GAME-07: the finisher prompt by the crosshair, with the bound key. */
+#finishprompt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 10px 0 0 -1.15em;
+  width: 2.3em;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #b6ff3b;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 70%);
+}
+
+/* GAME-07: the heal flash, cream-lime edges, like #hitflash but green. */
+#healflash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 18vmin 6vmin rgb(182 255 59 / 40%);
+}
+#healflash.on {
+  opacity: 1;
+  transition: opacity 140ms ease-out;
+}

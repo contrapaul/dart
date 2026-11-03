@@ -80,7 +80,8 @@ const BRAIN = aiData.brain;
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b). */
 export type FoamerSoundKind =
-  | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop";
+  | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop"
+  | "stagger";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -719,6 +720,9 @@ export class FoamerSystem {
     f.staggerLong = long;
     f.agent?.release("stagger");
     if (f.attack()) f.setAttack(null);
+    // FX-stagger (SOUNDS.md 5.1): the wobble that tells the finisher is
+    // open.
+    sound(this, "stagger", f, f.centre);
   }
 
   /** GAME-11 range only: break the left leg of the nearest living Foamer, so

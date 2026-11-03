@@ -1442,6 +1442,79 @@
           }
         ]
       }
+    },
+    "FX-stagger": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.18,
+              "f0": 320,
+              "f1": 220,
+              "wave": "sine",
+              "attack": 0.005,
+              "decay": 0.14
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "FN-finisher": {
+      "files": [],
+      "volume": 1,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.3,
+              "f0": 140,
+              "f1": 60,
+              "wave": "sine",
+              "attack": 0.005,
+              "decay": 0.25
+            },
+            "gain": 0.9
+          },
+          {
+            "noise": {
+              "dur": 0.3,
+              "attack": 0.002,
+              "decay": 0.25,
+              "lowpass": 900,
+              "highpass": 100
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "PU-health": {
+      "files": [],
+      "volume": 1,
+      "jitter": 0.04,
+      "maxVoices": 5,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.12,
+              "f0": 440,
+              "f1": 880,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.1
+            },
+            "gain": 0.4
+          }
+        ]
+      }
     }
   },
   "blasterCues": {
