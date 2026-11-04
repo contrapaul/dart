@@ -13,6 +13,9 @@ import { Loadout } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import type { Foamer } from "../foamers/foamer";
+import { chargeOf } from "../foamers/charge";
+import { materialId } from "../voxel/materials";
 import { ProjectileSystem } from "../foamers/projectiles";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
@@ -301,6 +304,19 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     if (ui.paused) return;
     player.stunTime = Math.max(player.stunTime, seconds);
     audio.play("F05-stun");
+  };
+
+  // GAME-10b: the scrape and the wall hit throw the data's dust chunks at the
+  // Darter's feet and at the wall, and the wall hit gets its own sound.
+  const chargeDust = (f: Foamer, point: THREE.Vector3) => {
+    const charge = chargeOf(f.spec);
+    if (!charge) return;
+    debris.burst(point, charge.dustCount, charge.dustSize, materialId("foam-orange"));
+  };
+  foamers.onScrape = chargeDust;
+  foamers.onWallHit = (_f, point) => {
+    if (ui.paused) return;
+    audio.play("F05-impact", { position: point });
   };
 
   // GAME-10a: a foam ball that reaches the player costs health like a bonk,

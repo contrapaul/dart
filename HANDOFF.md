@@ -6,6 +6,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
+(`telegraphSeconds`), locks its line at the player's position and runs at
+11 m/s for up to 18 m with no steering, staggers for 1.2 s when it hits a
+wall (back open), and hits and stuns the player it runs into for 0.4 s.
+Chest and brow plates take 15 percent of a dart and carve slowly, the back
+weakpoint 2.5 times; with both legs gone it only bites; a shield charge at
+its front plates bounces off. The Ring arena is `data/levels/1-4-ring.json`,
+played by `arena.html?level=1-4-ring` (the Pit stays the default). Not
+checked by eye: the scrape and run poses, the stun feel, the plate arc on
+the real rig, and the placeholder charge sounds (see the Log entry).
+
 GAME-10a done 2026-11-04: Foamers have per-type specs (`data/foamers.json`
 base + `types`, `spawn(feet, facing?, type)`), and the F02 Roamer keeps its
 ring and throws slow pink foam balls (`src/foamers/projectiles.ts`, the F02
@@ -139,6 +150,44 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-04: GAME-10b, the F05 Darter and the Ring (DeepSeek V4.1 Flash via Pi)
+
+- Card: `tasks/GAME-10b.md`. Three stages, each committed green (tsc,
+  vitest, build): 1 the F05 data and armour shares (ed9d333), 2 the charge,
+  telegraph, wall stun and player stun (4641c05), 3 the Ring level, the
+  `?level=` loader and the watch states (4cdb02b).
+- Data: `types.F05` in `data/foamers.json` (rig F05, health 30, turnRate
+  1.4, `charge` and `armour` blocks, a charge attack and a bite). All the
+  charge numbers are there: speed 11 m/s, 18 m, range 14 m, telegraph
+  0.9 s, wall stun 1.2 s, player stun 0.4 s, dust count and size, plate
+  arc 120 degrees. Sounds are `F05-snort`, `F05-run-loop`, `F05-impact` and
+  `F05-stun` placeholders (synth only, no audio files), listed in
+  `design/SOUNDS.md`.
+- Code: `src/ai/f05-brain.ts` (the charger states and the pure
+  `decideCharge`), `src/foamers/charge.ts` (`ChargeSpec`, `chargeOf`), the
+  three states in `src/foamers/foamer.ts` and `src/foamers/foamers.ts`
+  (the run moves through `knockStep`, so walls stop it; `onChargeHit`,
+  `onWallHit` and `onScrape` report out, and the game turns a hit into the
+  controller's `stunTime`), `scrapeMotion` and `chargeMotion` in
+  `src/foamers/rig-states.ts`, the shield's `plateFacesCharge` in
+  `src/player/shield.ts` (bounce, no damage, no stagger) and the
+  `stunTime` in `src/player/controller.ts`.
+- Decided: the player stun is a number on the controller, not a state; the
+  charge is a Foamer state driven by the system (the brain only stands in
+  it); the level choice is `src/arena/levels.ts` with the Pit default and a
+  notice for an unknown name; the Ring's ceiling is at 9.5 m because the
+  nav bake casts down from 8 m and a ceiling at 8 m reads as ground (the
+  first bake made every cell unwalkable). All in PLAN.md section 14.
+- Tests: 8 new (2 files for the charge and the brain, 1 for the level, and
+  2 for the shield's front plates) plus the 5 stage 1 ones, 362 passed.
+- Not checked by eye: the scrape and charge poses, the wall stun's long
+  turn out, the stun's feel (0.4 s with the look free), the dust at the
+  scrape (six orange chunks from `debris.burst`, the shared game's), the
+  plate arc against the real F05 rig (its chest and brow sit on -z while
+  +z is forward, so the arc uses yaw forward: Paul should look), the
+  sounds, the Ring's look, and whether the 6 m ring corridor fights well
+  with two Darters (no browser here).
 
 ### 2026-11-04: GAME-05 and GAME-10a merged; arena HUD fix (Claude)
 
