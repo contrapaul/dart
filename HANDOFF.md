@@ -151,7 +151,7 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-04: GAME-10b review, Darters played in the ring (Claude)
+### 2026-11-04: GAME-10b review, Darters played in the ring, merged (Claude)
 
 - Played `arena.html?level=1-4-ring&watch`: two Darters, the lime plates
   on the side they face (chest +0.13 m, brow +0.22 m along the facing) and
