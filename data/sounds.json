@@ -1007,6 +1007,74 @@
         ]
       }
     },
+    "SH-charge": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.04,
+      "maxVoices": 1,
+      "synth": {
+        "noise": {
+          "dur": 0.35,
+          "attack": 0.05,
+          "decay": 0.3,
+          "lowpass": 900,
+          "highpass": 200,
+          "lowpassEnd": 3200
+        },
+        "gain": 0.6
+      }
+    },
+    "SH-charge-hit": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "refDistance": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.12,
+              "attack": 0.002,
+              "decay": 0.1,
+              "lowpass": 1200,
+              "highpass": 60,
+              "lowpassEnd": 300
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.12,
+              "f0": 180,
+              "f1": 90,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.1
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "SH-lock": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.03,
+      "maxVoices": 1,
+      "refDistance": 4,
+      "synth": {
+        "tone": {
+          "dur": 0.08,
+          "f0": 700,
+          "f1": 1200,
+          "wave": "sine",
+          "attack": 0.002,
+          "decay": 0.06
+        },
+        "gain": 0.5
+      }
+    },
     "SH-throw": {
       "files": [],
       "volume": 0.6,

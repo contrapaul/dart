@@ -45,6 +45,18 @@ const T = shieldJson as unknown as {
     carveRadius: number; debrisMax: number;
   };
   cooldown: number;
+  /** GAME-05: the charge. While the disc is raised the Foamer nearest the
+   *  crosshair, within cone (degrees) and range and in sight of the player,
+   *  is the locked target; a dash press starts the charge. speed m/s for at
+   *  most time s through the player's own character controller; the player
+   *  stops stopShort m short of the chest and a contact knocks the Foamer
+   *  knockback metres along the charge, staggers it and costs it damage
+   *  health. kick the view kick in radians decaying over kickTime; cooldown
+   *  before the next charge. */
+  charge: {
+    range: number; coneDeg: number; speed: number; time: number; stopShort: number;
+    knockback: number; damage: number; kick: number; kickTime: number; cooldown: number;
+  };
 };
 
 /** What the pages hand update(): the same fire edges the blaster got, plus
@@ -67,6 +79,13 @@ export interface ShieldEvents {
   /** The world point of each Foamer the disc struck this step. */
   hits: THREE.Vector3[];
   caught: boolean;
+  /** The charge announced on this step (first step of the charge). */
+  chargeStart: boolean;
+  /** The Foamer a hit landed on this step (null: no hit). */
+  chargeVictim: Foamer | null;
+  /** The charge ended on this step (for a page's own sounds, e.g. a
+   *  failure sound later). */
+  chargeEnd: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -88,6 +107,21 @@ export class Shield {
    *  the camera pitch along with the blaster's climb. */
   get kick(): number {
     return this.kickLeft > 0 ? T.block.kick * (this.kickLeft / T.block.kickTime) : 0;
+  }
+  /** GAME-05: the charge impact's own kick, on its own table. The page
+   *  adds it to the camera like the others. */
+  get chargeKick(): number {
+    return this.ckickLeft > 0 ? T.charge.kick * (this.ckickLeft / T.charge.kickTime) : 0;
+  }
+  /** GAME-05: the locked Foamer (null: the crosshair sees none, undefined:
+   *  no view at all to lock through, e.g. a rig without a player stand). */
+  lockedTarget: Foamer | null | undefined = undefined;
+  /** The Foamer a running charge heads for (null: none running). */
+  get chargeTarget(): Foamer | null {
+    return this.chargeLeft > 0 ? this.chargeLock : null;
+  }
+  get charging(): boolean {
+    return this.chargeLeft > 0;
   }
   /** True while the blaster must not fire: the disc is raised, or it is
    *  out (an empty-handed arm). The page gates the blaster on this. */
@@ -124,6 +158,7 @@ export class Shield {
   private debrisThisFlight = 0;
   private readonly events: ShieldEvents = {
     raised: false, lowered: false, thrown: false, hits: [], caught: false,
+    chargeStart: false, chargeVictim: null, chargeEnd: false,
   };
   private readonly forward = new THREE.Vector3();
   private readonly hand = new THREE.Vector3();
@@ -133,7 +168,16 @@ export class Shield {
   private readonly scratch = new THREE.Vector3();
   private readonly quat = new THREE.Quaternion();
   private readonly ray: RAPIER.Ray;
+  // GAME-05: the charge. How long it has left, the Foamer it heads for, its
+  // line (horizontal) and the cooldown before the next one.
+  private chargeLeft = 0;
+  private chargeLock: Foamer | null = null;
+  private readonly chargeDir = new THREE.Vector3();
 
+  private chargeCd = 0;
+  private ckickLeft = 0;
+  /** true until the start step's update reports the charge's whoosh. */
+  private chargeStartPend = false;
   constructor(
     rapier: Rapier,
     private world: RAPIER.World,
@@ -199,6 +243,7 @@ export class Shield {
     const e = this.events;
     e.raised = false; e.lowered = false; e.thrown = false;
     e.caught = false; e.hits.length = 0;
+    e.chargeStart = false; e.chargeVictim = null; e.chargeEnd = false;
     this.usedFire = false;
 
     // The shield action as the setting wants it: hold, or one press to
@@ -216,6 +261,26 @@ export class Shield {
     this.player.allowSprint = !up;
 
     if (this.cooldown > 0) this.cooldown = Math.max(0, this.cooldown - dt);
+    if (this.chargeCd > 0) this.chargeCd = Math.max(0, this.chargeCd - dt);
+
+    // GAME-05: a running charge owns the step: the player is driven at
+    // the lock, the disc stays raised and keeps blocking as normal, the
+    // lock freezes. The whoosh is reported on the start step (below).
+    if (this.chargeLeft > 0) {
+      this.stepCharge(dt, e);
+      this.placeViewmodel(this.raise);
+      if (this.chargeStartPend) {
+        this.chargeStartPend = false;
+        e.chargeStart = true;
+      }
+      return e;
+    }
+
+    // GAME-05: the lock. Refreshed while the disc is up (a running charge
+    // freezes it, so the early return above is before this); a lowered
+    // disc drops it.
+    if (this.state === "raised") this.updateLock();
+    else if (this.lockedTarget !== null) this.lockedTarget = null;
 
     if (this.state === "lowered" || this.state === "raised") {
       if (this.state === "lowered" && wantUp) {
@@ -228,8 +293,8 @@ export class Shield {
       }
       // The throw: a fire press while fully raised, never during a blaster
       // switch (that press belongs to the new blaster).
-      if (this.state === "raised" && controls.firePressed && !this.loadout.switching
-          && this.raise >= 1 && this.cooldown === 0) {
+      if (this.state === "raised" && controls.firePressed
+          && !this.loadout.switching && this.raise >= 1 && this.cooldown === 0) {
         this.startThrow();
         this.usedFire = true;
         e.thrown = true;
@@ -244,6 +309,7 @@ export class Shield {
     if (target > this.raise) this.raise = Math.min(target, this.raise + step);
     else if (target < this.raise) this.raise = Math.max(target, this.raise - step);
     if (this.kickLeft > 0) this.kickLeft = Math.max(0, this.kickLeft - dt);
+    if (this.ckickLeft > 0) this.ckickLeft = Math.max(0, this.ckickLeft - dt);
     this.placeViewmodel(this.raise);
     return e;
   }
@@ -263,8 +329,28 @@ export class Shield {
     this.kickLeft = 0;
     this.toggleOn = false;
     this.lastHit = null;
+    this.chargeLeft = 0;
+    this.chargeLock = null;
+    this.chargeCd = 0;
+    this.ckickLeft = 0;
+    this.chargeStartPend = false;
+    this.lockedTarget = null;
     this.discMesh.visible = false;
     this.placeViewmodel(0);
+  }
+
+  /** GAME-05: the shield's own dash. The page calls it on every dash
+   *  press (before the player controller sees it): the disc is up and a
+   *  target is locked, so the charge starts and returns true. The page
+   *  consumes the dash then (the controller would start a normal dash
+   *  with it). Returns false: an ordinary dash, no charge. */
+  tryCharge(): boolean {
+    if (this.chargeLeft > 0) return false; // a charge is already running
+    if (this.state !== "raised" || this.raise < 1 || this.chargeCd > 0)
+      return false;
+    if (this.lockedTarget == null) return false;
+    this.startCharge(this.lockedTarget);
+    return true;
   }
 
   // ---- the throw ----
@@ -375,27 +461,11 @@ export class Shield {
     return best;
   }
 
-  /** A clear straight line from the disc to the Foamer's middle. The
+  /** A clear straight line from the given origin to the Foamer's middle. The
    *  Foamer's own movement capsule is excluded (it is a world member, and
    *  the ray ends inside it, as in the Foamers' own line of sight). */
   private inSight(f: Foamer): boolean {
-    this.to.copy(f.centre).setY(f.centre.y + f.height * 0.5).sub(this.disc);
-    const len = this.to.length();
-    if (len < 1e-6) return true;
-    this.to.divideScalar(len);
-    this.ray.origin = { x: this.disc.x, y: this.disc.y, z: this.disc.z };
-    this.ray.dir = { x: this.to.x, y: this.to.y, z: this.to.z };
-    // The player's capsule is not cover either, and neither is a Foamer's
-    // (the disc leaves one struck body's capsule inside it).
-    const a = f.capsule;
-    const b = this.lastHit ? this.lastHit.capsule : null;
-    const me = this.player.collider;
-    const hit = this.world.castRay(
-      this.ray, len - 0.1, true, EXCLUDE_SENSORS, SIGHT_QUERY_GROUPS,
-      undefined, undefined,
-      (c) => c !== a && c !== b && c !== me && c.collisionGroups() !== CAPSULE_GROUPS,
-    );
-    return !hit;
+    return this.inSightFrom(f, this.disc);
   }
 
   /** The living Foamer whose body the disc reached this step: its centre
@@ -423,6 +493,133 @@ export class Shield {
     if (f.health <= 0) f.health = 0.0001; // a stage 1 throw does not kill
     if (!f.prone)
       this.foamers.startStagger(f, false, T.throw.stun > 0 ? T.throw.stun : f.spec.stagger.time);
+  }
+
+  // ---- the charge (GAME-05) ----
+
+  /** The locked target: the nearest live Foamer within the data's range
+   *  and cone of the view, in sight of the player's eye. Refreshed by
+   *  update() while the disc is up. */
+  private updateLock(): void {
+    const T2 = T.charge;
+    this.viewForward();
+    this.camera.getWorldPosition(this.eye);
+    const cone = Math.cos((T2.coneDeg / 2) * DEG);
+    let best: Foamer | null = null;
+    let best2 = Infinity;
+    for (const f of this.foamers.list) {
+      if (f.state === "down") continue;
+      const to = this.to.copy(f.centre).setY(f.centre.y + f.height * 0.5).sub(this.eye);
+      const len = to.length();
+      if (len > T2.range) continue;
+      const dot = (to.x * this.forward.x + to.y * this.forward.y + to.z * this.forward.z) / len;
+      if (dot < cone) continue;
+      if (!this.inSightFrom(f, this.eye)) continue;
+      if (!best || len * len < best2) { best = f; best2 = len * len; }
+    }
+    this.lockedTarget = best;
+  }
+
+  /** inSight with a choosable origin (the lock sights from the eye, the
+   *  ricochet from the disc). The player's own capsule is either case's
+   *  "me" exclusion. */
+  private inSightFrom(f: Foamer, from: THREE.Vector3): boolean {
+    this.to.copy(f.centre).setY(f.centre.y + f.height * 0.5).sub(from);
+    const len = this.to.length();
+    if (len < 1e-6) return true;
+    this.to.divideScalar(len);
+    this.ray.origin = { x: from.x, y: from.y, z: from.z };
+    this.ray.dir = { x: this.to.x, y: this.to.y, z: this.to.z };
+    const a = f.capsule;
+    const b = this.lastHit ? this.lastHit.capsule : null;
+    const me = this.player.collider;
+    const hit = this.world.castRay(
+      this.ray, len - 0.1, true, EXCLUDE_SENSORS, SIGHT_QUERY_GROUPS,
+      undefined, undefined,
+      (c) => c !== a && c !== b && c !== me && c.collisionGroups() !== CAPSULE_GROUPS,
+    );
+    return !hit;
+  }
+
+  private startCharge(f: Foamer): void {
+    this.chargeLock = f;
+    this.chargeLeft = T.charge.time;
+    this.chargeStartPend = true; // the next update step reports it
+    this.player.vel.set(0, 0, 0);
+  }
+
+  /** One step of the charge: the player is driven at the lock through the
+   *  player's own character controller (walls stop that). The lock is set
+   *  at the start and held until the charge ends: it ends on contact (the
+   *  Foamer is knocked back, staggered, damaged), on a wall, on the
+   *  data's time limit, or on the lock going down or popped elsewhere. */
+  private stepCharge(dt: number, e: ShieldEvents): void {
+    const T2 = T.charge;
+    this.chargeLeft -= dt;
+    // The card's time limit: the charge ends on its own, hit or no hit.
+    if (this.chargeLeft <= 0) { this.endCharge(e); return; }
+    const f = this.chargeLock;
+    // The lock went away (down or popped elsewhere): the charge ends.
+    if (!f || f.state === "down") { this.endCharge(e); return; }
+    const step = this.player.chargeStep(dt, this.chargeDirFor(f), T2.speed);
+    this.player.eye(1, this.eye);
+    // A wall: the step moved almost nothing while the target is still far.
+    if (step < T2.speed * dt * 0.1) {
+      const to = this.to.copy(f.centre).setY(f.centre.y + f.height * 0.5).sub(this.eye);
+      const d = Math.hypot(to.x, to.z);
+      if (d > T2.stopShort) {
+        this.endCharge(e);
+        return;
+      }
+    }
+    // Contact: within the data's stop distance of the chest.
+    this.to.copy(f.centre).setY(f.centre.y + f.height * 0.5).sub(this.eye);
+    const d = Math.hypot(this.to.x, this.to.z);
+    if (d <= T2.stopShort) {
+      e.chargeVictim = f;
+      this.ckickLeft = T2.kickTime;
+      f.health -= T2.damage;
+      if (f.health <= 0) f.health = 0.0001; // a charge does not kill
+      this.knockBack(f);
+      this.chargeCd = T2.cooldown;
+      this.endCharge(e);
+    }
+  }
+  /** The charge's line: toward the lock's chest, horizontal. While the
+   *  lock still has any legs the controller steers it for the charge. */
+  private chargeDirFor(f: Foamer): THREE.Vector3 {
+    this.player.eye(1, this.eye);
+    let dx = f.centre.x - this.eye.x, dz = f.centre.z - this.eye.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-6) { dx = -Math.sin(f.yaw); dz = -Math.cos(f.yaw); }
+    return this.chargeDir.set(dx, 0, dz).normalize();
+  }
+
+  /** The card's knockback: about the data's distance along the charge,
+   *  through the Foamer's own character controller so it never goes
+   *  through a wall, then the short stagger in its place (a long one would
+   *  open a finisher on any Foamer, GAME-05 review). */
+  private knockBack(f: Foamer): void {
+    const T2 = T.charge;
+    const dirX = this.chargeDir.x, dirZ = this.chargeDir.z;
+    let left = T2.knockback;
+    const per = Math.max(0.15, T2.knockback * 0.4);
+    for (let i = 0; i < 8 && left > 1e-3; i++) {
+      const want = Math.min(per, left);
+      const moved = this.foamers.knockStep(f, dirX, dirZ, want);
+      if (moved <= 1e-4) break; // a wall: the Foamer stops there
+      left -= moved;
+    }
+    // The card's stagger: the existing stagger state, the data's own time.
+    this.foamers.startStagger(f, false, f.spec.stagger.time);
+  }
+
+  private endCharge(e: ShieldEvents): void {
+    this.chargeLeft = 0;
+    this.chargeLock = null;
+    this.chargeStartPend = false;
+    this.player.vel.set(0, 0, 0);
+    e.chargeEnd = true;
   }
 
   /** A little foam where the disc hit voxel cover, capped per flight. */

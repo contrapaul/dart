@@ -728,6 +728,31 @@ export class FoamerSystem {
     sound(this, "stagger", f, f.centre);
   }
 
+  /** GAME-05: one step of the shield's knockback: drive the Foamer up to
+   *  `want` metres along (dirX, dirZ, horizontal) through its own movement
+   *  controller and exclusion set, so a wall stops it. Returns the
+   *  horizontal distance actually moved (0 at a wall). Callers step until
+   *  the distance is spent or a wall stops it. */
+  knockStep(f: Foamer, dirX: number, dirZ: number, want: number): number {
+    this.own.clear();
+    this.own.add(f.root.handle);
+    for (const p of f.parts.values()) this.own.add(p.body.handle);
+    for (const p of this.broken) if (p.owner === f) this.own.add(p.body.handle);
+    this._vel.set(dirX * want, 0, dirZ * want);
+    this.cc.computeColliderMovement(
+      f.capsule, this._vel,
+      undefined, undefined,
+      (c) => !this.own.has(c.parent()?.handle ?? -1),
+    );
+    const moved = this.cc.computedMovement();
+    if (this.cc.computedGrounded()) f.vy = 0;
+    f.centre.x += moved.x;
+    f.centre.y += moved.y;
+    f.centre.z += moved.z;
+    f.applyPose();
+    return Math.hypot(moved.x, moved.z);
+  }
+
   /** GAME-11 range only: break the left leg of the nearest living Foamer, so
    *  the reviewer can watch a fall on demand. Returns the Foamer it broke,
    *  or null when none is alive. */

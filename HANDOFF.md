@@ -6,6 +6,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-05 done 2026-11-04: with the disc up the shield locks the nearest
+Foamer in the crosshair's range and cone in sight, and dash at the lock
+is a charge: the player rushes the Foamer and knocks it back, staggers
+it and takes a small hit. The charge's eye checks are still open
+(see the Log entry).
+
 GAME-04 stage 1 done 2026-11-03: the shield (`src/player/shield.ts`,
 `data/shield.json`) blocks from the front arc, slows the walk, and throws
 a ricocheting disc that returns to the arm; the range watch can drive it.
@@ -125,6 +131,53 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-04: GAME-05 review, charge played in watch mode (Claude)
+
+- Qwen 27b's first run spent 40 minutes reading, then hit its output
+  limit inside one long think and wrote nothing; resumed with `pi -c` and
+  a nudge to write in small steps, it finished in three commits.
+- Played on `arena.html?watch`: with the disc up, a Slowmer at 17.9 m
+  (past the 14 m range) gave no lock and dash was the normal dash; at
+  12.6 m the lock ring showed, the charge rushed in, knocked it back about
+  2 m, staggered it and took 2 of its 6 health.
+- Fixed: the charge started the long, finishable stagger, so any charge
+  opened an instant-kill finisher on a full-health Foamer. It is the
+  short stagger now; the test checks it.
+- Unverified: the rush's feel at 60 fps, the lock ring's size, the three
+  placeholder sounds.
+
+### 2026-11-04: GAME-05 shield charge (Qwen 3.8-27B via Pi)
+
+- Built the charge in `src/player/shield.ts` (all numbers in the
+  `charge` block of `data/shield.json`): with the disc up the shield
+  locks the nearest Foamer in the crosshair's range and cone in sight
+  of the player's eye, and a small ring marks it at the crosshair in
+  the HUD. Dash with a target starts the charge (the press is spent
+  here, before the player controller would dash): the player rushes at
+  the lock through its own character controller, and on contact the
+  Foamer is knocked back along the line, staggered and takes the data's
+  small damage. A charge never kills (the same 0.0001 health floor as
+  the throw). The cooldown (2 s) holds before the next one, the disc
+  stays raised and blocks through it, and no finisher can start
+  mid-charge (nor a charge during one).
+- Sounds: `SH-lock` (the blip on the press), `SH-charge` (the whoosh on
+  the first step), `SH-charge-hit` (the thud at the body), all from the
+  placeholder IDs in `data/sounds.json`; see `design/SOUNDS.md` for
+  takes.
+- Watch helpers: `charge()` and a `charge` state `{locked, target,
+  running}` in `state()` for `index.html?watch` and `arena.html?watch`.
+- Tests: `tests/shield/charge.test.ts` (lock picks nearest in cone/range
+  and ignores past, wide, hidden; no target is the normal dash; the hit
+  stops short, knocks back, staggers, damages and holds the cooldown
+  until it is spent; a wall ends the charge on the time limit without a
+  hit, at rest). 318 passing, `tsc` and `build` clean, no em or en
+  dashes.
+- Unverified by eye (no browser here): the feel of the rush speed, the
+  lock's cone against real view spread, the HUD ring's size and colour
+  against the course background, the three placeholder sounds, and
+  whether a charge that ends mid-flight still feels like a hit when
+  the Foamer is knocked into a tight corner.
 
 ### 2026-11-03: GAME-04 stage 1 review, shield played in watch mode, merged (Claude)
 

@@ -27,6 +27,8 @@ export class Hud {
   // HUD.
   private prompt: HTMLElement;
   private lastPrompt = "";
+  private lock: HTMLElement | null = null;
+  private lastLock = false;
   private heal: HTMLElement;
   private healTimer = 0;
   /** Stage 2 wires this to the reduce flashes setting; while false the
@@ -45,6 +47,7 @@ export class Hud {
     // overlay too), so it is looked up on the document.
     this.flash = document.querySelector<HTMLElement>("#hitflash")!;
     this.prompt = root.querySelector<HTMLElement>("#finishprompt")!;
+    this.lock = root.querySelector<HTMLElement>("#lockmarker");
     this.heal = document.querySelector<HTMLElement>("#healflash")!;
     this.setHealth(0, 0); // hides until the first real update
     this.lastHp = -1;
@@ -62,6 +65,18 @@ export class Hud {
     this.lastPrompt = text;
     this.prompt.hidden = !show;
     if (show) this.prompt.textContent = key;
+  }
+
+  /** GAME-05: the lock marker, the crosshair's ring while a charge
+   *  target is locked. The page calls it with the disc's raised state
+   *  (the lock exists only with the disc up); no marker element on a
+   *  page is a silent off (the range has no #lockmarker yet). */
+  setChargeLock(show: boolean) {
+    if (!this.lock) return;
+    if (this.root.hidden) return;
+    if (show === this.lastLock) return;
+    this.lastLock = show;
+    this.lock.hidden = !show;
   }
 
   /** GAME-07: the green edge glow on a pickup collect, never red (the

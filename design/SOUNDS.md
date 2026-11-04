@@ -258,7 +258,9 @@ The other Foamers (IDs given when each is built):
 | SH-throw | Shield thrown (frisbee whoosh) | Yes | 4 | Foley: throw a frisbee |
 | SH-ricochet | Thrown shield bouncing off a Foamer | Yes | 6 | Foley |
 | SH-catch | Shield caught back on the arm | Yes | 3 | Foley |
-| SH-charge | Shield charge rush and impact | Later | 3 each | Foley |
+| SH-lock | Shield charge: a target is locked | Yes | 3 | Code: a short rising blip |
+| SH-charge | Shield charge rush (the whoosh) | Yes | 3 | Foley: a sharp exhale past the ear |
+| SH-charge-hit | Shield charge impact (the thud into the Foamer) | Yes | 3 | Foley: a heavy cushion drop |
 | ML1-swing, ML1-hit | [Melee 1], fast and light: swing, hit | Later | 6 each | Foley: a pool noodle |
 | ML2-swing, ML2-hit | [Melee 2], slow and big: swing, hit | Later | 4 each | Foley |
 | ML3-charge, ML3-slam | [Melee 3]: charging, the slam | Later | 3 each | Foley |

@@ -176,6 +176,29 @@ export class PlayerController {
     // mantle itself already rang its own event in tryMantle.
   }
 
+  /** GAME-05: one step of the shield's charge: the body is driven along
+   *  dir at speed through the controller's own collision (walls stop it
+   *  there), with the usual gravity and landing rules. Returns the
+   *  horizontal distance actually reached. The charge does not leave a
+   *  velocity: the next plain step starts from rest. */
+  chargeStep(dt: number, dir: THREE.Vector3, speed: number): number {
+    this.prev.copy(this.pos);
+    this.vel.set(dir.x * speed, 0, dir.z * speed);
+    this.vel.y = Math.max(this.vel.y - P.gravity * dt, -P.maxFallSpeed);
+    const down = this.grounded && this.vel.y <= 0 ? 0 : this.vel.y * dt;
+    const desired = { x: this.vel.x * dt, y: down, z: this.vel.z * dt };
+    this.cc.computeColliderMovement(this.collider, desired, undefined, SOLID_QUERY_GROUPS);
+    const moved = this.cc.computedMovement();
+    this.grounded = this.cc.computedGrounded();
+    this.pos.x += moved.x;
+    this.pos.y += moved.y;
+    this.pos.z += moved.z;
+    this.body.setNextKinematicTranslation(this.pos);
+    if (this.grounded && this.vel.y < 0) this.vel.y = 0;
+    this.vel.set(0, 0, 0);
+    return Math.hypot(moved.x, moved.z);
+  }
+
   /** Eye position between the last two steps; alpha is 0 to 1. */
   eye(alpha: number, out: THREE.Vector3) {
     return out
