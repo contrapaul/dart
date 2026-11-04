@@ -6,6 +6,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-01 done 2026-11-04: two Pit stalls, both fixed at the cause and both
+covered by tests on the real arena file. The nav bake now takes the lowest
+surface an agent fits on, so the pit floor under a ring bakes as floor and
+not as the ring's top 4 m up; a Foamer's walk now ignores the other Foamers'
+bodies, so a wave spawned in a clump no longer freezes; and a walk that stops
+making progress sidesteps instead of standing still. Not checked by eye: the
+two wave-2 spots on `arena.html?watch` (under the ring and at (0, 0, -4)),
+the sidestep's look when a Foamer meets a corner, and whether the sidestep is
+still needed now that the two underlying causes are fixed (it is a guard, and
+no test needs it for a natural stall).
+
 GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
 (`telegraphSeconds`), locks its line at the player's position and runs at
 11 m/s for up to 18 m with no steering, staggers for 1.2 s when it hits a
@@ -150,6 +161,39 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-04: BUG-01, two Pit stalls fixed (DeepSeek V4.1 Flash via Pi)
+
+- Cause 1, the overhang: `src/ai/nav-grid.ts` baked a cell from the first
+  surface a ray from above met, so the floor under the Pit's ring baked as
+  the ring's top at y 4. A player standing underneath was pathed to 4 m up
+  and the Foamers walked at the ramp instead. `bakeCell` now collects every
+  surface, keeps the up-facing ones, sorts them low to high and takes the
+  first that is not swallowed by a surface within `nav.maxStepMetres` above
+  it and that leaves the agent's capsule shape clear. A wall still bakes as
+  its own top, so the step, ledge, slope and wall tests are unchanged.
+- Cause 2, the clump: every Foamer's movement capsule is a world-group
+  member (darts and aim skip it by its own bit), so two Foamers pressed
+  together each asked the character controller to walk into the other and it
+  cancelled both steps. Wave 2 spawns from one rift, so the whole front rank
+  froze. The walk now ignores the other Foamers' root and part bodies by
+  handle. Note for next time: a character-controller filter predicate may not
+  read `collider.contactGroups`/`shape` or its parent, it must use
+  `collider.handle` / `collider.parent()?.handle`; anything else throws
+  inside the query and is silently ignored.
+- Guard: a Foamer whose path stops making progress now sidesteps for a
+  moment and tries again, so a Foamer can never be frozen for long by
+  something the bake cannot see (a wall built after the bake, a body parked
+  in a doorway). Numbers in `data/ai.json` `steer`.
+- Tests: `tests/ai/pit-foamers.test.ts` (floor under both rings, a Foamer
+  walks under the ring), `tests/ai/pit-wave.test.ts` (a five strong wave on
+  one rift engages), `tests/ai/pit-ramp-side.test.ts` (the card's recorded
+  spots against ramp-s), `tests/ai/stall.test.ts` (no more than 2 s still
+  while walking). All four fail on the unfixed code.
+- Unverified by eye: everything visual. Nothing was run in a browser here.
+- Also dropped: the half-finished two-levels-per-cell nav rewrite from a
+  previous session (12 tests failing); the lowest-surface rule does the job
+  with the existing tests intact.
 
 ### 2026-11-04: GAME-10b review, Darters played in the ring, merged (Claude)
 
