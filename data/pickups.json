@@ -1,10 +1,16 @@
 {
-  "_note": "GAME-07. Generic pickup kinds (health now, ammo later on D08). shift: metres the blob hops out with. Distances in metres, times in seconds.",
+  "_note": "GAME-07, LVL-02a. Generic pickup kinds. health: this kind. shift: metres the blob hops out with. Distances in metres, times in seconds.",
   "health": {
     "_note": "A finisher sprays count blobs of amount health each. They hop out, settle, and bob. collectRadius: collected within this of the feet. attractRadius: closer than this (and the player not full health) they drift to the player at attractSpeed. max: live blobs across the whole level, the oldest first. lifetime: seconds before a blob dissolves.",
     "amount": 10, "count": 3, "max": 24, "lifetime": 30,
     "collectRadius": 1, "attractRadius": 2, "attractSpeed": 6,
     "radius": 0.12, "hopSpeed": 3, "shift": 0.8, "settleSpeed": 0.5,
     "bobHeight": 0.04, "bobRate": 4, "color": "#fff4e0"
+  },
+  "ammo": {
+    "_note": "LVL-02a. The foam ammo box the level files place (a pickups entry of a darts-* type). It sits on the floor (no hop), turns slowly and bobs, size is the box edge in metres, and a player within collectRadius of it collects it. The dart count comes from the level file's count field. lifetime 0: level boxes never expire. turnRate: radians per second.",
+    "size": 0.35, "color": "#ffd23f",
+    "collectRadius": 1, "max": 16, "lifetime": 0,
+    "turnRate": 0.9, "bobHeight": 0.04, "bobRate": 2
   }
 }

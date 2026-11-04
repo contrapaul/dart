@@ -4,9 +4,13 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { PickupSystem } from "../../src/pickups/pickups";
 import { PlayerHealth } from "../../src/player/health";
 import pickupData from "../../data/pickups.json";
+import { Blaster, resolveSpec } from "../../src/weapons/blaster";
+import type { DartFiring } from "../../src/weapons/blaster";
+import type { DartTypeName } from "../../src/weapons/dart-model";
 
 const DT = 1 / 60;
 const H = pickupData.health;
+const A = pickupData.ammo;
 
 beforeAll(async () => {
   await RAPIER.init();
@@ -133,5 +137,90 @@ describe("PickupSystem (GAME-07, the health blob)", () => {
     expect(steps).toBeLessThan(240); // and it arrived in a second or two, not never
     expect(r.health.hp).toBe(60);
     expect(r.pickups.count("health")).toBe(0);
+  });
+});
+
+// A fake dart system: enough for the Blaster's constructor; the tests never
+//  update it, so it keeps nothing.
+class NullDarts implements DartFiring {
+  readonly origins: THREE.Vector3[] = [];
+  readonly dirs: THREE.Vector3[] = [];
+  readonly types: DartTypeName[] = [];
+  fire(o: THREE.Vector3, d: THREE.Vector3, t: DartTypeName): void {
+    this.origins.push(o);
+    this.dirs.push(d.clone());
+    this.types.push(t);
+  }
+  get n(): number { return this.dirs.length; }
+}
+
+/** The blaster B01 (standard darts) with a given reserve and dart type. */
+function blaster(reserve: number, dartType: DartTypeName = "standard"): Blaster {
+  const b = new Blaster(resolveSpec("B01"), new NullDarts(), () => new THREE.Vector3());
+  b.dartType = dartType;
+  b.reserve = reserve;
+  return b;
+}
+
+/** The rig including the blasters an ammo box refills. */
+function ammoRig(blist: Blaster[]) {
+  const r = rig();
+  r.pickups.blasters = blist;
+  return r;
+}
+
+describe("PickupSystem (LVL-02a, the ammo box)", () => {
+  const BOX = new THREE.Vector3(0, A.size / 2, 0);
+
+  it("walks in and adds its count to the reserve of every blaster that takes that type", () => {
+    const a = blaster(10, "standard");
+    const r = ammoRig([a]);
+    let onC = 0;
+    r.pickups.onCollected = () => { onC++; };
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(10 + 24);
+    expect(r.pickups.count("ammo")).toBe(0);
+    expect(onC).toBe(1);
+  });
+
+  it("never takes the reserve past reserveMax: any overage is not in the box", () => {
+    // B01's reserve_max is 40; 30 in the room, the box has 24 -> take only 10.
+    const a = blaster(30, "standard");
+    const r = ammoRig([a]);
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(a.spec.reserveMax);
+    expect(r.pickups.count("ammo")).toBe(0); // the darts stayed fully in
+  });
+
+  it("only takes blasters of the box's dart type", () => {
+    const std = blaster(10, "standard");
+    const slg = blaster(10, "slug");
+    const r = ammoRig([std, slg]);
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(std.reserve).toBe(34);
+    expect(slg.reserve).toBe(10); // the slug blaster does not take standard darts
+    expect(r.pickups.count("ammo")).toBe(0);
+  });
+
+  it("stays put at a high reserve, it doesn't scavenge dart space if no blaster has room", () => {
+    const a = blaster(40, "standard"); // full
+    const r = ammoRig([a]);
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    for (let i = 0; i < 30; i++) tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(40);
+    expect(r.pickups.count("ammo")).toBe(1); // it stays put, not consumed
+  });
+
+  it("a dead player can never pick up the box", () => {
+    const a = blaster(10, "standard");
+    const r = ammoRig([a]);
+    r.health.hp = 0;
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    for (let i = 0; i < 30; i++) tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(10);
+    expect(r.pickups.count("ammo")).toBe(1);
   });
 });
