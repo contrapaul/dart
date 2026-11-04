@@ -156,7 +156,8 @@ github.com/contrapaul/dart (public), MIT licence.
 - Card: `tasks/GAME-10b.md`. Three stages, each committed green (tsc,
   vitest, build): 1 the F05 data and armour shares (ed9d333), 2 the charge,
   telegraph, wall stun and player stun (4641c05), 3 the Ring level, the
-  `?level=` loader and the watch states (4cdb02b).
+  `?level=` loader and the watch states (4cdb02b), then the scrape dust and
+  the wall hit sound wired in the shared game (b64d774).
 - Data: `types.F05` in `data/foamers.json` (rig F05, health 30, turnRate
   1.4, `charge` and `armour` blocks, a charge attack and a bite). All the
   charge numbers are there: speed 11 m/s, 18 m, range 14 m, telegraph
