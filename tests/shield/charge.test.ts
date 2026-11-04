@@ -218,3 +218,50 @@ describe("Shield charge (lock, rush, knockback, cooldown)", () => {
     expect(Math.hypot(g.player.vel.x, g.player.vel.z)).toBeLessThan(1e-3);
   });
 });
+
+describe("Shield charge into the Darter's plates (GAME-10b)", () => {
+  it("5. a charge at the front plates bounces the player back and does not stagger or move the Darter", async () => {
+    const g = rig();
+    // The Darter stands facing the player (+z is its face; yaw 0 faces +z
+    // and the player is at z = 0, south of it), so the charge meets the
+    // plates.
+    const f = g.foamers.spawn(new THREE.Vector3(0, 0, -4), new THREE.Vector3(0, 0, 0), "F05")!;
+    const hp0 = f.health;
+    await g.settle();
+    await raised(g);
+    aimAt(g, f);
+    g.shield.update(DT, HOLD);
+    expect(g.shield.tryCharge()).toBe(true);
+    let blocked = false;
+    for (let i = 0; i < 240 && g.shield.charging; i++) {
+      const e = g.shield.update(DT, HOLD);
+      if (e.chargeBlocked) blocked = true;
+      expect(e.chargeVictim, "no victim").toBe(null);
+      g.sync();
+      g.world.step();
+    }
+    expect(blocked, "the plates stopped it").toBe(true);
+    // No damage, no stagger and no knockback: its armour did its job.
+    expect(f.health).toBe(hp0);
+    expect(f.state).not.toBe("stagger");
+    expect(f.centre.z).toBeCloseTo(-4, 1);
+    // The player bounced back instead: it is now further from the Darter
+    // than the stop distance it reached.
+    expect(g.player.collider.translation().z).toBeLessThan(-2.2);
+  });
+
+  it("6. a charge at its back still staggers it", async () => {
+    const g = rig();
+    // Facing away from the player (its face is +z, so it turns to -z): the
+    // charge comes at its back, where the weakpoint is, not at the plates.
+    const f = g.foamers.spawn(new THREE.Vector3(0, 0, -4), new THREE.Vector3(0, 0, -10), "F05")!;
+    await g.settle();
+    await raised(g);
+    aimAt(g, f);
+    g.shield.update(DT, HOLD);
+    expect(g.shield.tryCharge()).toBe(true);
+    const victim = await runCharge(g);
+    expect(victim).toBe(f);
+    expect(f.state).toBe("stagger");
+  });
+});

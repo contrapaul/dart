@@ -1,0 +1,110 @@
+{
+  "_note": "Level 1-4, the Ring (GAME-10b): the KIT A2 Ring from design/levels/KIT.md section 2, 30 x 30 m, 8 m ceiling, a 10 x 8 m centre block 3.5 m tall and a ring corridor round it, two pillars in the ring, and one wave of 2 F05. The start room and the exit room sit behind the two south doorways, as the Pit's do. Origin is the arena floor centre; Y 0 is the floor. Metres, Y up, positions are box centres, sizes are full extents. Tuning numbers (wave gaps, holds) live here, not in code.",
+  "meta": {
+    "id": "1-4",
+    "name": "[Paul]",
+    "act": 4,
+    "targetSeconds": 90,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+
+  "shell": [
+    { "id": "ring-floor", "shape": "box", "pos": [0, -0.5, -0.25],
+      "size": [30, 1, 29.5], "material": "greybox" },
+    { "id": "ring-ceiling", "shape": "box", "pos": [0, 9.5, 0],
+      "size": [30, 1, 30], "material": "greybox" },
+    { "id": "ring-wall-n", "shape": "box", "pos": [0, 4.5, -15],
+      "size": [30, 9, 1], "material": "greybox" },
+    { "id": "ring-wall-w", "shape": "box", "pos": [-15, 4.5, 0],
+      "size": [1, 9, 29], "material": "greybox" },
+    { "id": "ring-wall-e", "shape": "box", "pos": [15, 4.5, 0],
+      "size": [1, 9, 29], "material": "greybox" },
+    { "id": "ring-wall-s-w", "shape": "box", "pos": [-11.5, 4.5, 15],
+      "size": [7, 9, 1], "material": "greybox" },
+    { "id": "ring-wall-s-m", "shape": "box", "pos": [0, 4.5, 15],
+      "size": [8, 9, 1], "material": "greybox" },
+    { "id": "ring-wall-s-e", "shape": "box", "pos": [11.5, 4.5, 15],
+      "size": [7, 9, 1], "material": "greybox" },
+
+    { "id": "ring-centre-block", "shape": "box", "pos": [0, 1.75, 0],
+      "size": [10, 3.5, 8], "material": "greybox-dark" },
+
+    { "id": "ring-doorway-w-sill", "shape": "box", "pos": [-6, -0.5, 15],
+      "size": [4, 1, 1], "material": "greybox-dark" },
+    { "id": "ring-doorway-w-lintel", "shape": "box", "pos": [-6, 5.75, 15],
+      "size": [4, 4.5, 1], "material": "greybox" },
+    { "id": "ring-doorway-e-sill", "shape": "box", "pos": [6, -0.5, 15],
+      "size": [4, 1, 1], "material": "greybox-dark" },
+    { "id": "ring-doorway-e-lintel", "shape": "box", "pos": [6, 5.75, 15],
+      "size": [4, 4.5, 1], "material": "greybox" },
+
+    { "id": "start-floor", "shape": "box", "pos": [-6, -0.5, 18.5],
+      "size": [4, 1, 6], "material": "greybox-dark" },
+    { "id": "start-wall-w", "shape": "box", "pos": [-8.5, 4.5, 18.5],
+      "size": [1, 9, 6], "material": "greybox" },
+    { "id": "start-wall-e", "shape": "box", "pos": [-3.5, 4.5, 18.5],
+      "size": [1, 9, 6], "material": "greybox" },
+    { "id": "start-wall-s", "shape": "box", "pos": [-6, 4.5, 21.5],
+      "size": [4, 9, 1], "material": "greybox" },
+    { "id": "start-ceiling", "shape": "box", "pos": [-6, 9.5, 18.5],
+      "size": [4, 1, 6], "material": "greybox" },
+
+    { "id": "exit-floor", "shape": "box", "pos": [6, -0.5, 18.5],
+      "size": [4, 1, 6], "material": "greybox-dark" },
+    { "id": "exit-wall-w", "shape": "box", "pos": [3.5, 4.5, 18.5],
+      "size": [1, 9, 6], "material": "greybox" },
+    { "id": "exit-wall-e", "shape": "box", "pos": [8.5, 4.5, 18.5],
+      "size": [1, 9, 6], "material": "greybox" },
+    { "id": "exit-wall-s", "shape": "box", "pos": [6, 4.5, 21.5],
+      "size": [4, 9, 1], "material": "greybox" },
+    { "id": "exit-ceiling", "shape": "box", "pos": [6, 9.5, 18.5],
+      "size": [4, 1, 6], "material": "greybox" },
+    { "id": "exit-pad", "shape": "box", "pos": [6, 0.01, 19],
+      "size": [3.6, 0.02, 3.6], "material": "foam-white" }
+  ],
+
+  "pieces": [
+    { "id": "ring-pillar-w", "kind": "cover", "anchor": "floor",
+      "volumes": [
+        { "pos": [-11, 1.4, 0], "size": [1.6, 2.8, 1.6], "material": "foam-orange" }
+      ] },
+    { "id": "ring-pillar-e", "kind": "cover", "anchor": "floor",
+      "volumes": [
+        { "pos": [11, 1.4, 0], "size": [1.6, 2.8, 1.6], "material": "foam-orange" }
+      ] }
+  ],
+
+  "arenas": [
+    {
+      "id": "ring",
+      "archetype": "A2",
+      "trigger": { "pos": [0, 2, 6], "size": [24, 4, 8] },
+      "doors": [
+        { "id": "ring-in", "pos": [-6, 1.75, 15], "size": [4, 3.5, 0.4],
+          "state": "open" },
+        { "id": "ring-out", "pos": [6, 1.75, 15], "size": [4, 3.5, 0.4],
+          "state": "locked" }
+      ],
+      "rifts": [
+        { "id": "ring-r1", "pos": [-11, 0.2, -6], "facing": [0, 1, 0] },
+        { "id": "ring-r2", "pos": [11, 0.2, -6], "facing": [0, 1, 0] }
+      ],
+      "waves": [
+        { "id": "ring-w1", "rifts": ["ring-r1", "ring-r2"],
+          "spawns": [ { "foamer": "F05", "count": 2 } ],
+          "delaySeconds": 1.5, "holdSeconds": 2.0 }
+      ],
+      "unlockOnClear": ["ring-out", "ring-in"],
+      "checkpoint": true,
+      "checkpointPos": [-6, 0, 12.6]
+    }
+  ],
+
+  "pickups": [
+    { "id": "ring-ammo", "type": "darts-standard", "count": 4, "pos": [0, 0.4, -11] }
+  ],
+
+  "playerStart": { "pos": [-6, 0, 18.5], "yaw": 0 },
+  "exit": { "pos": [6, 2, 19], "size": [3.4, 4, 3] }
+}

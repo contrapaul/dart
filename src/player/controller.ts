@@ -43,6 +43,11 @@ export class PlayerController {
    *  shield sets both every fixed step; nothing else touches them. */
   speedScale = 1;
   allowSprint = true;
+  /** GAME-10b: seconds left of a charge hit's stun. The body does not move
+   *  (the look still works: yaw and pitch are set elsewhere), gravity and
+   *  the floor still apply. Set by the game when a Darter runs into the
+   *  player. */
+  stunTime = 0;
 
   private body: RAPIER.RigidBody;
   readonly collider: RAPIER.Collider;
@@ -103,6 +108,14 @@ export class PlayerController {
     this.right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const m = input.move();
     this.wish.set(0, 0, 0).addScaledVector(this.forward, m.y).addScaledVector(this.right, m.x);
+    // GAME-10b: stunned by a Darter's charge: no stepping, no jump, no dash.
+    // The camera still turns, so the player can see what hit them.
+    if (this.stunTime > 0) {
+      this.stunTime = Math.max(0, this.stunTime - dt);
+      this.wish.set(0, 0, 0);
+      this.dashLeft = 0;
+      this.jumpBuffer = 0;
+    }
 
     this.coyote = this.grounded ? P.coyoteTime : Math.max(0, this.coyote - dt);
     this.jumpBuffer = input.wasPressed("jump") ? P.jumpBuffer : Math.max(0, this.jumpBuffer - dt);

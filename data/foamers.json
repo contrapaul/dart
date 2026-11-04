@@ -210,6 +210,62 @@
           "strike": 0.2
         }
       ]
+    },
+    "F05": {
+      "rig": "F05",
+      "_note": "GAME-10b: the Darter. attackRange is its bite; the charge line and speed are in charge, and the brain reads rangeMetres. The chest and brow plates shrug off darts and carve little; the orange back weakpoint takes extra. No upright attack besides the charge: with no legs it is prone, so only bite is left.",
+      "turnRate": 1.4,
+      "attackRange": 1.6,
+      "charge": {
+        "_note": "GAME-10b: the charge. speed m/s, metres the longest run, rangeMetres where a charge may start, holdMetres the ring it circles on without a token (so it charges from range), telegraphSeconds the scrape before it (stops, head down, dust), wallStunSeconds the stagger after a wall (back open), playerStunSeconds how long a player it runs into cannot move. plateStopsShield and plateArcDeg: a shield charge into the front plates bounces off instead of staggering the Darter.",
+        "speed": 11,
+        "metres": 18,
+        "rangeMetres": 14,
+        "holdMetres": 9,
+        "telegraphSeconds": 0.9,
+        "wallStunSeconds": 1.2,
+        "playerStunSeconds": 0.4,
+        "dustCount": 6,
+        "dustSize": 0.06,
+        "plateStopsShield": true,
+        "plateArcDeg": 120
+      },
+      "armour": {
+        "_note": "GAME-10b: per part id. damage multiplies the kind's hit multiplier; carve scales the dart carve radius (the plate chips slowly).",
+        "chest": {
+          "damage": 0.15,
+          "carve": 0.3
+        },
+        "brow": {
+          "damage": 0.15,
+          "carve": 0.3
+        },
+        "weakpoint": {
+          "damage": 2.5,
+          "carve": 1
+        }
+      },
+      "attacks": [
+        {
+          "id": "charge",
+          "damage": 8,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.9,
+          "strike": 0.2,
+          "charge": true,
+          "stance": "upright"
+        },
+        {
+          "id": "bite",
+          "damage": 6,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.5,
+          "strike": 0.2,
+          "stance": "prone"
+        }
+      ]
     }
   },
   "spawner": {

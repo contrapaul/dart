@@ -108,3 +108,28 @@ export function finishMotion(k: number, out: RigMotion) {
   out.roll = 0.1 * Math.sin(k * 3 * Math.PI);
   out.pitch = 0.08 * Math.sin(k * 2 * Math.PI);
 }
+
+/** GAME-10b: the charger's scrape, k 0..1 through the telegraph. The body
+ *  drops and pitches forward (the Darter has no separate head to lower),
+ *  with a short scrape shake so the player reads the window. */
+export function scrapeMotion(rig: RigSpec, k: number, out: RigMotion) {
+  restInto(out);
+  const e = ease(clamp01(k));
+  out.pitch = 0.22 * e;
+  out.y = -0.05 * e;
+  out.roll = Math.sin(k * 40) * 0.02 * e; // the scrape itself
+  for (const id of ["legL", "legR"])
+    if (rig.parts.some((p) => p.id === id)) out.rot.set(id, [0.25 * e, 0, 0]);
+}
+
+/** GAME-10b: the charge run, phase in gait units. A deep forward lean and a
+ *  fast two-beat gallop; the stride is shorter than it looks because the
+ *  system moves the body, not the legs. */
+export function chargeMotion(rig: RigSpec, phase: number, out: RigMotion) {
+  restInto(out);
+  const s = Math.sin(phase * Math.PI);
+  out.pitch = 0.3;
+  out.y = 0.04 * Math.abs(s);
+  for (const id of ["legL", "legR"])
+    if (rig.parts.some((p) => p.id === id)) out.rot.set(id, [(id.endsWith("L") ? 1 : -1) * 0.5 * s, 0, 0]);
+}

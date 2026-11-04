@@ -16,6 +16,8 @@ export interface VoxelTarget {
   owns(collider: RAPIER.Collider): boolean;
   worldToVoxel(v: THREE.Vector3): THREE.Vector3;
   voxelToWorld(v: THREE.Vector3): THREE.Vector3;
+  /** Multiplies the carve radius (GAME-10b: armour plates chip slowly). */
+  carveScale?: number;
 }
 
 const centreScratch = new THREE.Vector3();
@@ -48,7 +50,7 @@ export class DartImpacts {
     // Radius scales with impact speed relative to the dart type's top speed,
     // never below 0.3 of the type's carveRadius.
     const scale = THREE.MathUtils.clamp(hit.speed / dartTuning.types[hit.type].speed, 0.3, 1);
-    const radiusMetres = dartTuning.types[hit.type].carveRadius * scale;
+    const radiusMetres = dartTuning.types[hit.type].carveRadius * scale * (target.carveScale ?? 1);
     const size = target.volume.voxelSize;
     // Centre the carve slightly inside the surface, in voxel space.
     centreScratch.copy(hit.point).addScaledVector(hit.direction, size * 0.5);
