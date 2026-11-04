@@ -78,6 +78,10 @@ export class NavGrid {
   private readonly cells: Int32Array;
   private readonly px: Float32Array;
   private readonly pz: Float32Array;
+  /** The surfaces one bake ray meets, reused so a bake allocates nothing. */
+  private readonly hits: { y: number; ny: number }[] = [];
+  /** The stand-able surfaces of the cell being baked, lowest first. */
+  private readonly cand: number[] = [];
   private heapSize = 0;
   private gen = 0;
 
@@ -199,46 +203,76 @@ export class NavGrid {
 
   // ---- bake -------------------------------------------------------------
 
-  /** Bake one cell: find the ground with a downward ray, then check that an
-   *  agent of the given size fits at that spot. */
+  /** Bake one cell: find every surface the downward ray meets, then take the
+   *  lowest one an agent of the given size fits on as the cell's ground.
+   *
+   *  One ray hit is not enough (BUG-01). The Pit's ring hangs 3 m over pit
+   *  floor a player can walk on, and the first hit from above is the ring's
+   *  top: the floor under it baked 4 m up, so a Foamer sent at a player
+   *  standing underneath walked off to the ramp and stood there. Taking the
+   *  lowest surface an agent fits on puts the cell at the player's floor. A
+   *  wall is not an overhang: the floor beside and under it leaves the shape
+   *  no room, so those cells still bake as the wall's top, as before. */
   private bakeCell(i: number) {
     const x = this.minX + ((i % this.cols) + 0.5) * this.cell;
     const z = this.minZ + (Math.floor(i / this.cols) + 0.5) * this.cell;
+    const hits = this.hits;
+    hits.length = 0;
     this.ray.origin = { x, y: NAV.topMetres, z };
-    const hit = this.world.castRayAndGetNormal(
-      this.ray, this.rayLength, true, SKIP, SOLID_QUERY_GROUPS,
+    this.world.intersectionsWithRay(
+      this.ray, this.rayLength, true,
+      (hit) => {
+        hits.push({ y: NAV.topMetres - hit.timeOfImpact, ny: hit.normal.y });
+        return true;
+      },
+      SKIP, SOLID_QUERY_GROUPS,
     );
-    if (!hit) {
+    if (hits.length === 0) {
       this.ground[i] = NaN;
       this.walkable[i] = 0;
       return;
     }
-    const groundY = NAV.topMetres - hit.timeOfImpact;
-    this.ground[i] = groundY;
-    // A slope steeper than maxSlope is not walkable: the ground normal tips
-    // away from up.
-    if (hit.normal.y < this.cosMaxSlope) {
-      this.walkable[i] = 0;
+    // The surfaces an agent could stand on, lowest first: a slope steeper than
+    // maxSlope is not one (its normal tips away from up), but it is skipped
+    // rather than ending the cell, because the floor under a steep face is
+    // still floor. Rapier promises no order.
+    const cand = this.cand;
+    cand.length = 0;
+    for (const h of hits) if (h.ny >= this.cosMaxSlope) cand.push(h.y);
+    cand.sort((a, b) => a - b);
+    for (let k = 0; k < cand.length; k++) {
+      const y0 = cand[k]!;
+      // A surface swallowed by one within a step of it is not a floor of its
+      // own: the floor under a 0.3 m step is the step's footprint, and the
+      // agent stands on the step. An overhang is high above that (the Pit's
+      // ring is 3 m up), so the floor under it stays a floor (BUG-01).
+      const above = cand[k + 1];
+      if (above !== undefined && above - y0 < NAV.maxStepMetres) continue;
+      // The agent's shape with its feet raised by the step height, so a step
+      // the character controller walks up (maxStep) does not read as a wall,
+      // while the capsule's lower part still hits anything taller. Standing on
+      // a slope inside maxSlope leaves the raised shape clear, because its
+      // bottom is above the ground it stands on.
+      const y = y0 + NAV.maxStepMetres + NAV.agentHeightMetres / 2;
+      let blocked = false;
+      this.world.intersectionsWithShape(
+        { x, y, z }, ZERO_ROT, this.shape,
+        () => {
+          blocked = true;
+          return false;
+        },
+        SKIP, SOLID_QUERY_GROUPS,
+      );
+      if (blocked) continue;
+      this.ground[i] = y0;
+      this.walkable[i] = 1;
       return;
     }
-    // The agent's shape with its feet raised by the step height, so a step the
-    // character controller walks up (maxStep) does not read as a wall, while
-    // the capsule's lower part still hits anything taller. Standing on a slope
-    // inside maxSlope leaves the raised shape clear, because its bottom is
-    // above the ground it stands on.
-    const y = groundY + NAV.maxStepMetres + NAV.agentHeightMetres / 2;
-    let blocked = false;
-    this.world.intersectionsWithShape(
-      { x, y, z }, ZERO_ROT, this.shape,
-      () => {
-        blocked = true;
-        return false;
-      },
-      SKIP, SOLID_QUERY_GROUPS,
-    );
-    this.walkable[i] = blocked ? 0 : 1;
+    // Nothing the agent fits on down the ray: keep the highest up-facing
+    // surface so the cell still reads a height (a wall's top), unwalkable.
+    this.ground[i] = cand.length === 0 ? hits[0]!.y : cand[cand.length - 1]!;
+    this.walkable[i] = 0;
   }
-
   // ---- grid helpers -----------------------------------------------------
 
   /** Index of the cell holding (x, z), or -1 outside the grid. */

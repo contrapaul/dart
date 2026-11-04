@@ -197,6 +197,13 @@ export class FoamerSystem {
   private cc: RAPIER.KinematicCharacterController;
   private targets: VoxelTarget[];
   private own = new Set<number>(); // root and part bodies for the stepped Foamer
+  /** Root and part bodies of the other Foamers, which the stepped Foamer's
+   *  walk ignores (BUG-01): they are kinematic, so two pressed together each
+   *  ask the character controller to walk into the other and it cancels both
+   *  steps, freezing a wave that spawned on one rift. The steering's
+   *  separation keeps them apart instead, and it works with nothing to fight.
+   *  Only the walk: a knockback still stops at another Foamer. */
+  private others = new Set<number>();
   private respawn = SPAWNER.respawnDelay; // start full, so the first Foamer appears straight away
   private _wish = new THREE.Vector3();
   private _vel = new THREE.Vector3();
@@ -611,13 +618,25 @@ export class FoamerSystem {
       // The capsule must not collide with the Foamer's own part bodies, nor
       // with the pieces it has just broken off and that are falling past it.
       this.own.clear();
+      this.others.clear();
       this.own.add(f.root.handle);
       for (const p of f.parts.values()) this.own.add(p.body.handle);
       for (const p of this.broken) if (p.owner === f) this.own.add(p.body.handle);
+      for (const o of this.list) {
+        if (o === f || o.state === "down") continue;
+        this.others.add(o.root.handle);
+        for (const p of o.parts.values()) this.others.add(p.body.handle);
+      }
+      // The predicate runs inside the query, where the collider's body and
+      // groups cannot be read back (Rapier refuses a nested borrow), so the
+      // bodies are looked up by handle, which is safe there.
       this.cc.computeColliderMovement(
         f.capsule, this._vel,
         undefined, undefined,
-        (c) => !this.own.has(c.parent()?.handle ?? -1),
+        (c) => {
+          const h = c.parent()?.handle ?? -1;
+          return !this.own.has(h) && !this.others.has(h);
+        },
       );
       const moved = this.cc.computedMovement();
       if (this.cc.computedGrounded()) f.vy = 0;
