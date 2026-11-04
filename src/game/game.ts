@@ -294,6 +294,15 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     if (health.dead) ui.pop();
   };
 
+  // GAME-10b: a Darter's charge that runs into the player stuns it for the
+  // charge's own time (the controller stops moving, the look still works).
+  // The hit itself comes through the bonk handler above, like any other.
+  foamers.onChargeHit = (_f, seconds) => {
+    if (ui.paused) return;
+    player.stunTime = Math.max(player.stunTime, seconds);
+    audio.play("F05-stun");
+  };
+
   // GAME-10a: a foam ball that reaches the player costs health like a bonk,
   // and the raised disc blocks it the same way. The arc is measured on the
   // ball's direction of travel (the point it came from), not its position.
@@ -444,6 +453,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // thud where it meets the Foamer.
       if (se.chargeStart) audio.play("SH-charge");
       if (se.chargeVictim) audio.play("SH-charge-hit", { position: se.chargeVictim.centre });
+      // GAME-10b: the Darter's front plates stop a charge. A plate clang
+      // where they met, and no hit sound.
+      if (se.chargeBlocked) audio.play("F05-impact", { position: shield.discPosition });
       // No shooting while the disc is up or a finisher holds the player.
       const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active;
       loadout.update(

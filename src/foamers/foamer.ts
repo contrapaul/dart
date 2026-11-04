@@ -6,6 +6,7 @@ import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
 import {
   restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion, finishMotion,
+  scrapeMotion, chargeMotion,
 } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
@@ -19,7 +20,10 @@ import type { AgentInput, FoamerAgent } from "../ai/agent";
 
 export type FoamerState =
   | "idle" | "alert" | "approach" | "hold"
-  | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down" | "finish";
+  | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down" | "finish"
+  // GAME-10b, the charger: the scrape before a charge, the straight run, and
+  // the long stagger after it hits a wall (its back open).
+  | "telegraph" | "charge" | "wallStun";
 export type FoamerSpec = typeof foamerData.test;
 /** Rigs in the data file carry `health`; the base rig type does not. */
 export type GameRig = RigSpec & { health: number };
@@ -123,6 +127,15 @@ export class Foamer {
   /** GAME-11: it is on the ground from the fall on, so its attacks and its
    *  crawl are posed prone. */
   prone = false;
+  /** GAME-10b: the charge line locked at the end of the telegraph (unit,
+   *  ground plane), and the metres still to run. Written by the system
+   *  when the telegraph ends. */
+  chargeDirX = 0;
+  chargeDirZ = 1;
+  chargeLeft = 0;
+  /** GAME-10b: it has already hit the player on this charge, so one run
+   *  hits once. */
+  chargeHit = false;
   /** The body's centre height over the ground at rest: the pendulum's pivot
    *  length, filled once at spawn (GAME-11). */
   pivotHeight = 0;
@@ -339,7 +352,10 @@ export class Foamer {
    *  part. moving: whether it walked this step. */
   poseParts(dt: number, moving: boolean) {
     const t = _target;
-    if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
+    if (this.state === "telegraph") scrapeMotion(this.rig, this.stateTime / (this.spec as { charge?: { telegraphSeconds: number } }).charge!.telegraphSeconds, t);
+    else if (this.state === "charge") chargeMotion(this.rig, this.gait * 2, t);
+    else if (this.state === "wallStun") staggerMotion(this.stateTime, (this.spec as { charge?: { wallStunSeconds: number } }).charge!.wallStunSeconds, t);
+    else if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
     else if (this.state === "stagger") staggerMotion(this.stateTime, this.staggerDuration(), t);
     else if (this.state === "finish") finishMotion(this.stateTime / this.spec.finisher.total, t);

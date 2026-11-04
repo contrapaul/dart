@@ -55,12 +55,13 @@ export class FoamerSounds {
     // sighting of a Foamer is only a seed: its foot is already down and the
     // gait is 0, so the first step heard is the first real plant.
     for (const f of sys.list) {
-      if (f.state !== "approach") continue;
+      if (f.state !== "approach" && f.state !== "charge") continue;
       const step = Math.floor(f.gait);
       const seen = this.plantSeen.get(f);
       if (seen !== undefined && step !== seen) {
         this.plantSeen.set(f, step);
-        this.sink.play("FX-step-medium", { position: f.centre });
+        // GAME-10b: the Darter's run is the charge loop, not plain steps.
+        this.sink.play(f.state === "charge" ? "F05-run-loop" : "FX-step-medium", { position: f.centre });
       } else if (seen === undefined) {
         this.plantSeen.set(f, step);
       }
@@ -114,6 +115,17 @@ export class FoamerSounds {
         break;
       case "stagger":
         this.sink.play("FX-stagger", p);
+        break;
+      // GAME-10b, the Darter's charge: the scrape, the run starting, and
+      // the wall or player it hits (placeholder IDs, design/SOUNDS.md 4.2).
+      case "scrape":
+        this.sink.play("F05-snort", p);
+        break;
+      case "charge":
+        this.sink.play("F05-run-loop", p);
+        break;
+      case "impact":
+        this.sink.play("F05-impact", p);
         break;
     }
   }

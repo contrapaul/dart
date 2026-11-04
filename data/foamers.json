@@ -217,13 +217,17 @@
       "turnRate": 1.4,
       "attackRange": 1.6,
       "charge": {
-        "_note": "GAME-10b: charge speed m/s, metres of straight line per charge, rangeMetres where a charge may start, playerStunSeconds the player is stunned on a hit, dustCount and dustSize the scrape dust at the telegraph.",
+        "_note": "GAME-10b: the charge. speed m/s, metres the longest run, rangeMetres where a charge may start, telegraphSeconds the scrape before it (stops, head down, dust), wallStunSeconds the stagger after a wall (back open), playerStunSeconds how long a player it runs into cannot move. plateStopsShield and plateArcDeg: a shield charge into the front plates bounces off instead of staggering the Darter.",
         "speed": 11,
         "metres": 18,
         "rangeMetres": 14,
+        "telegraphSeconds": 0.9,
+        "wallStunSeconds": 1.2,
         "playerStunSeconds": 0.4,
         "dustCount": 6,
-        "dustSize": 0.06
+        "dustSize": 0.06,
+        "plateStopsShield": true,
+        "plateArcDeg": 120
       },
       "armour": {
         "_note": "GAME-10b: per part id. damage multiplies the kind's hit multiplier; carve scales the dart carve radius (the plate chips slowly).",

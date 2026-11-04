@@ -1611,7 +1611,7 @@
               "dur": 0.9,
               "f0": 220,
               "f1": 110,
-              "wave": "sawtooth",
+              "wave": "triangle",
               "attack": 0.01,
               "decay": 0.7,
               "lowpass": 900,
@@ -1829,6 +1829,112 @@
               "wave": "sine",
               "attack": 0.002,
               "decay": 0.1
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "F05-snort": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.42,
+              "attack": 0.03,
+              "decay": 0.3,
+              "lowpass": 500,
+              "highpass": 80,
+              "lowpassEnd": 1400
+            },
+            "gain": 0.55
+          },
+          {
+            "tone": {
+              "dur": 0.3,
+              "f0": 140,
+              "f1": 95,
+              "wave": "triangle",
+              "attack": 0.02,
+              "decay": 0.24
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "F05-run-loop": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.1,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.16,
+              "attack": 0.004,
+              "decay": 0.12,
+              "lowpass": 420,
+              "highpass": 50,
+              "lowpassEnd": 160
+            },
+            "gain": 0.9
+          }
+        ]
+      }
+    },
+    "F05-impact": {
+      "files": [],
+      "volume": 0.95,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.24,
+              "attack": 0.002,
+              "decay": 0.2,
+              "lowpass": 900,
+              "highpass": 60,
+              "lowpassEnd": 180
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.2,
+              "f0": 110,
+              "f1": 60,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.16
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "F05-stun": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.07,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 260,
+              "f1": 150,
+              "wave": "triangle",
+              "attack": 0.01,
+              "decay": 0.4
             },
             "gain": 0.4
           }

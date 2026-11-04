@@ -1,5 +1,6 @@
 import type { Director, TokenKind } from "./director";
 import type { Brain } from "./brain";
+import type { ChargerState } from "./f05-brain";
 import {
   BRAIN,
   makeF01Brain,
@@ -13,6 +14,7 @@ import {
   type ReleaseReason,
 } from "./f01-brain";
 import { makeF02Brain, type F02Context } from "./f02-brain";
+import { makeChargerBrain } from "./f05-brain";
 import { makePath, NavGrid, type PathPoints, type Point2 } from "./nav-grid";
 
 // One Foamer's brain on a director and a nav grid (ENG-08 stage 3b). The
@@ -28,8 +30,10 @@ export interface AgentSetup {
   tokenKind: TokenKind;
   /** The state it starts in. */
   initial: F01State;
-  /** GAME-10a: the ranged brain for a thrower, the F01 one otherwise. */
-  brain?: "f01" | "f02";
+  /** GAME-10a: the ranged brain for a thrower, the F01 one otherwise.
+   *  GAME-10b: "f05" is the charger (the F01 four states plus telegraph,
+   *  charge and wallStun, which the Foamer system drives). */
+  brain?: "f01" | "f02" | "f05";
 }
 
 /** What the Foamer tells its agent each step. */
@@ -70,7 +74,7 @@ export class FoamerAgent {
   readonly agentId: number;
   /** Either brain: an F02 context is an F01 one plus the three ranged
    *  distances, which an F01 brain does not read, so one field serves both. */
-  readonly brain: Brain<F01State, F02Context>;
+  readonly brain: Brain<ChargerState, F02Context>;
   readonly ctx: F02Context;
   /** The path it follows, reused by every re-path: nothing allocates. */
   readonly path: PathPoints = makePath();
@@ -99,14 +103,16 @@ export class FoamerAgent {
     this.director = director;
     this.tokenKind = setup.tokenKind;
     this.agentId = agentId;
-    this.brain = setup.brain === "f02" ? makeF02Brain(setup.initial, 32) : makeF01Brain(setup.initial, 32);
+    this.brain = setup.brain === "f02" ? makeF02Brain(setup.initial, 32)
+      : setup.brain === "f05" ? makeChargerBrain(setup.initial, 32)
+        : makeF01Brain(setup.initial, 32);
     this.ctx = makeF01Context(agentId) as F02Context;
   }
 
   get decision(): F01Decision {
     return this.ctx.decision;
   }
-  get state(): F01State {
+  get state(): ChargerState {
     return this.brain.state;
   }
   get move(): MoveIntent {

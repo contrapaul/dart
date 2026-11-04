@@ -12,6 +12,8 @@ import { CHUNK_SIZE } from "../voxel/chunk";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
+import { chargeOf, type ChargeSpec } from "./charge";
+import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 import aiData from "../../data/ai.json";
@@ -39,6 +41,10 @@ const SPAWNER = foamerData.spawner;
 // One source for rig shape, speed and health: data/foamer-rigs.json.
 const RIGS = rigData.rigs as unknown as GameRig[];
 const CORE = materialId("foam-core");
+// GAME-10b: how close a charging Darter's centre comes to the player's
+// before it counts as a hit: its capsule radius (0.27 m from the rig) plus
+// the player's (0.35 m, data/player.json), and a little slack for a step.
+const CHARGE_CONTACT = 0.7;
 
 /** The merged spec of one Foamer type: the base with the type's overrides on
  *  top. An unknown type falls back to the base (which is rig F01), so a page
@@ -133,7 +139,10 @@ const BRAIN = aiData.brain;
  *  plus GAME-10a's "throw": the ball leaving the hand. */
 export type FoamerSoundKind =
   | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop"
-  | "stagger" | "throw";
+  | "stagger" | "throw"
+  // GAME-10b, the charger: the scrape before a charge, the run starting,
+  // and the wall or player it hits.
+  | "scrape" | "charge" | "impact";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -210,6 +219,16 @@ export class FoamerSystem {
    *  start alert, so a fight is on from the first frame; range spawns start
    *  idle, so the sight test can be watched. */
   spawnState: "idle" | "alert" = "alert";
+  /** GAME-10b: a player a charging Darter ran into cannot move for
+   *  playerStunSeconds; the game reads this and stuns its controller. The
+   *  system only reports it, so the unit tests and the sandbox need no
+   *  player controller. */
+  onChargeHit: (f: Foamer, seconds: number) => void = () => {};
+  /** GAME-10b: a charge ended on a wall, so a page can throw the scrape
+   *  dust and play the wall hit. */
+  onWallHit: (f: Foamer, point: THREE.Vector3) => void = () => {};
+  /** GAME-10b: the scrape dust at the telegraph, at the Darter's feet. */
+  onScrape: (f: Foamer, point: THREE.Vector3) => void = () => {};
 
   constructor(
     private rapier: Rapier,
@@ -258,8 +277,9 @@ export class FoamerSystem {
         {
           tokenKind: tokenKindOf(spec),
           initial: this.spawnState,
-          // A type whose attacks use the ranged pool runs the ranged brain.
-          brain: tokenKindOf(spec) === "ranged" ? "f02" : "f01",
+          // A type whose attacks use the ranged pool runs the ranged brain;
+          // GAME-10b: a charger runs its own (telegraph, charge, wallStun).
+          brain: chargeOf(spec) ? "f05" : tokenKindOf(spec) === "ranged" ? "f02" : "f01",
         },
         agentId,
       );
@@ -371,7 +391,11 @@ export class FoamerSystem {
     // stagger is stillness and wobble only. Not while falling either (the
     // card: no movement in the fall), not while being finished (the view
     // turns instead), and not while down (downed ones are not here).
-    if (f.state !== "stagger" && f.state !== "fall" && f.state !== "finish") {
+    // GAME-10b: a charge keeps its line (it cannot steer), and its wall stun
+    // is a recovery it does not turn out of quickly (the long turn comes
+    // after, while it gets its feet back).
+    const charging = f.state === "charge";
+    if (f.state !== "stagger" && f.state !== "fall" && f.state !== "finish" && !charging) {
       const dx = player.x - f.centre.x;
       const dz = player.z - f.centre.z;
       const wanted = Math.atan2(dx, dz);
@@ -402,11 +426,87 @@ export class FoamerSystem {
     } else if (f.state === "hold" || f.state === "idle" || f.state === "alert") {
       // The brain's own states: it moves on the intents below, no attack.
     } else if (f.state === "approach") {
-      if (this.mayAttack(f, dist, this.engagementRange(f))) {
+      // GAME-10b: a charger that may attack starts its scrape, not a swing.
+      // The telegraph is the player's window: it stops and lowers its head.
+      const charge = chargeOf(f.spec);
+      if (charge && f.agent && this.wantsCharge(f, dist, charge, player)) {
+        f.state = "telegraph";
+        f.stateTime = 0;
+        f.chargeHit = false;
+        sound(this, "scrape", f, f.centre);
+        this.onScrape(f, f.centre);
+      } else if (!charge && this.mayAttack(f, dist, this.engagementRange(f))) {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
         sound(this, "attack", f, f.centre);
+      } else if (charge && f.legs().length === 0 && this.mayAttack(f, this.headDist(f, player), this.engagementRange(f))) {
+        // No legs left: no charge. It bites from the ground like a crawl.
+        f.state = "windup";
+        f.stateTime = 0;
+        f.setAttack("bite");
+        sound(this, "attack", f, f.centre);
+      }
+    } else if (f.state === "telegraph") {
+      // The scrape: it stops, head down, and locks its line at the player's
+      // position when the time is up. Steering after that is the card's
+      // point: the player sidesteps.
+      const charge = chargeOf(f.spec)!;
+      f.stateTime = Math.min(f.stateTime, charge.telegraphSeconds);
+      if (f.stateTime >= charge.telegraphSeconds) {
+        const dx = player.x - f.centre.x;
+        const dz = player.z - f.centre.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 1e-4) {
+          f.chargeDirX = dx / d;
+          f.chargeDirZ = dz / d;
+        } else {
+          f.chargeDirX = Math.sin(f.yaw);
+          f.chargeDirZ = Math.cos(f.yaw);
+        }
+        f.chargeLeft = Math.min(charge.metres, charge.rangeMetres);
+        f.chargeHit = false;
+        f.state = "charge";
+        f.stateTime = 0;
+        sound(this, "charge", f, f.centre);
+      }
+    } else if (f.state === "charge") {
+      // The straight run. The system moves it below (no steering, no legs
+      // needed beyond the clearance check) and watches for a wall and for
+      // the player in its path.
+      const charge = chargeOf(f.spec)!;
+      const stepMetres = Math.min(charge.speed * dt, f.chargeLeft);
+      const moved = this.knockStep(f, f.chargeDirX, f.chargeDirZ, stepMetres);
+      f.chargeLeft -= moved;
+      f.vy = 0;
+      if (!f.chargeHit) {
+        const dx = player.x - f.centre.x;
+        const dz = player.z - f.centre.z;
+        if (Math.hypot(dx, dz) <= CHARGE_CONTACT) {
+          // It ran into the player: a hit once per charge, and the player
+          // cannot move for a moment (the look still works).
+          f.chargeHit = true;
+          f.bonk("charge");
+          this.onChargeHit(f, charge.playerStunSeconds);
+          sound(this, "impact", f, f.centre);
+        }
+      }
+      const wall = stepMetres > 1e-4 && moved < stepMetres * 0.1;
+      if (wall || f.chargeLeft <= 1e-4) {
+        f.chargeLeft = 0;
+        f.state = wall ? "wallStun" : "recover";
+        f.stateTime = 0;
+        if (wall) {
+          sound(this, "impact", f, f.centre);
+          this.onWallHit(f, f.centre);
+        }
+      }
+    } else if (f.state === "wallStun") {
+      // It hit a wall: still for wallStunSeconds, back open, then it
+      // recovers and turns slowly (the long turn is turnRate, data).
+      if (f.stateTime >= chargeOf(f.spec)!.wallStunSeconds) {
+        f.state = "recover";
+        f.stateTime = 0;
       }
     } else if (f.state === "windup") {
       const atk = f.attack();
@@ -473,10 +573,13 @@ export class FoamerSystem {
     const crawling = f.state === "crawl";
     // Prone, it closes until its head (the part that reaches) is in range.
     const reach = crawling ? this.headDist(f, player) : dist;
+    // GAME-10b: the scrapes and the run move themselves (the run through
+    // the movement controller, above); the brain does not walk it then.
+    const still = f.state === "telegraph" || f.state === "charge" || f.state === "wallStun";
     const moving = f.agent
       // GAME-07: while being finished the view turns and time runs out;
       // the finisher owns the Foamer, it cannot keep stalking.
-      ? f.state === "finish" ? false : this.brainMoving(f)
+      ? f.state === "finish" || still ? false : this.brainMoving(f)
       : f.state === "approach" || crawling ? reach > this.engagementRange(f) : false;
     this._wish.set(0, 0, 0);
     if (moving) {
@@ -545,7 +648,10 @@ export class FoamerSystem {
     // An attack keeps the token it holds: the brain stopped wanting one as
     // soon as the windup began, and taking it back now would let it be
     // granted to another Foamer mid swing.
-    input.keepToken = f.state === "windup" || f.state === "strike" || f.state === "recover";
+    input.keepToken = f.state === "windup" || f.state === "strike" || f.state === "recover"
+      // GAME-10b: a charger keeps its token from the scrape to the wall
+      // stun, so only a few commit at once.
+      || f.state === "telegraph" || f.state === "charge" || f.state === "wallStun";
     f.damageSinceStep = false;
     a.step(dt, input);
     // The brain's state is the Foamer's while the Foamer is in one of the
@@ -576,6 +682,20 @@ export class FoamerSystem {
    *  spec's attackRange). GAME-10a. */
   private engagementRange(f: Foamer): number {
     return attackRange(f.spec, { id: this.chooseAttack(f) });
+  }
+
+  /** GAME-10b: may this Darter start a charge now? In its charge range,
+   *  with the token, in sight, on its feet. */
+  private wantsCharge(f: Foamer, dist: number, charge: ChargeSpec, player: THREE.Vector3): boolean {
+    if (f.legs().length === 0) return false;
+    if (dist > charge.rangeMetres) return false;
+    return decideCharge("approach", {
+      distance: dist,
+      lineOfSight: this.lineOfSight(f, player),
+      hasToken: f.agent?.hasToken ?? false,
+      range: charge.rangeMetres,
+      canCharge: true,
+    });
   }
 
   /** True if the Foamer may start an attack now: in range and, with a

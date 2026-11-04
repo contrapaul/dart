@@ -86,6 +86,8 @@ export interface ShieldEvents {
   /** The charge ended on this step (for a page's own sounds, e.g. a
    *  failure sound later). */
   chargeEnd: boolean;
+  /** GAME-10b: the charge met the Darter's plates and bounced off. */
+  chargeBlocked: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -158,7 +160,7 @@ export class Shield {
   private debrisThisFlight = 0;
   private readonly events: ShieldEvents = {
     raised: false, lowered: false, thrown: false, hits: [], caught: false,
-    chargeStart: false, chargeVictim: null, chargeEnd: false,
+    chargeStart: false, chargeVictim: null, chargeEnd: false, chargeBlocked: false,
   };
   private readonly forward = new THREE.Vector3();
   private readonly hand = new THREE.Vector3();
@@ -243,7 +245,7 @@ export class Shield {
     const e = this.events;
     e.raised = false; e.lowered = false; e.thrown = false;
     e.caught = false; e.hits.length = 0;
-    e.chargeStart = false; e.chargeVictim = null; e.chargeEnd = false;
+    e.chargeStart = false; e.chargeVictim = null; e.chargeEnd = false; e.chargeBlocked = false;
     this.usedFire = false;
 
     // The shield action as the setting wants it: hold, or one press to
@@ -576,6 +578,17 @@ export class Shield {
     this.to.copy(f.centre).setY(f.centre.y + f.height * 0.5).sub(this.eye);
     const d = Math.hypot(this.to.x, this.to.z);
     if (d <= T2.stopShort) {
+      if (this.plateFacesCharge(f)) {
+        // GAME-10b: the Darter's front plates stop the charge. The player
+        // bounces back, the Darter is not staggered or moved: its armour
+        // does what it is for. A plate clang, then the normal cooldown.
+        e.chargeBlocked = true;
+        this.ckickLeft = T2.kickTime;
+        this.player.chargeStep(dt, this.chargeDir.clone().negate(), T2.speed * 0.35);
+        this.chargeCd = T2.cooldown;
+        this.endCharge(e);
+        return;
+      }
       e.chargeVictim = f;
       this.ckickLeft = T2.kickTime;
       f.health -= T2.damage;
@@ -585,6 +598,22 @@ export class Shield {
       this.endCharge(e);
     }
   }
+  /** GAME-10b: is the shield charge coming at the Darter's front plates?
+   *  The plates face +z (the eyes and gape are painted on the +z face), and
+   *  cover plateArcDeg about it. A charge from the side or the back misses
+   *  them, so it staggers as usual. */
+  private plateFacesCharge(f: Foamer): boolean {
+    const charge = (f.spec as { charge?: { plateStopsShield?: boolean; plateArcDeg?: number } }).charge;
+    if (!charge?.plateStopsShield) return false;
+    // The Darter's forward, and the direction from it back to the player.
+    const fx = Math.sin(f.yaw);
+    const fz = Math.cos(f.yaw);
+    const toPlayerX = -this.chargeDir.x;
+    const toPlayerZ = -this.chargeDir.z;
+    const cos = fx * toPlayerX + fz * toPlayerZ;
+    return cos >= Math.cos(THREE.MathUtils.degToRad((charge.plateArcDeg ?? 120) / 2));
+  }
+
   /** The charge's line: toward the lock's chest, horizontal. While the
    *  lock still has any legs the controller steers it for the charge. */
   private chargeDirFor(f: Foamer): THREE.Vector3 {
