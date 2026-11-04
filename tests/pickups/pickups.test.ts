@@ -7,6 +7,9 @@ import pickupData from "../../data/pickups.json";
 import { Blaster, resolveSpec } from "../../src/weapons/blaster";
 import type { DartFiring } from "../../src/weapons/blaster";
 import type { DartTypeName } from "../../src/weapons/dart-model";
+import pitJson from "../../data/levels/1-1-pit.json";
+import ringJson from "../../data/levels/1-4-ring.json";
+import type { Level } from "../../src/level/format";
 
 const DT = 1 / 60;
 const H = pickupData.health;
@@ -222,5 +225,50 @@ describe("PickupSystem (LVL-02a, the ammo box)", () => {
     for (let i = 0; i < 30; i++) tick(r, new THREE.Vector3(0, 0, 0));
     expect(a.reserve).toBe(10);
     expect(r.pickups.count("ammo")).toBe(1);
+  });
+});
+
+// LVL-02a: the level loader places the file's ammo boxes.
+describe("PickupSystem.loadLevelBoxes (LVL-02a)", () => {
+  const pit = pitJson as unknown as Level;
+  const ring = ringJson as unknown as Level;
+
+  it("spawns every darts-* entry of the Pit file as an ammo box", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(pit);
+    expect(r.pickups.count("ammo")).toBe(2); // pit-ammo and pit-ammo-far
+    for (const it of r.pickups.list) {
+      expect(it.dartType).toBe("standard");
+      expect(it.dartCount).toBe(4);
+    }
+  });
+
+  it("spawns the Ring's two boxes, one by each pillar", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(ring);
+    expect(r.pickups.count("ammo")).toBe(2);
+    const xs = r.pickups.list.map((it) => Math.round(it.body.translation().x)).sort((a, b) => a - b);
+    // The pillars stand at x -11 and x 11 (data/levels/1-4-ring.json).
+    expect(xs).toEqual([-11, 11]);
+  });
+
+  it("a restart (clear, then loadLevelBoxes) brings the boxes back", () => {
+    const r = rig();
+    const one = blaster(10, "standard");
+    r.pickups.blasters = [one];
+    r.pickups.loadLevelBoxes(pit);
+    // Walk over one of the boxes until a blaster takes it.
+    const t = r.pickups.list[0]!.body.translation();
+    for (let i = 0; i < 240 && r.pickups.count("ammo") > 1; i++) {
+      r.pickups.update(DT, new THREE.Vector3(t.x, 0, t.z));
+      r.world.step();
+    }
+    expect(r.pickups.count("ammo")).toBe(1);
+    expect(one.reserve).toBeGreaterThan(10);
+    // Try again / Play again: the arena clears everything, then the file's
+    // boxes are placed again.
+    r.pickups.clear();
+    r.pickups.loadLevelBoxes(pit);
+    expect(r.pickups.count("ammo")).toBe(2);
   });
 });

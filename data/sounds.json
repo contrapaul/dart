@@ -1835,6 +1835,49 @@
         ]
       }
     },
+    "PU-ammo": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 5,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.18,
+              "attack": 0.004,
+              "decay": 0.14,
+              "lowpass": 2400,
+              "highpass": 600,
+              "lowpassEnd": 500
+            },
+            "gain": 0.5
+          },
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 4000,
+              "highpass": 1200,
+              "lowpassEnd": 1000
+            },
+            "gain": 0.35
+          },
+          {
+            "tone": {
+              "dur": 0.09,
+              "f0": 260,
+              "f1": 180,
+              "wave": "square",
+              "attack": 0.002,
+              "decay": 0.07
+            },
+            "gain": 0.12
+          }
+        ]
+      }
+    },
     "F05-snort": {
       "files": [],
       "volume": 0.8,

@@ -234,10 +234,16 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   foamers.spawnState = "alert"; // an arena spawn is already in the fight
   scene.add(foamers.group);
   // GAME-07: the health pickups on the floor and the finisher that drops
-  // them. A collected blob sounds and flashes the HUD here.
+  // them. A collected blob sounds and flashes the HUD here. LVL-02a: an
+  // ammo box plays its own short sound and a small (not green) flash.
   const pickups = new PickupSystem(rapier, world, scene, health);
   const finisher = new Finisher(foamers, pickups);
-  pickups.onCollected = (_kind, pos) => {
+  pickups.onCollected = (kind, pos) => {
+    if (kind === "ammo") {
+      audio.play("PU-ammo", { position: pos });
+      hud.ammoFlash();
+      return;
+    }
     audio.play("PU-health", { position: pos });
     hud.healFlash();
   };

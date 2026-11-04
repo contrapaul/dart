@@ -1,10 +1,11 @@
 import materialsData from "../../data/materials.json";
 import rigData from "../../data/foamer-rigs.json";
+import dartsData from "../../data/darts.json";
 import type { Arena, Level, Piece, PieceVolume, ShellBox } from "./format";
 
-// Checks a level file against design/levels/BLOCKOUT.md section 5. Rules 7,
-// 8 and 10 are for things LVL-01 does not load yet (secrets, ammo
-// placement, shell overlaps are checked here too). The validator is plain
+// Checks a level file against design/levels/BLOCKOUT.md section 5. Rule 7
+// (secrets) is for a thing LVL-01 does not load yet; the dart type names of
+// an ammo pickup (rule 8) are checked here too. The validator is plain
 // data: no Three.js, no physics, so it can run in a test or in a tool.
 //
 // A file with errors does not load. Warnings are budget notes for a human.
@@ -26,6 +27,8 @@ const WAVE_ALIVE_FURY = 16;
 const TOUCH = 0.01;
 
 const materialNames = new Set(materialsData.materials.map((m) => m.name));
+/** A $darts-$ type pickup is a real dart type in data/darts.json (LVL-02a). */
+const dartNames = new Set(Object.keys(dartsData.types));
 /** Rule 12 asks for health, so a rig without one does not count. */
 const rigIds = new Set(rigData.rigs.filter((r) => typeof r.health === "number" && r.health > 0).map((r) => r.id));
 
@@ -137,6 +140,15 @@ export function validateLevel(level: Level): ValidationResult {
 
   const pieces = level.pieces ?? [];
   const arenas = level.arenas ?? [];
+
+  // LVL-02a: a pickups entry of a darts-* type is an ammo box for that dart
+  // type, and the type must be a real one in data/darts.json.
+  for (const p of level.pickups ?? []) {
+    if (!p.type.startsWith("darts-")) continue;
+    if (!dartNames.has(p.type.slice("darts-".length))) {
+      errors.push(`pickup ${p.id}: ${p.type} is not a dart type in data/darts.json`);
+    }
+  }
 
   // Rule 1 and rule 11: every volume is small enough and uses a real material.
   const checkMaterial = (name: string, what: string) => {

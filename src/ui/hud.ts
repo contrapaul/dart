@@ -31,6 +31,7 @@ export class Hud {
   private lastLock = false;
   private heal: HTMLElement;
   private healTimer = 0;
+  private ammoTimer = 0;
   /** Stage 2 wires this to the reduce flashes setting; while false the
    *  cream edge glow stays off (the bar's own flash still shows). */
   reduceFlashes = false;
@@ -87,6 +88,17 @@ export class Hud {
     this.heal.classList.add("on");
     window.clearTimeout(this.healTimer);
     this.healTimer = window.setTimeout(() => this.heal.classList.remove("on"), 200);
+  }
+
+  /** LVL-02a: the ammo box collect: a small pulse of the counter itself
+   *  (the heal flash is a green edge glow; a box is not health, so it gets
+   *  its own). Suppressed by reduce flashes, like the heal flash. */
+  ammoFlash() {
+    if (this.root.hidden) return;
+    if (this.reduceFlashes) return;
+    this.ammo.classList.add("topped");
+    window.clearTimeout(this.ammoTimer);
+    this.ammoTimer = window.setTimeout(() => this.ammo.classList.remove("topped"), 250);
   }
 
   show(visible: boolean): void {
