@@ -31,13 +31,13 @@ describe("ANIM-01: the F02 Roamer's throw", () => {
     expect(centre(F02, "ball", s)).toBeGreaterThan(centre(F02, "ball", restMotion()));
   });
 
-  it("the windup turns the body away and the strike turns it through", () => {
+  it("the windup turns the body away and the strike turns it back through", () => {
     const w = restMotion();
     windupMotion(F02, "throw", 1, w);
     const s = restMotion();
     strikeMotion(F02, "throw", 1, s);
-    expect(w.turn ?? 0).not.toBeCloseTo(0, 3);
-    expect(s.turn ?? 0).toBeGreaterThan(0); // back through onto the target again
+    expect(w.turn ?? 0).not.toBeCloseTo(0, 3); // the body is turned away at the windup
+    expect((s.turn ?? 0) * (w.turn ?? 0)).toBeLessThan(0); // swung back through the target side
   });
 });
 

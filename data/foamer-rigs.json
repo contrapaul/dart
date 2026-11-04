@@ -494,7 +494,7 @@
             "_note": "ANIM-01: the Roamer's throw, from the load to the follow. Part rotations and root lean and turn in degrees, k 0..1 within each state; there is no recover block, the recover state eases back to rest on its own. wind: armR swings the ball arm overhead and back, foreArmR straightens the elbow so the ball sits behind the head, turn swings the body a little away from the target, head and roll drop the throwing side. strike: the arm whips forward past the shoulder and the body turns through. The values keep the ball's arc up and behind in the wind and level and out in front in the strike (checked with tools/throw-probe.ts).",
             "throw": {
                 "wind": { "armR": -180, "foreArmR": 80, "headX": -15, "headYaw": -25, "roll": -12, "pitch": -6, "turn": 15 },
-                "strike": { "armR": -60, "foreArmR": 100, "headX": 25, "pitch": 10, "turn": 12 }
+                "strike": { "armR": -60, "foreArmR": 100, "headX": 25, "pitch": 10, "turn": -10 }
             }
         },
         "health": 8
