@@ -13,6 +13,9 @@ import { Loadout } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import type { Foamer } from "../foamers/foamer";
+import { chargeOf } from "../foamers/charge";
+import { materialId } from "../voxel/materials";
 import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
@@ -297,6 +300,28 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     if (health.dead) ui.pop();
   };
 
+  // GAME-10b: a Darter's charge that runs into the player stuns it for the
+  // charge's own time (the controller stops moving, the look still works).
+  // The hit itself comes through the bonk handler above, like any other.
+  foamers.onChargeHit = (_f, seconds) => {
+    if (ui.paused) return;
+    player.stunTime = Math.max(player.stunTime, seconds);
+    audio.play("F05-stun");
+  };
+
+  // GAME-10b: the scrape and the wall hit throw the data's dust chunks at the
+  // Darter's feet and at the wall, and the wall hit gets its own sound.
+  const chargeDust = (f: Foamer, point: THREE.Vector3) => {
+    const charge = chargeOf(f.spec);
+    if (!charge) return;
+    debris.burst(point, charge.dustCount, charge.dustSize, materialId("foam-orange"));
+  };
+  foamers.onScrape = chargeDust;
+  foamers.onWallHit = (_f, point) => {
+    if (ui.paused) return;
+    audio.play("F05-impact", { position: point });
+  };
+
   // GAME-10a: a foam ball that reaches the player costs health like a bonk,
   // and the raised disc blocks it the same way. The arc is measured on the
   // ball's direction of travel (the point it came from), not its position.
@@ -467,6 +492,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // thud where it meets the Foamer.
       if (se.chargeStart) audio.play("SH-charge");
       if (se.chargeVictim) audio.play("SH-charge-hit", { position: se.chargeVictim.centre });
+      // GAME-10b: the Darter's front plates stop a charge. A plate clang
+      // where they met, and no hit sound.
+      if (se.chargeBlocked) audio.play("F05-impact", { position: shield.discPosition });
       // No shooting while the disc is up or a finisher holds the player.
       const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active;
       loadout.update(
@@ -603,6 +631,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         foamers: { live: foamers.live, downed: foamers.downed.length,
           // GAME-10a: each Foamer's type (its rig id), and the live balls.
           types: foamers.list.map((f) => f.spec.rig),
+          // GAME-10b: each Foamer's own state, so a check can see a Darter's
+          // telegraph, charge and wallStun.
+          states: foamers.list.map((f) => f.state),
+          brains: foamers.list.map((f) => f.agent?.state ?? null),
           balls: projectiles.list.length },
         // GAME-07: the watch gets pickup counts and each Foamer's
         // finishable flag (a stagger is what the finisher acts on).

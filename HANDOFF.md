@@ -6,6 +6,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
+(`telegraphSeconds`), locks its line at the player's position and runs at
+11 m/s for up to 18 m with no steering, staggers for 1.2 s when it hits a
+wall (back open), and hits and stuns the player it runs into for 0.4 s.
+Chest and brow plates take 15 percent of a dart and carve slowly, the back
+weakpoint 2.5 times; with both legs gone it only bites; a shield charge at
+its front plates bounces off. The Ring arena is `data/levels/1-4-ring.json`,
+played by `arena.html?level=1-4-ring` (the Pit stays the default). Not
+checked by eye: the scrape and run poses, the stun feel, the plate arc on
+the real rig, and the placeholder charge sounds (see the Log entry).
+
 GAME-04 stage 2 done 2026-11-04 (`tasks/GAME-04b.md`): a ball made with
 BALL_MATERIAL (the F02's pink) that hits in the shield's front arc is parried
 when the disc started rising within the parry window, and the parry sends it
@@ -148,6 +159,83 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-04: GAME-04 stage 2 review, parry in the Pit (Claude)
+
+- Merged main (GAME-10b) in; only the imports and docs conflicted.
+- Played `arena.html?watch` against wave 2's Roamers with `parryNext()`:
+  a parried ball flew back and took its thrower from 8 to 4 health, and
+  the parry count went up. Only one clean parry: most tries had no ball
+  reach the player, for the two reasons below, not the parry code.
+- Found, not fixed (see `tasks/BUG-01.md`): Foamers in the Pit freeze.
+  (1) The nav grid is 2.5D, one ground height per cell, so a player
+  standing under the ring's overhang reads as on the ring top, 4 m up,
+  and Foamers path for the ramps and stall. (2) On open floor too, all
+  four wave 2 Foamers stood still for over 30 s in `approach` against
+  the side of the south ramp (x about -9.5), paths of 2 or 3 points, so
+  the Roamers never got their throw.
+- Measuring lesson: after any hit the player ignores damage for 0.5 s
+  (UI-01 grace), so health drops undercount ball hits while Slowmers bonk;
+  count `foamers.projectiles.stats.hitPlayer` instead.
+- Corrected: the PLAN row said "Paul approved" before he had.
+
+### 2026-11-04: GAME-10b review, Darters played in the ring, merged (Claude)
+
+- Played `arena.html?level=1-4-ring&watch`: two Darters, the lime plates
+  on the side they face (chest +0.13 m, brow +0.22 m along the facing) and
+  the orange weak point behind (-0.44 m), so the -z offsets in the rig
+  data are only rig-local.
+- Fixed: the Darter used the shared 2.2 m hold ring, so it walked into
+  bite range and "charged" from about 2 m, a slow bonk. Chargers now hold
+  on their own ring (`charge.holdMetres`, 9 m) and telegraph from 5 to 8 m
+  out. Test 7 in `tests/foamers/charge.test.ts` (2.19 m before).
+- Fixed: a charge that ran into the player was stopped by the player's
+  capsule and counted as a wall, so every hit gave the player a free wall
+  stun on its back. A hit on the player now ends in the normal recover;
+  only a real wall opens the back.
+- Small, not fixed: the tab title still reads "DART: the Pit" on the ring
+  level (the level name is [Paul]).
+- Unverified by eye: the scrape and charge poses, the stun feel, the
+  plate chip, the sounds.
+
+### 2026-11-04: GAME-10b, the F05 Darter and the Ring (DeepSeek V4.1 Flash via Pi)
+
+- Card: `tasks/GAME-10b.md`. Three stages, each committed green (tsc,
+  vitest, build): 1 the F05 data and armour shares (ed9d333), 2 the charge,
+  telegraph, wall stun and player stun (4641c05), 3 the Ring level, the
+  `?level=` loader and the watch states (4cdb02b), then the scrape dust and
+  the wall hit sound wired in the shared game (b64d774).
+- Data: `types.F05` in `data/foamers.json` (rig F05, health 30, turnRate
+  1.4, `charge` and `armour` blocks, a charge attack and a bite). All the
+  charge numbers are there: speed 11 m/s, 18 m, range 14 m, telegraph
+  0.9 s, wall stun 1.2 s, player stun 0.4 s, dust count and size, plate
+  arc 120 degrees. Sounds are `F05-snort`, `F05-run-loop`, `F05-impact` and
+  `F05-stun` placeholders (synth only, no audio files), listed in
+  `design/SOUNDS.md`.
+- Code: `src/ai/f05-brain.ts` (the charger states and the pure
+  `decideCharge`), `src/foamers/charge.ts` (`ChargeSpec`, `chargeOf`), the
+  three states in `src/foamers/foamer.ts` and `src/foamers/foamers.ts`
+  (the run moves through `knockStep`, so walls stop it; `onChargeHit`,
+  `onWallHit` and `onScrape` report out, and the game turns a hit into the
+  controller's `stunTime`), `scrapeMotion` and `chargeMotion` in
+  `src/foamers/rig-states.ts`, the shield's `plateFacesCharge` in
+  `src/player/shield.ts` (bounce, no damage, no stagger) and the
+  `stunTime` in `src/player/controller.ts`.
+- Decided: the player stun is a number on the controller, not a state; the
+  charge is a Foamer state driven by the system (the brain only stands in
+  it); the level choice is `src/arena/levels.ts` with the Pit default and a
+  notice for an unknown name; the Ring's ceiling is at 9.5 m because the
+  nav bake casts down from 8 m and a ceiling at 8 m reads as ground (the
+  first bake made every cell unwalkable). All in PLAN.md section 14.
+- Tests: 8 new (2 files for the charge and the brain, 1 for the level, and
+  2 for the shield's front plates) plus the 5 stage 1 ones, 362 passed.
+- Not checked by eye: the scrape and charge poses, the wall stun's long
+  turn out, the stun's feel (0.4 s with the look free), the dust at the
+  scrape (six orange chunks from `debris.burst`, the shared game's), the
+  plate arc against the real F05 rig (its chest and brow sit on -z while
+  +z is forward, so the arc uses yaw forward: Paul should look), the
+  sounds, the Ring's look, and whether the 6 m ring corridor fights well
+  with two Darters (no browser here).
 
 ### 2026-11-04: GAME-04 stage 2, the shield parry and bounce-back (Qwen 3.8-27B via Pi)
 

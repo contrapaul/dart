@@ -1,17 +1,17 @@
 import * as THREE from "three";
 import { buildLevel, type BuiltLevel } from "../level/build";
 import { ArenaRunner, type ArenaContext } from "../level/arena";
-import type { Level } from "../level/format";
 import { FALL_LIMIT } from "../game/shared";
 import type { BuildInput, BuiltGame, Game, GameHooks } from "../game/game";
 import { RiftVisuals } from "./rifts";
-import levelJson from "../../data/levels/1-1-pit.json";
+import { chosenLevel } from "./levels";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
 // the game, the level build included, is shared in src/game/.
 
-const LEVEL = levelJson as unknown as Level;
+// GAME-10b: the same `?level=` choice as the page (src/arena/levels.ts).
+const LEVEL = chosenLevel().level;
 
 /** The arena's build: the shared pieces plus the built level its doors live
  *  in. */
