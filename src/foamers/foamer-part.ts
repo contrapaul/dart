@@ -36,6 +36,9 @@ export class FoamerPart implements VoxelTarget {
   hp: number;
   readonly maxHp: number;
   readonly startVoxels: number;
+  /** Multiplies the dart carve radius; set from the type's armour
+   *  (GAME-10b: a plate chips slowly). */
+  carveScale = 1;
   /** World matrix of the volume's (0,0,0) corner in metres, this step and
    *  the one before (render interpolation). */
   readonly pose: THREE.Matrix4 = new THREE.Matrix4();

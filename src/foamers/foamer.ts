@@ -8,6 +8,7 @@ import {
   restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion, finishMotion,
 } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
+import { armourOf } from "./armour";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -233,6 +234,8 @@ export class Foamer {
       const kind = spec.partDamage.kinds[p.kind];
       const hp = Math.max(spec.partDamage.minHp, Math.round(rig.health * kind.hpShare));
       const part = new FoamerPart(rapier, world, mesher, p, vs, rig.material, hp);
+      const armour = armourOf(spec, p.id);
+      if (armour) part.carveScale = armour.carve;
       this.parts.set(p.id, part);
       this.group.add(part.group);
     }

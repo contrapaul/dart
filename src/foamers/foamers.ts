@@ -11,6 +11,7 @@ import { materialId, EMPTY } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
+import { armourOf } from "./armour";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 import aiData from "../../data/ai.json";
@@ -763,11 +764,14 @@ export class FoamerSystem {
     if (hit.speed < f.spec.minDamageSpeed) return;
     const d = f.spec.damage[hit.type];
     const kind = f.spec.partDamage.kinds[part.spec.kind];
+    // GAME-10b: a plate takes its share and the orange back takes extra.
+    const armour = armourOf(f.spec, part.spec.id);
+    const dmg = d * kind.hit * (armour?.damage ?? 1);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
-    part.hp -= d * kind.hit;
-    f.health -= d * kind.hit * kind.total;
+    part.hp -= dmg;
+    f.health -= dmg * kind.total;
     // Only dart types that can pop count toward a catastrophic hit.
-    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, d * kind.hit * kind.total);
+    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, dmg * kind.total);
     this.stats.hits++;
     // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
     f.damageSinceStep = true;
