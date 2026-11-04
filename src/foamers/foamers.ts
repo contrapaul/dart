@@ -134,6 +134,7 @@ const _losDir = new THREE.Vector3();
 const CRAWL_TURN = 0.5;
 /** The brain's data (ENG-08 stage 3). */
 const BRAIN = aiData.brain;
+const S = aiData.steer;
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b),
  *  plus GAME-10a's "throw": the ball leaving the hand. */
@@ -197,6 +198,24 @@ export class FoamerSystem {
   private cc: RAPIER.KinematicCharacterController;
   private targets: VoxelTarget[];
   private own = new Set<number>(); // root and part bodies for the stepped Foamer
+  /** BUG-01: per walking Foamer, where it was when the progress window
+   *  opened and how long is left of a sidestep. A Foamer that covers less
+   *  than the data's stallDistanceMetres in stallWindowSeconds is stuck
+   *  (a corner, a body in the way, a waypoint inside a wall), and sidesteps
+   *  instead of standing still. A downed Foamer is not walked, so it never
+   *  enters the map. */
+  private progress = new Map<Foamer, { x: number; z: number; t: number; side: number }>();
+  /** BUG-01: the walking Foamer's progress window, started fresh the first
+   *  time it is asked for. */
+  private progressOf(f: Foamer): { x: number; z: number; t: number; side: number } {
+    let st = this.progress.get(f);
+    if (!st) {
+      st = { x: f.centre.x, z: f.centre.z, t: this.time, side: 0 };
+      this.progress.set(f, st);
+    }
+    return st;
+  }
+
   /** Root and part bodies of the other Foamers, which the stepped Foamer's
    *  walk ignores (BUG-01): they are kinematic, so two pressed together each
    *  ask the character controller to walk into the other and it cancels both
@@ -770,6 +789,35 @@ export class FoamerSystem {
       this.agentAgent.x = f.centre.x;
       this.agentAgent.z = f.centre.z;
       this.agentAgent.speed = speed;
+      // BUG-01: a walk that stops making progress sidesteps instead of
+      // standing still. A path point the character controller cannot reach
+      // (a step edge, a body in the way) otherwise pins a Foamer for as
+      // long as the path lasts, which is what the card saw beside the south
+      // ramp.
+      if (move === "followPath" && path.count > 0) {
+        const st = this.progressOf(f);
+        if (st.side > 0) {
+          st.side -= dt;
+          // Sideways across the way to the goal, so it clears whatever is
+          // in front. The side comes from the agent id, so two Foamers in
+          // one corner do not pick the same way and undo each other.
+          const gx = path.xs[path.count - 1]! - f.centre.x;
+          const gz = path.zs[path.count - 1]! - f.centre.z;
+          const gd = Math.hypot(gx, gz);
+          if (gd > 1e-4) {
+            const side = a.agentId % 2 === 0 ? 1 : -1;
+            const v = speed * S.sidestepShare * dt;
+            this._wish.set((gz / gd) * side * v, 0, (-gx / gd) * side * v);
+            return;
+          }
+        } else if (this.time - st.t >= S.stallWindowSeconds) {
+          const got = Math.hypot(f.centre.x - st.x, f.centre.z - st.z);
+          if (got < S.stallDistanceMetres) st.side = S.sidestepSeconds;
+          st.x = f.centre.x;
+          st.z = f.centre.z;
+          st.t = this.time;
+        }
+      }
       steer(this.agentAgent, path, this.neighbours, this._velXZ);
       this._wish.set(this._velXZ.x * dt, 0, this._velXZ.z * dt);
       return;
