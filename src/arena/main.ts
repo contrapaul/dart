@@ -1,21 +1,25 @@
-// The arena page (LVL-01 stage 3): plays data/levels/1-1-pit.json with the
-// whole game around it. The game (renderer, blasters, darts, carving,
+// The arena page (LVL-01 stage 3): plays a level file (the Pit by default,
+// or `?level=` another, GAME-10b) with the whole game around it. The game (renderer, blasters, darts, carving,
 // debris, falling pieces, Foamers on the level AI, health, HUD, pause menu,
 // settings, sounds, the loop) is shared with the test course in src/game/
 // (ENG-13); this page is its level file, the arena's own extras in
 // src/arena/extras.ts, and nothing else.
 import { validateLevel } from "../level/validate";
-import type { Level } from "../level/format";
 import { createGame } from "../game/game";
 import { arenaExtras, buildArena, type ArenaBuilt } from "./extras";
-import levelJson from "../../data/levels/1-1-pit.json";
+import { chosenLevel } from "./levels";
 
-const LEVEL = levelJson as unknown as Level;
+// GAME-10b: `?level=1-4-ring` plays the Ring; the Pit stays the default.
+const chosen = chosenLevel();
+const LEVEL = chosen.level;
 const status = document.querySelector<HTMLParagraphElement>("#status")!;
 
 // A level with errors does not load: the page shows the list (BLOCKOUT 5).
 const report = validateLevel(LEVEL);
-if (report.errors.length) {
+if (chosen.unknownLevel) {
+  status.textContent = `No level called ${chosen.unknownLevel}: playing the Pit.`;
+  await run();
+} else if (report.errors.length) {
   status.textContent = "This level has errors: " + report.errors.join("; ");
 } else {
   await run();

@@ -771,7 +771,10 @@ if (watch) {
       state: () => ({
         foamers: foamers.list.map((f) => ({
           type: f.spec.rig,
+          // GAME-10b: the Darter's own states (telegraph, charge, wallStun)
+          // and its brain's, for the watch.
           state: f.state,
+          brain: f.agent?.state ?? null,
           health: f.health,
           position: [f.centre.x, f.centre.y, f.centre.z].map((n) => Number(n.toFixed(3))) as [number, number, number],
           parts: [...f.parts.keys()],

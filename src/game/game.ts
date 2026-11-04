@@ -587,6 +587,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         foamers: { live: foamers.live, downed: foamers.downed.length,
           // GAME-10a: each Foamer's type (its rig id), and the live balls.
           types: foamers.list.map((f) => f.spec.rig),
+          // GAME-10b: each Foamer's own state, so a check can see a Darter's
+          // telegraph, charge and wallStun.
+          states: foamers.list.map((f) => f.state),
+          brains: foamers.list.map((f) => f.agent?.state ?? null),
           balls: projectiles.list.length },
         // GAME-07: the watch gets pickup counts and each Foamer's
         // finishable flag (a stagger is what the finisher acts on).
