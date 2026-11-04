@@ -184,3 +184,65 @@ describe("an F01 on the nav grid (ENG-08 stage 3b)", () => {
     }
   });
 });
+
+describe("an F02 thrower on the director (GAME-10a)", () => {
+  it("keeps its ring and throws from it", () => {
+    const r = rig();
+    const thrown: string[] = [];
+    // A throw is the ranged attack: no onBonk (the ball does the damage), so
+    // a throw is seen as the windup of the attack whose token is ranged.
+    let seenWindup: string | null = null;
+    r.foamers.onBonk = (f, attack) => {
+      thrown.push(attack);
+      void f;
+    };
+    // Spawned on the ring already: this suite exercises the ring and the
+    // throw, the walk-in is the brain tests' job.
+    const player = new THREE.Vector3(0, 1.6, 10);
+    const f = r.foamers.spawn(new THREE.Vector3(4, 0, 3), undefined, "F02")!;
+    expect(f.spec.rig, "the type picked its own rig").toBe("F02");
+    expect(f.maxHealth, "the F02's health from its rig").toBe(8);
+    let most = 0;
+    let least = 99;
+    for (let i = 0; i < 60 * 12; i++) {
+      tick(r, player);
+      if (f.state === "windup" && f.attack()?.token === "ranged" && seenWindup !== "windup") {
+        thrown.push("throw");
+        seenWindup = "windup";
+      } else if (f.state !== "windup") {
+        seenWindup = null;
+      }
+      const d = Math.hypot(player.x - f.centre.x, player.z - f.centre.z);
+      most = Math.max(most, d);
+      least = Math.min(least, d);
+    }
+    expect(thrown.filter((a) => a === "throw").length, "it threw").toBeGreaterThan(0);
+    expect(thrown.includes("bonk"), "a thrower does not bonk from its ring").toBe(false);
+    expect(least, "it never walked into bonking range").toBeGreaterThan(3);
+    expect(most, "it never wandered past its throw range").toBeLessThan(13.5);
+    expect(r.director.stats().ranged.inUse).toBeLessThanOrEqual(aiData.difficulties.normal.ranged);
+  });
+
+  it("backs off when the player closes inside its retreat distance", () => {
+    const r = rig();
+    r.foamers.onBonk = () => {};
+    const player = new THREE.Vector3(3, 1.6, 9);
+    const f = r.foamers.spawn(new THREE.Vector3(3, 0, 7.5), undefined, "F02")!;
+    let farthest = 0;
+    for (let i = 0; i < 60 * 6; i++) {
+      tick(r, player);
+      farthest = Math.max(farthest, Math.hypot(player.x - f.centre.x, player.z - f.centre.z));
+    }
+    expect(farthest, "it backed away from the player").toBeGreaterThan(3);
+  });
+
+  it("an F01 still walks the last step and bonks", () => {
+    const r = rig();
+    const bonks: string[] = [];
+    r.foamers.onBonk = (_f, attack) => void bonks.push(attack);
+    const player = new THREE.Vector3(0, 1.6, 0);
+    r.foamers.spawn(new THREE.Vector3(0, 0, -1.6))!;
+    for (let i = 0; i < 60 * 8; i++) tick(r, player);
+    expect(bonks.length, "bonked").toBeGreaterThan(0);
+  });
+});

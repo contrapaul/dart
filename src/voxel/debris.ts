@@ -81,6 +81,18 @@ export class DebrisSystem {
     }
   }
 
+  /** GAME-10a: a burst of loose foam chunks at a world point (a foam ball
+   *  breaking up). Not tied to a carve: the chunk count is asked for. */
+  burst(at: THREE.Vector3, count: number, size: number, mat: number) {
+    for (let n = 0; n < count; n++) {
+      const dir = new THREE.Vector3(
+        Math.random() - 0.5, 1 + Math.random(), Math.random() - 0.5,
+      ).normalize();
+      const speed = T.minSpeed + Math.random() * (T.maxSpeed - T.minSpeed);
+      this.add(at, dir.multiplyScalar(speed).setY(dir.y * speed), size, mat);
+    }
+  }
+
   /** Fixed step, before world.step(): age chunks and free the expired ones. */
   update(dt: number) {
     for (const s of this.slots) {

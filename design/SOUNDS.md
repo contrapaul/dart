@@ -202,9 +202,10 @@ The slice Foamers, one row per sound:
 |---|---|---|---|---|
 | F01-swing | F01 (fodder grunt): club swing, a whoosh | Yes | 4 | Foley: swing a pool noodle |
 | F01-bonk | F01: club hitting the player | Yes | 4 | Foley: pool noodle on a cushion |
-| F02-throw | F02 (lanky ball thrower): wind-up and throw | Yes | 4 | Foley |
-| F02-ball-loop | F02: foam ball in flight (loop) | Yes | 2 | Foley or Code: a soft whoosh |
-| F02-ball-hit | F02: ball hitting the player | Yes | 4 | Foley: foam ball on a cushion |
+| F02-windup | F02 (lanky ball thrower): the wind-up, held before the throw | Yes | 4 | Foley or Code: a rising creak |
+| F02-throw | F02: the ball leaving the hand | Yes | 4 | Foley | 
+| FB-hit | F02: foam ball hitting the player | Yes | 4 | Foley: foam ball on a cushion |
+| FB-burst | F02: foam ball breaking up on the world | Yes | 4 | Foley: tear a sponge |
 | F05-snort | F05 (charging bull): charge wind-up | Yes | 3 | Foley: your voice for the snort |
 | F05-run-loop | F05: charge run (loop) | Yes | 2 | Foley: fast thumps on a cushion |
 | F05-impact | F05: charge hitting a wall or the player | Yes | 4 | Foley: drop a heavy cushion |

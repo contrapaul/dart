@@ -6,6 +6,14 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10a done 2026-11-04: Foamers have per-type specs (`data/foamers.json`
+base + `types`, `spawn(feet, facing?, type)`), and the F02 Roamer keeps its
+ring and throws slow pink foam balls (`src/foamers/projectiles.ts`, the F02
+brain in `src/ai/f02-brain.ts`); the Pit's wave 2 is 3 F01 and 2 F02. The
+disc blocks a ball like a bonk, so GAME-04 stage 2 (the parry) is unblocked.
+Ball look, the throw pose and the four new sounds are unverified by eye (see
+the Log entry).
+
 GAME-05 done 2026-11-04: with the disc up the shield locks the nearest
 Foamer in the crosshair's range and cone in sight, and dash at the lock
 is a charge: the player rushes the Foamer and knocks it back, staggers
@@ -132,7 +140,99 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-04: GAME-05 review, charge played in watch mode (Claude)
+### 2026-11-04: GAME-05 and GAME-10a merged; arena HUD fix (Claude)
+
+- Merged both after Paul's approval; only the docs conflicted.
+- Found in the merge smoke test, live on main since GAME-07: the arena
+  page had no `#finishprompt` or `#healflash`, so the shared HUD threw the
+  first time a finisher was open or a health blob was picked up there.
+  Both added to `arena.html`; `tests/game/pages.test.ts` checks every id
+  the HUD looks up is on both pages.
+- Smoke test on merged main: the Pit cleared end to end with both F02s
+  in wave 2.
+
+### 2026-11-04: GAME-10a review, Roamers played in the arena, merged (Claude)
+
+- Played `arena.html?watch`: wave 2 is 3 F01 and 2 F02. The Roamers
+  held at 5.5 to 8.4 m and cycled windup, throw and recover while the
+  Slowmers closed in; balls were in the air during the throws. On the
+  range an F02 spawns with health 8 and its own rig.
+- Fixed: the attack damage map was keyed by attack id alone, so the F02's
+  own "bonk" (10) replaced the F01's (12) for every Foamer. `damageOf`
+  now reads the attacking Foamer's spec, with the base spec winning the
+  fallback map. Test: `tests/game/attack.test.ts` (failed before).
+- Noted by the Spark, not fixed: an F01 walking straight down the exact
+  x = 0 grid line can stall (pre-existing, its tests avoid it); worth a
+  bug card.
+- Unverified by eye: the ball's look and glow, the throw pose (no throw
+  motion in rig-states yet, the arm does not wind up visibly), the four
+  sounds, and the range's type buttons by hand.
+
+### 2026-11-04: GAME-10a, per-type Foamer specs and the F02 Roamer (Qwen 3.8 Flash Next via Pi)
+
+Task card `tasks/GAME-10a.md`, branch `game-10a`, four commits: per-type
+specs (`6eeda44`), the F02 brain (`5a79af7`), the foam ball (`0c6c34d`),
+arena/range/watch wiring (`e0df30b`).
+
+What was built:
+
+- `data/foamers.json` is now a shared base (`test`, kept as the name) plus
+  `types` overrides; `specFor(type)` merges and caches, and every `SPEC.`
+  read in `src/foamers/foamers.ts` goes through the Foamer's own spec.
+  `spawn(feet, facing?, type = "F01")`. The F01 tests pass unchanged.
+- `src/ai/f02-brain.ts`: the ranged sibling of the F01 brain (approach to
+  12 m, ring at 8 m, back off inside 5 m, throws with a `ranged` token).
+  New `backOff` move intent in `src/ai/f01-brain.ts`; `FoamerAgent` carries
+  either brain by a setup tag; the circle stride keeps the agent's own
+  `holdRange`.
+- `src/foamers/projectiles.ts`: kinematic raycast balls (9 m/s, light arc,
+  from the ball hand at strike after the 0.6 s windup), one shared pink
+  `BALL_MATERIAL` for the coming parry, one hit on the player, burst into
+  foam chunks (`DebrisSystem.burst`), hard cap 8 live. Tuning in the base
+  spec's `ball` block. A throw does not call `onBonk`; the ball's arrival
+  does the damage through `damageOf("throw")` (attack table now merges the
+  type attacks). The disc blocks a ball by its direction of travel: the
+  handler asks `blocksAttackFrom(position - velocity dir * 0.5)`.
+- Pit wave 2 = 3 F01 + 2 F02 (`data/levels/1-1-pit.json`); the rift spawn
+  callback passes the file's id as the type; the range panel has a F01/F02
+  type row for its spawn buttons and keep-alive spawner (`spawnType`); the
+  watches list each Foamer's type and the live ball count.
+- Sounds: placeholder IDs `F02-windup`, `F02-throw`, `FB-hit`, `FB-burst`
+  with synth recipes in `data/sounds.json`, rows in `design/SOUNDS.md`
+  (replacing the old F02-ball rows).
+
+Decisions and rationale: PLAN section 14 (three GAME-10a rows, 2026-11-04).
+
+Tests: 46 files, 331 passed, 2 skipped (`npx vitest run`); `npx tsc
+--noEmit` and `npm run build` pass. New: `tests/ai/f02-brain.test.ts` (ring,
+back off, token bids, ranged pool cap), `tests/foamers/projectiles.test.ts`
+(flight speed, burst + chunks, one hit on the player, the cap, shared
+material, a throw makes no bonk), F02 system tests in
+`tests/ai/foamer-ai.test.ts` (keeps its ring and throws, backs off, F01
+still bonks, health 8 and the F02 rig), and a ball-front-arc block test in
+`tests/shield/block.test.ts`.
+
+Not checked by eye (no browser here): the ball's look (size, the pink glow
+strength of `BALL_MATERIAL`), the throw windup pose (rig-states has no
+"throw" motion yet, so the windup is the generic one), the four sounds, the
+wave 2 mix in the arena, the range type row. All need Paul's pass.
+
+Notes for the reviewer:
+
+- The ball ray excludes the exact `FOAMER_GROUPS` and `CAPSULE_GROUPS` (as
+  darts and the disc do), or a ball bursts on its own thrower.
+- Pre-existing, not from this card, found while writing the F02 system
+tests: an F01 spawned exactly at x = 0 walking straight at a player at
+x = 0 stalls at z ~= 0.37 (the character controller stops along that exact
+line; nudging it cures and it never re-stalls there). New tests spawn off
+that line. Worth a bug card.
+- Flake seen twice during this card, both in `tests/ai/nav-grid.test.ts`
+  ("bakes a 40 by 40 m floor in under 150 ms and paths across it in under
+  2 ms"): a wall-clock perf assertion that fails when the machine is busy
+  (other vitest runs in parallel). Passes on re-run; not timing-related to
+  this card's code.
+
+### 2026-11-04: GAME-05 review, charge played in watch mode, merged (Claude)
 
 - Qwen 27b's first run spent 40 minutes reading, then hit its output
   limit inside one long think and wrote nothing; resumed with `pi -c` and

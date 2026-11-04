@@ -33,7 +33,7 @@ export interface F01Input {
 }
 
 /** What the brain wants done this step. */
-export type MoveIntent = "stand" | "followPath" | "circleLeft" | "circleRight";
+export type MoveIntent = "stand" | "followPath" | "circleLeft" | "circleRight" | "backOff";
 
 /** The decision, written in place so a step allocates nothing. */
 export interface F01Decision {

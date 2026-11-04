@@ -1444,6 +1444,130 @@
         ]
       }
     },
+    "F02-windup": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.4,
+              "attack": 0.15,
+              "decay": 0.2,
+              "lowpass": 700,
+              "highpass": 150,
+              "lowpassEnd": 2200
+            },
+            "gain": 0.5
+          },
+          {
+            "tone": {
+              "dur": 0.45,
+              "f0": 220,
+              "f1": 620,
+              "wave": "triangle",
+              "attack": 0.1,
+              "decay": 0.2
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "F02-throw": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.07,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.16,
+              "attack": 0.004,
+              "decay": 0.12,
+              "lowpass": 1600,
+              "highpass": 300,
+              "lowpassEnd": 5000
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.09,
+              "f0": 500,
+              "f1": 180,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.07
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "FB-hit": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 1100,
+              "highpass": 80
+            },
+            "gain": 0.7
+          },
+          {
+            "tone": {
+              "dur": 0.08,
+              "f0": 140,
+              "f1": 70,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.06
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "FB-burst": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.08,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.18,
+              "attack": 0.002,
+              "decay": 0.15,
+              "lowpass": 2400,
+              "highpass": 250,
+              "lowpassEnd": 600
+            },
+            "gain": 0.7
+          },
+          {
+            "crackle": {
+              "dur": 0.2,
+              "rate": 30,
+              "decay": 0.04
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
     "LV-door": {
       "files": [],
       "volume": 0.8,

@@ -17,6 +17,7 @@ import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import { ProjectileSystem } from "../foamers/projectiles";
 import { makeLevelAI } from "../ai/level";
 import { SettingsStore } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
@@ -31,6 +32,7 @@ import { damageOf } from "../game/attack";
 import dartsJson from "../../data/darts.json";
 import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
+import foamerData from "../../data/foamers.json";
 
 const R = (rangeJson as unknown as {
   range: {
@@ -133,6 +135,14 @@ const voxelTargets: VoxelTarget[] = [];
 // Dart hits on the Foamer parts carve craters and throw foam debris.
 const impacts = new DartImpacts(darts, debris, voxelTargets);
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+// GAME-10a: the F02's foam balls (kinematic raycasts, no physics bodies).
+const projectiles = new ProjectileSystem(rapier, world, debris, player.collider);
+scene.add(projectiles.group);
+foamers.projectiles = projectiles;
+projectiles.onSound = (kind, at) => {
+  if (!engine) return;
+  if (kind === "burst") engine.play("FB-burst", { position: at });
+};
 // GAME-04 stage 1: the shield on the range too, so its panel and watch
 // can drive it. Same class and data as the game pages; the wiring here is
 // this page's own loop, not a copy of game logic.
@@ -155,13 +165,35 @@ foamers.onBonk = (_f, attack) => {
   // GAME-04: an attack from the front arc behind the raised disc costs
   // only its data share; a blocked hit is not a hit, so no HUD flash.
   const blocked = shield.blocksAttackFrom(_f.centre);
-  const lost = health.damage(damageOf(attack) * (blocked ? shield.damageShare : 1), attack);
+  const lost = health.damage(damageOf(attack, _f.spec) * (blocked ? shield.damageShare : 1), attack);
   if (lost <= 0) return;
   if (blocked) {
     shield.noteBlocked();
     if (engine) engine.play("SH-block", { position: _f.centre });
     return;
   }
+  hud.onHit();
+};
+// GAME-10a: a foam ball that reaches the player costs health like a bonk,
+// the disc blocking its direction of travel (the point it came from).
+const _fromBall = new THREE.Vector3();
+projectiles.onHitPlayer = (b) => {
+  if (switches.godMode || paused) return;
+  const speed = Math.hypot(b.vel.x, b.vel.y, b.vel.z);
+  _fromBall.set(
+    b.pos.x - (b.vel.x / speed) * 0.5,
+    b.pos.y - (b.vel.y / speed) * 0.5,
+    b.pos.z - (b.vel.z / speed) * 0.5,
+  );
+  const blocked = shield.blocksAttackFrom(_fromBall);
+  const lost = health.damage(damageOf("throw") * (blocked ? shield.damageShare : 1), "throw");
+  if (lost <= 0) return;
+  if (blocked) {
+    shield.noteBlocked();
+    if (engine) engine.play("SH-block", { position: b.pos });
+    return;
+  }
+  if (engine) engine.play("FB-hit", { position: b.pos });
   hud.onHit();
 };
 
@@ -313,6 +345,20 @@ for (const k of [0, 1, 4, 10]) {
   });
   keepRow.appendChild(b);
 }
+// GAME-10a: which type the spawn buttons and the keep-alive spawner make.
+const typeRow = document.querySelector<HTMLDivElement>("#foamerType")!;
+let foamerType = "F01";
+for (const t of Object.keys(foamerData.types)) {
+  const b = document.createElement("button");
+  b.textContent = t;
+  b.addEventListener("click", () => {
+    foamerType = t;
+    foamers.spawnType = t;
+    typeRow.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+  if (t === foamerType) b.classList.add("on");
+  typeRow.appendChild(b);
+}
 // Spawn a Foamer at set metres ahead of the player, on the floor.
 const _fwd = new THREE.Vector3();
 const _fwdxz = new THREE.Vector3();
@@ -321,7 +367,7 @@ function spawnAhead(m: number) {
   camera.getWorldDirection(_fwd);
   player.eye(1, _fwdxz);
   _feet.set(_fwdxz.x + _fwd.x * m, 0, _fwdxz.z + _fwd.z * m);
-  foamers.spawn(_feet, camera.position);
+  foamers.spawn(_feet, camera.position, foamerType);
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));
@@ -605,6 +651,8 @@ loopCtl = startLoop({
       player.update(dt, input);
       if (switches.foamers) {
         foamers.update(dt, player.eye(1, _eye));
+        // GAME-10a: the foam balls fly on their own rays, no bodies.
+        projectiles.update(dt);
         updateNavPaths();
       }
       // Switch: wheel down is next, up is prev; keys 1 to 3 select directly.
@@ -720,12 +768,16 @@ if (watch) {
         return e.thrown;
       },
       shieldState: () => shield.state,
-      state: () => foamers.list.map((f) => ({
-        state: f.state,
-        health: f.health,
-        position: [f.centre.x, f.centre.y, f.centre.z].map((n) => Number(n.toFixed(3))) as [number, number, number],
-        parts: [...f.parts.keys()],
-      })),
+      state: () => ({
+        foamers: foamers.list.map((f) => ({
+          type: f.spec.rig,
+          state: f.state,
+          health: f.health,
+          position: [f.centre.x, f.centre.y, f.centre.z].map((n) => Number(n.toFixed(3))) as [number, number, number],
+          parts: [...f.parts.keys()],
+        })),
+        balls: projectiles.list.length,
+      }),
     },
   });
 }

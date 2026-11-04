@@ -78,12 +78,11 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       audio.play("LV-door", { position: doorMeshPos(id) });
     },
     spawn(foamerId, rift) {
-      // The Foamer ids in the file name the kind; this build has one kind,
-      // so the id only has to exist (the validator checked it does).
-      void foamerId;
+      // GAME-10a: the id in the file is the type (the validator checked it
+      // exists in the rigs, and every rig id has a spec entry).
       _riftFeet.set(rift.pos[0], rift.pos[1], rift.pos[2]);
       _riftFacing.copy(player.eye(1, _playerPos));
-      const f = foamers.spawn(_riftFeet, _riftFacing);
+      const f = foamers.spawn(_riftFeet, _riftFacing, foamerId);
       if (!f) return false;
       audio.play("FX-spawn", { position: _riftFeet });
       return true;

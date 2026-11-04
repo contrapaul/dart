@@ -117,7 +117,7 @@
           "spawns": [ { "foamer": "F01", "count": 3 } ],
           "delaySeconds": 1.5, "holdSeconds": 1.5 },
         { "id": "pit-w2", "rifts": ["pit-r1", "pit-r2", "pit-r3"],
-          "spawns": [ { "foamer": "F01", "count": 5 } ],
+          "spawns": [ { "foamer": "F01", "count": 3 }, { "foamer": "F02", "count": 2 } ],
           "delaySeconds": 6, "holdSeconds": 1.2 }
       ],
       "unlockOnClear": ["pit-out", "pit-in"],

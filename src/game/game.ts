@@ -13,6 +13,7 @@ import { Loadout } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import { ProjectileSystem } from "../foamers/projectiles";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
 import inputJson from "../../data/input.json";
@@ -215,6 +216,11 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // Foamer system: spawn, bonk, dart damage, pop. This is the first enemy,
   // GAME-03.
   const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+  // GAME-10a: the F02's foam balls. They have no physics bodies (kinematic
+  // raycasts), so they need no place of their own in the physics order.
+  const projectiles = new ProjectileSystem(rapier, world, debris, player.collider);
+  scene.add(projectiles.group);
+  foamers.projectiles = projectiles;
   // GAME-04 stage 1: the shield. Its viewmodel hangs off the camera (the
   // same way the blaster's does); the disc in flight is a scene object.
   const shield = new Shield(rapier, world, scene, camera, player, loadout, foamers, debris, voxelTargets);
@@ -277,7 +283,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // the disc's own sound plays instead of the hurt one.
     const blocked = shield.blocksAttackFrom(f.centre);
     const share = blocked ? shield.damageShare : 1;
-    const lost = health.damage(damageOf(attack) * share, attack);
+    const lost = health.damage(damageOf(attack, f.spec) * share, attack);
     if (lost <= 0) return;
     if (blocked) {
       shield.noteBlocked();
@@ -286,6 +292,40 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     }
     hud.onHit();
     if (health.dead) ui.pop();
+  };
+
+  // GAME-10a: a foam ball that reaches the player costs health like a bonk,
+  // and the raised disc blocks it the same way. The arc is measured on the
+  // ball's direction of travel (the point it came from), not its position.
+  const _fromBall = new THREE.Vector3();
+  projectiles.onHitPlayer = (b) => {
+    if (ui.paused) return;
+    const speed = Math.hypot(b.vel.x, b.vel.y, b.vel.z);
+    _fromBall.set(
+      b.pos.x - (b.vel.x / speed) * 0.5,
+      b.pos.y - (b.vel.y / speed) * 0.5,
+      b.pos.z - (b.vel.z / speed) * 0.5,
+    );
+    const blocked = shield.blocksAttackFrom(_fromBall);
+    const share = blocked ? shield.damageShare : 1;
+    const lost = health.damage(damageOf("throw") * share, "throw");
+    if (lost <= 0) return;
+    if (blocked) {
+      shield.noteBlocked();
+      // The burst's own sound already played at the hit point; this is the
+      // disc's ring over it.
+      audio.play("SH-block", { position: b.pos });
+      return;
+    }
+    audio.play("FB-hit", { position: b.pos });
+    hud.onHit();
+    if (health.dead) ui.pop();
+  };
+  // The ball's sounds (placeholder IDs, GAME-10a): the throw itself comes
+  // through the Foamer sounds wrapper (a "throw" event); these are the ball
+  // meeting the player or the world.
+  projectiles.onSound = (kind, at) => {
+    if (kind === "burst") audio.play("FB-burst", { position: at });
   };
 
   let pausedClock = renderJson.pausedFrame;
@@ -369,6 +409,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       }
       // Foamer on a fixed step, before world.step().
       foamers.update(dt, player.eye(1, _playerPos));
+      // GAME-10a: the foam balls fly on their own rays, no bodies, so they
+      // step with the Foamers that throw them.
+      projectiles.update(dt);
       h.step?.(dt);
       // Blaster: switch first (wheel down is next, up is prev), then the
       // muzzle from the active viewmodel, the aim 50 m down the view, and
@@ -529,7 +572,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
           const p = feet(_feet);
           return [p.x, p.y, p.z].map((n) => Number(n.toFixed(3)));
         })(),
-        foamers: { live: foamers.live, downed: foamers.downed.length },
+        foamers: { live: foamers.live, downed: foamers.downed.length,
+          // GAME-10a: each Foamer's type (its rig id), and the live balls.
+          types: foamers.list.map((f) => f.spec.rig),
+          balls: projectiles.list.length },
         // GAME-07: the watch gets pickup counts and each Foamer's
         // finishable flag (a stagger is what the finisher acts on).
         pickups: { health: pickups.count("health") },

@@ -1,12 +1,27 @@
 {
-  "_note": "Test Foamer (ENG-10): rig F01 from data/foamer-rigs.json, with part damage, breaking, handicaps, wounds, going down and popping. Distances in metres, times in seconds. Rig shapes, speed and health come from the rig file (one source).",
+  "_note": "ENG-10/GAME-10a: one Foamer spec per type. `test` is the shared base spec every type starts from (the name is kept: the F01 tests read it directly). `types` holds one entry per type with only what differs from the base: its rig id in data/foamer-rigs.json and its attacks. An attack's `token` is the director pool it draws from; its `needs` are parts that must still be attached; its `range`, when it has one, is how far its reach is measured to (default: an attack with a melee token uses the base attackRange, one with a ranged token the preferred distance). The three *DistanceMetres fields belong to the base so every spec has them; only a ranged type reads them: the distance at which it stops walking in and keeps the ring (throwRangeMetres), the distance it tries to keep and throws from (preferredDistanceMetres), and the distance it backs off to when the player closes inside it (retreatDistanceMetres).",
   "test": {
     "rig": "F01",
-    "damage": { "standard": 1, "suction": 0.5, "slug": 6 },
+    "damage": {
+      "standard": 1,
+      "suction": 0.5,
+      "slug": 6
+    },
     "minDamageSpeed": 8,
     "turnRate": 6,
     "gravity": 22,
     "attackRange": 1.3,
+    "throwRangeMetres": 12.0,
+    "preferredDistanceMetres": 8.0,
+    "retreatDistanceMetres": 5.0,
+    "ball": {
+      "speed": 9.0,
+      "gravity": 5.0,
+      "radius": 0.09,
+      "chunks": 4,
+      "maxLive": 8,
+      "lifetime": 4.0
+    },
     "recover": 0.8,
     "popChunkScale": 2.5,
     "popBursts": 4,
@@ -16,27 +31,75 @@
       "_note": "Per part kind. hpShare: the part's health as a share of the Foamer's (at least minHp). hit: multiplies dart damage to the part. total: share of that damage that also comes off the Foamer's health. CONTENT-PLAN 3.1 and 3.2.",
       "minHp": 2,
       "kinds": {
-        "body":    { "hpShare": 0,    "hit": 1, "total": 1 },
-        "head":    { "hpShare": 0.3,  "hit": 2, "total": 1 },
-        "arm":     { "hpShare": 0.2,  "hit": 1, "total": 0.5 },
-        "leg":     { "hpShare": 0.25, "hit": 1, "total": 0.5 },
-        "weapon":  { "hpShare": 0.25, "hit": 1, "total": 0.5 },
-        "ability": { "hpShare": 0.25, "hit": 1, "total": 0.5 },
-        "fin":     { "hpShare": 0.15, "hit": 1, "total": 0.5 },
-        "detail":  { "hpShare": 0.15, "hit": 1, "total": 0.5 }
+        "body": {
+          "hpShare": 0,
+          "hit": 1,
+          "total": 1
+        },
+        "head": {
+          "hpShare": 0.3,
+          "hit": 2,
+          "total": 1
+        },
+        "arm": {
+          "hpShare": 0.2,
+          "hit": 1,
+          "total": 0.5
+        },
+        "leg": {
+          "hpShare": 0.25,
+          "hit": 1,
+          "total": 0.5
+        },
+        "weapon": {
+          "hpShare": 0.25,
+          "hit": 1,
+          "total": 0.5
+        },
+        "ability": {
+          "hpShare": 0.25,
+          "hit": 1,
+          "total": 0.5
+        },
+        "fin": {
+          "hpShare": 0.15,
+          "hit": 1,
+          "total": 0.5
+        },
+        "detail": {
+          "hpShare": 0.15,
+          "hit": 1,
+          "total": 0.5
+        }
       },
       "wearBreak": 0.4
     },
-    "catastrophic": { "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.", "share": 0.4, "window": 0.1, "popTypes": [] },
-    "wound": { "coreShell": 1.0, "stumpRadius": 0.12 },
-    "stagger": { "time": 0.5 },
+    "catastrophic": {
+      "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.",
+      "share": 0.4,
+      "window": 0.1,
+      "popTypes": []
+    },
+    "wound": {
+      "coreShell": 1.0,
+      "stumpRadius": 0.12
+    },
+    "stagger": {
+      "time": 0.5
+    },
     "finisher": {
       "_note": "GAME-07. weakenShare: when health first falls to or below this share of the max, the Foamer is finishable and staggers for weakenStaggerTime instead of stagger.time (a part break still gives the short stagger). reach: melee finishers work this far from the eye. coneCos: the view cone's cosine, the aim must be inside it. total: the finisher's lasting time. turnTime: the share of total the view spends turning onto the Foamer. CONTENT-PLAN 3.1 and 3.2: the finisher always pops.",
-      "reach": 2.5, "coneCos": 0.98, "weakenShare": 0.3,
-      "weakenStaggerTime": 2.5, "total": 0.8, "turnTime": 0.15
+      "reach": 2.5,
+      "coneCos": 0.98,
+      "weakenShare": 0.3,
+      "weakenStaggerTime": 2.5,
+      "total": 0.8,
+      "turnTime": 0.15
     },
     "down": {
-      "lie": 3.5, "sinkSpeed": 0.35, "max": 8,
+      "lie": 3.5,
+      "sinkSpeed": 0.35,
+      "max": 8,
       "ragdoll": {
         "_note": "ENG-12. density in kg/m^3 for the part cuboids. damping slows the fall to a limp, heavy foam feel. keepStride: share of a walking Foamer's speed its parts keep when it dies (the stride feeds the fall without deciding it). killSpeed: the killing shot tips the Foamer over about its feet, away from the shooter: every part gains this speed in m/s along the shot's horizontal direction, scaled by its height over the top of the body (feet barely move, the top moves most), so it falls without being thrown. limits: hinge range in radians about the part's local x axis, per part kind, measured from the pose it had when it went down (negative bends forward).",
         "density": 60,
@@ -45,34 +108,130 @@
         "keepStride": 0.4,
         "killSpeed": 4,
         "limits": {
-          "head": [-0.7, 0.7],
-          "arm": [-2.4, 0.4],
-          "leg": [-1.8, 0.3],
-          "weapon": [-1.5, 1.5],
-          "fin": [-0.5, 0.5],
-          "ability": [-0.5, 0.5],
-          "detail": [-0.3, 0.3]
+          "head": [
+            -0.7,
+            0.7
+          ],
+          "arm": [
+            -2.4,
+            0.4
+          ],
+          "leg": [
+            -1.8,
+            0.3
+          ],
+          "weapon": [
+            -1.5,
+            1.5
+          ],
+          "fin": [
+            -0.5,
+            0.5
+          ],
+          "ability": [
+            -0.5,
+            0.5
+          ],
+          "detail": [
+            -0.3,
+            0.3
+          ]
         }
       }
     },
-    "brokenParts": { "max": 24, "lifetime": 4, "sinkTime": 1, "density": 0.3 },
+    "brokenParts": {
+      "max": 24,
+      "lifetime": 4,
+      "sinkTime": 1,
+      "density": 0.3
+    },
     "handicaps": {
       "_note": "GAME-11. someLegsSpeed: ground speed with some legs gone but still enough to walk. noLegsSpeed: with none left. noHeadTurnRate: turn rate scale with no head. fallBelowLegs: a living Foamer left with fewer legs than this falls over. crawlSpeed: crawl speed as a share of the rig speed. crawlLength: the lying capsule's length as a share of the rig height. fall: the fall is an inverted pendulum about the foot it still stands on, a in radians from upright and a'' = (gravity / pivotHeight) * sin(a). startTilt: the tilt it starts from, so it tips at once. proneTilt: the tilt it lands at. sideShare: share of the tilt that is roll toward the lost leg, the rest is forward pitch. bounce: share of the landing angular speed it bounces back with, once. settle: seconds at rest after the bounce before it crawls.",
-      "someLegsSpeed": 0.5, "noLegsSpeed": 0.25, "noHeadTurnRate": 0.5,
+      "someLegsSpeed": 0.5,
+      "noLegsSpeed": 0.25,
+      "noHeadTurnRate": 0.5,
       "fallBelowLegs": 2,
       "crawlSpeed": 0.3,
       "crawlLength": 0.7,
-      "fall": { "startTilt": 0.12, "proneTilt": 1.35, "sideShare": 0.35, "bounce": 0.25, "settle": 0.25 }
+      "fall": {
+        "startTilt": 0.12,
+        "proneTilt": 1.35,
+        "sideShare": 0.35,
+        "bounce": 0.25,
+        "settle": 0.25
+      }
     },
     "attacks": [
-      { "id": "bonk", "damage": 12, "token": "melee", "needs": ["foreArmL", "foreArmR"], "windup": 0.6, "strike": 0.2 },
-      { "id": "headbutt", "damage": 8, "token": "melee", "needs": [], "windup": 0.9, "strike": 0.2 }
+      {
+        "id": "bonk",
+        "damage": 12,
+        "token": "melee",
+        "needs": [
+          "foreArmL",
+          "foreArmR"
+        ],
+        "windup": 0.6,
+        "strike": 0.2
+      },
+      {
+        "id": "headbutt",
+        "damage": 8,
+        "token": "melee",
+        "needs": [],
+        "windup": 0.9,
+        "strike": 0.2
+      }
     ]
+  },
+  "types": {
+    "F01": {
+      "rig": "F01"
+    },
+    "F02": {
+      "rig": "F02",
+      "attacks": [
+        {
+          "id": "throw",
+          "damage": 4,
+          "token": "ranged",
+          "needs": [
+            "foreArmR",
+            "ball"
+          ],
+          "windup": 0.6,
+          "strike": 0.25
+        },
+        {
+          "id": "bonk",
+          "damage": 10,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.6,
+          "strike": 0.2
+        }
+      ]
+    }
   },
   "spawner": {
     "count": 1,
     "max": 12,
     "respawnDelay": 3,
-    "points": [[-8, 0, 8], [8, 0, 8], [0, 0, 6]]
+    "points": [
+      [
+        -8,
+        0,
+        8
+      ],
+      [
+        8,
+        0,
+        8
+      ],
+      [
+        0,
+        0,
+        6
+      ]
+    ]
   }
 }
