@@ -160,6 +160,15 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-04: ANIM-01 review, key frames viewed (Claude)
+
+- Viewed the key frames Qwen could not: the F02 windup holds the ball high
+  beside the head with the arm cocked, and the strike whips the arm and
+  ball out past the shoulder; the F05 telegraph dips the head, the charge
+  pitches the whole body forward, and the wall stun rocks it back with
+  the orange back showing. All read at a glance. 32 PNGs, 208 KB.
+- Unverified: timing and readability at 10 m in a live game.
+
 ### 2026-11-04: ANIM-01, the F02 throw and the F05 scrape and charge poses (Qwen 3.8-27B via Pi)
 
 - Card: `tasks/ANIM-01.md`. Two stages, each committed green (tsc, vitest,
