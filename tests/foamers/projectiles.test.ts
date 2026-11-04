@@ -42,7 +42,7 @@ function rig() {
   const targets: VoxelTarget[] = [];
   const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
   new DartImpacts(darts, debris, targets);
-  const projectiles = new ProjectileSystem(RAPIER, world, debris, playerCollider);
+  const projectiles = new ProjectileSystem(RAPIER, world, debris, playerCollider, foamers);
   foamers.projectiles = projectiles;
   return { world, darts, debris, foamers, projectiles, playerCollider };
 }

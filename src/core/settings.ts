@@ -13,6 +13,10 @@ import difficultyJson from "../../data/difficulty.json";
 export interface DifficultyPreset {
   name: string;
   damageTaken: number;
+  /** Multiplier on the shield's parry window (GAME-04 stage 2): a wider
+   *  window on the easier presets. The pages read it off the active
+   *  preset, as they read `director`. */
+  parryWindow: number;
   /** Key ENG-08's director reads for this preset. */
   director: string;
 }

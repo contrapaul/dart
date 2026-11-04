@@ -6,13 +6,22 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-04 stage 2 done 2026-11-04 (`tasks/GAME-04b.md`): a ball made with
+BALL_MATERIAL (the F02's pink) that hits in the shield's front arc is parried
+when the disc started rising within the parry window, and the parry sends it
+back at the thrower's chest faster, where it does damage and staggers. All the
+numbers are in a `parry` block in data/shield.json; each difficulty preset
+carries a parryWindow multiplier (Story 1.5, Foam Fury 0.6); the watch gets a
+`parries` count and a `parryNext()`. Unverified by eye: the hit-stop and the
+two placeholder sounds (see the Log entry).
+
 GAME-10a done 2026-11-04: Foamers have per-type specs (`data/foamers.json`
 base + `types`, `spawn(feet, facing?, type)`), and the F02 Roamer keeps its
 ring and throws slow pink foam balls (`src/foamers/projectiles.ts`, the F02
 brain in `src/ai/f02-brain.ts`); the Pit's wave 2 is 3 F01 and 2 F02. The
-disc blocks a ball like a bonk, so GAME-04 stage 2 (the parry) is unblocked.
-Ball look, the throw pose and the four new sounds are unverified by eye (see
-the Log entry).
+disc blocks a ball like a bonk, so a parryable ball now parries (GAME-04
+stage 2). Ball look, the throw pose and the four new sounds are unverified
+by eye (see the Log entry).
 
 GAME-05 done 2026-11-04: with the disc up the shield locks the nearest
 Foamer in the crosshair's range and cone in sight, and dash at the lock
@@ -23,8 +32,8 @@ it and takes a small hit. The charge's eye checks are still open
 GAME-04 stage 1 done 2026-11-03: the shield (`src/player/shield.ts`,
 `data/shield.json`) blocks from the front arc, slows the walk, and throws
 a ricocheting disc that returns to the arm; the range watch can drive it.
-Parry (stage 2) waits for GAME-10. Look and feel checks in a real browser
-are still open (see the Log entry).
+Stage 2 is done (the parry, see the next entry). Look and feel checks in a
+real browser are still open (see the Log entry).
 
 GAME-07 done 2026-11-03: the weakened (finishable) stagger, the Pop
 finisher and the health drops are in the shared game; the course and
@@ -139,6 +148,85 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-04: GAME-04 stage 2, the shield parry and bounce-back (Qwen 3.8-27B via Pi)
+
+Card: `tasks/GAME-04b.md`, in the `game-04b` worktree. One commit
+(`GAME-04b: ...`) when this is accepted; not merged or pushed yet. `npx tsc
+--noEmit`, `npx vitest run` (50 files, 343 passed, 2 skipped) and `npm run
+build` all pass. No em or en dashes in any touched file (checked with the
+perl scan in CLAUDE.md).
+
+What was built:
+- `data/shield.json`: a `parry` block (window 0.25 s, speedShare 1.6, damage
+  4, stagger 0: the thrower's own stagger time, steerSec 8, kick 0.035 rad
+  over kickTime 0.15, hitStop 0.05 s at slow 0.15, flashTime 0.12 s,
+  parryNextLead 0.1 s); the `_note` explains it too.
+- `src/player/shield.ts`: `parryWindowScale` (set by the pages from the
+  preset), `parries`, `parryWindow()`, `canParry()` (disc raised, fully up,
+  and the raise younger than the window; the age resets when the disc
+  drops), `parryKick`, `flash`, `noteParry()` and `slowed(dt)`; a private
+  `raiseAge` and a bright flash disc over the viewmodel (white basic
+  material, opacity driven by flashTime).
+- `src/foamers/projectiles.ts`: the constructor takes the `FoamerSystem`;
+  `LiveBall` grows `bounced`, `flatSpeed` and `steerLeft`; `bounce(b)` keeps
+  the ball (no burst) and speeds it to 1.6x; `steerBounce` re-aims at the
+  thrower's chest each step while steering runs, as a solved arc, and stops
+  steering within 0.35 m so the ball flies straight in (at 14 m/s a re-aim
+  that close would cross the target point and it would limit-cycle); a
+  bounced ball's ray is the ordinary ball's ray with the Foamer parts added
+  back in and the player's own capsule excluded by identity (that
+  collider carries the world's group, so a group test cannot name it); a
+  bounced ball can hit the thrower or another Foamer and burst on the
+  world, but never the player; the
+  hit goes through `FoamerSystem.parryDamage` (health, a damage `record`, a
+  sound, `startStagger` for its data time, or the Foamer's own, the
+  `finishWeakened` band, a go-down on depletion, never `pop`) and
+  `onSound("parryHit", at)`; `stats.bounced` and `stats.parryHits`.
+- The pages (`src/game/game.ts`, `src/range/main.ts`): `onHitPlayer` computes
+  `blocked` and `parryable` (the shared `BALL_MATERIAL`) and, if both and
+  `canParry()`, notes the parry, bounces the ball and plays SH-parry, no
+  damage to the player; otherwise the block and the ball hit run as before.
+  The difficulty multiplier is read like `director` (`DIFFICULTIES[s.difficulty]?.parryWindow ?? 1`).
+  While a hit-stop is running the pages step the Foamer, the projectiles,
+  the darts, the pieces, the pickups and the `step`/`afterPieces` hooks from
+  `slowed(dt)`, the character, the shield and the world step from the real
+  `dt`. The parry's kick is added to the camera's climb, same as the blast
+  recoil and the block kick. `onSound("parryHit")` plays SH-parry-hit at the
+  hit point. The watch: `state()` gains `parries`; the game page's
+  `parryNext()` steps the simulation until the closest non-bounced ball is
+  `parryLead` seconds from the eye, then force-holds the disc (so the
+  raise lands inside the window); the range page's `parryNext()` simply
+  returns true and force-holds the disc so long as a non-bounced ball is
+  alive (its update loop is not callable from the watch, so the lead time
+  is not applied; the disc's own window is what the ball lands inside).
+- `data/difficulty.json` and `src/core/settings.ts`: `parryWindow` per
+  preset (story 1.5, normal 1, hard 0.75, fury 0.6) and
+  `DifficultyPreset.parryWindow: number`.
+- `data/sounds.json` and `design/SOUNDS.md`: SH-parry (a click and a 320 to
+  880 Hz sine twang, non-positioned) and SH-parry-hit (a low thud,
+  positioned), code-made placeholders like the other SH- IDs.
+- `tests/shield/parry.test.ts`, 4 tests: (a) with the disc up, a ball in the
+  front arc inside the window is parried; after the same raise ages out of
+  the window it is only blocked; (b) a ball from behind is outside the arc,
+  so neither parried nor blocked; (c) the full bounce route with a real
+  F02: the ball is parried by the page's substitute, comes back, hits its
+  thrower (damage 4: health 8 to 4, does not kill), staggers it, and the
+  player capsule is met exactly once (the parry itself, not the
+  return flight, which the bounced ball's rays cannot count); (d) the difficulty multiplier: a raise aged 0.18 s
+  is inside Story's 1.5x window and outside Foam Fury's 0.6x window, and
+  `parryWindow()` narrows by the same factor. The bounce test `settle`s the
+  Foamer's part meshes first, like the other Foamer tests: the part meshes
+  are built asynchronously from the mesher's Promise, and a raycast that
+  hasn't been settled can't see them (this is what took the bounce test so
+  long to debug).
+
+Not checked in a real browser (no browser here): the feel of the hit-stop
+(0.05 s world-slowness), the kick and flash, the two placeholder sounds,
+and whether a parried ball from a moving, re-targeting F02 finds its mark
+(since steering gives it some room to work with). Also unchecked: whether
+`parryNext()` on the range page is sharp enough for the automated checks.
+Finished so far; the look of the disc is still from stage 1.
 
 ### 2026-11-04: GAME-05 and GAME-10a merged; arena HUD fix (Claude)
 

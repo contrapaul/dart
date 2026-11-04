@@ -822,6 +822,31 @@ export class FoamerSystem {
     sound(this, "stagger", f, f.centre);
   }
 
+  /** GAME-04 stage 2: a hit that is not a dart or a part (the bounce-back ball).
+   *  Health and the finishable band as in the dart's damage, minus the
+   *  part break and the pop (a bounce is never a popping hit). */
+  parryDamage(f: Foamer, amount: number): void {
+    if (f.state === "down") return;
+    f.health -= amount;
+    f.addDamage(this.time, amount);
+    f.damageSinceStep = true;
+    sound(this, "wound", f, f.centre);
+    if (f.health <= 0) {
+      // The dart path's pop check uses the dart's types; a bounce can
+      // never pop, so it goes down like the dart's non-category hit.
+      this.goDown(f);
+      return;
+    }
+    if (
+      !f.finishWeakened && f.health > 0
+      && f.health <= f.spec.finisher.weakenShare * f.maxHealth
+      && !f.prone && f.state !== "finish"
+    ) {
+      f.finishWeakened = true;
+      this.startStagger(f, true);
+    }
+  }
+
   /** GAME-05: one step of the shield's knockback: drive the Foamer up to
    *  `want` metres along (dirX, dirZ, horizontal) through its own movement
    *  controller and exclusion set, so a wall stops it. Returns the

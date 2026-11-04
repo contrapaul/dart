@@ -21,9 +21,10 @@ import shieldJson from "../../data/shield.json";
 // up to bounces more times, and then flies back to the arm. A wall, or the
 // range limit, sends it straight back. While it is out the player cannot
 // block; after the catch a short cooldown passes before it can be thrown
-// again. Every number lives in data/shield.json. Parry is stage 2 (waits
-// for GAME-10) and the charge is GAME-05. The look is a code-made
-// placeholder in the factory palette; the name and final look are [Paul].
+// again. Every number lives in data/shield.json. The parry (stage 2)
+// turns the thrower's pink foam balls back at them, and the charge
+// is GAME-05. The look is a code-made placeholder in the factory
+// palette; the name and final look are [Paul].
 
 export type ShieldState = "lowered" | "raised" | "thrown" | "returning";
 
@@ -45,6 +46,19 @@ const T = shieldJson as unknown as {
     carveRadius: number; debrisMax: number;
   };
   cooldown: number;
+  /** GAME-04 stage 2: the parry. window is how soon after the disc starts
+   *  rising a parryable ball may be turned (longer is a block, as now);
+   *  speedShare is the bounced ball's speed up over the incoming one;
+   *  damage and stagger (0: the Foamer's own stagger.time) are the hit's;
+   *  steerSec steers the bounce at its target for this many flight
+   *  seconds; kick the view kick in radians decaying over kickTime;
+   *  hitStop the world's slow seconds; flashTime the disc's bright flash;
+   *  parryNextLead the watch helper's hands-on lead time. */
+  parry: {
+    window: number; speedShare: number; damage: number; stagger: number;
+    steerSec: number; kick: number; kickTime: number; hitStop: number;
+    slow: number; flashTime: number; parryNextLead: number;
+  };
   /** GAME-05: the charge. While the disc is raised the Foamer nearest the
    *  crosshair, within cone (degrees) and range and in sight of the player,
    *  is the locked target; a dash press starts the charge. speed m/s for at
@@ -133,7 +147,54 @@ export class Shield {
   get usedFirePress(): boolean {
     return this.usedFire;
   }
-  /** Where the disc is while out (for a spatial sound). */
+  /** The bounce-back (GAME-04 stage 2): the difficulty preset's parry
+   *  window multiplier (PLAN 10), read off the active preset by the page
+   *  like `director`. 1 is the data's own window; `parryWindow()` has the
+   *  effective one. */
+  parryWindowScale = 1;
+  /** Parries landed, the watch's line. */
+  parries = 0;
+  /** The effective window in seconds: a raise older than this only blocks
+   *  (as now). */
+  parryWindow(): number {
+    return T.parry.window * this.parryWindowScale;
+  }
+  /** The watch helper's hands-on lead time (data). */
+  get parryLead(): number {
+    return T.parry.parryNextLead;
+  }
+  /** A ball that meets the player inside the front arc is parried when the
+   *  raise is younger than the window: the page asks this after
+   *  blocksAttackFrom has already passed. */
+  canParry(): boolean {
+    return this.state === "raised" && this.raise >= 0.5 && this.raiseAge <= this.parryWindow();
+  }
+  /** The parry's view kick, on its own table like chargeKick. */
+  get parryKick(): number {
+    return this.pkickLeft > 0 ? T.parry.kick * (this.pkickLeft / T.parry.kickTime) : 0;
+  }
+  /** The bright flash on the viewmodel disc: 1 at a parry, 0 after
+   *  parry.flashTime. */
+  get flash(): number {
+    return this.flashLeft > 0 ? this.flashLeft / T.parry.flashTime : 0;
+  }
+  /** The parry feedback: the kick, the disc flash, the tiny hit-stop (the
+   *  world steps slow for parry.hitStop seconds, at parry.slow of the
+   *  normal rate) and the count. */
+  noteParry(): void {
+    this.pkickLeft = T.parry.kickTime;
+    this.flashLeft = T.parry.flashTime;
+    this.hitStopLeft = T.parry.hitStop;
+    this.parries++;
+  }
+  /** This step's dt for the simulators: at parry.slow of it while the
+   *  hit-stop runs (it counts down on the true dt, so the world stays
+   *  slow for exactly parry.hitStop seconds). */
+  slowed(dt: number): number {
+    if (this.hitStopLeft <= 0) return dt;
+    this.hitStopLeft = Math.max(0, this.hitStopLeft - dt);
+    return dt * T.parry.slow;
+  }  /** Where the disc is while out (for a spatial sound). */
   get discPosition(): THREE.Vector3 {
     return this.disc;
   }
@@ -143,6 +204,18 @@ export class Shield {
   onCarveAt: (point: THREE.Vector3) => void = () => {};
 
   private kickLeft = 0;
+  /** GAME-04 stage 2: the parry: the raise's age (seconds since the state
+   *  turned raised; a drop restarts it), the kick and the flash. */
+  private raiseAge = 0;
+  private pkickLeft = 0;
+  private flashLeft = 0;
+  /** The viewmodel's flash disc and its own material (the page never
+   *  touches them). */
+  private readonly faceMat: THREE.MeshBasicMaterial;
+  private readonly flashMesh: THREE.Mesh;
+  /** Seconds of the pre-slow left until a parry's hit-stop; 0 when the
+   *  world runs full speed. */
+  hitStopLeft = 0;
   private cooldown = 0;
   private toggleOn = false;
   private usedFire = false;
@@ -204,10 +277,22 @@ export class Shield {
       new THREE.CylinderGeometry(L.bossRadius, L.bossRadius, L.bossDepth, 16),
       new THREE.MeshStandardMaterial({ color: L.colors.boss, roughness: 0.6 }),
     );
+    // The parry's flash: a plain emissive disc one size over the face,
+    // hidden until a parry (the bloom's no-flash variant stays a flat
+    // brightened plate, which is all the look needs here).
+    this.faceMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0,
+    });
+    this.flashMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(L.diameter * 0.5, L.diameter * 0.5, 0.03, 24),
+      this.faceMat,
+    );
     // A cylinder's axis is its own y; the disc faces along -z, so turn it.
-    for (const m of [rim, face, boss]) m.rotation.x = Math.PI / 2;
+    for (const m of [rim, face, boss, this.flashMesh]) m.rotation.x = Math.PI / 2;
     boss.position.z = -(L.rimThickness / 2 + L.bossDepth / 2 - 0.01);
-    this.group.add(rim, face, boss);
+    this.group.add(rim, face, boss, this.flashMesh);
     this.discMesh = new THREE.Mesh(geo, rim.material);
     this.discMesh.visible = false;
     scene.add(this.discMesh);
@@ -285,6 +370,7 @@ export class Shield {
     if (this.state === "lowered" || this.state === "raised") {
       if (this.state === "lowered" && wantUp) {
         this.state = "raised";
+        this.raiseAge = 0;
         e.raised = true;
       } else if (this.state === "raised" && !wantUp) {
         this.state = "lowered";
@@ -302,6 +388,13 @@ export class Shield {
     } else {
       this.stepDisc(dt, e);
     }
+
+    // The parry's raise age and the parry's own kick and flash (the
+    // charge's early return skips all three: while a charge runs the disc
+    // is fixed in place).
+    if (this.state === "raised") this.raiseAge += dt;
+    if (this.pkickLeft > 0) this.pkickLeft = Math.max(0, this.pkickLeft - dt);
+    if (this.flashLeft > 0) this.flashLeft = Math.max(0, this.flashLeft - dt);
 
     // The raise ease, then the disc pose and the view kick.
     const target = this.state === "raised" ? 1 : 0;
@@ -335,6 +428,10 @@ export class Shield {
     this.ckickLeft = 0;
     this.chargeStartPend = false;
     this.lockedTarget = null;
+    this.raiseAge = 0;
+    this.pkickLeft = 0;
+    this.flashLeft = 0;
+    this.hitStopLeft = 0;
     this.discMesh.visible = false;
     this.placeViewmodel(0);
   }
@@ -659,6 +756,10 @@ export class Shield {
       (lo.rotationDeg[2] + (hi.rotationDeg[2] - lo.rotationDeg[2]) * a) * DEG,
     );
     g.visible = this.state !== "thrown" && this.state !== "returning";
+    // A parry just hit: the flash plate, its opacity over flashTime (1 to
+    // 0); otherwise hidden.
+    const f = this.flashLeft > 0 ? this.flashLeft / T.parry.flashTime : 0;
+    this.faceMat.opacity = f;
   }
 
   /** The player's view direction (unit, xz and y from the pitch). */
