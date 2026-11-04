@@ -151,6 +151,25 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-04: GAME-10b review, Darters played in the ring (Claude)
+
+- Played `arena.html?level=1-4-ring&watch`: two Darters, the lime plates
+  on the side they face (chest +0.13 m, brow +0.22 m along the facing) and
+  the orange weak point behind (-0.44 m), so the -z offsets in the rig
+  data are only rig-local.
+- Fixed: the Darter used the shared 2.2 m hold ring, so it walked into
+  bite range and "charged" from about 2 m, a slow bonk. Chargers now hold
+  on their own ring (`charge.holdMetres`, 9 m) and telegraph from 5 to 8 m
+  out. Test 7 in `tests/foamers/charge.test.ts` (2.19 m before).
+- Fixed: a charge that ran into the player was stopped by the player's
+  capsule and counted as a wall, so every hit gave the player a free wall
+  stun on its back. A hit on the player now ends in the normal recover;
+  only a real wall opens the back.
+- Small, not fixed: the tab title still reads "DART: the Pit" on the ring
+  level (the level name is [Paul]).
+- Unverified by eye: the scrape and charge poses, the stun feel, the
+  plate chip, the sounds.
+
 ### 2026-11-04: GAME-10b, the F05 Darter and the Ring (DeepSeek V4.1 Flash via Pi)
 
 - Card: `tasks/GAME-10b.md`. Three stages, each committed green (tsc,

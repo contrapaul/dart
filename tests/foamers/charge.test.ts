@@ -172,4 +172,15 @@ describe("the F05 charge (GAME-10b stage 2)", () => {
     }
     expect(seen.has("charge") || seen.has("telegraph") || seen.has("wallStun")).toBe(false);
   });
+  it("7. it charges from range: the telegraph starts out near its hold ring, not in bite range", () => {
+    // GAME-10b review: on the shared 2.2 m hold ring the Darter walked in
+    // and charged from point blank. Its own ring is charge.holdMetres.
+    const r = rig(false);
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 16), player, "F05")!;
+    run(r, player, () => f.state === "telegraph", 60 * 15);
+    expect(f.state).toBe("telegraph");
+    const d = Math.hypot(f.centre.x - player.x, f.centre.z - player.z);
+    expect(d).toBeGreaterThan(CHARGE.holdMetres - 2);
+  });
 });

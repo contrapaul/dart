@@ -291,10 +291,10 @@ export class FoamerSystem {
         throwRange: spec.throwRangeMetres,
         preferredDistance: spec.preferredDistanceMetres,
         retreatDistance: spec.retreatDistanceMetres,
-        // A thrower sidles on the ring at the distance it keeps; a bonker on
-        // the shared hold ring.
-        holdRange:
-          tokenKindOf(spec) === "ranged" ? spec.preferredDistanceMetres : BRAIN.holdRangeMetres,
+        // A thrower sidles on the ring at the distance it keeps, a charger
+        // on its own ring out at charge range; a bonker on the shared ring.
+        holdRange: chargeOf(spec)?.holdMetres
+          ?? (tokenKindOf(spec) === "ranged" ? spec.preferredDistanceMetres : BRAIN.holdRangeMetres),
       };
     }
     this.group.add(f.group);
@@ -491,7 +491,12 @@ export class FoamerSystem {
           sound(this, "impact", f, f.centre);
         }
       }
-      const wall = stepMetres > 1e-4 && moved < stepMetres * 0.1;
+      // Stopped short: a wall, unless it is the player it just ran into
+      // (the player's capsule blocks the run too). Only a wall opens the
+      // back with the wall stun; a hit on the player recovers as usual.
+      const blocked = stepMetres > 1e-4 && moved < stepMetres * 0.1;
+      const wall = blocked && !(f.chargeHit
+        && Math.hypot(player.x - f.centre.x, player.z - f.centre.z) <= CHARGE_CONTACT + 0.6);
       if (wall || f.chargeLeft <= 1e-4) {
         f.chargeLeft = 0;
         f.state = wall ? "wallStun" : "recover";

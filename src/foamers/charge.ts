@@ -11,6 +11,10 @@ export interface ChargeSpec {
   metres: number;
   /** Where a charge may start, metres. */
   rangeMetres: number;
+  /** Without a token it circles the player this far out, metres, so the
+   *  charge it wins starts from range, not from bite range (GAME-10b
+   *  review: on the shared 2.2 m hold ring it charged from point blank). */
+  holdMetres: number;
   /** The scrape before the run, seconds. */
   telegraphSeconds: number;
   /** The stagger after hitting a wall, seconds: its back is open. */

@@ -217,10 +217,11 @@
       "turnRate": 1.4,
       "attackRange": 1.6,
       "charge": {
-        "_note": "GAME-10b: the charge. speed m/s, metres the longest run, rangeMetres where a charge may start, telegraphSeconds the scrape before it (stops, head down, dust), wallStunSeconds the stagger after a wall (back open), playerStunSeconds how long a player it runs into cannot move. plateStopsShield and plateArcDeg: a shield charge into the front plates bounces off instead of staggering the Darter.",
+        "_note": "GAME-10b: the charge. speed m/s, metres the longest run, rangeMetres where a charge may start, holdMetres the ring it circles on without a token (so it charges from range), telegraphSeconds the scrape before it (stops, head down, dust), wallStunSeconds the stagger after a wall (back open), playerStunSeconds how long a player it runs into cannot move. plateStopsShield and plateArcDeg: a shield charge into the front plates bounces off instead of staggering the Darter.",
         "speed": 11,
         "metres": 18,
         "rangeMetres": 14,
+        "holdMetres": 9,
         "telegraphSeconds": 0.9,
         "wallStunSeconds": 1.2,
         "playerStunSeconds": 0.4,
