@@ -184,6 +184,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: GAME-04b and ANIM-01 merged (Claude)
+
+- Merged after BUG-01; only the docs and the BUG-01 card conflicted (kept
+  both sides, and main's BUG-01 card with round 2). 383 tests pass, the
+  build is clean.
+- Smoke check on merged main, `arena.html?watch`: no console errors;
+  F01s and F02s go through approach, windup, strike, recover and hold, and
+  the Roamers threw 24 balls in 25 s.
+- Not a merge problem, worth a fix later: `parryNext()` does not land a
+  parry. Six tries against a lone F02 gave 0 parries on merged main and the
+  same 0 on the unmerged `game-04b` branch (the balls burst on the disc as
+  blocks). The parry's unit tests pass; the watch helper's timing is off,
+  which fits the single parry seen in the GAME-04b review. Paul's hands-on
+  play is the real check of the parry window.
+
 ### 2026-11-05: BUG-01 round 2 review, both Pit spots played (Claude)
 
 - Played `arena.html?watch` on the branch (port 5191):
@@ -282,7 +297,7 @@ and merge"). Pushing main is publishing: only as part of an approved merge.
   merge, remove it: `git worktree remove ../dart-<b>` (the branch stays).
   `git worktree list` is the truth; as of 2026-11-05:
   - Waiting (not merged): `dart-bug-01` (BUG-01, review), `dart-game-04b`
-    (parry, ready to merge), `dart-anim-01` (ANIM-01, ready to merge),
+    (parry, merged 2026-11-05), `dart-anim-01` (ANIM-01, merged 2026-11-05),
     `dart-lvl-02a` (LVL-02a, review). These four are the only ones; the
     nine merged leftovers were removed on 2026-11-05.
 - Start a model: `tools/pi/run-pi.sh <worktree> <provider> <model>
