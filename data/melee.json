@@ -1,0 +1,35 @@
+{
+  "_note": "GAME-06: melee weapon 1 and its charges. Every number the melee is tuned by. active is the weapon id the pages use. charges is how many charged swings the player starts with (full at level start and on retry); rechargeSeconds is the seconds of fighting that give one back, and each parry gives one back too, never past charges. comboWindow: a press within this many seconds of the last swing steps to the next hit of the combo, a later one starts again at hit 1. swingTime: the swing's length in seconds, during which the blaster cannot fire. reach metres is measured from the eye to the Foamer's chest; arcDeg is the wide of the view a hit reaches; maxTargets caps how many Foamers one hit takes; carveRadius metres of voxel cover comes off at the contact point, capped at debrisMax chunks per hit (darts cap theirs the same way). bash is the press with no charge left: weak damage, a small push in metres, no stagger, a cooldown in seconds longer than the swing, and its own shorter reach and narrower arc; kick is the view kick in radians decaying over kickTime. weapons holds one entry per id so weapons 2 and 3 are data plus small code later: hits is the combo, one entry per hit, in order. A hit's stagger true staggers the Foamer for its own stagger.time through the existing stagger, and knockback metres pushes it along the line from the player through its own knockStep (a wall stops it). name is [Paul] (CONTENT-PLAN 3.2: fast, light, combo hits).",
+  "active": "M01",
+  "charges": 3,
+  "rechargeSeconds": 8,
+  "comboWindow": 0.6,
+  "swingTime": 0.25,
+  "reach": 2.2,
+  "arcDeg": 70,
+  "maxTargets": 3,
+  "carveRadius": 0.09,
+  "debrisMax": 4,
+  "bash": {
+    "damage": 0.5,
+    "push": 0.5,
+    "cooldown": 1.5,
+    "reach": 1.8,
+    "arcDeg": 60,
+    "maxTargets": 2,
+    "carveRadius": 0.06,
+    "debrisMax": 3,
+    "kick": 0.03,
+    "kickTime": 0.18
+  },
+  "weapons": {
+    "M01": {
+      "name": "[Paul]",
+      "hits": [
+        { "damage": 1 },
+        { "damage": 1 },
+        { "damage": 2, "stagger": true, "knockback": 2 }
+      ]
+    }
+  }
+}
