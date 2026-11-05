@@ -320,6 +320,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: LVL-02c review, Level 1-2 played start to exit (Claude, overnight)
+
+- The Spark's first run hit its output limit writing the level in one
+  reply and saved nothing; resumed with "one room per edit", it finished
+  all three stages. Main merged in (HANDOFF Status rebuilt by hand);
+  tsc, 450 tests and the build pass.
+- Played `arena.html?level=1-2&watch` through all four arenas: the parry
+  corridor and the Ring as before; the Crossroads locks all four gates,
+  Roamers come from the spokes, and every gate opens on clear; the bowl's
+  wave 1 Roamers stand on the upper tier at the back, wave 2 clears, the
+  exit door opens and the pad completes the level only after the fourth
+  arena. No console errors.
+- For Paul's playtest: in the greybox the bowl's three tiers read weakly
+  (one grey); the lit exit sits between the two upper rifts, so it is seen
+  from the whole bowl but the Roamers guard it. The way on from the
+  Crossroads is the north spoke, not the way back the concept asked for
+  (section 14 says why).
+- Not checked by eye: pacing, the pillar seam's behind you moment, and
+  whether Foamers use the ramps well under pressure.
+
 ### 2026-11-06: LVL-02c, Level 1-2 beats 6 to 9 (Qwen 3.8 Flash Next via Pi)
 
 Built, in `data/levels/1-2.json` (no `src/` changes; the page already
