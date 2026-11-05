@@ -1,0 +1,13 @@
+{
+  "_note": "GAME-08: the foam vacuum, the finisher's sibling (CONTENT-PLAN D09). Pressing use (E) on a weakened Foamer that is in its stagger turns the view onto it, the Foamer is stretched toward the vacuum's nozzle and shrunk to nothing, and the blasters' reserves are credited with the type's shares (data/foamers.json, per type: allowed and ammoShare; a type with no entry is not allowed, the heavies come later). reach and coneCos are the target's gates, eye to chest as the finisher's. turnTime and total are the lock's timeline: the view turn, then the suck. One charge, recharging in rechargeSeconds; the charge is full at level start and on retry (the page calls reset on respawn). puffCount and puffSize are the capped foam puff at the nozzle that stands in for the pop's chunks.",
+  "vacuum": {
+    "reach": 3,
+    "coneCos": 0.97,
+    "turnTime": 0.15,
+    "total": 0.9,
+    "charges": 1,
+    "rechargeSeconds": 15,
+    "puffCount": 8,
+    "puffSize": 0.05
+  }
+}

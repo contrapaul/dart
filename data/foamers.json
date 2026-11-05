@@ -185,7 +185,14 @@
   },
   "types": {
     "F01": {
-      "rig": "F01"
+      "rig": "F01",
+      "vacuum": {
+        "allowed": true,
+        "ammoShare": {
+          "active": 0.5,
+          "other": 0.25
+        }
+      }
     },
     "F02": {
       "rig": "F02",
@@ -209,7 +216,14 @@
           "windup": 0.6,
           "strike": 0.2
         }
-      ]
+      ],
+      "vacuum": {
+        "allowed": true,
+        "ammoShare": {
+          "active": 0.5,
+          "other": 0.25
+        }
+      }
     },
     "F05": {
       "rig": "F05",
@@ -229,6 +243,13 @@
         "dustSize": 0.06,
         "plateStopsShield": true,
         "plateArcDeg": 120
+      },
+      "vacuum": {
+        "allowed": true,
+        "ammoShare": {
+          "active": 0.5,
+          "other": 0.25
+        }
       },
       "armour": {
         "_note": "GAME-10b: per part id. damage multiplies the kind's hit multiplier; carve scales the dart carve radius (the plate chips slowly).",
