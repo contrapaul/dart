@@ -55,10 +55,19 @@ export class NavGrid {
   readonly rows: number;
   readonly minX: number;
   readonly minZ: number;
-  /** Ground height per cell (NaN where the bake found none). */
+  /** Ground height of layer 0 per cell (NaN where the bake found none).
+   *  A cell can hold more than one walkable layer (BUG-01 round 2): the Pit's
+   *  ring hangs over pit floor, and both are floor an agent stands on. Layer
+   *  0 is the lowest, so a reader that ignores layers sees the pit floor. */
   readonly ground: Float32Array;
-  /** 1 where an agent of the given size can stand. */
+  /** 1 where an agent of the given size can stand on layer 0. */
   readonly walkable: Uint8Array;
+  /** How many walkable layers the cell holds (0: none). */
+  readonly layers: Uint8Array;
+  /** Every layer's height, cell-major: cell * maxLayers + layer, lowest
+   *  first. Only the first `layers[cell]` entries are written; the rest are
+   *  -Infinity. */
+  readonly layerY: Float32Array;
   /** Bumped by every bake and rebake: an agent re-paths when it changes. */
   version = 0;
 
@@ -77,7 +86,16 @@ export class NavGrid {
   private readonly heapPos: Int32Array;
   private readonly cells: Int32Array;
   private readonly px: Float32Array;
+  private readonly py: Float32Array;
   private readonly pz: Float32Array;
+  /** The surfaces one bake ray meets, reused so a bake allocates nothing:
+   *  slots are allocated once and only their fields are written. */
+  private readonly hits: { y: number; ny: number }[] = [];
+  private hitCount = 0;
+  /** The stand-able surfaces of the cell being baked, lowest first. */
+  private readonly cand: number[] = [];
+  /** The most layers one cell may hold (data/ai.json nav.maxLayers). */
+  private readonly maxLayers = NAV.maxLayers;
   private heapSize = 0;
   private gen = 0;
 
@@ -93,20 +111,46 @@ export class NavGrid {
     const n = this.cols * this.rows;
     this.ground = new Float32Array(n).fill(NaN);
     this.walkable = new Uint8Array(n);
+    this.layers = new Uint8Array(n);
+    this.layerY = new Float32Array(n * this.maxLayers).fill(-Infinity);
     this.ray = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
     const r = NAV.agentRadiusMetres;
     const h = NAV.agentHeightMetres;
     this.shape = new rapier.Capsule(h / 2 - r, r);
-    this.g = new Float32Array(n);
-    this.parent = new Int32Array(n);
-    this.openStamp = new Int32Array(n);
-    this.doneStamp = new Int32Array(n);
-    this.heapCell = new Int32Array(n);
-    this.heapKey = new Float32Array(n);
-    this.heapPos = new Int32Array(n).fill(-1);
-    this.cells = new Int32Array(n);
-    this.px = new Float32Array(n + 2);
-    this.pz = new Float32Array(n + 2);
+    // A* runs on nodes, not cells: node = cell * maxLayers + layer, so the
+    // pit floor and the ring above it are separate places to walk (BUG-01
+    // round 2). Everything indexed by node is sized for the worst case.
+    const m = n * this.maxLayers;
+    this.g = new Float32Array(m);
+    this.parent = new Int32Array(m);
+    this.openStamp = new Int32Array(m);
+    this.doneStamp = new Int32Array(m);
+    this.heapCell = new Int32Array(m);
+    this.heapKey = new Float32Array(m);
+    this.heapPos = new Int32Array(m).fill(-1);
+    this.cells = new Int32Array(m);
+    this.px = new Float32Array(m + 2);
+    this.py = new Float32Array(m + 2);
+    this.pz = new Float32Array(m + 2);
+  }
+
+  /** The cell of an A* node. */
+  private nodeCell(node: number): number {
+    return Math.floor(node / this.maxLayers);
+  }
+
+  /** The walkable node of `cell` a body with its feet at `y` stands on, at
+   *  most maxStep away vertically; -1 when the cell offers nothing that near
+   *  (the cell is a wall, or its floors are a storey away). */
+  private nodeNear(cell: number, y: number): number {
+    if (cell < 0) return -1;
+    const k = this.layerAt(cell, y);
+    if (k < 0 || k >= this.layers[cell]!) return -1;
+    const node = cell * this.maxLayers + k;
+    const d = this.layerY[node]! - y;
+    // Up is what the walk can autostep; down is the bake's step, as in stepOk.
+    if (d > NAV.stepAutostepMetres || d < -NAV.maxStepMetres) return -1;
+    return node;
   }
 
   get maxX() {
@@ -137,16 +181,44 @@ export class NavGrid {
     this.version++;
   }
 
-  /** 1 if an agent can stand in the cell under (x, z). */
-  walkableAt(x: number, z: number): boolean {
+  /** 1 if an agent can stand in the cell under (x, z), on the walkable layer
+   *  nearest y (feet metres); without y, the lowest one. */
+  walkableAt(x: number, z: number, y?: number): boolean {
     const i = this.cellAt(x, z);
-    return i >= 0 && this.walkable[i] === 1;
+    if (i < 0) return false;
+    const k = this.layerAt(i, y);
+    return k >= 0 && k < this.layers[i]!;
   }
 
-  /** Ground height under (x, z), or NaN if the bake found none. */
-  groundAt(x: number, z: number): number {
+  /** Ground height under (x, z), or NaN if the bake found none. With y, the
+   *  height of the walkable layer nearest y (the feet of the agent asking);
+   *  without it, the lowest, so a reader that does not care about layers
+   *  keeps reading the pit floor under the ring. */
+  groundAt(x: number, z: number, y?: number): number {
     const i = this.cellAt(x, z);
-    return i < 0 ? NaN : this.ground[i]!;
+    if (i < 0) return NaN;
+    if (y === undefined) return this.ground[i]!;
+    const k = this.layerAt(i, y);
+    return k < this.layers[i]! ? this.layerY[i * this.maxLayers + k]! : this.ground[i]!;
+  }
+
+  /** Index of the walkable layer of `cell` nearest y, or -1 when the cell has
+   *  no layer (callers test < layers[cell]); with y undefined, 0, the lowest. */
+  private layerAt(cell: number, y?: number): number {
+    const n = this.layers[cell]!;
+    if (n === 0) return -1;
+    if (y === undefined || this.maxLayers === 1) return 0;
+    const base = cell * this.maxLayers;
+    let best = 0;
+    let bestD = Math.abs(this.layerY[base]! - y);
+    for (let k = 1; k < n; k++) {
+      const d = Math.abs(this.layerY[base + k]! - y);
+      if (d < bestD) {
+        bestD = d;
+        best = k;
+      }
+    }
+    return best;
   }
 
   /**
@@ -154,91 +226,170 @@ export class NavGrid {
    * waypoint count; 0 means no path. A* on 8-connected cells with no corner
    * cutting and a step-up limit between neighbours, then string pulled to the
    * fewest waypoints. An unwalkable goal paths to the nearest walkable cell.
+   *
+   * `fromY` and `toY` are the feet heights the path starts and ends on, so a
+   * level with two floors in one cell (the Pit's ring over pit floor) paths
+   * on the agent's own layer; without them both ends take the lowest layer.
    */
-  findPath(from: Point2, to: Point2, out: PathPoints): number {
+  findPath(from: Point2, to: Point2, out: PathPoints, fromY?: number, toY?: number): number {
     out.count = 0;
     let start = this.cellAt(from.x, from.z);
     if (start < 0) return 0;
+    const startY = fromY ?? this.ground[start]!;
+    let startLayer = this.layerAt(start, fromY);
     // An agent pressed against a wall stands in a cell the bake calls
-    // unwalkable (its own radius reaches the wall). Path from the nearest
-    // walkable cell instead, or it would stand still for ever: the first
-    // waypoint back is the cell it is already standing beside.
-    if (this.walkable[start] !== 1) {
-      const near = this.nearestWalkable(start, this.ground[start]!);
+    // unwalkable (its own radius reaches the wall), and one standing under a
+    // ledge is in a cell whose only walkable layer is above it. Path from the
+    // nearest walkable layer instead, or it would stand still for ever: the
+    // first waypoint back is the cell it is already standing beside.
+    // The walk itself starts from a walkable point when the agent is pressed
+    // into an unwalkable one, so a pulled shortcut is never measured from a
+    // point inside a wall (BUG-01 round 2).
+    let from2 = from;
+    if (startLayer < 0 || Math.abs(this.layerY[start * this.maxLayers + startLayer]! - startY) > NAV.maxStepMetres) {
+      const near = this.nearestWalkable(start, startY);
       if (near < 0) return 0;
-      start = near;
+      start = this.nodeCell(near);
+      startLayer = near % this.maxLayers;
+      from2 = this.cellCentre(start);
     }
     const goalCell = this.cellAt(to.x, to.z);
     if (goalCell < 0) return 0;
-    if (this.walkable[goalCell] === 1) {
+    const goalLayer = this.layerAt(goalCell, toY);
+    const startNode = start * this.maxLayers + startLayer;
+    const goalNode = goalLayer >= 0 ? goalCell * this.maxLayers + goalLayer : -1;
+    if (goalNode >= 0) {
       // Straight line: the common case, and a single segment once pulled.
-      if (this.lineClear(from.x, from.z, to.x, to.z)) {
-        out.xs[0] = from.x;
-        out.zs[0] = from.z;
+      if (this.lineClear(
+        from2.x, from2.z, to.x, to.z, this.layerY[startNode]!, this.layerY[goalNode]!,
+      )) {
+        out.xs[0] = from2.x;
+        out.zs[0] = from2.z;
         out.xs[1] = to.x;
         out.zs[1] = to.z;
         out.count = 2;
         return 2;
       }
-      if (start === goalCell) {
-        out.xs[0] = from.x;
-        out.zs[0] = from.z;
+      if (startNode === goalNode) {
+        out.xs[0] = from2.x;
+        out.zs[0] = from2.z;
         out.count = 1;
         return 1;
       }
-      const n = this.astar(start, goalCell, -1);
-      if (n > 0) return this.pull(from, to, n, out);
+      const n = this.astar(startNode, goalNode, -1);
+      if (n > 0) return this.pull(from2, to, this.layerY[startNode]!, this.layerY[goalNode]!, n, out);
       // Unreachable (or no walkable cell at all): fall back to the reachable
       // cell closest to the goal.
     }
-    const n = this.astar(start, goalCell, this.cellAt(to.x, to.z));
+    // No goal node (the goal cell has no layer near the goal feet height):
+    // search anywhere and stop closest to the goal cell.
+    const n = this.astar(startNode, goalNode, goalCell);
     if (n === 0) return 0;
+    // Stop at the end of the last cell the walk fell back to, at the height of
+    // the node the search reached there.
     const last = this.cells[n - 1]!;
-    return this.pull(from, this.cellCentre(last), n, out);
+    return this.pull(
+      from2, this.cellCentre(this.nodeCell(last)), this.layerY[startNode]!,
+      this.layerY[last]!, n, out,
+    );
   }
 
   // ---- bake -------------------------------------------------------------
 
-  /** Bake one cell: find the ground with a downward ray, then check that an
-   *  agent of the given size fits at that spot. */
+  /** Bake one cell: find every surface the downward ray meets, then keep
+   *  every one an agent of the given size fits on, up to maxLayers, lowest
+   *  first.
+   *
+   *  One ray hit is not enough (BUG-01). The Pit's ring hangs 3 m over pit
+   *  floor a player can walk on, and the first hit from above is the ring's
+   *  top: baking only that put the floor under it 4 m up, so a Foamer sent at
+   *  a player standing underneath walked off to the ramp and stood there. The
+   *  fix is not "lowest wins" either (BUG-01 round 2): the ring is where the
+   *  player enters the Pit, and a low-only cell sends Foamers under it. Both
+   *  surfaces are floor, so a cell holds both layers and A* picks the one it
+   *  walks to. A wall is not an overhang: the shape cast leaves it no room
+   *  under the wall's top, so it is still not a separate layer. */
   private bakeCell(i: number) {
     const x = this.minX + ((i % this.cols) + 0.5) * this.cell;
     const z = this.minZ + (Math.floor(i / this.cols) + 0.5) * this.cell;
+    const hits = this.hits;
+    this.hitCount = 0;
     this.ray.origin = { x, y: NAV.topMetres, z };
-    const hit = this.world.castRayAndGetNormal(
-      this.ray, this.rayLength, true, SKIP, SOLID_QUERY_GROUPS,
-    );
-    if (!hit) {
-      this.ground[i] = NaN;
-      this.walkable[i] = 0;
-      return;
-    }
-    const groundY = NAV.topMetres - hit.timeOfImpact;
-    this.ground[i] = groundY;
-    // A slope steeper than maxSlope is not walkable: the ground normal tips
-    // away from up.
-    if (hit.normal.y < this.cosMaxSlope) {
-      this.walkable[i] = 0;
-      return;
-    }
-    // The agent's shape with its feet raised by the step height, so a step the
-    // character controller walks up (maxStep) does not read as a wall, while
-    // the capsule's lower part still hits anything taller. Standing on a slope
-    // inside maxSlope leaves the raised shape clear, because its bottom is
-    // above the ground it stands on.
-    const y = groundY + NAV.maxStepMetres + NAV.agentHeightMetres / 2;
-    let blocked = false;
-    this.world.intersectionsWithShape(
-      { x, y, z }, ZERO_ROT, this.shape,
-      () => {
-        blocked = true;
-        return false;
+    this.world.intersectionsWithRay(
+      this.ray, this.rayLength, true,
+      (hit) => {
+        // Reuse a preallocated slot: a bake runs over every cell, and a
+        // fresh object per hit per cell is garbage the frame does not need.
+        const n = this.hitCount++;
+        const slot = hits[n];
+        const y = NAV.topMetres - hit.timeOfImpact;
+        if (slot) {
+          slot.y = y;
+          slot.ny = hit.normal.y;
+        } else {
+          hits.push({ y, ny: hit.normal.y });
+        }
+        return true;
       },
       SKIP, SOLID_QUERY_GROUPS,
     );
-    this.walkable[i] = blocked ? 0 : 1;
+    const base = i * this.maxLayers;
+    this.layers[i] = 0;
+    this.walkable[i] = 0;
+    if (this.hitCount === 0) {
+      this.ground[i] = NaN;
+      return;
+    }
+    // The surfaces an agent could stand on, lowest first: a slope steeper than
+    // maxSlope is not one (its normal tips away from up), but it is skipped
+    // rather than ending the cell, because the floor under a steep face is
+    // still floor. Rapier promises no order.
+    const cand = this.cand;
+    cand.length = 0;
+    for (let h = 0; h < this.hitCount; h++) {
+      const hit = hits[h]!;
+      if (hit.ny >= this.cosMaxSlope) cand.push(hit.y);
+    }
+    cand.sort((a, b) => a - b);
+    for (let k = 0; k < cand.length && this.layers[i]! < this.maxLayers; k++) {
+      const y0 = cand[k]!;
+      // A surface swallowed by one within a step of it is not a floor of its
+      // own: the floor under a 0.3 m step is the step's footprint, and the
+      // agent stands on the step. An overhang is high above that (the Pit's
+      // ring is 3 m up), so the floor under it stays a floor (BUG-01).
+      const above = cand[k + 1];
+      if (above !== undefined && above - y0 < NAV.maxStepMetres) continue;
+      // The agent's shape with its feet raised by the step height, so a step
+      // the character controller walks up (maxStep) does not read as a wall,
+      // while the capsule's lower part still hits anything taller. Standing on
+      // a slope inside maxSlope leaves the raised shape clear, because its
+      // bottom is above the ground it stands on.
+      // The epsilon keeps a step exactly maxStep tall clear of the shape:
+      // touching counts as intersecting.
+      const y = y0 + NAV.maxStepMetres + NAV.agentHeightMetres / 2 + 1e-3;
+      let blocked = false;
+      this.world.intersectionsWithShape(
+        { x, y, z }, ZERO_ROT, this.shape,
+        () => {
+          blocked = true;
+          return false;
+        },
+        SKIP, SOLID_QUERY_GROUPS,
+      );
+      if (blocked) continue;
+      const n = this.layers[i]!;
+      this.layerY[base + n] = y0;
+      this.layers[i] = n + 1;
+      if (n === 0) {
+        this.ground[i] = y0;
+        this.walkable[i] = 1;
+      }
+    }
+    if (this.layers[i]! > 0) return;
+    // Nothing the agent fits on down the ray: keep the highest up-facing
+    // surface so the cell still reads a height (a wall's top), unwalkable.
+    this.ground[i] = cand.length === 0 ? hits[0]!.y : cand[cand.length - 1]!;
   }
-
   // ---- grid helpers -----------------------------------------------------
 
   /** Index of the cell holding (x, z), or -1 outside the grid. */
@@ -249,11 +400,12 @@ export class NavGrid {
     return r * this.cols + c;
   }
 
-  /** The walkable cell nearest `cell` within a few cells of it, or -1.
+  /** The walkable node nearest `cell` within a few cells of it, or -1.
    *  Nearest by cell centre distance, searched in rings so a wall beside the
-   *  agent does not win over free floor a cell further out, and only cells on
+   *  agent does not win over free floor a cell further out, and only nodes on
    *  the agent's own level (`nearGround`, +/- maxStep): a cell on top of the
-   *  wall it is leaning against is not a step it can take. */
+   *  wall it is leaning against, or the ring over its head, is not a step it
+   *  can take. */
   private nearestWalkable(cell: number, nearGround: number): number {
     if (cell < 0) return -1;
     const cx = cell % this.cols;
@@ -266,12 +418,12 @@ export class NavGrid {
         for (let c = cx - ring; c <= cx + ring; c++) {
           if (c < 0 || c >= this.cols) continue;
           const i = r * this.cols + c;
-          if (this.walkable[i] !== 1) continue;
-          if (Math.abs(this.ground[i]! - nearGround) > NAV.maxStepMetres) continue;
+          const node = this.nodeNear(i, nearGround);
+          if (node < 0) continue;
           const d = (c - cx) ** 2 + (r - cz) ** 2;
           if (d < bestD) {
             bestD = d;
-            best = i;
+            best = node;
           }
         }
       }
@@ -280,32 +432,60 @@ export class NavGrid {
     return -1;
   }
 
-  /** Whether a step between two cells is walkable: both stand-able, and a
-   *  ground change no taller than maxStep. */
+  /** Whether a step between two nodes is walkable: the second stands-able,
+   *  and a height change no taller than maxStep.
+   *
+   *  A climb is capped at what the walk can autostep (BUG-01 round 2),
+   *  `nav.stepAutostepMetres`, not the bake's maxStep. The Pit's south ramp
+   *  rises half a metre per metre, so from the pit floor its east side is
+   *  0.19 m tall at one cell and 0.44 m at the next: under maxStep (0.45)
+   *  both were a legal step, and a Foamer sent up it walked into a side its
+   *  controller could not climb and stood at the foot for ever. With the
+   *  cap the tall crossing is refused and the path goes round to the foot.
+   *  A drop keeps maxStep: stepping off costs nothing (snap to ground). */
   private stepOk(a: number, b: number): boolean {
-    if (this.walkable[b] !== 1) return false;
-    const d = this.ground[b]! - this.ground[a]!;
-    return d <= NAV.maxStepMetres && d >= -NAV.maxStepMetres;
+    const bc = this.nodeCell(b);
+    if (b % this.maxLayers >= this.layers[bc]!) return false;
+    const ya = this.layerY[a]!;
+    const yb = this.layerY[b]!;
+    const d = yb - ya;
+    // Up is what the walk can autostep; down is the bake's own step, since a
+    // drop costs nothing to step off (snap to ground catches it).
+    if (d > NAV.stepAutostepMetres || d < -NAV.maxStepMetres) return false;
+    return true;
   }
 
-  /** Grid line of sight: every cell the segment crosses is walkable, and the
-   *  ground never steps more than maxStep between samples. */
-  private lineClear(ax: number, az: number, bx: number, bz: number): boolean {
+  /** Grid line of sight: every cell the segment crosses has a walkable layer
+   *  within maxStep of the one the line walked to in the cell before, and the
+   *  height never steps more than maxStep between samples. `fromY` is the
+   *  height the line starts at; without it the lowest layer is taken in the
+   *  first cell. With `toY` the line must also end within a step of it, so a
+   *  straight walk along the pit floor cannot claim to arrive on the ring. */
+  private lineClear(
+    ax: number, az: number, bx: number, bz: number, fromY?: number, toY?: number,
+  ): boolean {
     const dx = bx - ax;
     const dz = bz - az;
     const dist = Math.hypot(dx, dz);
+    // Four samples per cell: at two, a short diagonal can slip between them
+    // and cross a cell the walk cannot enter (BUG-01 round 2: the Pit's ramp
+    // has one unwalkable cell at the foot of its side, and a leg crossed it
+    // without ever sampling it, so the pull sent Foamers into the wall).
     const steps = Math.ceil(dist / (this.cell * 0.5));
-    let prev = -1;
+    let h = fromY ?? NaN;
     for (let s = 0; s <= steps; s++) {
       const t = steps === 0 ? 0 : s / steps;
       const c = this.cellAt(ax + dx * t, az + dz * t);
-      if (c < 0 || this.walkable[c] !== 1) return false;
-      if (prev >= 0 && Math.abs(this.ground[c]! - this.ground[prev]!) > NAV.maxStepMetres) {
-        return false;
-      }
-      prev = c;
+      if (c < 0) return false;
+      const node = h === h ? this.nodeNear(c, h) : c * this.maxLayers;
+      if (node < 0 || node % this.maxLayers >= this.layers[c]!) return false;
+      const y = this.layerY[node]!;
+      // The same climb limit as a step between neighbours: a pull must not
+      // shortcut up a ledge the walk cannot autostep (BUG-01 round 2).
+      if (h === h && y - h > NAV.stepAutostepMetres) return false;
+      h = y;
     }
-    return true;
+    return toY === undefined || Math.abs(h - toY) <= NAV.maxStepMetres;
   }
 
   // ---- A* ---------------------------------------------------------------
@@ -314,7 +494,8 @@ export class NavGrid {
    * Fill `this.cells` with a cell path from start and return its length, or 0
    * if nothing was reached. With `best >= 0` the search may end anywhere and
    * the path stops at the cell closest to `best`: the fallback for a goal that
-   * is unwalkable or walled off. With `best < 0` it must reach `goal` exactly.
+   * is unwalkable or walled off, measured by `best` (a cell, whose layer the
+   *  search does not care about). With `best < 0` it must reach `goal`.
    */
   private astar(start: number, goal: number, best: number): number {
     const gen = ++this.gen;
@@ -325,9 +506,11 @@ export class NavGrid {
     this.g[start] = 0;
     this.parent[start] = -1;
     this.openStamp[start] = gen;
-    this.heapSet(start, this.heuristic(start, goal));
+    this.heapSet(
+      start, goal >= 0 ? this.heuristic(start, goal) : this.heuristicCell(start, best),
+    );
     let bestCell = start;
-    let bestD = this.heuristic(start, goal);
+    let bestD = goal >= 0 ? this.heuristic(start, goal) : this.heuristicCell(start, best);
     while (this.heapSize > 0) {
       if (best < 0 && this.heapKey[0]! >= Infinity) break;
       const cur = this.pop();
@@ -335,32 +518,39 @@ export class NavGrid {
       this.doneStamp[cur] = gen;
       if (cur === goal) return this.trace(cur);
       if (best >= 0) {
-        const d = this.heuristic(cur, best);
+        const d = goal >= 0 ? this.heuristic(cur, goal) : this.heuristicCell(cur, best);
         if (d < bestD) {
           bestD = d;
           bestCell = cur;
         }
       }
-      const cx = cur % this.cols;
-      const cz = Math.floor(cur / this.cols);
+      const curCell = this.nodeCell(cur);
+      const cx = curCell % this.cols;
+      const cz = Math.floor(curCell / this.cols);
       const gc = this.g[cur]!;
+      const cy = this.layerY[cur]!;
       for (let k = 0; k < 8; k++) {
         const nx = cx + DX[k]!;
         const nz = cz + DZ[k]!;
         if (nx < 0 || nx >= this.cols || nz < 0 || nz >= this.rows) continue;
-        const nb = nz * this.cols + nx;
-        if (this.doneStamp[nb] === gen || !this.stepOk(cur, nb)) continue;
+        const nb = this.nodeNear(nz * this.cols + nx, cy);
+        if (nb < 0 || this.doneStamp[nb] === gen || !this.stepOk(cur, nb)) continue;
         if (DIAG[k]) {
-          // No corner cutting: both cells the diagonal squeezes past.
-          if (!this.stepOk(cur, cz * this.cols + nx)) continue;
-          if (!this.stepOk(cur, nz * this.cols + cx)) continue;
+          // No corner cutting: both cells the diagonal squeezes past, at the
+          // height the step lands on either side.
+          const s1 = this.nodeNear(cz * this.cols + nx, cy);
+          const s2 = this.nodeNear(nz * this.cols + cx, cy);
+          if (s1 < 0 || s2 < 0 || !this.stepOk(cur, s1) || !this.stepOk(cur, s2)) continue;
         }
         const tentative = gc + (DIAG[k] ? this.cell * Math.SQRT2 : this.cell);
         if (this.openStamp[nb] === gen && tentative >= this.g[nb]!) continue;
         this.g[nb] = tentative;
         this.parent[nb] = cur;
         this.openStamp[nb] = gen;
-        this.heapSet(nb, tentative + this.heuristic(nb, goal));
+        this.heapSet(
+          nb, tentative +
+          (goal >= 0 ? this.heuristic(nb, goal) : this.heuristicCell(nb, best)),
+        );
       }
     }
     if (best < 0) return 0;
@@ -375,11 +565,22 @@ export class NavGrid {
     };
   }
 
-  /** Octile distance in metres, the 8-connected heuristic (never overestimates
-   *  because diagonals cost what they do). */
+  /** Octile distance in metres between two nodes' cells, the 8-connected
+   *  heuristic (never overestimates because diagonals cost what they do).
+   *  Layers are a real cost too: a node a storey up is that storey further
+   *  away, which keeps the search honest across the Pit's ring and floor. */
   private heuristic(a: number, b: number): number {
-    const dx = Math.abs((a % this.cols) - (b % this.cols));
-    const dz = Math.abs(Math.floor(a / this.cols) - Math.floor(b / this.cols));
+    return this.heuristicCell(a, this.nodeCell(b)) +
+      Math.abs(this.layerY[a]! - this.layerY[b]!);
+  }
+
+  /** Octile distance in metres from a node to a cell, layer ignored: the
+   *  distance part of the heuristic, and the whole of it when the search may
+   *  end anywhere (a fallback goal cell has no layer to measure to). */
+  private heuristicCell(node: number, cell: number): number {
+    const a = this.nodeCell(node);
+    const dx = Math.abs((a % this.cols) - (cell % this.cols));
+    const dz = Math.abs(Math.floor(a / this.cols) - Math.floor(cell / this.cols));
     const lo = Math.min(dx, dz);
     return (lo * Math.SQRT2 + (Math.max(dx, dz) - lo)) * this.cell;
   }
@@ -396,20 +597,30 @@ export class NavGrid {
     return n;
   }
 
-  /** String pull the cell path to the fewest waypoints, then write it to out. */
-  private pull(from: Point2, to: Point2, n: number, out: PathPoints): number {
+  /** String pull a node path to the fewest waypoints, then write it to out.
+   *  A pull shortcut has to clear the grid on the height of the node it
+   *  starts from, so a straight line along the ring is not pulled through
+   *  the pit floor under it. */
+  private pull(
+    from: Point2, to: Point2, fromY: number, toY: number, n: number, out: PathPoints,
+  ): number {
     const px = this.px;
     const pz = this.pz;
+    const py = this.py;
     for (let i = 0; i < n; i++) {
-      const c = this.cells[i]!;
+      const node = this.cells[i]!;
+      const c = this.nodeCell(node);
       px[i] = this.minX + ((c % this.cols) + 0.5) * this.cell;
       pz[i] = this.minZ + (Math.floor(c / this.cols) + 0.5) * this.cell;
+      py[i] = this.layerY[node]!;
     }
     // The agent goes to the exact points asked for, not the cell centres.
     px[0] = from.x;
     pz[0] = from.z;
+    py[0] = fromY;
     px[n - 1] = to.x;
     pz[n - 1] = to.z;
+    py[n - 1] = toY;
     const cap = out.xs.length;
     let count = 0;
     out.xs[count] = px[0]!;
@@ -418,7 +629,8 @@ export class NavGrid {
     let i = 0;
     while (i < n - 1 && count < cap) {
       let j = i + 1;
-      while (j + 1 < n && this.lineClear(px[i]!, pz[i]!, px[j + 1]!, pz[j + 1]!)) j++;
+      while (j + 1 < n &&
+        this.lineClear(px[i]!, pz[i]!, px[j + 1]!, pz[j + 1]!, py[i]!, py[j + 1]!)) j++;
       out.xs[count] = px[j]!;
       out.zs[count] = pz[j]!;
       count++;

@@ -6,6 +6,21 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-01 done 2026-11-05 (round 2, after a review found round 1 had traded one
+bug for another): the Pit's ring tops are back in the nav grid, as a second
+layer over the floor under them, so both a player on the ring and a player
+under it are walked to at the right height. The ramp-side stall is fixed at
+its real cause: the grid promised 0.45 m steps but the Foamer's character
+controller only autosteps 0.2 m at its walking cadence, so a path that
+climbed the ramp's east side left it walking into a wall for ever. The
+sidestep guard is still there as a backstop and now forgets a Foamer that is
+not walking, and the walk builds the other-Foamers set once per frame
+instead of once per Foamer. Played by Claude in
+`arena.html?watch` (ring, open floor, under the ring: all reached and
+attacked, the Roamers threw); merged 2026-11-05. Still to watch: the
+sidestep's look, and whether the 0.2 m climb cap makes another level's step
+read as too tall to walk.
+
 GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
 (`telegraphSeconds`), locks its line at the player's position and runs at
 11 m/s for up to 18 m with no steering, staggers for 1.2 s when it hits a
@@ -151,6 +166,68 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: BUG-01 round 2 review, both Pit spots played (Claude)
+
+- Played `arena.html?watch` on the branch (port 5191):
+  - Player on ring-s at (0, 4, -11.5), wave 1: all three F01s climbed
+    ramp-s (one on the ring by 25 s), walked the ring and hit the player
+    (health 100 to 88).
+  - Player on open floor at (0, 0, -4), the wave 2 mix (3 F01, 2 F02):
+    the F01s closed and attacked, the F02s threw 24 balls in 30 s (14 hit).
+  - Player under the ring at (0, 0, -11): the F01s walked in at floor
+    level and attacked, the F02s threw 25 balls (17 hit). No console errors.
+- Rebaking an 8 x 8 m area takes about 2.5 ms (2.4 us a cell), so a
+  carve-sized rebake stays well under a millisecond.
+- Fixed: the `stepOk` comment described edge sampling the code does not
+  do; it now describes the autostep cap, which is the real fix.
+- Worth Paul's eye: the Foamer controller now autosteps 0.2 m, not 0.3 m,
+  and the steering's waypoint skip fell from 0.5 m to 0.1 m. Neither
+  showed a problem in the Pit, but watch for Foamers balking at a
+  0.2 to 0.3 m step on other levels, or jittering at path corners.
+
+### 2026-11-05: BUG-01 round 2, the ring's top and the real ramp stall (DeepSeek V4.1 Flash via Pi)
+
+- Review finding R1: round 1's "lowest surface wins" bake threw the Pit's
+  ring tops away. `groundAt(0, -11)` was 0, not 4, so a player standing on
+  the ring drew an F01 that walked to the pit floor under the slab and
+  struck at nothing 4 m below. Fixed with a layered grid:
+  `src/ai/nav-grid.ts` keeps up to `nav.maxLayers` (2) walkable surfaces per
+  cell, lowest first, and A* runs on `(cell, layer)` nodes. `groundAt` and
+  `walkableAt` take an optional height and pick the nearest layer (no height
+  still means the lowest, so old callers and tests are unchanged).
+  `findPath` takes the agent's and the goal's feet height; the pages pass
+  `player.eye - player.eyeHeight`, since `player.eye(1, ...)` is feet plus
+  1.6 m. The agent re-paths when the goal's height moves more than 0.5 m.
+- The bake is still allocation free: the ray hits reuse preallocated slots.
+- Review finding R2, the ramp-side stall, is the character controller's
+  autostep, not the string pull. Measured: at a Foamer's 1 m/s and 60 fps
+  (a 0.017 m frame move) Rapier autosteps a 0.2 m rise but not 0.25 m, no
+  matter what `maxHeight` is set to, because the autostep needs room ahead of
+  the capsule that a small step does not give it. The grid called any rise up
+  to 0.45 m a step, and the south ramp's east side is 0.44 m from the floor
+  at the next cell, so A* and the pull both routed through it. `nav` gained
+  `stepAutostepMetres` (0.2), and `stepOk`, `nodeNear` and `lineClear` cap a
+  climb with it; a drop still uses `maxStepMetres`. `steer`'s waypoint skip
+  also fell from 0.5 m to 0.1 m: at 0.5 m the walk cut the dogleg at the
+  ramp's foot and went into the side again.
+- Review finding R3: the stall guard drops a Foamer's entry when it is not
+  walking its path (so a Foamer that held its ring does not sidestep the
+  moment it walks again) and in `removeFoamer`. The walk builds the set of
+  every Foamer body once per `update` instead of once per Foamer, and the
+  old `others` set is gone (the predicate reads `allBodies` directly).
+- Tests added: `tests/ai/pit-foamers.test.ts` now has the ring's-top lookup
+  and a Foamer that walks the ramp up to a player standing on ring-s;
+  `tests/ai/stall.test.ts` has the guard's memory (entry dropped on remove,
+  entry dropped when not walking a path).
+- The card asked for the ring test to pass within 25 s. It takes about 35 s:
+  the only route up is the south ramp, which makes the walk about 28 m, and
+  an F01 walks 1 m/s. The test uses 45 s and says why in a comment. It is on
+  the ring by second 25 and reaches the player at about 35.
+- Not checked by eye (no browser here): the ring route on
+  `arena.html?watch`, whether the Foamer now prefers the ramp visually, the
+  sidestep's look, and whether the 0.2 m climb cap makes any other level's
+  step look too tall to walk. Nothing visual was run.
+
 ### 2026-11-05: BUG-01 round 2 sent back; GAME-06 and GAME-08 cards queued (Claude)
 
 - BUG-01 review: round 1 is not mergeable. The lowest-surface bake drops
@@ -225,9 +302,7 @@ GitHub folder) on its own port; `preview_start` it and drive
   flakes under load; rerun alone.
 
 **Jobs remaining, in order.**
-1. Review `bug-01` (DeepSeek, 3 commits, BUG-01 Pit stall; not yet
-   reviewed: check the two-level nav grid, that the probe tests are gone,
-   and the stall is fixed in the Pit), then ask Paul to merge.
+1. Done 2026-11-05: BUG-01 reviewed (two rounds) and merged.
 2. Ask Paul to merge `game-04b` (parry, GAME-04 stage 2, reviewed: one
    clean parry seen; main already merged in) and `anim-01` (ANIM-01
    throw and charge poses, reviewed by key frames). They conflict with
@@ -247,6 +322,39 @@ shield's name and look, and whether the lowered disc should sit lower
 (it fills the lower left); the content plan review (1-2 blaster clash,
 act settings and accent colours, the "Foam Demon" working name, level
 names such as the ring's).
+
+### 2026-11-04: BUG-01, two Pit stalls fixed (DeepSeek V4.1 Flash via Pi)
+
+- Cause 1, the overhang: `src/ai/nav-grid.ts` baked a cell from the first
+  surface a ray from above met, so the floor under the Pit's ring baked as
+  the ring's top at y 4. A player standing underneath was pathed to 4 m up
+  and the Foamers walked at the ramp instead. `bakeCell` now collects every
+  surface, keeps the up-facing ones, sorts them low to high and takes the
+  first that is not swallowed by a surface within `nav.maxStepMetres` above
+  it and that leaves the agent's capsule shape clear. A wall still bakes as
+  its own top, so the step, ledge, slope and wall tests are unchanged.
+- Cause 2, the clump: every Foamer's movement capsule is a world-group
+  member (darts and aim skip it by its own bit), so two Foamers pressed
+  together each asked the character controller to walk into the other and it
+  cancelled both steps. Wave 2 spawns from one rift, so the whole front rank
+  froze. The walk now ignores the other Foamers' root and part bodies by
+  handle. Note for next time: a character-controller filter predicate may not
+  read `collider.contactGroups`/`shape` or its parent, it must use
+  `collider.handle` / `collider.parent()?.handle`; anything else throws
+  inside the query and is silently ignored.
+- Guard: a Foamer whose path stops making progress now sidesteps for a
+  moment and tries again, so a Foamer can never be frozen for long by
+  something the bake cannot see (a wall built after the bake, a body parked
+  in a doorway). Numbers in `data/ai.json` `steer`.
+- Tests: `tests/ai/pit-foamers.test.ts` (floor under both rings, a Foamer
+  walks under the ring), `tests/ai/pit-wave.test.ts` (a five strong wave on
+  one rift engages), `tests/ai/pit-ramp-side.test.ts` (the card's recorded
+  spots against ramp-s), `tests/ai/stall.test.ts` (no more than 2 s still
+  while walking). All four fail on the unfixed code.
+- Unverified by eye: everything visual. Nothing was run in a browser here.
+- Also dropped: the half-finished two-levels-per-cell nav rewrite from a
+  previous session (12 tests failing); the lowest-surface rule does the job
+  with the existing tests intact.
 
 ### 2026-11-04: GAME-10b review, Darters played in the ring, merged (Claude)
 
