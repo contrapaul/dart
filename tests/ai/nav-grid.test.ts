@@ -40,6 +40,26 @@ function grid(world: RAPIER.World, half = 20) {
   return new NavGrid(RAPIER, world, { minX: -half, maxX: half, minZ: -half, maxZ: half });
 }
 
+/** A slab whose top face rises `rise` metres from (x, z0) to (x, z1), `thick`
+ *  metres, as build.ts draws a ramp: a box turned about x whose top is that
+ *  plane. LVL-02d: the way up each storey of the tower is one of these. */
+function ramp(
+  world: RAPIER.World, width: number, thick: number,
+  x: number, z0: number, z1: number, y0: number, rise: number,
+) {
+  const run = z1 - z0;
+  const theta = Math.atan2(rise, run);
+  const len = Math.hypot(run, rise);
+  const cy = y0 + rise / 2 - (thick / 2) * Math.cos(theta);
+  const cz = (z0 + z1) / 2 + (thick / 2) * Math.sin(theta);
+  return box(world, width / 2, thick / 2, len / 2, x, cy, cz, -theta);
+}
+
+/** The cell index of a world point, for reading `layers` and `layerY`. */
+function cellOf(g: NavGrid, x: number, z: number): number {
+  return Math.floor((z - g.minZ) / g.cell) * g.cols + Math.floor((x - g.minX) / g.cell);
+}
+
 /** Is any waypoint of the path within `tol` of the segment x = x0, z in [z0, z1]? */
 function everyWaypoint(path: ReturnType<typeof makePath>, fn: (x: number, z: number) => void) {
   for (let i = 0; i < path.count; i++) fn(path.xs[i]!, path.zs[i]!);
@@ -213,6 +233,74 @@ describe("NavGrid bake", () => {
     g.rebake(-1.5, -1.5, 1.5, 1.5);
     expect(g.groundAt(0, 0), "re-baked: the box's top").toBeCloseTo(2, 2);
     expect(g.groundAt(10, 10), "not re-baked: still the old ground").toBeCloseTo(0, 2);
+  });
+
+  // LVL-02d: the tower is four floors over one footprint, so one cell must
+  // hold four stand-able surfaces, not the two BUG-01 round 2 needed for the
+  // Pit's ring. nav.maxLayers is the cap.
+  it("bakes four layers in one cell, capped, for floors stacked 3 m apart", () => {
+    const world = makeWorld();
+    // Five 4 m slabs directly above one another, 3 m apart: the cell holds
+    // nav.maxLayers of them, lowest first, and the fifth proves the cap.
+    for (const top of [0, 3, 6, 9, 12]) {
+      box(world, 2, 0.25, 2, 0, top - 0.25, 0);
+    }
+    const g = grid(world);
+    g.bake();
+    const i = cellOf(g, 0, 0);
+    expect(g.layers[i]).toBe(NAV.maxLayers);
+    expect(g.walkable[i]).toBe(1);
+    expect(g.ground[i]).toBeCloseTo(0, 3);
+    for (let k = 0; k < NAV.maxLayers; k++) {
+      expect(g.layerY[i * NAV.maxLayers + k]).toBeCloseTo(k * 3, 3);
+    }
+    // A reader that asks for the layer near its feet gets that storey; one
+    // that does not care still reads the lowest.
+    expect(g.groundAt(0, 0)).toBeCloseTo(0, 3);
+    expect(g.groundAt(0, 0, 8.9)).toBeCloseTo(9, 3);
+    expect(g.walkableAt(0, 0, 6)).toBe(true);
+  });
+
+  it("paths from the bottom floor to the top floor up the stairs between them", () => {
+    const world = makeWorld();
+    floor(world);
+    // Four 8 x 9 m plates stacked 3 m apart (tops y 0, 3, 6, 9) over x 0..8,
+    // z 0..9, joined by a switchback stair in a shaft east of them (x 9..12):
+    // a foot bridge, two runs and a landing per storey. Each run rises about
+    // 0.15 m per cell, inside the autostep, so Foamers can walk it. Every
+    // junction is flush: a deck starts where the ramp's top ends, or a cell
+    // with no floor between them breaks the step rule.
+    for (const k of [0, 1, 2, 3]) {
+      box(world, 4, 0.25, 4.5, 4, 3 * k - 0.25, 4.5); // the storey's plate
+    }
+    for (const k of [0, 1, 2]) {
+      const y = 3 * k;
+      box(world, 1.5, 0.15, 0.4, 9.5, y - 0.15, 0.8); // foot bridge, x 8..11
+      ramp(world, 3, 0.3, 10.5, 1.2, 3.95, y, 1.64);
+      box(world, 1.5, 0.15, 0.775, 10.5, y + 1.64 - 0.15, 4.725); // landing
+      ramp(world, 3, 0.3, 10.5, 5.5, 8.8, y + 1.64, 1.36);
+      box(world, 1.5, 0.15, 0.4, 9.5, y + 3 - 0.15, 9.2); // deck onto the next plate
+    }
+    const g = grid(world);
+    g.bake();
+    for (const k of [0, 1, 2, 3]) {
+      expect(g.walkableAt(4, 4, 3 * k), `floor ${k + 1}`).toBe(true);
+    }
+    const out = makePath();
+    const n = g.findPath({ x: 4, z: 4 }, { x: 4, z: 4 }, out, 0, 9);
+    expect(n, "a path from floor 1 to floor 4").toBeGreaterThan(1);
+    for (let w = 0; w < out.count; w++) {
+      const x = out.xs[w]!;
+      const z = out.zs[w]!;
+      const feet = w === 0 ? 0 : g.groundAt(x, z, undefined);
+      expect(g.walkableAt(x, z, feet), `waypoint ${w} is walkable`).toBe(true);
+    }
+    // The route really climbs: some waypoint stands in the stair shaft.
+    let onStairs = false;
+    everyWaypoint(out, (x, z) => {
+      if (x > 8.5 && x < 12.5 && z > 0 && z < 9) onStairs = true;
+    });
+    expect(onStairs, "the path climbs the stairs, not a straight drop").toBe(true);
   });
 
   it("bakes a 40 by 40 m floor in under 150 ms and paths across it in under 2 ms", () => {
