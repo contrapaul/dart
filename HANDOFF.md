@@ -165,6 +165,25 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: BUG-01 round 2 review, both Pit spots played (Claude)
+
+- Played `arena.html?watch` on the branch (port 5191):
+  - Player on ring-s at (0, 4, -11.5), wave 1: all three F01s climbed
+    ramp-s (one on the ring by 25 s), walked the ring and hit the player
+    (health 100 to 88).
+  - Player on open floor at (0, 0, -4), the wave 2 mix (3 F01, 2 F02):
+    the F01s closed and attacked, the F02s threw 24 balls in 30 s (14 hit).
+  - Player under the ring at (0, 0, -11): the F01s walked in at floor
+    level and attacked, the F02s threw 25 balls (17 hit). No console errors.
+- Rebaking an 8 x 8 m area takes about 2.5 ms (2.4 us a cell), so a
+  carve-sized rebake stays well under a millisecond.
+- Fixed: the `stepOk` comment described edge sampling the code does not
+  do; it now describes the autostep cap, which is the real fix.
+- Worth Paul's eye: the Foamer controller now autosteps 0.2 m, not 0.3 m,
+  and the steering's waypoint skip fell from 0.5 m to 0.1 m. Neither
+  showed a problem in the Pit, but watch for Foamers balking at a
+  0.2 to 0.3 m step on other levels, or jittering at path corners.
+
 ### 2026-11-05: BUG-01 round 2, the ring's top and the real ramp stall (DeepSeek V4.1 Flash via Pi)
 
 - Review finding R1: round 1's "lowest surface wins" bake threw the Pit's

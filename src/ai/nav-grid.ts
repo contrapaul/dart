@@ -435,17 +435,14 @@ export class NavGrid {
   /** Whether a step between two nodes is walkable: the second stands-able,
    *  and a height change no taller than maxStep.
    *
-   *  A step that changes height is sampled between the two cell centres
-   *  (BUG-01 round 2). Comparing the centres alone is not enough: the climb
-   *  happens at the edge between them, and a ramp's side face is taller
-   *  there than at the far centre. The Pit's south ramp rises half a metre
-   *  per metre, so from the pit floor its east side is 0.19 m tall at one
-   *  cell and 0.44 m at the next: the centres were a legal step either way,
-   *  and a Foamer sent up it walked into a wall its controller could not
-   *  climb and stood at the foot for ever. Requiring the ground along the
-   *  climb to stay within maxStep of the height walked at rejects the tall
-   *  crossing and keeps the short one. Flat steps are not sampled, so open
-   *  floor costs nothing extra. */
+   *  A climb is capped at what the walk can autostep (BUG-01 round 2),
+   *  `nav.stepAutostepMetres`, not the bake's maxStep. The Pit's south ramp
+   *  rises half a metre per metre, so from the pit floor its east side is
+   *  0.19 m tall at one cell and 0.44 m at the next: under maxStep (0.45)
+   *  both were a legal step, and a Foamer sent up it walked into a side its
+   *  controller could not climb and stood at the foot for ever. With the
+   *  cap the tall crossing is refused and the path goes round to the foot.
+   *  A drop keeps maxStep: stepping off costs nothing (snap to ground). */
   private stepOk(a: number, b: number): boolean {
     const bc = this.nodeCell(b);
     if (b % this.maxLayers >= this.layers[bc]!) return false;
