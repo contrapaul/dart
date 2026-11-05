@@ -182,9 +182,11 @@ describe("Shield throw (ricochet, return, block again)", () => {
     const struck = throwAndCatch(g, f);
     expect(struck[0]).toBe(f);
     // After the catch the stagger has long ended (the flight home is
-    // seconds), so check the wobble state during it in test 4's terms:
-    // the total health cost is exactly the data's per-hit damage.
-    expect(f.health).toBeCloseTo(hp0 - T.throw.damage, 5);
+    // seconds), so check the wobble state during it in test 4's terms.
+    // GAME-04c: the disc now lodges and grinds the Foamer before the
+    // ricochet, so the total cost is the throw's damage plus the grind's
+    // ticks; the saw's own tests (tests/player/saw.test.ts) pin that.
+    expect(f.health).toBeLessThan(hp0 - T.throw.damage + 1e-6);
   });
 
   it("3. the disc returns and blocking works again after the catch", async () => {
