@@ -10,6 +10,13 @@
   "maxTargets": 3,
   "carveRadius": 0.09,
   "debrisMax": 4,
+  "look": {
+    "_note": "the placeholder baton (code-built, toy colours, [Paul]'s look to come): camera-space placement, the handle in metres, the foam ball on top, and how far the blaster dips out of the way at the swing's middle.",
+    "position": [0.34, -0.3, -0.7],
+    "handle": { "length": 0.5, "radius": 0.03, "color": "#ff8a3d" },
+    "ball": { "radius": 0.075, "color": "#fff6e8" },
+    "dip": 0.28
+  },
   "bash": {
     "damage": 0.5,
     "push": 0.5,

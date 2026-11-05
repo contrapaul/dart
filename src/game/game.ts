@@ -20,6 +20,7 @@ import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
 import { Melee } from "./melee";
+import { MeleeView } from "./meleeView";
 import inputJson from "../../data/input.json";
 import { makeLevelAI, type LevelAI } from "../ai/level";
 import type { NavBounds } from "../ai/nav-grid";
@@ -246,6 +247,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // GAME-06: melee weapon 1 and its charges. It reads the shield's public
   // state only (raised, charging, parries): GAME-04c owns that module.
   const melee = new Melee(rapier, world, foamers, debris, voxelTargets, player.collider);
+  // The placeholder baton's sweep, and the blaster dip that goes with it.
+  const meleeView = new MeleeView(camera);
   /** What the last watch swing() press did (null: nothing swung). */
   let lastSwing: number | null = null;
   pickups.onCollected = (kind, pos) => {
@@ -412,9 +415,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     {
       completeOpen: h.completeOpen,
       overlayAllowed: h.overlayAllowed,
-      onRestart: () => { shield.reset(); melee.reset(); h.onRestart?.(); },
-      onTryAgain: () => { shield.reset(); melee.reset(); h.onTryAgain?.(); },
-      onPlayAgain: () => { shield.reset(); melee.reset(); h.onPlayAgain?.(); },
+      onRestart: () => { shield.reset(); melee.reset(); meleeView.reset(); h.onRestart?.(); },
+      onTryAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); h.onTryAgain?.(); },
+      onPlayAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); h.onPlayAgain?.(); },
     },
   );
   game.ui = ui;
@@ -450,8 +453,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         if (!shield.charging) {
           player.update(dt, input);
           // Melee: a finishable Foamer in reach and in the view is
-          // finished. When none is, the key stays for the page's old
-          // behaviour (the course's debug blast).
+          // finished. GAME-06: with none finishable the press is the
+          // weapon's (the card's key order); the course's debug blast has
+          // its own binding now.
           if (input.wasPressed("melee")) {
             const eye = player.eye(1, _playerPos);
             const fwd = camera.getWorldDirection(_aimDir);
@@ -474,6 +478,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
               const me = melee.press(eye, fwd, shield);
               lastSwing = me.swung;
               if (me.swung !== null) audio.play(me.swung < 0 ? "ML-bash" : "ML-swing");
+              if (me.swung !== null && me.swung >= 0) meleeView.swing(me.swung);
               if (me.empty) audio.play("ML-empty");
               for (const f of me.hits) audio.play("ML-hit", { position: f.centre });
               for (const p of me.carved) audio.play("DT-carve", { position: p });
@@ -587,6 +592,16 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
+    // GAME-06: the baton's sweep, and the blaster dipped out of its way.
+    // Applied after loadout.render, whose own dip only runs during a
+    // blaster switch (a swing cannot fire, so the two rarely overlap).
+    meleeView.render(dt);
+    if (meleeView.dip !== 0) {
+      // Same shape as Loadout.render's own dip call (setDip is not on the
+      // LoadoutViewmodel interface).
+      const vm = loadout.activeViewmodel as Partial<typeof loadout.activeViewmodel> & { setDip?(y: number): void };
+      vm.setDip?.(meleeView.dip);
+    }
     hud.setAmmo(loadout.active, loadout.active.state);
     hud.setHealth(health.hp, health.max);
     // GAME-07: the prompt by the crosshair, with the bound key's label.

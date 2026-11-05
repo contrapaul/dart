@@ -6,6 +6,15 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-06 done 2026-11-05: melee weapon 1 (M01, name [Paul]) swings on the
+melee key after the finisher passed on the press: a three-hit combo that
+spends charges (three, one back per parry, one back every 8 s below full,
+full at start and retry), hit 3 staggers and knocks back, each hit carves
+foam cover, and with no charge a press is the shield bash. `data/melee.json`
+holds every number; the course's debug blast moved to KeyB. Not checked by
+eye: the baton's sweeps and the blaster dip, the feel, the sounds, the
+pips' placement (see the Log entry).
+
 BUG-01 done 2026-11-05 (round 2, after a review found round 1 had traded one
 bug for another): the Pit's ring tops are back in the nav grid, as a second
 layer over the floor under them, so both a player on the ring and a player
@@ -185,6 +194,60 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-05: GAME-06 done: melee weapon 1 M01, the combo, the bash, the charges (Qwen 3.8 Flash Next via Pi, dgx-spark)
+
+- New `src/game/melee.ts` (`Melee`) owns the combo, the charges and the hit
+  query; `data/melee.json` owns every number (active id `M01`, `weapons`
+  map so weapons 2 and 3 are data plus small code later). Three charges:
+  each press within `comboWindow` (0.6 s) swings the combo's next hit and
+  spends one, a later press restarts at hit 1; each hit takes every Foamer
+  in reach (eye to chest), inside the 70-degree arc, in sight of the eye,
+  nearest first, at most `maxTargets` (3), through the existing
+  `parryDamage`; hit 3 staggers (the existing stagger) and knocks back via
+  each Foamer's own `knockStep`; each hit carves a small foam sphere at the
+  contact through the dart carve path with its own debris cap. With no
+  charge a press is the shield bash (weak damage, a small push, no
+  stagger, its own cooldown, never nothing) plus the view's short shove
+  (`melee.kick` rides the camera climb with the shield's kicks). A parry
+  gives a charge back (reads the shield's `parries` only), and below full
+  one returns every `rechargeSeconds` (8); full at start and retry
+  (`melee.reset()` on the restart hooks). No swing while the disc is
+  raised or a charge runs; a swing with the disc thrown is fine. A running
+  swing blocks the blaster (`canFire` gains `!melee.swinging`).
+- Key order (PLAN 14): the finisher sees the press first, unchanged; with
+  none finishable the weapon takes it and the press is spent. The
+  course's debug blast (which had borrowed `melee`) moved to its own
+  binding `debugBlast` (KeyB, `data/input.json`, `src/core/input.ts`),
+  course page only.
+- Look: `src/game/meleeView.ts`, a code-built foam baton (orange handle,
+  cream foam ball, `look` block in `data/melee.json`) that sweeps L-to-R,
+  R-to-L, then overhead over `swingTime`, easing out; the blaster dips
+  out of the way (applied after `loadout.render`). The bash shows no
+  baton. [Paul]'s look to come.
+- HUD: `hud.meleePips(charges, max, pulse)`: three pips under the health
+  bar in `index.html` and `arena.html` (`#meleepips`); the newest full
+  one pulses on a refill. Sounds: placeholder synth recipes for
+  `ML-swing`, `ML-hit`, `ML-bash`, `ML-empty`, `ML-charge` in
+  `data/sounds.json` (rows in `design/SOUNDS.md`).
+- Watch: `swing()` (one melee press, one step; reports `{charges, swung}`;
+  `swung` is the hit index, -1 the bash, null nothing) and `state().melee`
+  (charges, max, combo step, swing and bash seconds left). `meleePress()`
+  is exported from `src/game/melee.ts` as the shared key-order helper the
+  finisher-first test uses.
+- Tests: `tests/game/melee.test.ts`, 9 tests on a real Rapier world with
+  spawned Foamers and a carve wall: the combo steps and restarts, each
+  charged hit spends one charge and takes only Foamers in reach, arc and
+  sight at most maxTargets, hit 3 staggers and knocks back, the swing
+  gates the next press, the bash is weak and never staggers, parries and
+  the timer refill one at a time never past max, `reset` refills, the
+  raised/charging gate (thrown is fine), and the finisher takes the press
+  first. `npx tsc --noEmit`, `npx vitest run` (404 passed) and
+  `npm run build` pass.
+- Not checked by eye (no browser here): the swing look (baton sweeps and
+  the blaster dip), the feel (timing, the bash's shove), and the sounds.
+  The pips' placement relative to GAME-04c's shield area is my guess (the
+  pips sit under the health bar); Paul to judge.
 
 ### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
 
