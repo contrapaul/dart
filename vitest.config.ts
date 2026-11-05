@@ -1,18 +1,9 @@
-import { resolve } from "node:path";
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import viteConfig from "./vite.config";
 
-const rapierShim = resolve(import.meta.dirname, "src/physics/rapier-shim.ts");
-
-export default defineConfig({
-  resolve: {
-    alias: [
-      { find: "@dimforge/rapier3d-compat", replacement: rapierShim },
-      {
-        find: /^@dimforge\/rapier3d$/,
-        replacement: resolve(import.meta.dirname, "node_modules/@dimforge/rapier3d/rapier.js"),
-      },
-    ],
-  },
+// Vitest reads this file instead of vite.config.ts, so it merges that one
+// (the rapier aliases, OPS-02) rather than repeating it.
+export default mergeConfig(viteConfig, defineConfig({
   test: {
     server: {
       deps: {
@@ -22,4 +13,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

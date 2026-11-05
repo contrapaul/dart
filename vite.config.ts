@@ -18,6 +18,13 @@ export default defineConfig({
       { find: /^@dimforge\/rapier3d$/, replacement: rapier3d },
     ],
   },
+  // The dev server's dependency pre-bundler would put the Rapier glue in
+  // .vite/deps while its .wasm binding loads from node_modules: two module
+  // copies, and the one the game calls never gets the wasm instance (the
+  // page hung on Loading). Served as is, it stays one copy.
+  optimizeDeps: {
+    exclude: ["@dimforge/rapier3d"],
+  },
   build: {
     rollupOptions: {
       input: {

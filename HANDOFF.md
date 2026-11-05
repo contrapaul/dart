@@ -290,6 +290,30 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: OPS-02 review, the physics .wasm checked in a browser (Claude, overnight)
+
+- Qwen 27B's route is sound: `@dimforge/rapier3d` 0.21.0 behind a shim
+  that the compat name aliases to, so no import line changed. Main merged
+  in cleanly; tsc, 449 tests and the build pass.
+- Fixed in review: (1) the dev server hung on Loading. Vite's dependency
+  pre-bundler put the Rapier glue in `.vite/deps` while its .wasm binding
+  loaded from `node_modules`, two copies, and the one the game called had
+  no wasm instance (the same split the model found and fixed in Vitest;
+  curl could not see it). `optimizeDeps.exclude` keeps it one copy.
+  (2) The guard test threw on a fresh clone with no `dist/` instead of
+  skipping (`statSync` of a missing path throws); it uses `existsSync`
+  now. (3) `vitest.config.ts` repeated the aliases; it merges
+  `vite.config.ts` now, so the two cannot drift.
+- Played in the browser, dev server and `vite preview` of the build: the
+  Pit locks, Foamers spawn and go down to darts; the game, range and
+  sandbox pages load with no errors. In the build the .wasm is its own
+  file (3.0 MB raw, 1.19 MB gzip) and the game chunk is 223 kB (67 kB
+  gzip), down from 4.5 MB.
+- Not checked: the deployed site (Cloudflare serves `.wasm` as
+  `application/wasm` and compresses it; check after the push), and older
+  Safari (the build uses top-level await for the wasm import: Safari 15
+  and later).
+
 ### 2026-11-06: OPS-02, the physics WebAssembly as its own file (Qwen 3.8 27B via Pi)
 
 - Stage 1 (spike) succeeded, so the card proceeded to the guard test and

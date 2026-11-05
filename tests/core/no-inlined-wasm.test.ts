@@ -7,14 +7,10 @@
 // file is ts-nochecked for the same reason as tests/weapons/models.test.ts:
 // it reads Node's fs and Node types are not installed.
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// The game-sounds chunk used to be 4.5 MB because the Rapier WebAssembly was
-// inlined as base64 (OPS-02). This test scans every .js in dist/ for the
-// base64 of the .wasm magic number (AGFzbQ == \\0asm) and fails if any chunk
-// still carries it.
 describe("OPS-02: no inlined WebAssembly in chunks", () => {
   const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
   const dist = join(root, "dist");
@@ -30,7 +26,7 @@ describe("OPS-02: no inlined WebAssembly in chunks", () => {
 
   it("no .js file in dist/ contains AGFzbQ", () => {
     // Skip if there is no build yet (fresh clone, `npm test` before `npm run build`).
-    if (!statSync(join(root, "dist")).isDirectory()) return;
+    if (!existsSync(dist)) return;
     const offenders: string[] = [];
     for (const p of walk(dist)) {
       const text = readFileSync(p, "utf8");
