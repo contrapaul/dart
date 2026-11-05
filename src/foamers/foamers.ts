@@ -15,6 +15,7 @@ import { armourOf } from "./armour";
 import { chargeOf, type ChargeSpec } from "./charge";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
+import playerData from "../../data/player.json";
 import rigData from "../../data/foamer-rigs.json";
 import aiData from "../../data/ai.json";
 import { Director, type TokenKind } from "../ai/director";
@@ -135,6 +136,10 @@ const CRAWL_TURN = 0.5;
 /** The brain's data (ENG-08 stage 3). */
 const BRAIN = aiData.brain;
 const S = aiData.steer;
+/** The nav grid's own step limit: the walk autosteps exactly what the grid
+ *  promises, so a path never asks for a step the controller refuses
+ *  (BUG-01 round 2). */
+const NAV = aiData.nav;
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b),
  *  plus GAME-10a's "throw": the ball leaving the hand. */
@@ -222,7 +227,8 @@ export class FoamerSystem {
    *  steps, freezing a wave that spawned on one rift. The steering's
    *  separation keeps them apart instead, and it works with nothing to fight.
    *  Only the walk: a knockback still stops at another Foamer. */
-  private others = new Set<number>();
+  /** Every living Foamer's root and part bodies, built once per update. */
+  private readonly allBodies = new Set<number>();
   private respawn = SPAWNER.respawnDelay; // start full, so the first Foamer appears straight away
   private _wish = new THREE.Vector3();
   private _vel = new THREE.Vector3();
@@ -273,7 +279,7 @@ export class FoamerSystem {
       this.handleHit(hit);
     };
     this.cc = world.createCharacterController(0.02);
-    this.cc.enableAutostep(0.3, 0.2, false);
+    this.cc.enableAutostep(NAV.stepAutostepMetres, 0.2, false);
     this.cc.enableSnapToGround(0.3);
     this.losRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
   }
@@ -310,7 +316,8 @@ export class FoamerSystem {
         agentId,
       );
       f.agentInput = {
-        x: feet.x, z: feet.z, playerX: feet.x, playerZ: feet.z,
+        x: feet.x, y: feet.y, z: feet.z,
+        playerX: feet.x, playerY: feet.y, playerZ: feet.z,
         attackRange: spec.attackRange, lineOfSight: false,
         tookDamage: false, nearbyAlert: false,
         crawlInReach: false, keepToken: false,
@@ -350,6 +357,15 @@ export class FoamerSystem {
     if (this.director) {
       for (const f of this.list) if (f.state !== "down" && f.state !== "finish") this.bidAgent(f, player);
       this.director.update(dt);
+    }
+    // BUG-01: every Foamer body once per frame, not once per Foamer. The
+    // walk ignores them (see `allBodies`), and building the set inside the
+    // per-Foamer loop made it n squared times the parts, every frame.
+    this.allBodies.clear();
+    for (const o of this.list) {
+      if (o.state === "down") continue;
+      this.allBodies.add(o.root.handle);
+      for (const p of o.parts.values()) this.allBodies.add(p.body.handle);
     }
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
@@ -612,6 +628,13 @@ export class FoamerSystem {
       // the finisher owns the Foamer, it cannot keep stalking.
       ? f.state === "finish" || still ? false : this.brainMoving(f)
       : f.state === "approach" || crawling ? reach > this.engagementRange(f) : false;
+    // Only a Foamer walking its path has a progress window. Striding round
+    // its ring or winding up covers no ground along the path, and a stale
+    // entry would make it sidestep the moment it walked again, as if it had
+    // stalled all that time (BUG-01 round 2).
+    if (!moving || !f.agent || (f.agent.move !== "followPath" && f.agent.move !== "stand")) {
+      this.progress.delete(f);
+    }
     this._wish.set(0, 0, 0);
     if (moving) {
       const speed = crawling ? f.crawlSpeed() : f.speed();
@@ -637,15 +660,9 @@ export class FoamerSystem {
       // The capsule must not collide with the Foamer's own part bodies, nor
       // with the pieces it has just broken off and that are falling past it.
       this.own.clear();
-      this.others.clear();
       this.own.add(f.root.handle);
       for (const p of f.parts.values()) this.own.add(p.body.handle);
       for (const p of this.broken) if (p.owner === f) this.own.add(p.body.handle);
-      for (const o of this.list) {
-        if (o === f || o.state === "down") continue;
-        this.others.add(o.root.handle);
-        for (const p of o.parts.values()) this.others.add(p.body.handle);
-      }
       // The predicate runs inside the query, where the collider's body and
       // groups cannot be read back (Rapier refuses a nested borrow), so the
       // bodies are looked up by handle, which is safe there.
@@ -654,7 +671,7 @@ export class FoamerSystem {
         undefined, undefined,
         (c) => {
           const h = c.parent()?.handle ?? -1;
-          return !this.own.has(h) && !this.others.has(h);
+          return !this.own.has(h) && !this.allBodies.has(h);
         },
       );
       const moved = this.cc.computedMovement();
@@ -678,8 +695,12 @@ export class FoamerSystem {
     const a = f.agent!;
     const input = f.agentInput!;
     input.x = f.centre.x;
+    input.y = f.centre.y;
     input.z = f.centre.z;
     input.playerX = player.x;
+    // The player vector is the eye (pages pass eye(1), a metre up the body):
+    // the feet are that less what the eye sits above them.
+    input.playerY = player.y - playerData.eyeHeight;
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
@@ -712,8 +733,10 @@ export class FoamerSystem {
   private bidAgent(f: Foamer, player: THREE.Vector3) {
     const input = f.agentInput!;
     input.x = f.centre.x;
+    input.y = f.centre.y;
     input.z = f.centre.z;
     input.playerX = player.x;
+    input.playerY = player.y - playerData.eyeHeight;
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
@@ -1332,6 +1355,8 @@ export class FoamerSystem {
     // A Foamer removed while it still bids (clear(), or a despawn) leaves
     // nothing behind in the director's table.
     if (f.state !== "down") f.agent?.release("down");
+    // The stall guard holds a reference to the Foamer, so it goes with it.
+    this.progress.delete(f);
     this.lockRagdollForSink(f);
     const i = this.list.indexOf(f);
     if (i >= 0) this.list.splice(i, 1);
