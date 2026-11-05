@@ -151,6 +151,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: BUG-01 round 2 sent back; GAME-06 and GAME-08 cards queued (Claude)
+
+- BUG-01 review: round 1 is not mergeable. The lowest-surface bake drops
+  the ring top from the grid (both rings are slabs over open floor), so a
+  player on the ring draws Foamers under it; and the ramp-side stall is
+  only hidden (on main a Foamer chasing a player on the ring still freezes
+  at (-9.8, -2.1) beside ramp-s). Round 2 is in `tasks/BUG-01.md`: two
+  layers per cell from round 1's filter, the ramp-side cause, stall guard
+  fixes. DeepSeek V4.1 Flash (`openrouter deepseek/deepseek-v4.1-flash-1017`)
+  is running it on `bug-01`.
+- Model rules from Paul (2026-11-05): DeepSeek is that exact id; Kimi is on
+  hold for cost until a task needs it; qwen-machine and dgx-spark start only
+  when Paul says.
+- Queued for the local models, not started: `tasks/GAME-08.md` (the vacuum,
+  Qwen 27B) and `tasks/GAME-06.md` (melee weapon 1, Spark). Both start from
+  main after BUG-01, GAME-04b, ANIM-01 and LVL-02a merge. They can run at
+  the same time; they touch different modules but both edit the melee and
+  use block in `src/game/game.ts`, the HUD, `data/sounds.json` and the
+  docs, so the second to merge resolves those.
+
 ### 2026-11-05: START HERE, session handoff for Claude (Claude)
 
 Paul ended the long 2026-11-03/04 session to save usage. Read this, then
