@@ -6,6 +6,52 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-02 done 2026-11-06, awaiting review (`tasks/BUG-02.md`, Qwen 3.8-27B
+via Pi): the watch helper lands parries against a lobbed ball, and packs
+spawn on floor the grid says an agent can stand on. The parry's own unit
+tests pass and the shield is untouched: the fault was the helper's
+estimate. `parryNext()` asked straight-line distance over speed for a
+ball on a gravity loft, so the raise landed out of the parry window
+and the ball burst on the disc as a block (the six-try, zero-parry
+from the GAME-06 and GAME-04b reviews). Now it asks `timeToImpact`, a
+new shared pure function in `src/foamers/ball-time.ts` that steps a
+copy of the ball with the projectile's own gravity and the page's step
+and returns the step at which the flight segment reaches the player's
+capsule spine (the shape the projectile's own raycast meets; read from
+the eye minus `eyeHeight`, the page's own read). The helper waits that
+time minus the shield's `parryLead` and then holds: on the game page
+through `fixedStep`, on the range through the loop's own step (`parryWaitSec`),
+which the helper cannot call. No parry rule or number changed.
+`spawnPack()` now asks the grid before it places a member: a ring spot
+is used only if an agent of the grid's size can stand on it (a new
+canStandAt on the nav grid: the layer the feet sit near, autostep up,
+full step down; a block's top face is walkable and reads as a top, not
+a floor), and a blocked spot is stepped a few in along the angle
+(data `pack.inboundStepMetres` 0.5, `inboundSteps` 4) before the member
+is skipped (neither spawned nor counted, so a skipped member is
+neither a pack slot nor a ghost the next pack must budget against).
+Without a grid the placement is unchanged. The earlier `walkableAt`
+was not the right ask: it read the lowest layer without a height, so
+the Pit's central block called the column's top face a walkable floor.
+Tests: `tests/foamers/ball-time.test.ts` (the straight ball and the
+loft, read against the real `update` loop, within two steps; the old
+line estimate off by more than a step), `tests/shield/parry-next.test.ts`
+(the helper's own wait, raise, and a parry, not a block, plus the
+card's demonstration: the old distance-over-speed wait on a 20 m loft
+is out of the window by more than a window, so the old helper blocked),
+and `tests/foamers/pack-walkable.test.ts` (a block whole under a pack:
+nobody spawns and the skipped members simply are not there; a block
+off to a side: the full pack still arrives, stepped in past it, nothing
+standing on it) fails on the old placement. npx tsc --noEmit, npx
+vitest run, npm run build all pass; every touched file is free of em
+and en dashes.
+Not checked by eye: that `parryNext()` actually lands parries in the
+browser against a live Roamer, and what a skipped or stepped-in member
+looks like in the Pit (there is no browser here; the reviewer will
+check both against a page). The old-estimate line is demonstrated in
+the test: the old wait on a 20 m loft is out of the window by more
+than a window.
+
 OPS-02 done 2026-11-06, awaiting review (`tasks/OPS-02.md`, Qwen 3.8
 27B via Pi): the Rapier physics now ships as its own
 content-hashed `/assets/*.wasm` file instead of about 4.1 MB of base64
@@ -289,6 +335,43 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: BUG-02, the parry watch's timing and the pack's floor
+
+- The watch helper timed a loft by a line (Qwen 3.8-27B via Pi,
+  `tasks/BUG-02.md`, branch `bug-02`): `parryNext()` asked straight-line
+  distance over speed, the raise landed out of the parry window, and
+  the ball burst on the disc as a block. The fix is `timeToImpact` in
+  `src/foamers/ball-time.ts`, a shared pure function that steps a copy
+  of the ball with the projectile's own gravity and the page's step and
+  returns the step at which the flight segment reaches the player's
+  capsule spine (the shape the projectile's own raycast meets, read
+  from the eye minus `eyeHeight`). The helper waits that time minus the
+  shield's `parryLead` and then holds: through `fixedStep` on the game
+  page, through the loop's own step (`parryWaitSec`) on the range. No
+  parry rule or number changed.
+- The card's demonstration, shown in the test: the old
+  distance-over-speed wait on a 20 m loft misses the window by more
+  than a window, so the old helper would have blocked, not parried.
+- `spawnPack` asked the grid before it placed: a new `canStandAt` on
+  the nav grid (the layer the feet sit near, autostep up, full step
+  down; a bare `walkableAt` reads the top face of a block a floor, so
+  the Pit's central block is why a standability ask was needed), a
+  ring spot that fails is stepped a few in along the angle
+  (`pack.inboundStepMetres` 0.5, `pack.inboundSteps` 4 in `data/ai.json`), and
+  a member the steps cannot place is skipped: neither spawned nor
+  counted, and a skipped one is not a slot a later pack must budget
+  against. Without a grid the placement is unchanged.
+- New tests: `tests/foamers/ball-time.test.ts`,
+  `tests/shield/parry-next.test.ts`, `tests/foamers/pack-walkable.test.ts`
+  (the two pack rows fail on the old placement; verified).
+  Existing shield, projectile and pack tests unchanged and passing.
+- Not checked by eye: that the helper lands parries in the browser
+  (no browser on this machine; the reviewer will check against the
+  page), and the Pit's own pack near its central block. The helper's
+  walk itself is what the test walks: the range's rig, the page's
+  own flight, the page's own shield read, the helper's wait and its
+  hold, end to end at 60 Hz.
 
 ### 2026-11-06: OPS-02 review, the physics .wasm checked in a browser (Claude, overnight)
 
