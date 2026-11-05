@@ -85,10 +85,10 @@ function attackRange(spec: FoamerSpec, attack: { id: string } | null): number {
 
 /** The token pool a type's attacks draw from (data/foamers.json): the token
  *  of its first attack that declares one (a thrower throws with a ranged
- *  token). GAME-10a. */
+ *  token). GAME-10a. GAME-10d: a Swarmer nibbles on the swarm pool. */
 function tokenKindOf(spec: FoamerSpec): TokenKind {
   const t = spec.attacks.find((a) => a.token)?.token;
-  return (t === "ranged" ? "ranged" : "melee") as TokenKind;
+  return t === "ranged" || t === "swarm" ? t : "melee";
 }
 
 /** One fallen piece: a part and its children. One dynamic body carries one

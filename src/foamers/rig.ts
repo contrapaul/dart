@@ -37,6 +37,9 @@ export interface PartSpec {
   /** Rounded spikes out of an ellipsoid, one per direction (box
    *  coordinates). The ellipsoid shrinks to make room inside the box. */
   nubs?: [number, number, number][];
+  /** Paint the nubs another material (a spine colour on the body's own
+   *  material). Default: the part's material, as before. */
+  nubMaterial?: string;
   /** Two eyes on the +z face. true means "round". */
   eyes?: boolean | EyeStyle;
   /** Scale the painted eyes without changing the collision volume. */
@@ -51,6 +54,9 @@ export interface PartSpec {
   mouth?: "grin" | "gape";
   /** Scale a gaping mouth without changing the part's collision box. */
   gapeScale?: number;
+  /** Paint the mouth in another material: a grin's band, or a gape's back
+   *  wall. Default foam-ink, as before. */
+  mouthMaterial?: string;
   /** Paint the bottom `length` voxels (the muzzle of a barrel that hangs
    *  from its pivot) another material. */
   tip?: { material: string; length: number };
@@ -109,6 +115,8 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
   const white = materialId("foam-white");
   const ink = materialId("foam-ink");
   const tipMat = part.tip ? materialId(part.tip.material) : 0;
+  const nubMat = part.nubMaterial ? materialId(part.nubMaterial) : 0;
+  const mouthMat = part.mouthMaterial ? materialId(part.mouthMaterial) : ink;
   const baseMaterial = part.material ?? rigMaterial;
   const shagLight = part.shag ? materialId(`${baseMaterial}-light`) : 0;
   const cx = (sx - 1) / 2, cy = (sy - 1) / 2, cz = (sz - 1) / 2;
@@ -118,6 +126,17 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
     const l = Math.hypot(a, b, c) || 1;
     return [a / l, b / l, c / l];
   });
+
+  /** A voxel inside one of the ellipsoid's nubs (the rounded cones). */
+  const inNub = (dx: number, dy: number, dz: number): boolean => {
+    for (const [a, b, c] of nubs) {
+      const t = dx * a + dy * b + dz * c;
+      if (t <= 0 || t > 1) continue;
+      const px = dx - t * a, py = dy - t * b, pz = dz - t * c;
+      if (px * px + py * py + pz * pz <= ((1 - t) * 0.8) ** 2) return true;
+    }
+    return false;
+  };
 
   const inside = (x: number, y: number, z: number): boolean => {
     if (x < 0 || y < 0 || z < 0 || x >= sx || y >= sy || z >= sz) return false;
@@ -130,13 +149,7 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
         const ex = dx / ty, ez = dz / ty;
         const d2 = ex * ex + dy * dy + ez * ez;
         if (d2 <= core * core || (!!part.flatBottom && y < 2 && ex * ex + ez * ez <= core * core)) return true;
-        for (const [a, b, c] of nubs) {
-          const t = dx * a + dy * b + dz * c;
-          if (t <= 0 || t > 1) continue;
-          const px = dx - t * a, py = dy - t * b, pz = dz - t * c;
-          if (px * px + py * py + pz * pz <= ((1 - t) * 0.8) ** 2) return true;
-        }
-        return false;
+        return inNub(dx, dy, dz);
       }
       case "capsule": {
         // Along y: a cylinder with half-sphere ends of the box's radius.
@@ -213,12 +226,13 @@ export function buildPartVolume(volume: VoxelVolume, part: PartSpec, rigMaterial
           if (n === 0) mat = shagLight;
         }
         if (tipMat && y < part.tip!.length) mat = tipMat;
+        if (nubMat && mat === m && inNub((x - cx) / rx, (y - cy) / ry, (z - cz) / rz)) mat = nubMat;
         if (gape && inMouth(x, y) && z >= cz) {
           if (z > zf - 2) continue; // the open mouth
-          if (z > zf - 4) mat = ink; // its back wall
+          if (z > zf - 4) mat = mouthMat; // its back wall
         } else if (z >= cz && !inside(x, y, z + 1)) {
           if (eyes) mat = eyeAt(x, y) || mat;
-          if (part.mouth === "grin" && inMouth(x, y)) mat = ink;
+          if (part.mouth === "grin" && inMouth(x, y)) mat = mouthMat;
         }
         volume.set(x, y, z, mat);
       }
