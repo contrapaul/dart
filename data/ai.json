@@ -20,21 +20,27 @@
   "maxAgents": 64,
   "tokenCooldown": 0.4,
   "nav": {
-    "_note": "Walkable grid baked from the physics world (ENG-08 stage 2), not a navmesh: carves and falling pieces change the level every few seconds, and a grid re-bakes a small rectangle in well under a millisecond. cellMetres: side of one cell. topMetres: the bake casts down from this height to find the ground. maxSlopeDeg: a cell whose ground normal is steeper than this is not walkable. agentRadiusMetres and agentHeightMetres: the shape cast standing on a cell; a cell that hits anything with that shape is not walkable. maxStepMetres: the tallest step an agent walks up between neighbours. rebakeMarginMetres: a rectangle re-bake also redoes the cells this far outside it (one agent radius, so a change next to a cell is seen from that cell's shape cast). stringPull: simplify a path to the fewest waypoints when a straight line between two of them clears every cell it crosses.",
+    "_note": "Walkable grid baked from the physics world (ENG-08 stage 2), not a navmesh: carves and falling pieces change the level every few seconds, and a grid re-bakes a small rectangle in well under a millisecond. cellMetres: side of one cell. topMetres: the bake casts down from this height to find the ground. maxSlopeDeg: a cell whose ground normal is steeper than this is not walkable. agentRadiusMetres and agentHeightMetres: the shape cast standing on a cell; a cell that hits anything with that shape is not walkable. maxStepMetres: the tallest step an agent walks up between neighbours (and the spacing under which a surface counts as a step, not a second layer). maxLayers: the most walkable surfaces one cell can hold, lowest first: the Pit's ring hangs 3 m over pit floor, and both the floor and the ring top are places an agent can stand (BUG-01 round 2). rebakeMarginMetres: a rectangle re-bake also redoes the cells this far outside it (one agent radius, so a change next to a cell is seen from that cell's shape cast). stringPull: simplify a path to the fewest waypoints when a straight line between two of them clears every cell it crosses.",
     "cellMetres": 0.25,
     "topMetres": 8,
     "maxSlopeDeg": 40,
     "agentRadiusMetres": 0.35,
     "agentHeightMetres": 1.6,
     "maxStepMetres": 0.45,
+    "maxLayers": 2,
     "rebakeMarginMetres": 0.35,
-    "stringPull": true
+    "stringPull": true,
+    "stepAutostepMetres": 0.2
   },
   "steer": {
-    "_note": "Steering (ENG-08 stage 2), a pure function of position, path and neighbours. arriveRadiusMetres: inside this of the last waypoint the desired speed falls off to zero. separationMetres: two agents closer than this push apart. separationGain: the push speed per metre of overlap (1/s), so two agents touching at half the separation drift apart at about 0.7 m/s.",
+    "_note": "Steering (ENG-08 stage 2), a pure function of position, path and neighbours. arriveRadiusMetres: inside this of the last waypoint the desired speed falls off to zero. separationMetres: two agents closer than this push apart. separationGain: the push speed per metre of overlap (1/s), so two agents touching at half the separation drift apart at about 0.7 m/s. stallWindowSeconds and stallDistanceMetres: a walking Foamer that covers less than this distance in this long is stuck (a corner, another Foamer in the way, a path point inside a wall), and sidesteps for sidestepSeconds at sidestepShare of its speed instead of standing still (BUG-01).",
     "arriveRadiusMetres": 0.6,
     "separationMetres": 0.9,
-    "separationGain": 1.5
+    "separationGain": 1.5,
+    "stallWindowSeconds": 1.5,
+    "stallDistanceMetres": 0.2,
+    "sidestepSeconds": 0.5,
+    "sidestepShare": 0.8
   },
   "difficulties": {
     "story": {

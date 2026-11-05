@@ -32,7 +32,7 @@ function nextWaypoint(x: number, z: number, path: PathPoints): number {
   for (let i = 1; i < path.count; i++) {
     const dx = path.xs[i]! - x;
     const dz = path.zs[i]! - z;
-    if (dx * dx + dz * dz > 0.25) return i;
+    if (dx * dx + dz * dz > 0.01) return i;
   }
   return path.count - 1;
 }

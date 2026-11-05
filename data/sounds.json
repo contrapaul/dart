@@ -1007,6 +1007,67 @@
         ]
       }
     },
+    "SH-parry": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "refDistance": 4,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.02,
+              "freq": 900
+            },
+            "gain": 0.5
+          },
+          {
+            "tone": {
+              "dur": 0.12,
+              "f0": 320,
+              "f1": 880,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.1
+            },
+            "gain": 0.7
+          }
+        ]
+      }
+    },
+    "SH-parry-hit": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.06,
+      "maxVoices": 3,
+      "refDistance": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 1200,
+              "highpass": 80
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 200,
+              "f1": 90,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.08
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
     "SH-charge": {
       "files": [],
       "volume": 0.7,

@@ -6,7 +6,7 @@ import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
 import {
   restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion, finishMotion,
-  scrapeMotion, chargeMotion,
+  scrapeMotion, chargeMotion, wallStunMotion,
 } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
@@ -354,7 +354,7 @@ export class Foamer {
     const t = _target;
     if (this.state === "telegraph") scrapeMotion(this.rig, this.stateTime / (this.spec as { charge?: { telegraphSeconds: number } }).charge!.telegraphSeconds, t);
     else if (this.state === "charge") chargeMotion(this.rig, this.gait * 2, t);
-    else if (this.state === "wallStun") staggerMotion(this.stateTime, (this.spec as { charge?: { wallStunSeconds: number } }).charge!.wallStunSeconds, t);
+    else if (this.state === "wallStun") wallStunMotion(this.rig, this.stateTime, (this.spec as { charge?: { wallStunSeconds: number } }).charge!.wallStunSeconds, t);
     else if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
     else if (this.state === "stagger") staggerMotion(this.stateTime, this.staggerDuration(), t);
@@ -382,6 +382,7 @@ export class Foamer {
     m.y += (t.y - m.y) * k;
     m.pitch += (t.pitch - m.pitch) * k;
     m.roll += (t.roll - m.roll) * k;
+    m.turn = (m.turn ?? 0) + ((t.turn ?? 0) - (m.turn ?? 0)) * k;
     m.squash += (t.squash - m.squash) * k;
     for (const [id, r] of t.rot) {
       const cur = m.rot.get(id) ?? [0, 0, 0];

@@ -15,6 +15,7 @@ import { armourOf } from "./armour";
 import { chargeOf, type ChargeSpec } from "./charge";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
+import playerData from "../../data/player.json";
 import rigData from "../../data/foamer-rigs.json";
 import aiData from "../../data/ai.json";
 import { Director, type TokenKind } from "../ai/director";
@@ -134,6 +135,11 @@ const _losDir = new THREE.Vector3();
 const CRAWL_TURN = 0.5;
 /** The brain's data (ENG-08 stage 3). */
 const BRAIN = aiData.brain;
+const S = aiData.steer;
+/** The nav grid's own step limit: the walk autosteps exactly what the grid
+ *  promises, so a path never asks for a step the controller refuses
+ *  (BUG-01 round 2). */
+const NAV = aiData.nav;
 
 /** The Foamer one-shot events in the order the card names them (AUD-01 3b),
  *  plus GAME-10a's "throw": the ball leaving the hand. */
@@ -197,6 +203,32 @@ export class FoamerSystem {
   private cc: RAPIER.KinematicCharacterController;
   private targets: VoxelTarget[];
   private own = new Set<number>(); // root and part bodies for the stepped Foamer
+  /** BUG-01: per walking Foamer, where it was when the progress window
+   *  opened and how long is left of a sidestep. A Foamer that covers less
+   *  than the data's stallDistanceMetres in stallWindowSeconds is stuck
+   *  (a corner, a body in the way, a waypoint inside a wall), and sidesteps
+   *  instead of standing still. A downed Foamer is not walked, so it never
+   *  enters the map. */
+  private progress = new Map<Foamer, { x: number; z: number; t: number; side: number }>();
+  /** BUG-01: the walking Foamer's progress window, started fresh the first
+   *  time it is asked for. */
+  private progressOf(f: Foamer): { x: number; z: number; t: number; side: number } {
+    let st = this.progress.get(f);
+    if (!st) {
+      st = { x: f.centre.x, z: f.centre.z, t: this.time, side: 0 };
+      this.progress.set(f, st);
+    }
+    return st;
+  }
+
+  /** Root and part bodies of the other Foamers, which the stepped Foamer's
+   *  walk ignores (BUG-01): they are kinematic, so two pressed together each
+   *  ask the character controller to walk into the other and it cancels both
+   *  steps, freezing a wave that spawned on one rift. The steering's
+   *  separation keeps them apart instead, and it works with nothing to fight.
+   *  Only the walk: a knockback still stops at another Foamer. */
+  /** Every living Foamer's root and part bodies, built once per update. */
+  private readonly allBodies = new Set<number>();
   private respawn = SPAWNER.respawnDelay; // start full, so the first Foamer appears straight away
   private _wish = new THREE.Vector3();
   private _vel = new THREE.Vector3();
@@ -247,7 +279,7 @@ export class FoamerSystem {
       this.handleHit(hit);
     };
     this.cc = world.createCharacterController(0.02);
-    this.cc.enableAutostep(0.3, 0.2, false);
+    this.cc.enableAutostep(NAV.stepAutostepMetres, 0.2, false);
     this.cc.enableSnapToGround(0.3);
     this.losRay = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
   }
@@ -284,7 +316,8 @@ export class FoamerSystem {
         agentId,
       );
       f.agentInput = {
-        x: feet.x, z: feet.z, playerX: feet.x, playerZ: feet.z,
+        x: feet.x, y: feet.y, z: feet.z,
+        playerX: feet.x, playerY: feet.y, playerZ: feet.z,
         attackRange: spec.attackRange, lineOfSight: false,
         tookDamage: false, nearbyAlert: false,
         crawlInReach: false, keepToken: false,
@@ -324,6 +357,15 @@ export class FoamerSystem {
     if (this.director) {
       for (const f of this.list) if (f.state !== "down" && f.state !== "finish") this.bidAgent(f, player);
       this.director.update(dt);
+    }
+    // BUG-01: every Foamer body once per frame, not once per Foamer. The
+    // walk ignores them (see `allBodies`), and building the set inside the
+    // per-Foamer loop made it n squared times the parts, every frame.
+    this.allBodies.clear();
+    for (const o of this.list) {
+      if (o.state === "down") continue;
+      this.allBodies.add(o.root.handle);
+      for (const p of o.parts.values()) this.allBodies.add(p.body.handle);
     }
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
@@ -586,6 +628,13 @@ export class FoamerSystem {
       // the finisher owns the Foamer, it cannot keep stalking.
       ? f.state === "finish" || still ? false : this.brainMoving(f)
       : f.state === "approach" || crawling ? reach > this.engagementRange(f) : false;
+    // Only a Foamer walking its path has a progress window. Striding round
+    // its ring or winding up covers no ground along the path, and a stale
+    // entry would make it sidestep the moment it walked again, as if it had
+    // stalled all that time (BUG-01 round 2).
+    if (!moving || !f.agent || (f.agent.move !== "followPath" && f.agent.move !== "stand")) {
+      this.progress.delete(f);
+    }
     this._wish.set(0, 0, 0);
     if (moving) {
       const speed = crawling ? f.crawlSpeed() : f.speed();
@@ -614,10 +663,16 @@ export class FoamerSystem {
       this.own.add(f.root.handle);
       for (const p of f.parts.values()) this.own.add(p.body.handle);
       for (const p of this.broken) if (p.owner === f) this.own.add(p.body.handle);
+      // The predicate runs inside the query, where the collider's body and
+      // groups cannot be read back (Rapier refuses a nested borrow), so the
+      // bodies are looked up by handle, which is safe there.
       this.cc.computeColliderMovement(
         f.capsule, this._vel,
         undefined, undefined,
-        (c) => !this.own.has(c.parent()?.handle ?? -1),
+        (c) => {
+          const h = c.parent()?.handle ?? -1;
+          return !this.own.has(h) && !this.allBodies.has(h);
+        },
       );
       const moved = this.cc.computedMovement();
       if (this.cc.computedGrounded()) f.vy = 0;
@@ -640,8 +695,12 @@ export class FoamerSystem {
     const a = f.agent!;
     const input = f.agentInput!;
     input.x = f.centre.x;
+    input.y = f.centre.y;
     input.z = f.centre.z;
     input.playerX = player.x;
+    // The player vector is the eye (pages pass eye(1), a metre up the body):
+    // the feet are that less what the eye sits above them.
+    input.playerY = player.y - playerData.eyeHeight;
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
@@ -674,8 +733,10 @@ export class FoamerSystem {
   private bidAgent(f: Foamer, player: THREE.Vector3) {
     const input = f.agentInput!;
     input.x = f.centre.x;
+    input.y = f.centre.y;
     input.z = f.centre.z;
     input.playerX = player.x;
+    input.playerY = player.y - playerData.eyeHeight;
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
@@ -751,6 +812,35 @@ export class FoamerSystem {
       this.agentAgent.x = f.centre.x;
       this.agentAgent.z = f.centre.z;
       this.agentAgent.speed = speed;
+      // BUG-01: a walk that stops making progress sidesteps instead of
+      // standing still. A path point the character controller cannot reach
+      // (a step edge, a body in the way) otherwise pins a Foamer for as
+      // long as the path lasts, which is what the card saw beside the south
+      // ramp.
+      if (move === "followPath" && path.count > 0) {
+        const st = this.progressOf(f);
+        if (st.side > 0) {
+          st.side -= dt;
+          // Sideways across the way to the goal, so it clears whatever is
+          // in front. The side comes from the agent id, so two Foamers in
+          // one corner do not pick the same way and undo each other.
+          const gx = path.xs[path.count - 1]! - f.centre.x;
+          const gz = path.zs[path.count - 1]! - f.centre.z;
+          const gd = Math.hypot(gx, gz);
+          if (gd > 1e-4) {
+            const side = a.agentId % 2 === 0 ? 1 : -1;
+            const v = speed * S.sidestepShare * dt;
+            this._wish.set((gz / gd) * side * v, 0, (-gx / gd) * side * v);
+            return;
+          }
+        } else if (this.time - st.t >= S.stallWindowSeconds) {
+          const got = Math.hypot(f.centre.x - st.x, f.centre.z - st.z);
+          if (got < S.stallDistanceMetres) st.side = S.sidestepSeconds;
+          st.x = f.centre.x;
+          st.z = f.centre.z;
+          st.t = this.time;
+        }
+      }
       steer(this.agentAgent, path, this.neighbours, this._velXZ);
       this._wish.set(this._velXZ.x * dt, 0, this._velXZ.z * dt);
       return;
@@ -949,6 +1039,31 @@ export class FoamerSystem {
     // FX-stagger (SOUNDS.md 5.1): the wobble that tells the finisher is
     // open.
     sound(this, "stagger", f, f.centre);
+  }
+
+  /** GAME-04 stage 2: a hit that is not a dart or a part (the bounce-back ball).
+   *  Health and the finishable band as in the dart's damage, minus the
+   *  part break and the pop (a bounce is never a popping hit). */
+  parryDamage(f: Foamer, amount: number): void {
+    if (f.state === "down") return;
+    f.health -= amount;
+    f.addDamage(this.time, amount);
+    f.damageSinceStep = true;
+    sound(this, "wound", f, f.centre);
+    if (f.health <= 0) {
+      // The dart path's pop check uses the dart's types; a bounce can
+      // never pop, so it goes down like the dart's non-category hit.
+      this.goDown(f);
+      return;
+    }
+    if (
+      !f.finishWeakened && f.health > 0
+      && f.health <= f.spec.finisher.weakenShare * f.maxHealth
+      && !f.prone && f.state !== "finish"
+    ) {
+      f.finishWeakened = true;
+      this.startStagger(f, true);
+    }
   }
 
   /** GAME-05: one step of the shield's knockback: drive the Foamer up to
@@ -1265,6 +1380,8 @@ export class FoamerSystem {
     // A Foamer removed while it still bids (clear(), or a despawn) leaves
     // nothing behind in the director's table.
     if (f.state !== "down") f.agent?.release("down");
+    // The stall guard holds a reference to the Foamer, so it goes with it.
+    this.progress.delete(f);
     this.lockRagdollForSink(f);
     const i = this.list.indexOf(f);
     if (i >= 0) this.list.splice(i, 1);

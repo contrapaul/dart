@@ -41,9 +41,14 @@ export interface AgentInput {
   /** The Foamer's feet, ground plane. */
   x: number;
   z: number;
+  /** The Foamer's feet height (y), so its path starts on the floor it stands
+   *  on and not the pit floor under the ring (BUG-01 round 2). */
+  y: number;
   /** The player's feet, ground plane. */
   playerX: number;
   playerZ: number;
+  /** The player's feet height (y), so a player on the ring is reachable. */
+  playerY: number;
   /** The rig's attack range (metres). */
   attackRange: number;
   /** Nothing solid between it and the player. */
@@ -97,6 +102,7 @@ export class FoamerAgent {
   /** Where the path was aimed, so a player who barely moved is not
    *  re-pathed for nothing. */
   private goalX = NaN;
+  private goalY = NaN;
   private goalZ = NaN;
 
   constructor(director: Director | null, setup: AgentSetup, agentId: number) {
@@ -209,18 +215,21 @@ export class FoamerAgent {
     }
     this.repathIn -= dt;
     const moved = Math.hypot(input.playerX - this.goalX, input.playerZ - this.goalZ);
-    if (this.repathIn > 0 && grid.version === this.pathVersion && moved <= 0.5) {
+    const heightMoved = Math.abs(input.playerY - this.goalY);
+    if (this.repathIn > 0 && grid.version === this.pathVersion && moved <= 0.5 &&
+      heightMoved <= 0.5) {
       return this.path;
     }
     this.repathIn = BRAIN.repathSeconds;
     this.pathVersion = grid.version;
     this.goalX = input.playerX;
+    this.goalY = input.playerY;
     this.goalZ = input.playerZ;
     this.from.x = input.x;
     this.from.z = input.z;
     this.to.x = input.playerX;
     this.to.z = input.playerZ;
-    grid.findPath(this.from, this.to, this.path);
+    grid.findPath(this.from, this.to, this.path, input.y, input.playerY);
     return this.path;
   }
 

@@ -6,6 +6,30 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-01 done 2026-11-05 (round 2, after a review found round 1 had traded one
+bug for another): the Pit's ring tops are back in the nav grid, as a second
+layer over the floor under them, so both a player on the ring and a player
+under it are walked to at the right height. The ramp-side stall is fixed at
+its real cause: the grid promised 0.45 m steps but the Foamer's character
+controller only autosteps 0.2 m at its walking cadence, so a path that
+climbed the ramp's east side left it walking into a wall for ever. The
+sidestep guard is still there as a backstop and now forgets a Foamer that is
+not walking, and the walk builds the other-Foamers set once per frame
+instead of once per Foamer. Played by Claude in
+`arena.html?watch` (ring, open floor, under the ring: all reached and
+attacked, the Roamers threw); merged 2026-11-05. Still to watch: the
+sidestep's look, and whether the 0.2 m climb cap makes another level's step
+read as too tall to walk.
+
+ANIM-01 stages 1 and 2 done 2026-11-04: the F02 Roamer now winds up its
+throw (ball arm back over the head, body turned away, readable as the cue
+to raise the shield) and whips it through past the shoulder, and the F05
+Darter's telegraph, charge and wall stun have their own poses; every number
+is in a `motions` block in `data/foamer-rigs.json`. Key frames are in
+`design/foamers/poses/`. Unverified by eye (no browser on the AI machine):
+the poses by PNG, and the throw and charge in the game (see the Log entry;
+reviewer: Claude Opus 5.5).
+
 LVL-02a done 2026-11-04: the level file places ammo. The Pit keeps pit-ammo and gains a box on the far side of the floor, the Ring one box by each pillar; a `darts-*` pickup spawns a 0.35 m foam box that refills the reserve of every held blaster with that dart type (never past reserveMax; at a full reserve it stays), respawns on Try again and Play again, sounds PU-ammo and pulses the ammo counter (not the green heal glow), and dartArena.state().ammoBoxes counts the boxes left. Not checked by eye: the box turn and bob in play, the collect sound and pulse, and the new positions (see the Log entry).
 
 GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
@@ -19,13 +43,22 @@ played by `arena.html?level=1-4-ring` (the Pit stays the default). Not
 checked by eye: the scrape and run poses, the stun feel, the plate arc on
 the real rig, and the placeholder charge sounds (see the Log entry).
 
+GAME-04 stage 2 done 2026-11-04 (`tasks/GAME-04b.md`): a ball made with
+BALL_MATERIAL (the F02's pink) that hits in the shield's front arc is parried
+when the disc started rising within the parry window, and the parry sends it
+back at the thrower's chest faster, where it does damage and staggers. All the
+numbers are in a `parry` block in data/shield.json; each difficulty preset
+carries a parryWindow multiplier (Story 1.5, Foam Fury 0.6); the watch gets a
+`parries` count and a `parryNext()`. Unverified by eye: the hit-stop and the
+two placeholder sounds (see the Log entry).
+
 GAME-10a done 2026-11-04: Foamers have per-type specs (`data/foamers.json`
 base + `types`, `spawn(feet, facing?, type)`), and the F02 Roamer keeps its
 ring and throws slow pink foam balls (`src/foamers/projectiles.ts`, the F02
 brain in `src/ai/f02-brain.ts`); the Pit's wave 2 is 3 F01 and 2 F02. The
-disc blocks a ball like a bonk, so GAME-04 stage 2 (the parry) is unblocked.
-Ball look, the throw pose and the four new sounds are unverified by eye (see
-the Log entry).
+disc blocks a ball like a bonk, so a parryable ball now parries (GAME-04
+stage 2). Ball look, the throw pose and the four new sounds are unverified
+by eye (see the Log entry).
 
 GAME-05 done 2026-11-04: with the disc up the shield locks the nearest
 Foamer in the crosshair's range and cone in sight, and dash at the lock
@@ -36,8 +69,8 @@ it and takes a small hit. The charge's eye checks are still open
 GAME-04 stage 1 done 2026-11-03: the shield (`src/player/shield.ts`,
 `data/shield.json`) blocks from the front arc, slows the walk, and throws
 a ricocheting disc that returns to the arm; the range watch can drive it.
-Parry (stage 2) waits for GAME-10. Look and feel checks in a real browser
-are still open (see the Log entry).
+Stage 2 is done (the parry, see the next entry). Look and feel checks in a
+real browser are still open (see the Log entry).
 
 GAME-07 done 2026-11-03: the weakened (finishable) stagger, the Pop
 finisher and the health drops are in the shared game; the course and
@@ -153,6 +186,275 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: GAME-04b and ANIM-01 merged (Claude)
+
+- Merged after BUG-01; only the docs and the BUG-01 card conflicted (kept
+  both sides, and main's BUG-01 card with round 2). 383 tests pass, the
+  build is clean.
+- Smoke check on merged main, `arena.html?watch`: no console errors;
+  F01s and F02s go through approach, windup, strike, recover and hold, and
+  the Roamers threw 24 balls in 25 s.
+- Not a merge problem, worth a fix later: `parryNext()` does not land a
+  parry. Six tries against a lone F02 gave 0 parries on merged main and the
+  same 0 on the unmerged `game-04b` branch (the balls burst on the disc as
+  blocks). The parry's unit tests pass; the watch helper's timing is off,
+  which fits the single parry seen in the GAME-04b review. Paul's hands-on
+  play is the real check of the parry window.
+
+### 2026-11-05: BUG-01 round 2 review, both Pit spots played (Claude)
+
+- Played `arena.html?watch` on the branch (port 5191):
+  - Player on ring-s at (0, 4, -11.5), wave 1: all three F01s climbed
+    ramp-s (one on the ring by 25 s), walked the ring and hit the player
+    (health 100 to 88).
+  - Player on open floor at (0, 0, -4), the wave 2 mix (3 F01, 2 F02):
+    the F01s closed and attacked, the F02s threw 24 balls in 30 s (14 hit).
+  - Player under the ring at (0, 0, -11): the F01s walked in at floor
+    level and attacked, the F02s threw 25 balls (17 hit). No console errors.
+- Rebaking an 8 x 8 m area takes about 2.5 ms (2.4 us a cell), so a
+  carve-sized rebake stays well under a millisecond.
+- Fixed: the `stepOk` comment described edge sampling the code does not
+  do; it now describes the autostep cap, which is the real fix.
+- Worth Paul's eye: the Foamer controller now autosteps 0.2 m, not 0.3 m,
+  and the steering's waypoint skip fell from 0.5 m to 0.1 m. Neither
+  showed a problem in the Pit, but watch for Foamers balking at a
+  0.2 to 0.3 m step on other levels, or jittering at path corners.
+
+### 2026-11-05: BUG-01 round 2, the ring's top and the real ramp stall (DeepSeek V4.1 Flash via Pi)
+
+- Review finding R1: round 1's "lowest surface wins" bake threw the Pit's
+  ring tops away. `groundAt(0, -11)` was 0, not 4, so a player standing on
+  the ring drew an F01 that walked to the pit floor under the slab and
+  struck at nothing 4 m below. Fixed with a layered grid:
+  `src/ai/nav-grid.ts` keeps up to `nav.maxLayers` (2) walkable surfaces per
+  cell, lowest first, and A* runs on `(cell, layer)` nodes. `groundAt` and
+  `walkableAt` take an optional height and pick the nearest layer (no height
+  still means the lowest, so old callers and tests are unchanged).
+  `findPath` takes the agent's and the goal's feet height; the pages pass
+  `player.eye - player.eyeHeight`, since `player.eye(1, ...)` is feet plus
+  1.6 m. The agent re-paths when the goal's height moves more than 0.5 m.
+- The bake is still allocation free: the ray hits reuse preallocated slots.
+- Review finding R2, the ramp-side stall, is the character controller's
+  autostep, not the string pull. Measured: at a Foamer's 1 m/s and 60 fps
+  (a 0.017 m frame move) Rapier autosteps a 0.2 m rise but not 0.25 m, no
+  matter what `maxHeight` is set to, because the autostep needs room ahead of
+  the capsule that a small step does not give it. The grid called any rise up
+  to 0.45 m a step, and the south ramp's east side is 0.44 m from the floor
+  at the next cell, so A* and the pull both routed through it. `nav` gained
+  `stepAutostepMetres` (0.2), and `stepOk`, `nodeNear` and `lineClear` cap a
+  climb with it; a drop still uses `maxStepMetres`. `steer`'s waypoint skip
+  also fell from 0.5 m to 0.1 m: at 0.5 m the walk cut the dogleg at the
+  ramp's foot and went into the side again.
+- Review finding R3: the stall guard drops a Foamer's entry when it is not
+  walking its path (so a Foamer that held its ring does not sidestep the
+  moment it walks again) and in `removeFoamer`. The walk builds the set of
+  every Foamer body once per `update` instead of once per Foamer, and the
+  old `others` set is gone (the predicate reads `allBodies` directly).
+- Tests added: `tests/ai/pit-foamers.test.ts` now has the ring's-top lookup
+  and a Foamer that walks the ramp up to a player standing on ring-s;
+  `tests/ai/stall.test.ts` has the guard's memory (entry dropped on remove,
+  entry dropped when not walking a path).
+- The card asked for the ring test to pass within 25 s. It takes about 35 s:
+  the only route up is the south ramp, which makes the walk about 28 m, and
+  an F01 walks 1 m/s. The test uses 45 s and says why in a comment. It is on
+  the ring by second 25 and reaches the player at about 35.
+- Not checked by eye (no browser here): the ring route on
+  `arena.html?watch`, whether the Foamer now prefers the ramp visually, the
+  sidestep's look, and whether the 0.2 m climb cap makes any other level's
+  step look too tall to walk. Nothing visual was run.
+
+### 2026-11-05: BUG-01 round 2 sent back; GAME-06 and GAME-08 cards queued (Claude)
+
+- BUG-01 review: round 1 is not mergeable. The lowest-surface bake drops
+  the ring top from the grid (both rings are slabs over open floor), so a
+  player on the ring draws Foamers under it; and the ramp-side stall is
+  only hidden (on main a Foamer chasing a player on the ring still freezes
+  at (-9.8, -2.1) beside ramp-s). Round 2 is in `tasks/BUG-01.md`: two
+  layers per cell from round 1's filter, the ramp-side cause, stall guard
+  fixes. DeepSeek V4.1 Flash (`openrouter deepseek/deepseek-v4.1-flash-1017`)
+  is running it on `bug-01`.
+- Model rules from Paul (2026-11-05): DeepSeek is that exact id; Kimi is on
+  hold for cost until a task needs it; qwen-machine and dgx-spark start only
+  when Paul says.
+- Queued for the local models, not started: `tasks/GAME-08.md` (the vacuum,
+  Qwen 27B) and `tasks/GAME-06.md` (melee weapon 1, Spark). Both start from
+  main after BUG-01, GAME-04b, ANIM-01 and LVL-02a merge. They can run at
+  the same time; they touch different modules but both edit the melee and
+  use block in `src/game/game.ts`, the HUD, `data/sounds.json` and the
+  docs, so the second to merge resolves those.
+
+### 2026-11-05: START HERE, session handoff for Claude (Claude)
+
+Paul ended the long 2026-11-03/04 session to save usage. Read this, then
+the Status section; do not re-read the whole Log.
+
+**How the work runs.** Pi models write the code; Claude writes the task
+card (`tasks/<ID>.md`), starts the model in its own worktree, reviews,
+fixes small things with a test, and asks Paul before every merge ("Approve
+and merge"). Pushing main is publishing: only as part of an approved merge.
+- Worktree: `git worktree add -q ../dart-<b> -b <b> && ln -s
+  ../dart/node_modules ../dart-<b>/node_modules`. Every `GitHub/dart-*`
+  folder is one of these: a checkout of the branch named after it, never
+  a separate project. `dart/` (main) is the only one that deploys. After a
+  merge, remove it: `git worktree remove ../dart-<b>` (the branch stays).
+  `git worktree list` is the truth; as of 2026-11-05:
+  - Waiting (not merged): `dart-bug-01` (BUG-01, review), `dart-game-04b`
+    (parry, merged 2026-11-05), `dart-anim-01` (ANIM-01, merged 2026-11-05),
+    `dart-lvl-02a` (LVL-02a, review). These four are the only ones; the
+    nine merged leftovers were removed on 2026-11-05.
+- Start a model: `tools/pi/run-pi.sh <worktree> <provider> <model>
+  <thinking> <brief file> <log>` (retries a start-up hang; never kills
+  pi's children, which may own the local context proxy on 18787). Brief:
+  `tools/pi/brief-template.txt`.
+- Providers: DeepSeek `openrouter deepseek/deepseek-v4.1-flash-1017
+  medium` (long cards); Qwen 27b `qwen-machine qwen3.8-27b-1cat low`
+  (shorter cards, Paul's Linux AI machine; PAUSED by Paul until he says
+  so); Spark `dgx-spark qwen3.8-flash-next medium` (travels with Paul,
+  check it answers first); Kimi `moonshotai` (art).
+- A run that stops with nothing committed: Qwen can overthink and hit
+  its output limit (resume with `pi -c` and "stop planning, write code");
+  DeepSeek can break down in a very long session (start a fresh one with
+  a brief on what is on disk).
+
+**Reviewing.** Each worktree gets a `.claude/launch.json` entry (in the
+GitHub folder) on its own port; `preview_start` it and drive
+`arena.html?watch` or `index.html?watch` with `dartArena` / `dartGame`
+(`state`, `moveTo`, `look`, `aimNearest`, `fire`, `step`, `block`,
+`throwShield`, `charge`, `finish`, `parryNext`) and the dev hook
+`__arena` / `__dart` (`foamers`, `foamers.projectiles`, `player`,
+`health`, `loadout`, `camera`). Lessons:
+- Await a `setTimeout(0)` between steps after a spawn: Foamer part
+  colliders come from the mesher worker and never land in one long
+  synchronous loop (darts then pass through every Foamer).
+- After a hit the player ignores damage for 0.5 s: count
+  `foamers.projectiles.stats.hitPlayer`, not health drops.
+- A popped player pauses the game; reset health each step in long runs.
+- Standing under the Pit's ring overhang breaks Foamer pathing (BUG-01).
+- Keep browser checks short; the costly part of the last session was
+  long debugging in the conversation.
+- `set -o pipefail` before `npx vitest run | grep`, or a failing suite
+  still lets the commit through. `tests/ai/nav-grid.test.ts` timing test
+  flakes under load; rerun alone.
+
+**Jobs remaining, in order.**
+1. Done 2026-11-05: BUG-01 reviewed (two rounds) and merged.
+2. Ask Paul to merge `game-04b` (parry, GAME-04 stage 2, reviewed: one
+   clean parry seen; main already merged in) and `anim-01` (ANIM-01
+   throw and charge poses, reviewed by key frames). They conflict with
+   each other in the docs only.
+3. Review `lvl-02a` (Qwen, 3 commits, placed ammo pickups; not yet
+   reviewed), then ask Paul.
+4. Main here is 3 commits ahead of origin (the BUG-01, ANIM-01 and
+   LVL-02a cards, plus this entry); they go out with the next approved
+   merge.
+5. Next cards when Paul says: GAME-06 melee weapon, GAME-08 ammo for
+   kills (vacuum, D09), GAME-10c the heavy, GAME-09b catastrophic hits,
+   ART-05 first person animations, AUD-01b Paul's recordings, QA-01
+   low-end machine check (due 2026-11-12).
+
+**Waiting on Paul.** Whether the player is safe during a finisher; the
+shield's name and look, and whether the lowered disc should sit lower
+(it fills the lower left); the content plan review (1-2 blaster clash,
+act settings and accent colours, the "Foam Demon" working name, level
+names such as the ring's).
+
+### 2026-11-04: BUG-01, two Pit stalls fixed (DeepSeek V4.1 Flash via Pi)
+
+- Cause 1, the overhang: `src/ai/nav-grid.ts` baked a cell from the first
+  surface a ray from above met, so the floor under the Pit's ring baked as
+  the ring's top at y 4. A player standing underneath was pathed to 4 m up
+  and the Foamers walked at the ramp instead. `bakeCell` now collects every
+  surface, keeps the up-facing ones, sorts them low to high and takes the
+  first that is not swallowed by a surface within `nav.maxStepMetres` above
+  it and that leaves the agent's capsule shape clear. A wall still bakes as
+  its own top, so the step, ledge, slope and wall tests are unchanged.
+- Cause 2, the clump: every Foamer's movement capsule is a world-group
+  member (darts and aim skip it by its own bit), so two Foamers pressed
+  together each asked the character controller to walk into the other and it
+  cancelled both steps. Wave 2 spawns from one rift, so the whole front rank
+  froze. The walk now ignores the other Foamers' root and part bodies by
+  handle. Note for next time: a character-controller filter predicate may not
+  read `collider.contactGroups`/`shape` or its parent, it must use
+  `collider.handle` / `collider.parent()?.handle`; anything else throws
+  inside the query and is silently ignored.
+- Guard: a Foamer whose path stops making progress now sidesteps for a
+  moment and tries again, so a Foamer can never be frozen for long by
+  something the bake cannot see (a wall built after the bake, a body parked
+  in a doorway). Numbers in `data/ai.json` `steer`.
+- Tests: `tests/ai/pit-foamers.test.ts` (floor under both rings, a Foamer
+  walks under the ring), `tests/ai/pit-wave.test.ts` (a five strong wave on
+  one rift engages), `tests/ai/pit-ramp-side.test.ts` (the card's recorded
+  spots against ramp-s), `tests/ai/stall.test.ts` (no more than 2 s still
+  while walking). All four fail on the unfixed code.
+- Unverified by eye: everything visual. Nothing was run in a browser here.
+- Also dropped: the half-finished two-levels-per-cell nav rewrite from a
+  previous session (12 tests failing); the lowest-surface rule does the job
+  with the existing tests intact.
+### 2026-11-04: GAME-04 stage 2 review, parry in the Pit (Claude)
+
+- Merged main (GAME-10b) in; only the imports and docs conflicted.
+- Played `arena.html?watch` against wave 2's Roamers with `parryNext()`:
+  a parried ball flew back and took its thrower from 8 to 4 health, and
+  the parry count went up. Only one clean parry: most tries had no ball
+  reach the player, for the two reasons below, not the parry code.
+- Found, not fixed (see `tasks/BUG-01.md`): Foamers in the Pit freeze.
+  (1) The nav grid is 2.5D, one ground height per cell, so a player
+  standing under the ring's overhang reads as on the ring top, 4 m up,
+  and Foamers path for the ramps and stall. (2) On open floor too, all
+  four wave 2 Foamers stood still for over 30 s in `approach` against
+  the side of the south ramp (x about -9.5), paths of 2 or 3 points, so
+  the Roamers never got their throw.
+- Measuring lesson: after any hit the player ignores damage for 0.5 s
+  (UI-01 grace), so health drops undercount ball hits while Slowmers bonk;
+  count `foamers.projectiles.stats.hitPlayer` instead.
+- Corrected: the PLAN row said "Paul approved" before he had.
+### 2026-11-04: ANIM-01 review, key frames viewed (Claude)
+
+- Viewed the key frames Qwen could not: the F02 windup holds the ball high
+  beside the head with the arm cocked, and the strike whips the arm and
+  ball out past the shoulder; the F05 telegraph dips the head, the charge
+  pitches the whole body forward, and the wall stun rocks it back with
+  the orange back showing. All read at a glance. 32 PNGs, 208 KB.
+- Unverified: timing and readability at 10 m in a live game.
+
+### 2026-11-04: ANIM-01, the F02 throw and the F05 scrape and charge poses (Qwen 3.8-27B via Pi)
+
+- Card: `tasks/ANIM-01.md`. Two stages, each committed green (tsc, vitest,
+  build, no em or en dashes):
+  - Stage 1 (bd18c74): the poses. A per-rig `motions` block in
+    `data/foamer-rigs.json` holds every number (angles in degrees, distances
+    in metres). F02 `throw.wind` lifts the ball arm back and over the head
+    (armR -180, foreArmR 80) and turns the body 15 degrees away; `strike`
+    whips it through past the shoulder (armR -60, foreArmR 100) with the
+    body swung to the far side so it reads as coming through. F05 `scrape`
+    dips the body forward and sweeps a leg back and forward twice; `charge`
+    pitches 25 degrees forward on a 34 degree stride; `wallStun` rocks the
+    body back with a wobble, and on a rig whose body is its head (F05) the
+    head shake judders the pitch. `poseNums` reads the block; a missing
+    block reads zero, so no other rig changes (F01 tested at rest).
+  - Stage 2 (aec6522): `npx tsx tools/render-rig.ts <id> --state <state>
+    --t <0..1> [--attack <id>]` renders every view for that state and time
+    to `design/foamers/poses/`. Key frames for the F02 throw (windup t.5,
+    t1; strike t.7, t1) and the F05 telegraph (t.25, t.75), charge (t.5)
+    and wall stun (t.25) are rendered there. `tools/pose-check.ts`
+    measures each key frame's part extents numerically, `tools/pose-ascii.ts`
+    prints a front and side silhouette so the shape can be checked without
+    a browser.
+- New `RigMotion.turn` (root yaw, radians) carries the body's in-place turn;
+  `poseParts` eases it like the other root motion, `solveRaw` folds it into
+  the root yaw.
+- Tests (`tests/foamers/poses.test.ts`): the F02 ball sits behind its rest
+  position at full windup and in front through the strike, and the body
+  turns away then through the target; the F05 charge pitches forward, the
+  telegraph dips and moves a leg, the wall stun rocks back and wobbles; F01
+  with no block keeps its old poses.
+- Unverified by eye: this is a headless AI machine, no browser. The pose
+  math is verified numerically and sketched as silhouettes, but the PNG key
+  frames in `design/foamers/poses/` should be looked at, and a real F02
+  throw and F05 charge watched in the game to check the timing, the 10 m
+  readability of the windup, the shake of the wall stun, and the charge's
+  look. No em or en dashes.
+
 ### 2026-11-04: LVL-02a, placed ammo boxes from the level file (Qwen 3.8-27B via Pi)
 
 - The level file now places ammo: the `ammo` pickup kind in
@@ -243,6 +545,85 @@ github.com/contrapaul/dart (public), MIT licence.
   +z is forward, so the arc uses yaw forward: Paul should look), the
   sounds, the Ring's look, and whether the 6 m ring corridor fights well
   with two Darters (no browser here).
+
+### 2026-11-04: GAME-04 stage 2, the shield parry and bounce-back (Qwen 3.8-27B via Pi)
+
+Card: `tasks/GAME-04b.md`, in the `game-04b` worktree. One commit
+(`GAME-04b: ...`) when this is accepted; not merged or pushed yet. `npx tsc
+--noEmit`, `npx vitest run` (50 files, 343 passed, 2 skipped) and `npm run
+build` all pass. No em or en dashes in any touched file (checked with the
+perl scan in CLAUDE.md).
+
+What was built:
+- `data/shield.json`: a `parry` block (window 0.25 s, speedShare 1.6, damage
+  4, stagger 0: the thrower's own stagger time, steerSec 8, kick 0.035 rad
+  over kickTime 0.15, hitStop 0.05 s at slow 0.15, flashTime 0.12 s,
+  parryNextLead 0.1 s); the `_note` explains it too.
+- `src/player/shield.ts`: `parryWindowScale` (set by the pages from the
+  preset), `parries`, `parryWindow()`, `canParry()` (disc raised, fully up,
+  and the raise younger than the window; the age resets when the disc
+  drops), `parryKick`, `flash`, `noteParry()` and `slowed(dt)`; a private
+  `raiseAge` and a bright flash disc over the viewmodel (white basic
+  material, opacity driven by flashTime).
+- `src/foamers/projectiles.ts`: the constructor takes the `FoamerSystem`;
+  `LiveBall` grows `bounced`, `flatSpeed` and `steerLeft`; `bounce(b)` keeps
+  the ball (no burst) and speeds it to 1.6x; `steerBounce` re-aims at the
+  thrower's chest each step while steering runs, as a solved arc, and stops
+  steering within 0.35 m so the ball flies straight in (at 14 m/s a re-aim
+  that close would cross the target point and it would limit-cycle); a
+  bounced ball's ray is the ordinary ball's ray with the Foamer parts added
+  back in and the player's own capsule excluded by identity (that
+  collider carries the world's group, so a group test cannot name it); a
+  bounced ball can hit the thrower or another Foamer and burst on the
+  world, but never the player; the
+  hit goes through `FoamerSystem.parryDamage` (health, a damage `record`, a
+  sound, `startStagger` for its data time, or the Foamer's own, the
+  `finishWeakened` band, a go-down on depletion, never `pop`) and
+  `onSound("parryHit", at)`; `stats.bounced` and `stats.parryHits`.
+- The pages (`src/game/game.ts`, `src/range/main.ts`): `onHitPlayer` computes
+  `blocked` and `parryable` (the shared `BALL_MATERIAL`) and, if both and
+  `canParry()`, notes the parry, bounces the ball and plays SH-parry, no
+  damage to the player; otherwise the block and the ball hit run as before.
+  The difficulty multiplier is read like `director` (`DIFFICULTIES[s.difficulty]?.parryWindow ?? 1`).
+  While a hit-stop is running the pages step the Foamer, the projectiles,
+  the darts, the pieces, the pickups and the `step`/`afterPieces` hooks from
+  `slowed(dt)`, the character, the shield and the world step from the real
+  `dt`. The parry's kick is added to the camera's climb, same as the blast
+  recoil and the block kick. `onSound("parryHit")` plays SH-parry-hit at the
+  hit point. The watch: `state()` gains `parries`; the game page's
+  `parryNext()` steps the simulation until the closest non-bounced ball is
+  `parryLead` seconds from the eye, then force-holds the disc (so the
+  raise lands inside the window); the range page's `parryNext()` simply
+  returns true and force-holds the disc so long as a non-bounced ball is
+  alive (its update loop is not callable from the watch, so the lead time
+  is not applied; the disc's own window is what the ball lands inside).
+- `data/difficulty.json` and `src/core/settings.ts`: `parryWindow` per
+  preset (story 1.5, normal 1, hard 0.75, fury 0.6) and
+  `DifficultyPreset.parryWindow: number`.
+- `data/sounds.json` and `design/SOUNDS.md`: SH-parry (a click and a 320 to
+  880 Hz sine twang, non-positioned) and SH-parry-hit (a low thud,
+  positioned), code-made placeholders like the other SH- IDs.
+- `tests/shield/parry.test.ts`, 4 tests: (a) with the disc up, a ball in the
+  front arc inside the window is parried; after the same raise ages out of
+  the window it is only blocked; (b) a ball from behind is outside the arc,
+  so neither parried nor blocked; (c) the full bounce route with a real
+  F02: the ball is parried by the page's substitute, comes back, hits its
+  thrower (damage 4: health 8 to 4, does not kill), staggers it, and the
+  player capsule is met exactly once (the parry itself, not the
+  return flight, which the bounced ball's rays cannot count); (d) the difficulty multiplier: a raise aged 0.18 s
+  is inside Story's 1.5x window and outside Foam Fury's 0.6x window, and
+  `parryWindow()` narrows by the same factor. The bounce test `settle`s the
+  Foamer's part meshes first, like the other Foamer tests: the part meshes
+  are built asynchronously from the mesher's Promise, and a raycast that
+  hasn't been settled can't see them (this is what took the bounce test so
+  long to debug).
+
+Not checked in a real browser (no browser here): the feel of the hit-stop
+(0.05 s world-slowness), the kick and flash, the two placeholder sounds,
+and whether a parried ball from a moving, re-targeting F02 finds its mark
+(since steering gives it some room to work with). Also unchecked: whether
+`parryNext()` on the range page is sharp enough for the automated checks.
+Finished so far; the look of the disc is still from stage 1.
 
 ### 2026-11-04: GAME-05 and GAME-10a merged; arena HUD fix (Claude)
 

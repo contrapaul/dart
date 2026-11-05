@@ -1,0 +1,10 @@
+You are working in /Users/paul/Documents/GitHub/dart-<branch>, branch <branch>. Your task card is tasks/<ID>.md: read it, then everything under "Read first", before writing code. Keep replies short; never write more than about 120 lines in one tool call.
+
+Work in stages that each leave the game working. Commit after each stage once npx tsc --noEmit, npx vitest run and npm run build pass, with messages starting "<ID>:" and ending with:
+Co-Authored-By: <model> via Pi <noreply@local>
+
+Rules: CLAUDE.md applies in full (no em or en dashes anywhere, check with perl -CSD -ne 'print "$ARGV:$.\n" if /\x{2014}|\x{2013}/' on the files you touch; tuning numbers in data/ JSON; no external hosts). Shared game code lives in src/game/: change it there, never copy it into a page. Match the style of the surrounding code. You cannot open a browser here: say in HANDOFF what you could not check by eye.
+
+Before you stop: update the PLAN.md row and add the HANDOFF.md entry the card asks for. Never git add node_modules. Do not merge or push. Then stop.
+
+For Qwen 27b add: Keep each reasoning pass short: read only the files the card names, then start writing code within your first few replies. A long plan in one reply can run out of output space and lose the work.

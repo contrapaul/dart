@@ -5,18 +5,28 @@ import { FOAMER_GROUPS, CAPSULE_GROUPS } from "../physics/world";
 import { materialId, linearColorTable } from "../voxel/materials";
 import type { DebrisSystem } from "../voxel/debris";
 import type { Foamer } from "./foamer";
+import type { FoamerSystem } from "./foamers";
 import foamerData from "../../data/foamers.json";
+import shieldJson from "../../data/shield.json";
 
 // GAME-10a: the F02 Roamer's foam ball. A ball is kinematic (no physics
 // body), stepped by raycasts like a dart: it flies from the thrower's ball
 // hand at a slow speed on a light arc, hurts the player once, and bursts
 // into a few foam chunks when it meets the world. A hard cap bounds the
-// live count. The parry (GAME-10b) will find balls by their shared material.
+// live count. The parry (GAME-04 stage 2) will find balls by their shared material.
 // Tuning lives in data/foamers.json (`ball` on the base spec).
 // The throw itself is reported by the Foamer system (its "throw" sound
 // event); this system's sounds are the ball's own hits and bursts.
 
 const BALL = foamerData.test.ball;
+/** GAME-04 stage 2: the bounce-back's numbers from the shield's data (the
+ *  bouncing ball is the shield's, so its tuning sits with the shield's). */
+const PARRY = shieldJson.parry as unknown as {
+  speedShare: number;
+  steerSec: number;
+  damage: number;
+  stagger: number;
+};
 
 /** The material every live ball is drawn with. The parry looks balls up by
  *  this exact object, so there is exactly one of it. */
@@ -37,9 +47,15 @@ export interface LiveBall {
   mesh: THREE.Mesh;
   /** The Foamer that threw it (for the report; may already be gone). */
   thrower: Foamer;
+  /** GAME-04 stage 2: it was parried and is flying back at the thrower. */
+  bounced: boolean;
+  /** The bounce's horizontal speed, held while it steers. */
+  flatSpeed: number;
+  /** Seconds of steering left; 0 flies straight. */
+  steerLeft: number;
 }
 
-export type ProjectileSound = "burst";
+export type ProjectileSound = "burst" | "parryHit";
 
 export class ProjectileSystem {
   /** Live balls, oldest first. Capped at ball.maxLive. */
@@ -49,15 +65,19 @@ export class ProjectileSystem {
    *  burst point. */
   onSound: (kind: ProjectileSound, at: THREE.Vector3) => void = () => {};
   /** Called once when a ball meets the player's capsule, with the ball.
-   *  The game decides the damage and whether the shield took it. */
+   *  The game decides the damage and whether the shield took it; if it
+   *  parries the ball (GAME-04 stage 2, Shield.canParry plus the front arc) it
+   *  keeps it alive and flies: the ball keeps going (parried), and the
+   *  next step moves it back toward its thrower. */
   onHitPlayer: (ball: LiveBall) => void = () => {};
-  stats = { thrown: 0, burst: 0, hitPlayer: 0 };
+  stats = { thrown: 0, burst: 0, hitPlayer: 0, bounced: 0, parryHits: 0 };
 
   private _po = { x: 0, y: 0, z: 0 };
   private _pd = { x: 0, y: 0, z: 0 };
   private _ray: RAPIER.Ray;
   private _hit = new THREE.Vector3();
   private _dir = new THREE.Vector3();
+  private readonly _aim = new THREE.Vector3();
 
   constructor(
     private rapier: Rapier,
@@ -65,8 +85,40 @@ export class ProjectileSystem {
     private debris: DebrisSystem,
     /** The player's capsule: the one collider a ball reports as a hit. */
     private playerCollider: RAPIER.Collider,
+    private foamers: FoamerSystem,
   ) {
     this._ray = new this.rapier.Ray(this._po, this._pd);
+  }
+
+  /** GAME-04 stage 2: the bounce-back. The game calls it for the ball about to
+   *  meet the player when the raised shield meets it inside the window
+   *  (the page checked blocksAttackFrom and Shield.canParry; this does
+   *  not check the arc). The ball keeps going (not removed) and flies out
+   *  at the new speed. */
+  bounce(b: LiveBall): void {
+    b.bounced = true;
+    // Keep the current step's position, but turn the speed to the
+    // bounce-back's and its arc to fly at the thrower's chest.
+    b.flatSpeed = Math.hypot(b.vel.x, b.vel.z) * PARRY.speedShare;
+    b.steerLeft = PARRY.steerSec;
+    this.stats.bounced++;
+    this.steerBounce(b);
+  }
+
+  /** One step of the bounce's steering: re-aim at the thrower's chest,
+   *  solved flight to it (an arc), while its steering time runs. */
+  private steerBounce(b: LiveBall): void {
+    const f = b.thrower;
+    if (f.state === "down") return; // it will fly straight from here
+    this._aim.set(f.centre.x, f.centre.y + f.height * 0.6, f.centre.z).sub(b.pos);
+    const flat = Math.hypot(this._aim.x, this._aim.z);
+    if (flat < 0.35) return; // a step is this wide at the bounce speed; closs it and fly straight
+    const t = flat / b.flatSpeed;
+    b.vel.set(
+      (this._aim.x / flat) * b.flatSpeed,
+      (this._aim.y + 0.5 * BALL.gravity * t * t) / t,
+      (this._aim.z / flat) * b.flatSpeed,
+    );
   }
 
   /** Release a ball from the thrower's ball hand toward the player's eye.
@@ -98,7 +150,7 @@ export class ProjectileSystem {
     mesh.scale.setScalar(BALL.radius);
     mesh.position.copy(at);
     this.group.add(mesh);
-    this.list.push({ pos: at.clone(), vel, age: 0, mesh, thrower: f });
+    this.list.push({ pos: at.clone(), vel, age: 0, mesh, thrower: f, bounced: false, flatSpeed: 0, steerLeft: 0 });
     this.stats.thrown++;
   }
 
@@ -112,6 +164,12 @@ export class ProjectileSystem {
         this.burstAt(b.pos);
         this.remove(b);
         continue;
+      }
+      // GAME-04 stage 2: a bounced ball re-aims at the thrower's chest while its
+      // steering time runs; then it flies straight.
+      if (b.bounced && b.steerLeft > 0) {
+        b.steerLeft = Math.max(0, b.steerLeft - dt);
+        this.steerBounce(b);
       }
       b.vel.y -= BALL.gravity * dt;
       const speed = b.vel.length();
@@ -130,13 +188,19 @@ export class ProjectileSystem {
         undefined,
         undefined,
         undefined,
-        // Foamers are not blockers: a ball from the pack flies through the
-        // pack (its own thrower's parts would otherwise stop it in the
-        // hand), and the movement capsule sits inside the body voxels, as
-        // for the darts (exact group match, so a floor is never excluded).
+        // A ball from the pack flies through the pack (its own thrower's
+        // parts would otherwise stop it in the hand), and the movement
+        // capsules sit inside the body voxels, as for the darts (their
+        // own group; a floor is never excluded). A bounced ball is the
+        // opposite: every Foamer stops it (the thrower, any other on the
+        // way), the world bursts it, and the player's own capsule never
+        // does (a bounced ball cannot hurt the player; the capsule is
+        // named here, not by group, because its groups are the world's).
         (c) => {
+          if (b.bounced && c === this.playerCollider) return false;
           const g = c.collisionGroups();
-          return g !== FOAMER_GROUPS && g !== CAPSULE_GROUPS;
+          if (g === CAPSULE_GROUPS) return false;
+          return !b.bounced ? g !== FOAMER_GROUPS : true;
         },
       );
       if (!hit) {
@@ -146,9 +210,35 @@ export class ProjectileSystem {
       }
       const t = Math.min(maxDist, hit.timeOfImpact);
       b.pos.addScaledVector(b.vel, t);
-      if (hit.collider === this.playerCollider) {
+      if (b.bounced) {
+        // GAME-04 stage 2: it meets a Foamer: damage and a short stagger (the
+        // dart path's death rules, no pop, and no parry back), then the
+        // usual burst. The thrower it came from counts too.
+        let victim: Foamer | undefined;
+        for (const f of this.foamers.list) {
+          for (const p of f.parts.values()) {
+            if (p.owns(hit.collider)) {
+              victim = f;
+              break;
+            }
+          }
+          if (victim) break;
+        }
+        if (victim) {
+          this.stats.parryHits++;
+          this.onSound("parryHit", b.pos);
+          this.foamers.parryDamage(victim, PARRY.damage);
+          if (victim.state !== "stagger" && victim.state !== "down")
+            this.foamers.startStagger(
+              victim, false, PARRY.stagger > 0 ? PARRY.stagger : victim.spec.stagger.time,
+            );
+        }
+        this.burstAt(b.pos);
+        this.remove(b);
+      } else if (hit.collider === this.playerCollider) {
         this.stats.hitPlayer++;
         this.onHitPlayer(b);
+        if (b.bounced) continue; // the game parried it: it flies back
         this.burstAt(b.pos);
         this.remove(b);
       } else {

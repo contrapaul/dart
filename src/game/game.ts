@@ -4,7 +4,7 @@ import { createRenderer, type SceneOptions } from "../render/scene";
 import { createPhysics, type Rapier } from "../physics/world";
 import { startLoop, STEP } from "../core/loop";
 import { Input, settings as lookSettings } from "../core/input";
-import { SettingsStore, type Settings } from "../core/settings";
+import { SettingsStore, type Settings, DIFFICULTIES } from "../core/settings";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
 import { Shield } from "../player/shield";
@@ -16,7 +16,7 @@ import { FoamerSystem } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
 import { chargeOf } from "../foamers/charge";
 import { materialId } from "../voxel/materials";
-import { ProjectileSystem } from "../foamers/projectiles";
+import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
 import inputJson from "../../data/input.json";
@@ -149,6 +149,9 @@ function applySettings(
   camera.fov = s.fov;
   camera.updateProjectionMatrix();
   health.damageTaken = s.damageTaken;
+  // GAME-04 stage 2: the parry window scales with the preset's multiplier (PLAN
+  // 10); "custom" and unknown keys keep the data's own window.
+  shield.parryWindowScale = DIFFICULTIES[s.difficulty]?.parryWindow ?? 1;
   hud.reduceFlashes = s.reduceFlashes;
   audio.applyVolume(s.volume, s.muted);
 }
@@ -221,7 +224,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
   // GAME-10a: the F02's foam balls. They have no physics bodies (kinematic
   // raycasts), so they need no place of their own in the physics order.
-  const projectiles = new ProjectileSystem(rapier, world, debris, player.collider);
+  const projectiles = new ProjectileSystem(rapier, world, debris, player.collider, foamers);
   scene.add(projectiles.group);
   foamers.projectiles = projectiles;
   // GAME-04 stage 1: the shield. Its viewmodel hangs off the camera (the
@@ -331,6 +334,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const _fromBall = new THREE.Vector3();
   projectiles.onHitPlayer = (b) => {
     if (ui.paused) return;
+    // GAME-04 stage 2: a ball the player did not make (a F02's, from the pack) can
+    // be parried back: it is one made with the shared BALL_MATERIAL.
+    const parryable = b.mesh.material === BALL_MATERIAL;
     const speed = Math.hypot(b.vel.x, b.vel.y, b.vel.z);
     _fromBall.set(
       b.pos.x - (b.vel.x / speed) * 0.5,
@@ -338,6 +344,16 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       b.pos.z - (b.vel.z / speed) * 0.5,
     );
     const blocked = shield.blocksAttackFrom(_fromBall);
+    if (blocked && parryable && shield.canParry()) {
+      // GAME-04 stage 2: the parry: the ball flies back to its thrower. The
+      // player takes no damage for it; the feedback is the sound, the
+      // disc flash, the view kick and the tiny hit-stop (the sim
+      // slows down from `shield.slowed` while it plays).
+      shield.noteParry();
+      projectiles.bounce(b);
+      audio.play("SH-parry");
+      return;
+    }
     const share = blocked ? shield.damageShare : 1;
     const lost = health.damage(damageOf("throw") * share, "throw");
     if (lost <= 0) return;
@@ -354,9 +370,11 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   };
   // The ball's sounds (placeholder IDs, GAME-10a): the throw itself comes
   // through the Foamer sounds wrapper (a "throw" event); these are the ball
-  // meeting the player or the world.
+  // meeting the player or the world, and (GAME-04 stage 2) the bounced ball
+  // meeting a Foamer.
   projectiles.onSound = (kind, at) => {
     if (kind === "burst") audio.play("FB-burst", { position: at });
+    else if (kind === "parryHit") audio.play("SH-parry-hit", { position: at });
   };
 
   let pausedClock = renderJson.pausedFrame;
@@ -397,6 +415,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   function fixedStep(dt: number): void {
     if (!ui.paused) {
       health.update(dt);
+      // GAME-04 stage 2: the tiny parry hit-stop: while it runs the movables step
+      // at parry.slow of the normal rate, for parry.hitStop seconds (the
+      // shield counts the true dt, so the slow lasts that long).
+      const w = shield.slowed(dt);
       // GAME-07: the finisher holds the player for its whole run; while it
       // is active the controller is not stepped at all.
       if (finisher.active) {
@@ -439,11 +461,12 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         }
       }
       // Foamer on a fixed step, before world.step().
-      foamers.update(dt, player.eye(1, _playerPos));
+      foamers.update(w, player.eye(1, _playerPos));
       // GAME-10a: the foam balls fly on their own rays, no bodies, so they
-      // step with the Foamers that throw them.
-      projectiles.update(dt);
-      h.step?.(dt);
+      // step with the Foamers that throw them. GAME-04 stage 2: a bounced ball is
+      // just another ball on the same rays.
+      projectiles.update(w);
+      h.step?.(w);
       // Blaster: switch first (wheel down is next, up is prev), then the
       // muzzle from the active viewmodel, the aim 50 m down the view, and
       // the loadout's fixed step, then the darts.
@@ -498,14 +521,14 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       });
       debris.update(dt);
       pieces.update(dt);
-      h.afterPieces?.(dt);
-      darts.update(dt);
+      h.afterPieces?.(w);
+      darts.update(w);
       h.beforeWorld?.();
       world.step();
       // GAME-07: after the step, so the collect reads where physics left
       // the blob; the feet come out of the eye helper (it is the only way
       // to read the controller's position).
-      pickups.update(dt, _playerPos.setY(player.feet));
+      pickups.update(w, _playerPos.setY(player.feet));
       h.afterWorld?.(dt);
     }
     input.endStep();
@@ -527,7 +550,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     camera.position.copy(player.eye(ui.paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own
     // pitch is unchanged, so releasing the trigger brings the view back up).
-    const climb = loadout.active.climb + shield.kick;
+    // The parry's kick rides the same tilt as the blaster's climb and the
+    // block's (GAME-04 stage 2).
+    const climb = loadout.active.climb + shield.kick + shield.parryKick;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
@@ -582,6 +607,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // animation frames.
   if (new URLSearchParams(location.search).has("watch")) {
     setPaused(false);
+    const _watchEye = new THREE.Vector3();
     const _move = new THREE.Vector3();
     const _feet = new THREE.Vector3();
     /** The player's feet as a vector: the eye helper is the only way to
@@ -594,6 +620,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         popped: ui.poppedOut,
         health: health.hp,
         shield: shield.state,
+        // GAME-04 stage 2: parries landed, for the watch's helpers.
+        parries: shield.parries,
         // GAME-05: the charge state for the watch: which Foamer it is
         // locked on and which one the running charge is driving at (they
         // agree while it runs).
@@ -679,6 +707,30 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       charge: () => {
         input.simulatePress("dash");
         fixedStep(STEP);
+      },
+      /** GAME-04 stage 2: the watch helper. Steps the sim until the nearest
+       *  incoming (not bounced) ball is parryLead seconds away, then
+       *  holds the disc up on that step: its arrival is inside the
+       *  window, so the page's onHitPlayer parries it. */
+      parryNext: () => {
+        const tNow = () => {
+          player.eye(1, _watchEye);
+          let best = 1e9;
+          for (const b of projectiles.list)
+            if (!b.bounced)
+              best = Math.min(
+                best, b.pos.distanceTo(_watchEye) / Math.max(0.5, b.vel.length()),
+              );
+          return best;
+        };
+        const t0 = tNow();
+        if (t0 >= 1e9) return false;
+        // Wait without the shield: the ball keeps coming, and the raise
+        // lands when it is the lead time away.
+        const n = Math.round(Math.max(0, t0 - shield.parryLead) / STEP);
+        for (let i = 0; i < n; i++) fixedStep(STEP);
+        shield.forcedHold = true;
+        return true;
       },
       step: (n: number) => {
         for (let i = 0; i < n; i++) fixedStep(STEP);

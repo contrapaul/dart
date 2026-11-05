@@ -9,6 +9,9 @@ head down) and charge (run, head low) reuse other motions.
 ID:          ANIM-01
 Title:       Procedural poses: F02 throw windup and release, F05 scrape,
              charge run and wall stun
+Status:      Stages 1 and 2 done 2026-11-04 (poses, data, tests, render
+             option, key frames; two stages committed green). Not watched
+             by eye: no browser on the AI machine, see HANDOFF log.
 Owner:       Pi (Qwen 3.8-27B, Linux AI machine)
 Reviewer:    Claude Opus 5.5
 Depends on:  GAME-10a, GAME-10b (done)

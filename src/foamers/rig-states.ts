@@ -31,8 +31,26 @@ export function walkMotion(rig: RigSpec, gait: number, amount: number, out: RigM
   else bipedWalk(rig, f, gait, 0.35 * amount, 1, 0.2 * amount);
 }
 
+/** ANIM-01: the pose the state holds, degrees for angles and metres for
+ *  distances, read from the rig's `motions` block in data/foamer-rigs.json
+ *  (`motions.<state>.<phase>`). A missing block reads empty, so a rig that
+ *  never got the block (F01, and every other pre-ANIM-01 rig) stays on its
+ *  old hard-coded pose. */
+function poseNums(rig: RigSpec, state: string, phase?: string): Record<string, number> {
+  const tree = (rig.motions ?? {}) as Record<string, Record<string, unknown>>;
+  const block = (phase ? tree[state]?.[phase] : tree[state]) as Record<string, unknown> | undefined;
+  if (!block) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(block)) if (typeof v === "number") out[k] = v;
+  return out;
+}
+
+const DEG = Math.PI / 180;
+
 /** Attack wind-up, k 0..1: bonk raises the right arm (with its club, which
- *  is on the arm and follows) over the head; headbutt leans back. */
+ *  is on the arm and follows) over the head; headbutt leans back; throw
+ *  (ANIM-01) brings the ball arm back and over so the ball sits behind the
+ *  head, the cue to raise the shield. */
 export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMotion) {
   restInto(out);
   const e = ease(clamp01(k));
@@ -44,10 +62,23 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     out.pitch = -0.45 * e;
     out.y = -0.05 * e;
     if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [-0.25 * e, 0, 0]);
+  } else if (attack === "throw") {
+    // ANIM-01: the loaded ball, from the rig's motions block. Zero when a
+    // rig has no block, so the pose never snaps: it just does not wind.
+    const w = poseNums(rig, "throw", "wind");
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [(w["armR"] ?? 0) * DEG * e, 0, 0]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [(w["foreArmR"] ?? 0) * DEG * e, 0, 0]);
+    if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [(w["headX"] ?? 0) * DEG * e, (w["headYaw"] ?? 0) * DEG * e, 0]);
+    out.roll = (w["roll"] ?? 0) * DEG * e; // drop the throwing shoulder
+    out.pitch = (w["pitch"] ?? 0) * DEG * e;
+    out.turn = (w["turn"] ?? 0) * DEG * e; // the body turns a little away
+    out.y = 0.03 * e;
   }
 }
 
-/** The strike, k 0..1: the raised arm comes down fast; or lean forward. */
+/** The strike, k 0..1: the raised arm comes down fast; or lean forward;
+ *  the throw (ANIM-01) whips the loaded ball forward past the shoulder and
+ *  the body through, the ball leaving the hand around the 70% mark. */
 export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMotion) {
   restInto(out);
   const e = ease(clamp01(k));
@@ -60,6 +91,23 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
   } else if (attack === "headbutt") {
     out.pitch = -0.45 + 0.85 * e;
     if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [-0.25 + 0.55 * e, 0, 0]);
+  } else if (attack === "throw") {
+    const w = poseNums(rig, "throw", "wind");
+    const s = poseNums(rig, "throw", "strike");
+    // The whip: from the loaded pose the arm carries to overhand fast for
+    // the first 70%, then the hand settles into the follow. The strike
+    // starts exactly where the windup left it, so no snap at the edge. A
+    // rig without a block never winds, so it does no whip either.
+    const wp = k < 0.7 ? (k / 0.7) ** 2 : 1;
+    if (rig.parts.some((p) => p.id === "armR"))
+      out.rot.set("armR", [((w["armR"] ?? 0) + ((s["armR"] ?? 0) - (w["armR"] ?? 0)) * wp) * DEG, 0, 0]);
+    if (rig.parts.some((p) => p.id === "foreArmR"))
+      out.rot.set("foreArmR", [((w["foreArmR"] ?? 0) + ((s["foreArmR"] ?? 0) - (w["foreArmR"] ?? 0)) * wp) * DEG, 0, 0]);
+    if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [((w["headX"] ?? 0) + ((s["headX"] ?? 0) - (w["headX"] ?? 0)) * wp) * DEG, 0, 0]);
+    out.roll = ((w["roll"] ?? 0) * (1 - wp)) * DEG;
+    out.pitch = (s["pitch"] ?? 0) * DEG * Math.sin(k * Math.PI) + ((w["pitch"] ?? 0) * (1 - wp)) * DEG;
+    out.turn = ((w["turn"] ?? 0) + ((s["turn"] ?? 0) - (w["turn"] ?? 0)) * wp) * DEG; // turns through the throw
+    out.y = 0.03 * Math.sin(k * Math.PI);
   }
 }
 
@@ -109,27 +157,53 @@ export function finishMotion(k: number, out: RigMotion) {
   out.pitch = 0.08 * Math.sin(k * 2 * Math.PI);
 }
 
-/** GAME-10b: the charger's scrape, k 0..1 through the telegraph. The body
- *  drops and pitches forward (the Darter has no separate head to lower),
- *  with a short scrape shake so the player reads the window. */
+/** ANIM-01: the Darter's telegraph, k 0..1. The head and body dip forward
+ *  and one leg scrapes back and forward twice over the window (replaces
+ *  GAME-10b's placeholder scrape; the whole cycle number means k 1 has no
+ *  leg that has moved, so the next pick-up will not jump). A rig without a
+ *  scrape block stays at rest, so no other rig reads one by mistake. */
 export function scrapeMotion(rig: RigSpec, k: number, out: RigMotion) {
   restInto(out);
+  const m = poseNums(rig, "scrape");
   const e = ease(clamp01(k));
-  out.pitch = 0.22 * e;
-  out.y = -0.05 * e;
-  out.roll = Math.sin(k * 40) * 0.02 * e; // the scrape itself
-  for (const id of ["legL", "legR"])
-    if (rig.parts.some((p) => p.id === id)) out.rot.set(id, [0.25 * e, 0, 0]);
+  out.pitch = (m["pitch"] ?? 0) * DEG * e;
+  out.y = -(m["dip"] ?? 0) * e;
+  const s = Math.sin(k * Math.PI * 2 * (m["cycles"] ?? 0));
+  out.roll = s * (m["rollShake"] ?? 0) * DEG * e; // the scrape's rumble in the body
+  if (rig.parts.some((p) => p.id === "legL")) out.rot.set("legL", [(m["leg"] ?? 0) * DEG * s * e, 0, 0]);
+  if (rig.parts.some((p) => p.id === "legR")) out.rot.set("legR", [-(m["stand"] ?? 0) * DEG * e, 0, 0]);
 }
 
-/** GAME-10b: the charge run, phase in gait units. A deep forward lean and a
- *  fast two-beat gallop; the stride is shorter than it looks because the
- *  system moves the body, not the legs. */
+/** ANIM-01: the charge run, phase in steps (same unit the walk's gait
+ *  uses, but a faster pattern: an in-cycle two-beat sprint). The ground
+ *  itself does the moving, the pose only sells it (replaces GAME-10b's).
+ *  A rig without a charge block stays at rest. */
 export function chargeMotion(rig: RigSpec, phase: number, out: RigMotion) {
   restInto(out);
+  const m = poseNums(rig, "charge");
   const s = Math.sin(phase * Math.PI);
-  out.pitch = 0.3;
-  out.y = 0.04 * Math.abs(s);
+  out.pitch = (m["pitch"] ?? 0) * DEG;
+  out.y = (m["bob"] ?? 0) * Math.abs(s);
+  const stride = (m["stride"] ?? 0) * DEG;
   for (const id of ["legL", "legR"])
-    if (rig.parts.some((p) => p.id === id)) out.rot.set(id, [(id.endsWith("L") ? 1 : -1) * 0.5 * s, 0, 0]);
+    if (rig.parts.some((p) => p.id === id)) out.rot.set(id, [(id.endsWith("L") ? 1 : -1) * stride * s, 0, 0]);
+}
+
+/** ANIM-01: the wall stun, t seconds since the hit, dur the whole stun.
+ *  The body rocks back with a wobble in roll; on a rig whose body is its
+ *  head (F05) the head shake is a fast pitch judder, on one with a head
+ *  part it rides it, so the open back reads. A rig without a block stays
+ *  at rest (the wall stun state itself is Darter-only). */
+export function wallStunMotion(rig: RigSpec, t: number, dur: number, out: RigMotion) {
+  restInto(out);
+  const m = poseNums(rig, "wallStun");
+  const env = Math.max(0, 1 - t / dur);
+  const f = m["freq"] ?? 24;
+  const shake = m["headShake"] ?? 0;
+  out.pitch = -(m["pitchBack"] ?? 0) * DEG * env;
+  out.roll = Math.sin(t * f * 0.5) * (m["wobble"] ?? 0) * DEG * env;
+  if (rig.parts.some((p) => p.id === "head") && shake)
+    out.rot.set("head", [Math.sin(t * (f + 3) + 1) * shake * DEG * env, 0, 0]);
+  else if (!rig.parts.some((p) => p.id === "head") && shake)
+    out.pitch += Math.sin(t * f) * shake * DEG * env; // F05's body is its head
 }
