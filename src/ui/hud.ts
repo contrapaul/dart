@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import type { Blaster, BlasterState } from "../weapons/blaster";
 
 // Crosshair and ammo counter in the DOM, layered over the canvas. The
@@ -32,6 +33,12 @@ export class Hud {
   private heal: HTMLElement;
   private healTimer = 0;
   private ammoTimer = 0;
+  // GAME-08: the vacuum's charge: one pip by the ammo counter, filled by
+  // its fraction. Nullable: a page without the element stays silent
+  // (the range and sandbox have no #vacpip yet).
+  private vacPip: HTMLElement | null = null;
+  private vacFill: HTMLElement | null = null;
+  private lastVac = -1;
   /** Stage 2 wires this to the reduce flashes setting; while false the
    *  cream edge glow stays off (the bar's own flash still shows). */
   reduceFlashes = false;
@@ -50,6 +57,10 @@ export class Hud {
     this.prompt = root.querySelector<HTMLElement>("#finishprompt")!;
     this.lock = root.querySelector<HTMLElement>("#lockmarker");
     this.heal = document.querySelector<HTMLElement>("#healflash")!;
+    // The vacuum's charge pip, next to the ammo counter (a page without
+    // it is a silent off, as #lockmarker is on a range page).
+    this.vacPip = root.querySelector<HTMLElement>("#vacpip");
+    if (this.vacPip) this.vacFill = this.vacPip.querySelector<HTMLElement>("i");
     this.setHealth(0, 0); // hides until the first real update
     this.lastHp = -1;
     this.lastMax = -1;
@@ -99,6 +110,19 @@ export class Hud {
     this.ammo.classList.add("topped");
     window.clearTimeout(this.ammoTimer);
     this.ammoTimer = window.setTimeout(() => this.ammo.classList.remove("topped"), 250);
+  }
+
+  /** GAME-08: the vacuum's charge, one pip filled by its fraction
+   *  (0 to 1): it empties on the lock and fills back over the recharge.
+   *  Off while the HUD is; no element on a page is a silent off. */
+  setVacCharge(frac: number) {
+    if (!this.vacFill) return;
+    if (this.root.hidden) { this.lastVac = -1; return; }
+    const f = Math.round(THREE.MathUtils.clamp(frac, 0, 1) * 100);
+    if (f === this.lastVac) return;
+    this.lastVac = f;
+    this.vacFill.style.width = `${f}%`;
+    this.vacPip?.classList.toggle("full", frac >= 1);
   }
 
   show(visible: boolean): void {

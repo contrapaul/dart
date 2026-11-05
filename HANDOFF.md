@@ -6,6 +6,15 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-08 done 2026-11-06: the foam vacuum (D09): E on a weakened
+Foamer in its stagger locks on, sucks it into the nozzle
+place (no pop chunks, one capped foam puff), and its darts go straight
+into the blasters' reserves by the type's share (never past reserveMax).
+One charge, 15 s to refill, full on start and retry, a recharge pip in
+the HUD; the placeholder tool is a code-built foam tube and nozzle. Not
+checked by eye: the tool's look, the nozzle puff, and the five VC-*
+placeholder sounds (see the Log entry).
+
 BUG-01 done 2026-11-05 (round 2, after a review found round 1 had traded one
 bug for another): the Pit's ring tops are back in the nav grid, as a second
 layer over the floor under them, so both a player on the ring and a player
@@ -186,6 +195,48 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: GAME-08 done, the foam vacuum (Qwen 3.8-27B via Pi)
+
+Built. The vacuum (`src/game/vacuum.ts`) is the finisher's sibling: E on a
+weakened Foamer in its stagger, inside 3 m of the hollow and in the view
+cone, locks on. One charge, `rechargeSeconds` (15 s) to refill, full on level
+start and retry. The lock holds the player the way the finisher does and turns
+the view onto the Foamer; from half the turn the Foamer is drawn to the nozzle
+and shrunk to nothing (scale and position ease). Removed with no pop chunks,
+a capped white-foam puff at the nozzle. Reward: darts straight into each
+blaster's reserve, the type's `ammoShare` (active 0.5, others 0.25) of its own
+`reserveMax`, rounded up, capped at `reserveMax` via `loadout.refillReserves`
+(the one credit path the ammo box's refill shares).
+
+Files: `src/game/vacuum.ts` (new), `src/foamers/foamers.ts` (`suck`, no-pop
+removal), `src/weapons/loadout.ts` (`refillReserves`), `src/game/audio.ts`
+(`loop` on the sink), `src/game/game.ts` (use-key wiring, charge step, the
+placeholder viewmodel, the render (recharge meter), watch helpers),
+`src/ui/hud.ts` (`setVacCharge`, `#vacpip`), `data/vacuum.json` (new),
+`data/foamers.json` (per-type `vacuum` block: `allowed` and `ammoShare`),
+`data/sounds.json` (VC-* placeholder synths), `design/SOUNDS.md` (IDs match),
+`index.html`/`arena.html` (`#vacpip`), `src/style.css` (the meter),
+`tests/foamers/vacuum.test.ts` (new).
+
+All numbers in `data/`: reach 3, cone cos 0.97, lock 0.9 s, recharge 15 s,
+one charge, the nozzle puff count and size in `data/vacuum.json`; the per-type
+`vacuum` entry (allowed: F01, F02 and F05, with each `ammoShare`) in
+`data/foamers.json`.
+
+Decisions: the reward is darts into reserves, never past `reserveMax` (the
+card, and no pickups, keeping Paul's "no loot drops" rule clean); the types with a per-type `vacuum`
+entry and `allowed: true` (F01, F02 and F05) are the allowed ones; a type
+with no entry is not allowed (heavies come later); the placeholder viewmodel is
+code (no art files), rising in the lower right as the blaster dips, as the
+card asks.
+
+Still unverified by eye (no browser on this machine): the vacuum's look and
+how it reads rising, the nozzle's foam puff, and the five VC-* placeholder
+sounds (all code synths, not Paul's beds). Not done by card: Paul's name for
+the tool, upgrades (faster recharge, heavies), the range-panel "Fill vacuum"
+button. Reviewer: Claude. Not merged or pushed.
+
+### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
 ### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
 
 - Paul on the shield: a round foam shield in the spirit of a classic round
