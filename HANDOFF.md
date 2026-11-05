@@ -366,6 +366,31 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: BUG-02 review, parries and packs tried in the Pit (Claude, overnight)
+
+- Qwen 27B's first run hit its output limit mid stage 1; resumed with
+  short replies it finished all three stages. Main merged in (HANDOFF
+  kept both sides); tsc, 458 tests and the build pass. The code is sound:
+  `timeToImpact` steps the ball's own arc and tests the swept segment
+  against the capsule; `canStandAt` is layer aware.
+- `parryNext()` in the Pit against wave 2's Roamers, facing the thrower,
+  the disc lowered between tries: 2 parries in 10 (6 blocks, 2 hits),
+  where the old helper gave 0. Better, not reliable. Likely cause: the
+  ball meets the disc, which is in front of the capsule, before it meets
+  the capsule the new timing aims at. Also: the helper leaves
+  `forcedHold` on, so a caller must `block(false)` between tries (I did
+  not at first, and every later try then read as a block). Paul's hands
+  are still the real test of the parry window.
+- `spawnPack()` round the Pit's central block still put Swarmers inside
+  it, and BUG-02 is not why: the nav grid is wrong there. (1) The first
+  bake runs before the voxel pieces build their colliders, so a fresh
+  page's grid has no block at all (a rebake of the area found the block
+  top at 3.2 m). (2) Even after a rebake the floor inside the block reads
+  walkable: voxel pieces collide as hollow trimeshes, and the bake's
+  agent shape test only meets surfaces, so a cell in the middle of a
+  solid block passes. That is BUG-03 (`tasks/BUG-03.md`). The pack fix
+  is right given a right grid, which is what its tests build.
+
 ### 2026-11-06: BUG-02, the parry watch's timing and the pack's floor
 
 - The watch helper timed a loft by a line (Qwen 3.8-27B via Pi,
