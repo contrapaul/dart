@@ -86,6 +86,10 @@ export class Foamer {
   justAlerted = false;
   /** It took a dart hit since the last AI step, so being shot wakes it. */
   damageSinceStep = false;
+  /** GAME-10d: seconds since its last nibble landed, Infinity until it has
+   *  bitten once. Only a Swarmer's brain reads it (the ring wait after a
+   *  nibble); the system restarts it when the windup lands. */
+  sinceNibble = Infinity;
   /** Vertical speed (m/s); the system adds gravity and walks it. */
   vy = 0;
   /** Going down (ENG-10 stage 3): the body sits sinkDrop (m) below the

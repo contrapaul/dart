@@ -83,12 +83,24 @@ function attackRange(spec: FoamerSpec, attack: { id: string } | null): number {
   return a.token === "ranged" ? spec.preferredDistanceMetres : spec.attackRange;
 }
 
+/** GAME-10d: the ring a Swarmer keeps between nibbles, from its type. A
+ *  type without one uses the shared bonker ring. */
+function holdRangeOf(spec: FoamerSpec): number {
+  return (spec as { holdRangeMetres?: number }).holdRangeMetres ?? BRAIN.holdRangeMetres;
+}
+
+/** GAME-10d: how many make a pack, from the type (the rig's `pack` is the
+ *  same number). */
+function packSizeOf(spec: FoamerSpec): number {
+  return Math.max(1, Math.floor((spec as { pack?: number }).pack ?? 1));
+}
+
 /** The token pool a type's attacks draw from (data/foamers.json): the token
  *  of its first attack that declares one (a thrower throws with a ranged
- *  token). GAME-10a. */
+ *  token). GAME-10a. GAME-10d: a Swarmer nibbles on the swarm pool. */
 function tokenKindOf(spec: FoamerSpec): TokenKind {
   const t = spec.attacks.find((a) => a.token)?.token;
-  return (t === "ranged" ? "ranged" : "melee") as TokenKind;
+  return t === "ranged" || t === "swarm" ? t : "melee";
 }
 
 /** One fallen piece: a part and its children. One dynamic body carries one
@@ -131,11 +143,15 @@ const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
 const _losFrom = new THREE.Vector3();
 const _losTo = new THREE.Vector3();
 const _losDir = new THREE.Vector3();
+/** GAME-10d: one pack member's feet, written before its spawn. */
+const _packFeet = new THREE.Vector3();
 /** GAME-11: a prone Foamer turns at this share of its turn rate. */
 const CRAWL_TURN = 0.5;
 /** The brain's data (ENG-08 stage 3). */
 const BRAIN = aiData.brain;
 const S = aiData.steer;
+/** GAME-10d: the pack numbers (spawn ring, cap on live Swarmers). */
+const PACK = aiData.pack;
 /** The nav grid's own step limit: the walk autosteps exactly what the grid
  *  promises, so a path never asks for a step the controller refuses
  *  (BUG-01 round 2). */
@@ -148,7 +164,10 @@ export type FoamerSoundKind =
   | "stagger" | "throw"
   // GAME-10b, the charger: the scrape before a charge, the run starting,
   // and the wall or player it hits.
-  | "scrape" | "charge" | "impact";
+  | "scrape" | "charge" | "impact"
+  // GAME-10d, the Swarmer: the yip when a pack wakes. Only the F03 has a
+  // sound for it, so the others stay quiet rather than borrow one.
+  | "alert";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -311,7 +330,11 @@ export class FoamerSystem {
           initial: this.spawnState,
           // A type whose attacks use the ranged pool runs the ranged brain;
           // GAME-10b: a charger runs its own (telegraph, charge, wallStun).
-          brain: chargeOf(spec) ? "f05" : tokenKindOf(spec) === "ranged" ? "f02" : "f01",
+          // GAME-10d: a type that nibbles on the swarm pool runs the Swarmer
+          // brain (hit and run on a ring).
+          brain: chargeOf(spec) ? "f05"
+            : tokenKindOf(spec) === "ranged" ? "f02"
+              : tokenKindOf(spec) === "swarm" ? "f03" : "f01",
         },
         agentId,
       );
@@ -327,7 +350,8 @@ export class FoamerSystem {
         // A thrower sidles on the ring at the distance it keeps, a charger
         // on its own ring out at charge range; a bonker on the shared ring.
         holdRange: chargeOf(spec)?.holdMetres
-          ?? (tokenKindOf(spec) === "ranged" ? spec.preferredDistanceMetres : BRAIN.holdRangeMetres),
+          ?? (tokenKindOf(spec) === "ranged" ? spec.preferredDistanceMetres : holdRangeOf(spec)),
+        sinceNibble: Infinity,
       };
     }
     this.group.add(f.group);
@@ -344,6 +368,35 @@ export class FoamerSystem {
     this.stats.spawned++;
     sound(this, "spawn", f, f.centre);
     return f;
+  }
+
+  /** GAME-10d: spawn a pack round a feet point. Each member leaves the
+   *  pack centre a little further round the circle, so a pack arrives as a
+   *  spread ring rather than one stacked body. `count` defaults to the
+   *  type's own `pack`. Past `pack.maxAlive` live Swarmers the rest are
+   *  skipped: the oldest are never removed to make room. Returns the ones
+   *  that were made. */
+  spawnPack(
+    feet: THREE.Vector3, facing?: THREE.Vector3, count?: number, type = "F03",
+  ): Foamer[] {
+    const n = count ?? packSizeOf(specFor(type));
+    const out: Foamer[] = [];
+    let live = 0;
+    for (const f of this.list) {
+      if (f.state !== "down" && tokenKindOf(f.spec) === "swarm") live++;
+    }
+    for (let i = 0; i < n && live < PACK.maxAlive; i++) {
+      // Round the ring, one even step per member; the last member sits
+      // `spreadMetres` out, the first a little nearer the centre.
+      const a = (i / n) * Math.PI * 2;
+      const r = PACK.spreadMetres * (0.55 + 0.45 * (i / Math.max(1, n - 1)));
+      _packFeet.set(feet.x + Math.sin(a) * r, feet.y, feet.z + Math.cos(a) * r);
+      const f = this.spawn(_packFeet, facing ?? feet, type);
+      if (!f) break; // the system-wide Foamer cap
+      out.push(f);
+      live++;
+    }
+    return out;
   }
 
   /** Fixed step, before world.step(). `player` is the player's position. */
@@ -577,6 +630,8 @@ export class FoamerSystem {
           } else {
             f.bonk(atk.id);
           }
+          // GAME-10d: a landed nibble restarts the Swarmer's ring wait.
+          if (tokenKindOf(f.spec) === "swarm") f.sinceNibble = 0;
         }
         f.state = "strike";
         f.stateTime = 0;
@@ -704,6 +759,10 @@ export class FoamerSystem {
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
+    // GAME-10d: the Swarmer's clock since its last nibble, read by its brain
+    // to decide whether it may run back in or must keep the ring.
+    f.sinceNibble = f.sinceNibble === Infinity ? Infinity : f.sinceNibble + dt;
+    input.sinceNibble = f.sinceNibble;
     input.tookDamage = f.damageSinceStep;
     input.nearbyAlert = this.nearbyAlert(f);
     // A crawl is not one of the brain's states, so the brain never asks for
@@ -727,6 +786,7 @@ export class FoamerSystem {
     // Entering alert this step (the brain resets stateTime on a transition):
     // a neighbour of an idle one picks the alarm up on its next step.
     f.justAlerted = a.state === "alert" && a.brain.stateTime === 0;
+    if (f.justAlerted && tokenKindOf(f.spec) === "swarm") sound(this, "alert", f, f.centre);
   }
 
   /** A step of the bid: what the agent's token request and distance read. */
