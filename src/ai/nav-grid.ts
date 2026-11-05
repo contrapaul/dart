@@ -210,6 +210,21 @@ export class NavGrid {
     return k >= 0 && k < this.layers[i]!;
   }
 
+  /** Whether an agent can stand at (x, z) with its feet at `feetY`: the
+   *  cell is walkable, and its walkable floor is a step it can take
+   *  (the stand's own rule up and down: an autostep up, a full step down).
+   *  walkableAt and groundAt without a height would call a walkable top of
+   *  the column a floor the agent would pass, and a walkable floor a storey
+   *  below a stand when the surface is the agent is really on. */
+  canStandAt(x: number, z: number, feetY: number): boolean {
+    const i = this.cellAt(x, z);
+    if (i < 0) return false;
+    const k = this.layerAt(i, feetY);
+    if (k < 0 || k >= this.layers[i]!) return false;
+    const g = this.layerY[i * this.maxLayers + k]!;
+    return g - feetY <= NAV.stepAutostepMetres && feetY - g <= NAV.maxStepMetres;
+  }
+
   /** Ground height under (x, z), or NaN if the bake found none. With y, the
    *  height of the walkable layer nearest y (the feet of the agent asking);
    *  without it, the lowest, so a reader that does not care about layers

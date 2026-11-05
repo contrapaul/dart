@@ -23,6 +23,81 @@ and the `FX-chunk` replay at the chunk (no browser here). Stage 3's range
 switch is in; the area blast half of the card (B05 and B06 mods, B07) is
 still open.
 
+BUG-02 done 2026-11-06, awaiting review (`tasks/BUG-02.md`, Qwen 3.8-27B
+via Pi): the watch helper lands parries against a lobbed ball, and packs
+spawn on floor the grid says an agent can stand on. The parry's own unit
+tests pass and the shield is untouched: the fault was the helper's
+estimate. `parryNext()` asked straight-line distance over speed for a
+ball on a gravity loft, so the raise landed out of the parry window
+and the ball burst on the disc as a block (the six-try, zero-parry
+from the GAME-06 and GAME-04b reviews). Now it asks `timeToImpact`, a
+new shared pure function in `src/foamers/ball-time.ts` that steps a
+copy of the ball with the projectile's own gravity and the page's step
+and returns the step at which the flight segment reaches the player's
+capsule spine (the shape the projectile's own raycast meets; read from
+the eye minus `eyeHeight`, the page's own read). The helper waits that
+time minus the shield's `parryLead` and then holds: on the game page
+through `fixedStep`, on the range through the loop's own step (`parryWaitSec`),
+which the helper cannot call. No parry rule or number changed.
+`spawnPack()` now asks the grid before it places a member: a ring spot
+is used only if an agent of the grid's size can stand on it (a new
+canStandAt on the nav grid: the layer the feet sit near, autostep up,
+full step down; a block's top face is walkable and reads as a top, not
+a floor), and a blocked spot is stepped a few in along the angle
+(data `pack.inboundStepMetres` 0.5, `inboundSteps` 4) before the member
+is skipped (neither spawned nor counted, so a skipped member is
+neither a pack slot nor a ghost the next pack must budget against).
+Without a grid the placement is unchanged. The earlier `walkableAt`
+was not the right ask: it read the lowest layer without a height, so
+the Pit's central block called the column's top face a walkable floor.
+Tests: `tests/foamers/ball-time.test.ts` (the straight ball and the
+loft, read against the real `update` loop, within two steps; the old
+line estimate off by more than a step), `tests/shield/parry-next.test.ts`
+(the helper's own wait, raise, and a parry, not a block, plus the
+card's demonstration: the old distance-over-speed wait on a 20 m loft
+is out of the window by more than a window, so the old helper blocked),
+and `tests/foamers/pack-walkable.test.ts` (a block whole under a pack:
+nobody spawns and the skipped members simply are not there; a block
+off to a side: the full pack still arrives, stepped in past it, nothing
+standing on it) fails on the old placement. npx tsc --noEmit, npx
+vitest run, npm run build all pass; every touched file is free of em
+and en dashes.
+Not checked by eye: that `parryNext()` actually lands parries in the
+browser against a live Roamer, and what a skipped or stepped-in member
+looks like in the Pit (there is no browser here; the reviewer will
+check both against a page). The old-estimate line is demonstrated in
+the test: the old wait on a 20 m loft is out of the window by more
+than a window.
+
+LVL-02c done 2026-11-06, awaiting review (`tasks/LVL-02c.md`, Qwen 3.8
+Flash Next via Pi): Level 1-2 beats 6 to 9 are in `data/levels/1-2.json`,
+so `arena.html?level=1-2` now plays four arenas in order. From the store
+the player goes north through a 4 m way on into a connecting corridor that
+bends past a marked empty bay where the beat 5 tower will go (`_note` in
+the file), and into the Crossroads (A7, scaled: a 14 x 16 m hub, one
+pillared centre with four carveable foam skins over a solid core, four
+6 m spokes with gates). Its lock shuts all four gates including the entry;
+wave 1 is 6 Roamers from the north, east and west spokes staggered, wave 2
+is 7 Roamers plus a Slowmer from a floor seam at the pillar's base (the
+behind you moment). The way on is the fourth (north) spoke, not the way
+back, so the level keeps turning north (section 14). Breather 2 (8 x 8 m)
+has one ammo box and marked empty spots where the U2 station and the S3
+ledge will go ([Paul], not built). The Gauntlet is the tiered bowl (A3,
+scaled to 31 x 25 m): tiers at 0, 1.2 and 2.4 m walked up by 22 degree
+shell ramps (Foamers can climb them: a 1.2 m step is over the nav
+autostep), two rifts on the upper tier for wave 1's 8 Roamers, plus a
+floor rift in the bottom tier's centre for wave 2's 10; four foam cover
+pillars on tier 1 and ammo in both bottom corners; the dropping floor
+island is a `_note` (no falling floor yet). The level's exit pad moved out
+of the store to the lit 4 m door on the bowl's far wall. Tests: four
+arenas in order, the walk start to exit on floor, the tiers and rifts
+walkable on the nav grid with paths up the ramps and down, and the pad
+dead until the fourth arena clears. Not checked by eye: the spaces and
+their pacing, the behind you moment, the tiers reading as three heights,
+the rifts' glow placement in the spokes, and that Foamers stream into the
+bowl well (see the Log entry). Beat 5 (the tower), stations, secrets, the
+B02 blaster and the level's name and setting are still to do.
+
 OPS-02 done 2026-11-06, awaiting review (`tasks/OPS-02.md`, Qwen 3.8
 27B via Pi): the Rapier physics now ships as its own
 content-hashed `/assets/*.wasm` file instead of about 4.1 MB of base64
@@ -64,9 +139,10 @@ One charge, 15 s to refill, full on start and retry, a recharge pip in
 the HUD; the placeholder tool is a code-built foam tube and nozzle. Not
 checked by eye: the tool's look, the nozzle puff, and the five VC-*
 placeholder sounds (see the Log entry).
-LVL-02b done 2026-11-06, awaiting review (`tasks/LVL-02b.md`, Qwen 3.8
-Flash Next via Pi): a level's `arenas` play in file order through a new
-`LevelRunner` in `src/level/level-runner.ts` that owns one `ArenaRunner`
+LVL-02b done 2026-11-06, reviewed by Claude, merged (`tasks/LVL-02b.md`,
+Qwen 3.8 Flash Next via Pi): a level's `arenas` play in file order through
+a new `LevelRunner` in `src/level/level-runner.ts` that owns one
+`ArenaRunner`
 per arena and steps only the current one, so a later arena's trigger does
 nothing until every earlier arena cleared. Each arena locks on its own
 trigger, runs its waves, opens its own doors and keeps its own checkpoint;
@@ -369,6 +445,151 @@ github.com/contrapaul/dart (public), MIT licence.
 - Not checked by eye: the hole shape, how the burst reads, the push, the
   sound. Verified: tsc clean, 457 tests (68 files, 2 skipped), build passes,
   no em or en dashes in the touched files.
+
+### 2026-11-06: BUG-02 review, parries and packs tried in the Pit (Claude, overnight)
+
+- Qwen 27B's first run hit its output limit mid stage 1; resumed with
+  short replies it finished all three stages. Main merged in (HANDOFF
+  kept both sides); tsc, 458 tests and the build pass. The code is sound:
+  `timeToImpact` steps the ball's own arc and tests the swept segment
+  against the capsule; `canStandAt` is layer aware.
+- `parryNext()` in the Pit against wave 2's Roamers, facing the thrower,
+  the disc lowered between tries: 2 parries in 10 (6 blocks, 2 hits),
+  where the old helper gave 0. Better, not reliable. Likely cause: the
+  ball meets the disc, which is in front of the capsule, before it meets
+  the capsule the new timing aims at. Also: the helper leaves
+  `forcedHold` on, so a caller must `block(false)` between tries (I did
+  not at first, and every later try then read as a block). Paul's hands
+  are still the real test of the parry window.
+- `spawnPack()` round the Pit's central block still put Swarmers inside
+  it, and BUG-02 is not why: the nav grid is wrong there. (1) The first
+  bake runs before the voxel pieces build their colliders, so a fresh
+  page's grid has no block at all (a rebake of the area found the block
+  top at 3.2 m). (2) Even after a rebake the floor inside the block reads
+  walkable: voxel pieces collide as hollow trimeshes, and the bake's
+  agent shape test only meets surfaces, so a cell in the middle of a
+  solid block passes. That is BUG-03 (`tasks/BUG-03.md`). The pack fix
+  is right given a right grid, which is what its tests build.
+
+### 2026-11-06: BUG-02, the parry watch's timing and the pack's floor
+
+- The watch helper timed a loft by a line (Qwen 3.8-27B via Pi,
+  `tasks/BUG-02.md`, branch `bug-02`): `parryNext()` asked straight-line
+  distance over speed, the raise landed out of the parry window, and
+  the ball burst on the disc as a block. The fix is `timeToImpact` in
+  `src/foamers/ball-time.ts`, a shared pure function that steps a copy
+  of the ball with the projectile's own gravity and the page's step and
+  returns the step at which the flight segment reaches the player's
+  capsule spine (the shape the projectile's own raycast meets, read
+  from the eye minus `eyeHeight`). The helper waits that time minus the
+  shield's `parryLead` and then holds: through `fixedStep` on the game
+  page, through the loop's own step (`parryWaitSec`) on the range. No
+  parry rule or number changed.
+- The card's demonstration, shown in the test: the old
+  distance-over-speed wait on a 20 m loft misses the window by more
+  than a window, so the old helper would have blocked, not parried.
+- `spawnPack` asked the grid before it placed: a new `canStandAt` on
+  the nav grid (the layer the feet sit near, autostep up, full step
+  down; a bare `walkableAt` reads the top face of a block a floor, so
+  the Pit's central block is why a standability ask was needed), a
+  ring spot that fails is stepped a few in along the angle
+  (`pack.inboundStepMetres` 0.5, `pack.inboundSteps` 4 in `data/ai.json`), and
+  a member the steps cannot place is skipped: neither spawned nor
+  counted, and a skipped one is not a slot a later pack must budget
+  against. Without a grid the placement is unchanged.
+- New tests: `tests/foamers/ball-time.test.ts`,
+  `tests/shield/parry-next.test.ts`, `tests/foamers/pack-walkable.test.ts`
+  (the two pack rows fail on the old placement; verified).
+  Existing shield, projectile and pack tests unchanged and passing.
+- Not checked by eye: that the helper lands parries in the browser
+  (no browser on this machine; the reviewer will check against the
+  page), and the Pit's own pack near its central block. The helper's
+  walk itself is what the test walks: the range's rig, the page's
+  own flight, the page's own shield read, the helper's wait and its
+  hold, end to end at 60 Hz.
+
+### 2026-11-06: LVL-02c review, Level 1-2 played start to exit (Claude, overnight)
+
+- The Spark's first run hit its output limit writing the level in one
+  reply and saved nothing; resumed with "one room per edit", it finished
+  all three stages. Main merged in (HANDOFF Status rebuilt by hand);
+  tsc, 450 tests and the build pass.
+- Played `arena.html?level=1-2&watch` through all four arenas: the parry
+  corridor and the Ring as before; the Crossroads locks all four gates,
+  Roamers come from the spokes, and every gate opens on clear; the bowl's
+  wave 1 Roamers stand on the upper tier at the back, wave 2 clears, the
+  exit door opens and the pad completes the level only after the fourth
+  arena. No console errors.
+- For Paul's playtest: in the greybox the bowl's three tiers read weakly
+  (one grey); the lit exit sits between the two upper rifts, so it is seen
+  from the whole bowl but the Roamers guard it. The way on from the
+  Crossroads is the north spoke, not the way back the concept asked for
+  (section 14 says why).
+- Not checked by eye: pacing, the pillar seam's behind you moment, and
+  whether Foamers use the ramps well under pressure.
+
+### 2026-11-06: LVL-02c, Level 1-2 beats 6 to 9 (Qwen 3.8 Flash Next via Pi)
+
+Built, in `data/levels/1-2.json` (no `src/` changes; the page already
+drives any number of arenas through `LevelRunner`):
+
+- Beat 5 gap: from the store's north wall a 4 m way on into a connecting
+  corridor that runs north and bends west past an empty bay (x -20 to -8,
+  z -30) where the tower will go. The bay has a foam-yellow floor marking
+  and a `_note`; `data/ai.json` `nav.maxLayers` is too small for a four
+  floor tower today, so the later card needs that raised first.
+- Beat 6, the Crossroads (A7): a 14 x 16 m hub with a 1.6 m centre pillar
+  (solid core plus four carveable foam skins as separate pieces, so it
+  breaks off foam-style) and four 6 m spokes, each with a gate door. Lock
+  shuts all four gates including the entry. Wave 1: 6 Roamers from the
+  north, east and west spoke rifts, `delaySeconds` 2 so they arrive
+  staggered from three directions. Wave 2: 7 Roamers from the same three
+  plus 1 Slowmer from a floor seam rift at the pillar's base (the behind
+  you moment). Cleared unlocks the north gate (`unlockOnClear` also
+  reopens the others), checkpoint just inside the hub.
+- Beat 7, breather 2: 8 x 8 m off the hub's north gate, one 20 dart box,
+  two foam-yellow floor markings where the U2 station and the S3 ledge
+  will go ([Paul], not built), `_note` says so.
+- Beat 8, the Gauntlet (A3): a 31 x 25 m bowl. Tier 1 at 1.2 m along both
+  side walls (4 m deep), tier 2 at 2.4 m along the far wall with a 4 m
+  gap over the exit door. Ramps (1.2 m rise over 3 m) reach both tiers;
+  the nav grid walks them (verified: paths floor to tier 1 to tier 2 and
+  back down). Four foam cover pillars on tier 1, ammo boxes in both
+  bottom corners (30 darts each). Rifts: two on tier 2 at the far wall
+  (wave 1: 8 Roamers) and one floor rift in the bottom tier's centre
+  (wave 2 adds 10 more Roamers, from all three, the ring of Firebacks the
+  design asks for is a later tuning pass). Cleared unlocks the far door
+  and the entry; checkpoint at the bowl's mouth.
+- Beat 9: the level's `exit` pad moved from the store to behind a lit 4 m
+  door in the bowl's far wall (`bowl-out`). The store is a plain room.
+
+Decisions (PLAN.md section 14 row dated 2026-11-06): both arenas scaled
+down to fit one 31 m wide north bound corridor beside LVL-02b's Ring; tiers
+walked up by ramps not 1.2 m steps (a 1.2 m step is over the nav
+autostep of 0.2 m so Foamers could not climb the bowl); the Crossroads' way
+on is the spoke opposite the entry, not the design's south spoke, because
+breather 2, the bowl and the exit all lie north and the runner only lets
+you on once cleared anyway; the exit pad moved to the bowl's far door.
+
+Tests (`tests/level/level-1-2.test.ts`): arenas in order with archetypes
+and wave counts of all four; the walk from the start through all nine
+beats to the new exit; nav grid checks that tiers, rifts and both new
+triggers are walkable with paths up ramps and down; door block/open ray
+checks including `bowl-out`; and a `LevelRunner` test that the exit phase
+stays short of `complete` until the fourth arena clears. `npx tsc
+--noEmit`, `npx vitest run` (444 passed, 2 skipped), `npm run build` all
+pass. Level validator: no errors, one warning carried over from LVL-02b
+(ring voxel count).
+
+Not checked by eye (no browser here): pacing of the corridor, bay and hub;
+whether the three spoke rifts read as three directions in play; the
+pillar rift's surprise; whether the bowl's three heights read at a glance
+and the tiers feel like cover; rift glow placement in the dark spokes;
+Foamers streaming down the ramps sensibly; and that clearing the fourth
+arena plus walking to the lit door feels like an ending.
+
+Next: beat 5's tower card (raise `nav.maxLayers` first), U2/S3 stations
+([Paul] content), secrets, the B02 blaster, the level's name and setting.
 
 ### 2026-11-06: OPS-02 review, the physics .wasm checked in a browser (Claude, overnight)
 
@@ -1865,7 +2086,6 @@ that line. Worth a bug card.
 - Verified: 25 runs of the file alone and several full-suite runs under
   extra load, all green; `npx tsc --noEmit` and `npm test` pass.
 
-
 ### 2026-11-03: QA-watch, range watch mode for the in-app browser (Qwen3.8-27B via Pi)
 
 `range.html?watch` starts the range unpaused without pointer lock, which
@@ -2097,7 +2317,6 @@ with its voxel wall and towers is not measured; the 27.8 ms above is a
 plain floor in the test runner. The rebake cost per carve is not measured
 either, only reasoned about. Grid resolution 0.25 m is from the card and
 has not been tuned against a 0.35 m agent walking through the course.
-
 
 ### 2026-11-02: ENG-08 stage 1 (DeepSeek V4.1 Flash)
 
@@ -3056,8 +3275,6 @@ Review (Claude), in the browser on the range:
 
 Plain level, frame-time graph and the panel: `range.html` next to the
 game and the sandbox. Stage 1 built the parts behind it:
-
-
 
 - `data/range.json` exactly as the card gives it.
 - `src/core/loop.ts`: an optional `stats` hook called after render with one reused `FrameStats` (`raw`, `dt`, `steps`, `work`, `updateWork`; `raw` is the unsnapped rAF interval in ms, 0 on the first frame), `createFrameClock` takes a snap option and exposes the raw last interval, and `startLoop` returns `{ setSnap }`. The existing loop tests pass unchanged.

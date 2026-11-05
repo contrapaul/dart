@@ -7,7 +7,7 @@
 import * as THREE from "three";
 import { createRenderer } from "../render/scene";
 import { createPhysics } from "../physics/world";
-import { startLoop, type FrameStats } from "../core/loop";
+import { startLoop, STEP, type FrameStats } from "../core/loop";
 import { Input } from "../core/input";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
@@ -34,6 +34,7 @@ import dartsJson from "../../data/darts.json";
 import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
 import foamerData from "../../data/foamers.json";
+import { timeToImpact, playerCapsuleCentre } from "../foamers/ball-time";
 
 const R = (rangeJson as unknown as {
   range: {
@@ -673,6 +674,25 @@ const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _eye = new THREE.Vector3();
 const eye = new THREE.Vector3();
+// BUG-02: the parry watch's scratch (the range's parryNext mirrors the
+// game page's, but it cannot run the loop's step: it holds a countdown
+// the loop spends, and the hold lands at the lead's time of wait).
+const _rangeCentre = new THREE.Vector3();
+let parryWaitSec = 0;
+
+/** Seconds until the nearest incoming (not bounced) ball is within a hit
+ *  of the player's capsule, the shared flight math (ball-time.ts). 1e9
+ *  when there is none. */
+function parryNextWait(dt: number): number {
+  playerCapsuleCentre(player.eye(1, eye), _rangeCentre);
+  let best = 1e9;
+  for (const b of projectiles.list) {
+    if (b.bounced) continue;
+    const s = timeToImpact(b.pos, b.vel, dt, _rangeCentre);
+    if (s < best) best = s;
+  }
+  return best;
+}
 const WEAPON_KEYS = ["weapon1", "weapon2", "weapon3"] as const;
 
 const PAUSED_FRAME_MS = renderJson.pausedFrame * 1000;
@@ -690,6 +710,13 @@ loopCtl = startLoop({
   update(dt) {
     if (input.wasPressed("pause")) setPaused(!paused);
     if (!paused) {
+      // BUG-02: parryNext's hold lands on the lead's time of wait (the
+      // game page's helper runs its own steps; the range's cannot, so the
+      // loop spends the watch wanted's countdown here).
+      if (parryWaitSec > 0) {
+        parryWaitSec -= dt;
+        if (parryWaitSec <= 0) shield.forcedHold = true;
+      }
       player.update(dt, input);
       // GAME-04 stage 2: the tiny parry hit-stop slows the movables, like on the
       // game page (the shield counts the true dt and hands back the rate).
@@ -813,16 +840,19 @@ if (watch) {
         return e.thrown;
       },
       shieldState: () => shield.state,
-      /** GAME-04 stage 2: raise the disc with its hands-on lead preserved: for the
-       *  next ball that is still coming, raise it now; the range's watch
-       *  cannot run the page's own step, so it holds and lets the loop
-       *  raise it (the game page's parryNext runs the steps for it).
-       *  true when a ball was found to aim at. */
+      /** GAME-04 stage 2 (BUG-02): raise the disc with its hands-on lead,
+       *  timed by the ball's real flight (ball-time.ts, the game page's
+       *  helper's math): the hold lands when the ball is the shield's
+       *  lead time from the disc, so the loop's raise is within the
+       *  window by the arrival. A ball inside the lead already is not
+       *  raiseable in time: the hold goes up right away, the raise takes
+       *  its own time. true when a ball was found to aim at. */
       parryNext: () => {
-        let found = false;
-        for (const b of projectiles.list) if (!b.bounced) { found = true; break; }
-        if (found) shield.forcedHold = true;
-        return found;
+        if (paused) return false;
+        const t = parryNextWait(STEP);
+        if (t >= 1e9) return false;
+        parryWaitSec = Math.max(0, t - shield.parryLead);
+        return true;
       },
       state: () => ({
         parries: shield.parries,
