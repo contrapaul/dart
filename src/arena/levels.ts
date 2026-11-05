@@ -1,6 +1,7 @@
 import type { Level } from "../level/format";
 import pitJson from "../../data/levels/1-1-pit.json";
 import ringJson from "../../data/levels/1-4-ring.json";
+import twoJson from "../../data/levels/1-2.json";
 
 // GAME-10b: the arena page's level choice. `arena.html?level=1-4-ring` loads
 // the Ring; anything else, or nothing, loads the Pit (the card: the Pit
@@ -8,10 +9,12 @@ import ringJson from "../../data/levels/1-4-ring.json";
 // because nothing is ever fetched from another host and Vite has to bundle
 // them anyway. Both src/arena/main.ts and src/arena/extras.ts read the
 // level through here, so the built level and the arena extras agree.
+// LVL-02b adds 1-2 (beats 1 to 4), the level with two arenas in order.
 
 /** Every level the arena page can play, keyed by its file name. */
 export const ARENA_LEVELS: Record<string, Level> = {
   "1-1-pit": pitJson as unknown as Level,
+  "1-2": twoJson as unknown as Level,
   "1-4-ring": ringJson as unknown as Level,
 };
 
