@@ -18,6 +18,7 @@ import type { Foamer } from "../foamers/foamer";
 import { chargeOf } from "../foamers/charge";
 import { materialId } from "../voxel/materials";
 import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
+import { timeToImpact, playerCapsuleCentre } from "../foamers/ball-time";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
 import { Vacuum } from "./vacuum";
@@ -302,6 +303,22 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const _muzzle = new THREE.Vector3();
   const _aimDir = new THREE.Vector3();
   const _playerPos = new THREE.Vector3();
+  // BUG-02: the parry watch's scratch.
+  const _playerCentre = new THREE.Vector3();
+
+  /** The seconds until the nearest incoming (not bounced) ball is within
+   *  a hit of the player's capsule (the sim's own ray), by the shared
+   *  flight math (ball-time.ts). 1e9 when there is none. */
+  function parryNextWait(dt: number): number {
+    playerCapsuleCentre(player.eye(1, _playerPos), _playerCentre);
+    let best = 1e9;
+    for (const b of projectiles.list) {
+      if (b.bounced) continue;
+      const s = timeToImpact(b.pos, b.vel, dt, _playerCentre);
+      if (s < best) best = s;
+    }
+    return best;
+  }
 
   /** The bound key as a label for the finisher prompt (data-driven, the
    *  card: from the input map): F, not KeyF. */
@@ -758,7 +775,6 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // animation frames.
   if (new URLSearchParams(location.search).has("watch")) {
     setPaused(false);
-    const _watchEye = new THREE.Vector3();
     const _move = new THREE.Vector3();
     const _feet = new THREE.Vector3();
     /** The player's feet as a vector: the eye helper is the only way to
@@ -894,26 +910,18 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         input.simulatePress("dash");
         fixedStep(STEP);
       },
-      /** GAME-04 stage 2: the watch helper. Steps the sim until the nearest
-       *  incoming (not bounced) ball is parryLead seconds away, then
-       *  holds the disc up on that step: its arrival is inside the
-       *  window, so the page's onHitPlayer parries it. */
+      /** GAME-04 stage 2 (BUG-02): the watch helper. Times the nearest
+       *  incoming (not bounced) ball by its real flight (ball-time.ts,
+       *  the same arc as the sim) and steps until it is the shield's
+       *  lead time from the disc, then holds: the raise lands inside
+       *  the window, so the page's onHitPlayer parries it. */
       parryNext: () => {
-        const tNow = () => {
-          player.eye(1, _watchEye);
-          let best = 1e9;
-          for (const b of projectiles.list)
-            if (!b.bounced)
-              best = Math.min(
-                best, b.pos.distanceTo(_watchEye) / Math.max(0.5, b.vel.length()),
-              );
-          return best;
-        };
-        const t0 = tNow();
-        if (t0 >= 1e9) return false;
+        if (ui.paused) return false;
+        const t = parryNextWait(STEP);
+        if (t >= 1e9) return false;
         // Wait without the shield: the ball keeps coming, and the raise
         // lands when it is the lead time away.
-        const n = Math.round(Math.max(0, t0 - shield.parryLead) / STEP);
+        const n = Math.round(Math.max(0, t - shield.parryLead) / STEP);
         for (let i = 0; i < n; i++) fixedStep(STEP);
         shield.forcedHold = true;
         return true;
