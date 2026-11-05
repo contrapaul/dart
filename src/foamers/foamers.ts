@@ -374,8 +374,12 @@ export class FoamerSystem {
    *  pack centre a little further round the circle, so a pack arrives as a
    *  spread ring rather than one stacked body. `count` defaults to the
    *  type's own `pack`. Past `pack.maxAlive` live Swarmers the rest are
-   *  skipped: the oldest are never removed to make room. Returns the ones
-   *  that were made. */
+   *  skipped: the oldest are never removed to make room.
+   *  BUG-02: with a nav grid, a ring spot the grid says cannot be stood on
+   *  (the Pit's central block) is not used: the same angle is tested a few
+   *  steps in, and with nothing walkable the member is skipped, neither
+   *  spawned nor counted. Without a grid (the range, tests without one)
+   *  placement is as before. Returns the ones that were made. */
   spawnPack(
     feet: THREE.Vector3, facing?: THREE.Vector3, count?: number, type = "F03",
   ): Foamer[] {
@@ -385,12 +389,24 @@ export class FoamerSystem {
     for (const f of this.list) {
       if (f.state !== "down" && tokenKindOf(f.spec) === "swarm") live++;
     }
+    const grid = this.navGrid;
+    const stepIn = PACK.inboundStepMetres;
+    const tries = PACK.inboundSteps;
     for (let i = 0; i < n && live < PACK.maxAlive; i++) {
       // Round the ring, one even step per member; the last member sits
       // `spreadMetres` out, the first a little nearer the centre.
       const a = (i / n) * Math.PI * 2;
       const r = PACK.spreadMetres * (0.55 + 0.45 * (i / Math.max(1, n - 1)));
       _packFeet.set(feet.x + Math.sin(a) * r, feet.y, feet.z + Math.cos(a) * r);
+      let placed = !grid || grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      // A blocked ring spot is not used: step the same angle in, a few
+      // times, until the grid says the spot can be stood on.
+      for (let k = 0; !placed && grid && k < tries; k++) {
+        _packFeet.x -= Math.sin(a) * stepIn;
+        _packFeet.z -= Math.cos(a) * stepIn;
+        placed = grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      }
+      if (!placed) continue; // the member is skipped, not spawned
       const f = this.spawn(_packFeet, facing ?? feet, type);
       if (!f) break; // the system-wide Foamer cap
       out.push(f);
