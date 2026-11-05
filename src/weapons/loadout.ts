@@ -110,6 +110,9 @@ export class Loadout {
   get activeIndex(): number { return this.idx; }
   get active(): Blaster { return this.blasters[this.idx]; }
   get activeViewmodel(): LoadoutViewmodel { return this.viewmodels[this.idx]; }
+  /** GAME-08: an extra dip on the active blaster, in local Y, added to
+   *  the switch's own (the vacuum's lock sets it while it runs). */
+  lowered = 0;
   get switching(): boolean { return this.switchTimer >= 0; }
 
   /** GAME-08: the foam vacuum's reward. The active blaster takes
@@ -216,6 +219,8 @@ export class Loadout {
           dip = -0.3 * (1 - Math.sin(u * Math.PI / 2));
         }
       }
+      // GAME-08: the vacuum's lock lowers the active blaster too.
+      if (i === this.idx) dip += this.lowered;
       const withDip = vm as Partial<typeof vm> & { setDip?(y: number): void };
       if (withDip.setDip) withDip.setDip(dip);
       if (i === this.idx) {

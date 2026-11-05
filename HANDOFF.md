@@ -255,6 +255,35 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: GAME-08 review, the vacuum played in the Pit (Claude, overnight)
+
+- Qwen 27B finished all three stages. Main merged in: `game.ts` took both
+  the melee (GAME-06) and the vacuum in every block (restart hooks,
+  `canFire`, the HUD, `state()`, the watch helpers); `audio.ts` kept
+  main's `loop` from GAME-04c (the branch had added the same thing);
+  `sounds.json` is main plus the five VC entries. tsc, 448 tests and the
+  build pass.
+- Fixed in review: (1) the suck drew the Foamer toward a fixed world -z
+  point, so a player facing +z pulled it through and behind them; the
+  nozzle now sits along the lock's view. (2) The render set the active
+  blaster's dip to 0 every frame, which undid the weapon switch's rise,
+  and its -0.28 never showed (the loadout applies its dip first). The
+  loadout now takes a `lowered` offset that it adds itself, set from
+  `vacuum.blasterDip` in `data/vacuum.json`.
+- Played in the Pit with the watch: a weakened stagger shows as
+  vacuumable; E locks, the view turns, the blaster dips away, the tube
+  rises at the lower right, the Foamer shrinks toward it and is removed
+  with no pop (`popped` 0). Reserves rose by the shares exactly (20 of 40
+  active, 44 of 175 and 6 of 24 others). A press before the recharge is
+  the empty case. A player facing +z draws the Foamer toward them.
+- For Paul: the placeholder tube stands upright, so it reads as a stick
+  more than a nozzle aimed at the Foamer. The look is [Paul] anyway. The
+  ammo box still credits through its own code in `pickups.ts`, not
+  `loadout.refillReserves` (different rule: darts from a box, not a
+  share), so "one credit path" is not quite true; fine as is.
+- Not checked by ear or eye: the five VC sounds, the puff, the shrink at
+  full speed.
+
 ### 2026-11-06: GAME-08 done, the foam vacuum (Qwen 3.8-27B via Pi)
 
 Built. The vacuum (`src/game/vacuum.ts`) is the finisher's sibling: E on a

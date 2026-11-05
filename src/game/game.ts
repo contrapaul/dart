@@ -10,7 +10,7 @@ import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
 import { Shield } from "../player/shield";
 import { DartSystem } from "../weapons/darts";
-import { Loadout, type LoadoutViewmodel } from "../weapons/loadout";
+import { Loadout } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
@@ -674,6 +674,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     const climb = loadout.active.climb + shield.kick + shield.parryKick + melee.kick;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
+    // GAME-08: lowered while the vacuum runs (added to the switch's dip).
+    loadout.lowered = vacuum.active ? VacData.vacuum.blasterDip : 0;
     loadout.render(dt, input.isDown("fire"));
     // GAME-06: the baton's sweep, and the blaster dipped out of its way.
     // Applied after loadout.render, whose own dip only runs during a
@@ -708,10 +710,6 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // GAME-08: while the vacuum locks the player the blaster dips and
       // the placeholder vacuum (a toy tube and a wide nozzle, code-built,
       // no art files) rises in the lower right of the view.
-      // Only while it runs: when idle the loadout sets its own dip (the
-      // weapon switch) every step.
-      const withDip = loadout.activeViewmodel as LoadoutViewmodel & { setDip?: (y: number) => void };
-      if (vacuum.active && withDip.setDip) withDip.setDip(-0.28);
       vacuumModel.visible = vacuum.active;
       if (vacuum.active) {
         // The rise: from off the bottom edge up into the lower right
