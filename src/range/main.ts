@@ -677,21 +677,26 @@ const eye = new THREE.Vector3();
 // BUG-02: the parry watch's scratch (the range's parryNext mirrors the
 // game page's, but it cannot run the loop's step: it holds a countdown
 // the loop spends, and the hold lands at the lead's time of wait).
+// BUG-04: parryBall is the walk's own ball: on the face of its thrower
+// the disc gets raised, and once it has been parried, blocked or hit the
+// loop lowers the disc again (the caller does not have to).
 const _rangeCentre = new THREE.Vector3();
 let parryWaitSec = 0;
+let parryBall: import("../foamers/projectiles").LiveBall | null = null;
 
 /** Seconds until the nearest incoming (not bounced) ball is within a hit
- *  of the player's capsule, the shared flight math (ball-time.ts). 1e9
- *  when there is none. */
-function parryNextWait(dt: number): number {
+ *  of the player's capsule (the shared flight math, ball-time.ts), and
+ *  that ball. 1e9 when there is none. */
+function parryNextWait(dt: number): { t: number; ball: import("../foamers/projectiles").LiveBall | null } {
   playerCapsuleCentre(player.eye(1, eye), _rangeCentre);
   let best = 1e9;
+  let ball: import("../foamers/projectiles").LiveBall | null = null;
   for (const b of projectiles.list) {
     if (b.bounced) continue;
     const s = timeToImpact(b.pos, b.vel, dt, _rangeCentre);
-    if (s < best) best = s;
+    if (s < best) { best = s; ball = b; }
   }
-  return best;
+  return { t: best, ball };
 }
 const WEAPON_KEYS = ["weapon1", "weapon2", "weapon3"] as const;
 
@@ -713,9 +718,15 @@ loopCtl = startLoop({
       // BUG-02: parryNext's hold lands on the lead's time of wait (the
       // game page's helper runs its own steps; the range's cannot, so the
       // loop spends the watch wanted's countdown here).
+      // BUG-04: once the timed ball has been parried, blocked or hit the
+      // hold is let go again (it leaves the list or is flying back).
       if (parryWaitSec > 0) {
         parryWaitSec -= dt;
         if (parryWaitSec <= 0) shield.forcedHold = true;
+      }
+      if (parryBall && (parryBall.bounced || !projectiles.list.includes(parryBall))) {
+        parryBall = null;
+        shield.forcedHold = false;
       }
       player.update(dt, input);
       // GAME-04 stage 2: the tiny parry hit-stop slows the movables, like on the
@@ -840,17 +851,26 @@ if (watch) {
         return e.thrown;
       },
       shieldState: () => shield.state,
-      /** GAME-04 stage 2 (BUG-02): raise the disc with its hands-on lead,
-       *  timed by the ball's real flight (ball-time.ts, the game page's
-       *  helper's math): the hold lands when the ball is the shield's
-       *  lead time from the disc, so the loop's raise is within the
-       *  window by the arrival. A ball inside the lead already is not
-       *  raiseable in time: the hold goes up right away, the raise takes
-       *  its own time. true when a ball was found to aim at. */
+      /** GAME-04 stage 2 (BUG-02), fixed by BUG-04: raise the disc with
+       *  its hands-on lead, timed by the ball's real flight (ball-time.ts,
+       *  the game page's helper's math). Before the wait it faces the face
+       *  of the face's thrower (in the range, multiple throwers can throw
+       *  in the face: the disc's face should judge the face of the face),
+       *  and once the timed ball has been parried, blocked or hit the loop
+       *  lowers the disc again (the caller does not have to). true when a
+       *  ball was found to aim at. */
       parryNext: () => {
         if (paused) return false;
-        const t = parryNextWait(STEP);
-        if (t >= 1e9) return false;
+        const { t, ball } = parryNextWait(STEP);
+        if (ball === null) return false;
+        parryBall = ball;
+        // The face the disc's face judges (the page's own looking at the
+        // thrower, like watch's look).
+        const at = ball.thrower.centre;
+        const e = player.eye(1, _eye);
+        const dx = at.x - e.x, dy = at.y + 1.2 - e.y, dz = at.z - e.z;
+        player.yaw = Math.atan2(-dx, -dz);
+        player.pitch = THREE.MathUtils.clamp(Math.atan2(dy, Math.hypot(dx, dz)), -1.5, 1.5);
         parryWaitSec = Math.max(0, t - shield.parryLead);
         return true;
       },

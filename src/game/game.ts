@@ -17,7 +17,7 @@ import { FoamerSystem } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
 import { chargeOf } from "../foamers/charge";
 import { materialId } from "../voxel/materials";
-import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
+import { ProjectileSystem, BALL_MATERIAL, type LiveBall } from "../foamers/projectiles";
 import { timeToImpact, playerCapsuleCentre } from "../foamers/ball-time";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
@@ -317,16 +317,17 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
 
   /** The seconds until the nearest incoming (not bounced) ball is within
    *  a hit of the player's capsule (the sim's own ray), by the shared
-   *  flight math (ball-time.ts). 1e9 when there is none. */
-  function parryNextWait(dt: number): number {
+   *  flight math (ball-time.ts), and that ball. 1e9 when there is none. */
+  function parryNextWait(dt: number): { t: number; ball: LiveBall | null } {
     playerCapsuleCentre(player.eye(1, _playerPos), _playerCentre);
     let best = 1e9;
+    let ball: LiveBall | null = null;
     for (const b of projectiles.list) {
       if (b.bounced) continue;
       const s = timeToImpact(b.pos, b.vel, dt, _playerCentre);
-      if (s < best) best = s;
+      if (s < best) { best = s; ball = b; }
     }
-    return best;
+    return { t: best, ball };
   }
 
   /** The bound key as a label for the finisher prompt (data-driven, the
@@ -924,20 +925,38 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         input.simulatePress("dash");
         fixedStep(STEP);
       },
-      /** GAME-04 stage 2 (BUG-02): the watch helper. Times the nearest
-       *  incoming (not bounced) ball by its real flight (ball-time.ts,
-       *  the same arc as the sim) and steps until it is the shield's
-       *  lead time from the disc, then holds: the raise lands inside
-       *  the window, so the page's onHitPlayer parries it. */
+      /** GAME-04 stage 2 (BUG-02), fixed by BUG-04: the watch helper. It
+       *  times the earliest incoming (not bounced) ball by its real flight
+       *  (ball-time.ts) and, before the wait, turns the view to the ball's
+       *  thrower (the Pit has several throwing on the same swing: facing
+       *  the nearest one judged the arc on the wrong one), then steps
+       *  without the disc until the ball is the shield's lead time away,
+       *  holds the disc, and lowers it again once that ball has been
+       *  parried, blocked or hit (the caller does not have to). */
       parryNext: () => {
         if (ui.paused) return false;
-        const t = parryNextWait(STEP);
-        if (t >= 1e9) return false;
+        const { t, ball } = parryNextWait(STEP);
+        if (ball === null) return false;
+        // Face the thrower of the timed ball (the view the disc's arc
+        // judges on; the walk's steps keep it). Steps the ball's aim.
+        const at = ball.thrower.centre;
+        const dx = at.x - _playerPos.x, dy = at.y + 1.2 - _playerPos.y, dz = at.z - _playerPos.z;
+        player.yaw = Math.atan2(-dx, -dz);
+        player.pitch = THREE.MathUtils.clamp(Math.atan2(dy, Math.hypot(dx, dz)), -1.5, 1.5);
         // Wait without the shield: the ball keeps coming, and the raise
         // lands when it is the lead time away.
         const n = Math.round(Math.max(0, t - shield.parryLead) / STEP);
         for (let i = 0; i < n; i++) fixedStep(STEP);
         shield.forcedHold = true;
+        // Then the page's own run: the timed ball lands, the page's
+        // onHitPlayer decides (parry, block or hurt), and the disc is
+        // lowered again so the caller does not have to (BUG-04).
+        for (let i = 0; i < 60 * 5; i++) {
+          fixedStep(STEP);
+          if (!projectiles.list.includes(ball)) break;
+          if (ball.bounced) break;
+        }
+        shield.forcedHold = false;
         return true;
       },
       step: (n: number) => {
