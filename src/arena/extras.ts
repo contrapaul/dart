@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { buildLevel, type BuiltLevel } from "../level/build";
-import { ArenaRunner, type ArenaContext } from "../level/arena";
+import type { ArenaContext } from "../level/arena";
+import { LevelRunner, type LevelEvents } from "../level/level-runner";
 import { FALL_LIMIT } from "../game/shared";
 import type { BuildInput, BuiltGame, Game, GameHooks } from "../game/game";
 import { RiftVisuals } from "./rifts";
@@ -35,7 +36,7 @@ export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): Ar
 export interface ArenaExtras {
   hooks: Partial<GameHooks<ArenaBuilt>>;
   /** For the dev hook and the browser checks. */
-  runner: ArenaRunner;
+  runner: LevelRunner;
 }
 
 export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
@@ -54,9 +55,19 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   const bannerText = document.querySelector<HTMLSpanElement>("#bannerText")!;
   const complete = document.querySelector<HTMLDivElement>("#complete")!;
 
-  const arena = LEVEL.arenas![0]!;
-  const rifts = new RiftVisuals(arena.rifts);
-  scene.add(rifts.group);
+  // LVL-02b: a level's arenas play in file order. One RiftVisuals per arena
+  // (so two arenas may reuse a rift id), and only the current arena's seams
+  // ever glow.
+  const arenas = LEVEL.arenas ?? [];
+  const riftSets = arenas.map((arena) => new RiftVisuals(arena.rifts));
+  for (const set of riftSets) scene.add(set.group);
+  let currentSet = riftSets[0];
+
+  /** Dim every arena's rifts, then put the current arena's into `state`. */
+  function setRifts(state: "dim" | "open"): void {
+    for (const set of riftSets) set.setAll("dim");
+    currentSet?.setAll(state);
+  }
 
   const start = new THREE.Vector3(...LEVEL.playerStart.pos);
   const _playerPos = new THREE.Vector3();
@@ -77,7 +88,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     bannerTimer = seconds;
   }
 
-  const runner = new ArenaRunner(arena, {
+  const events: LevelEvents = {
     setDoor(id, state) {
       const door = level.doors.get(id);
       if (!door || door.state === state) return;
@@ -96,25 +107,39 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     },
     onLocked() {
       showBanner("Clear the arena", 2.2);
-      rifts.setAll("dim");
+      setRifts("dim");
       audio.play("LV-arena-lock");
     },
     onWaveStart(wave, index, count) {
       void wave; void count;
-      showBanner("Wave " + (index + 1) + " of " + arena.waves.length, 1.8);
-      rifts.setAll("open");
+      const total = runner.currentArena?.waves.length ?? 1;
+      showBanner("Wave " + (index + 1) + " of " + total, 1.8);
+      setRifts("open");
       audio.play("LV-rift-open");
       audio.play("LV-wave");
     },
     onCleared() {
       showBanner("Arena clear", 2.5);
-      rifts.setAll("dim");
+      setRifts("dim");
       audio.play("LV-arena-clear");
     },
-  });
+    onArenaStart(arena, index) {
+      void arena;
+      // The arenas after this one keep their file door states (every runner
+      // was built at construction), so only the visuals move here.
+      currentSet = riftSets[index];
+      setRifts("dim");
+      if (arenas.length > 1) showBanner("Arena " + (index + 1) + " of " + arenas.length, 2.2);
+    },
+    onLevelCleared() {
+      setRifts("dim");
+    },
+  };
+
+  const runner = new LevelRunner(arenas, events);
 
   function doorMeshPos(id: string): THREE.Vector3 {
-    const door = arena.doors.find((d) => d.id === id);
+    const door = arenas.flatMap((a) => a.doors).find((d) => d.id === id);
     return new THREE.Vector3(...(door ? door.pos : [0, 0, 0]));
   }
 
@@ -130,14 +155,20 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       && Math.abs(p.z - e.pos[2]) <= e.size[2] / 2;
   }
 
-  /** A player who pops restarts at the arena's entry, not the level start,
-   *  with the arena reset to waiting and the Foamers cleared. The voxels
-   *  stay as they are (the card's checkpoint rule). */
-  const ENTRY = new THREE.Vector3(...(arena.checkpointPos ?? LEVEL.playerStart.pos));
+  /** A player who pops restarts at the current arena's entry, not the level
+   *  start, with that arena back to waiting and the Foamers cleared. The
+   *  earlier arenas stay cleared (the card's checkpoint rule). The voxels
+   *  stay as they are. */
+  function entryPos(): THREE.Vector3 {
+    const arena = runner.currentArena;
+    return new THREE.Vector3(...(arena?.checkpointPos ?? LEVEL.playerStart.pos));
+  }
 
-  function respawnAtEntry(resetArena: boolean): void {
+  /** `all` is a full level restart (Play again, a fall out of the world);
+   *  otherwise only the current arena goes back to waiting. */
+  function respawnAtEntry(all: boolean): void {
     health.reset();
-    player.teleport(ENTRY);
+    player.teleport(entryPos());
     player.pitch = 0;
     foamers.clear();
     pickups.clear();
@@ -149,10 +180,12 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       b.refill();
       b.reserve = b.spec.reserveStart;
     }
-    if (resetArena) {
-      runner.reset();
-      rifts.setAll("dim");
+    if (all) {
+      runner.resetAll();
+    } else {
+      runner.resetCurrent();
     }
+    setRifts("dim");
   }
 
   function showComplete(): void {
@@ -161,7 +194,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     audio.play("LV-exit");
   }
 
-  /** A full restart: the arena back to waiting and the player at the level
+  /** A full restart: every arena back to waiting and the player at the level
    *  start. Rebuilding the carved voxels is out of scope; the shell is never
    *  destructible, so the level still walks. */
   function restartLevel(): void {
@@ -195,17 +228,22 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
         foamers.clear();
         pickups.clear();
         pickups.loadLevelBoxes(LEVEL);
-        runner.reset();
-        rifts.setAll("dim");
+        runner.resetAll();
+        setRifts("dim");
       }
-      if (complete.hidden && !g.ui.poppedOut && onExitPad()) showComplete();
+      // LVL-02b: the pad only ends the level once every arena has cleared.
+      // In a one arena level the door in front of it already kept the player
+      // out until the arena was clear.
+      if (complete.hidden && !g.ui.poppedOut && runner.state.phase === "complete" && onExitPad()) {
+        showComplete();
+      }
       if (bannerTimer > 0) {
         bannerTimer -= dt;
         if (bannerTimer <= 0) banner.hidden = true;
       }
     },
     render(dt: number) {
-      rifts.update(dt);
+      for (const set of riftSets) set.update(dt);
     },
     popEffect() {
       hud.popFlash();
@@ -214,15 +252,19 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     completeOpen: () => complete.hidden === false,
     overlayAllowed: () => complete.hidden === true,
     onRestart: restartLevel,
-    onTryAgain: () => respawnAtEntry(true),
+    onTryAgain: () => respawnAtEntry(false),
     onPlayAgain: levelReset,
     watchName: "dartArena",
     // The arena's own fields in dartArena.state(), next to the shared ones:
-    // the wave, the doors and the complete panel.
+    // the arena being played, its wave, the doors and the complete panel.
     watchState: () => ({
       phase: runner.state.phase,
-      wave: runner.state.waveIndex + 1,
-      cleared: runner.state.cleared,
+      // LVL-02b: which arena of the level is being played.
+      arena: runner.state.arenaIndex,
+      arenaId: runner.state.arenaId,
+      arenasCleared: runner.state.arenasCleared,
+      wave: runner.state.arena.waveIndex + 1,
+      cleared: runner.state.arena.cleared,
       alive: foamers.live - foamers.downed.length,
       doors: Object.fromEntries([...level.doors].map(([id, d]) => [id, d.state])),
       complete: complete.hidden === false,
