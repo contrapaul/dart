@@ -96,6 +96,9 @@ export class NavGrid {
   private readonly cand: number[] = [];
   /** The most layers one cell may hold (data/ai.json nav.maxLayers). */
   private readonly maxLayers = NAV.maxLayers;
+  /** The four straight neighbours' nodes of the cell A* is expanding (-1:
+   *  none), so a diagonal's corner check reuses them. */
+  private readonly straight = new Int32Array(4);
   private heapSize = 0;
   private gen = 0;
 
@@ -139,16 +142,33 @@ export class NavGrid {
     return Math.floor(node / this.maxLayers);
   }
 
-  /** The walkable node of `cell` a body with its feet at `y` stands on, at
-   *  most maxStep away vertically; -1 when the cell offers nothing that near
-   *  (the cell is a wall, or its floors are a storey away). */
+  /** The walkable node of `cell` a body with its feet at `y` can step to;
+   *  -1 when the cell offers nothing that near (the cell is a wall, or its
+   *  floors are a storey away). This is the step rule A* walks by.
+   *
+   *  A climb is capped at what the walk can autostep (BUG-01 round 2),
+   *  `nav.stepAutostepMetres`, not the bake's maxStep. The Pit's south ramp
+   *  rises half a metre per metre, so from the pit floor its east side is
+   *  0.19 m tall at one cell and 0.44 m at the next: under maxStep (0.45)
+   *  both were a legal step, and a Foamer sent up it walked into a side its
+   *  controller could not climb and stood at the foot for ever. With the
+   *  cap the tall crossing is refused and the path goes round to the foot.
+   *  A drop keeps maxStep: stepping off costs nothing (snap to ground). */
   private nodeNear(cell: number, y: number): number {
     if (cell < 0) return -1;
+    // Nearly every cell has one layer: no search for the nearest.
+    const n = this.layers[cell]!;
+    if (n === 0) return -1;
+    if (n === 1) {
+      const node = cell * this.maxLayers;
+      const d = this.layerY[node]! - y;
+      return d > NAV.stepAutostepMetres || d < -NAV.maxStepMetres ? -1 : node;
+    }
     const k = this.layerAt(cell, y);
     if (k < 0 || k >= this.layers[cell]!) return -1;
     const node = cell * this.maxLayers + k;
     const d = this.layerY[node]! - y;
-    // Up is what the walk can autostep; down is the bake's step, as in stepOk.
+    // Up is what the walk can autostep; down is the bake's step (see above).
     if (d > NAV.stepAutostepMetres || d < -NAV.maxStepMetres) return -1;
     return node;
   }
@@ -432,29 +452,6 @@ export class NavGrid {
     return -1;
   }
 
-  /** Whether a step between two nodes is walkable: the second stands-able,
-   *  and a height change no taller than maxStep.
-   *
-   *  A climb is capped at what the walk can autostep (BUG-01 round 2),
-   *  `nav.stepAutostepMetres`, not the bake's maxStep. The Pit's south ramp
-   *  rises half a metre per metre, so from the pit floor its east side is
-   *  0.19 m tall at one cell and 0.44 m at the next: under maxStep (0.45)
-   *  both were a legal step, and a Foamer sent up it walked into a side its
-   *  controller could not climb and stood at the foot for ever. With the
-   *  cap the tall crossing is refused and the path goes round to the foot.
-   *  A drop keeps maxStep: stepping off costs nothing (snap to ground). */
-  private stepOk(a: number, b: number): boolean {
-    const bc = this.nodeCell(b);
-    if (b % this.maxLayers >= this.layers[bc]!) return false;
-    const ya = this.layerY[a]!;
-    const yb = this.layerY[b]!;
-    const d = yb - ya;
-    // Up is what the walk can autostep; down is the bake's own step, since a
-    // drop costs nothing to step off (snap to ground catches it).
-    if (d > NAV.stepAutostepMetres || d < -NAV.maxStepMetres) return false;
-    return true;
-  }
-
   /** Grid line of sight: every cell the segment crosses has a walkable layer
    *  within maxStep of the one the line walked to in the cell before, and the
    *  height never steps more than maxStep between samples. `fromY` is the
@@ -511,6 +508,10 @@ export class NavGrid {
     );
     let bestCell = start;
     let bestD = goal >= 0 ? this.heuristic(start, goal) : this.heuristicCell(start, best);
+    const target = goal >= 0 ? this.nodeCell(goal) : best;
+    const tx = target % this.cols;
+    const tz = Math.floor(target / this.cols);
+    const ty = goal >= 0 ? this.layerY[goal]! : 0;
     while (this.heapSize > 0) {
       if (best < 0 && this.heapKey[0]! >= Infinity) break;
       const cur = this.pop();
@@ -532,25 +533,33 @@ export class NavGrid {
       for (let k = 0; k < 8; k++) {
         const nx = cx + DX[k]!;
         const nz = cz + DZ[k]!;
-        if (nx < 0 || nx >= this.cols || nz < 0 || nz >= this.rows) continue;
-        const nb = this.nodeNear(nz * this.cols + nx, cy);
-        if (nb < 0 || this.doneStamp[nb] === gen || !this.stepOk(cur, nb)) continue;
+        const inside = nx >= 0 && nx < this.cols && nz >= 0 && nz < this.rows;
+        const nb = inside ? this.nodeNear(nz * this.cols + nx, cy) : -1;
+        if (k < 4) this.straight[k] = nb;
+        if (!inside) continue;
+        // nodeNear applies the step rule, so a node it returns is a legal
+        // step from cur (no second check).
+        if (nb < 0 || this.doneStamp[nb] === gen) continue;
         if (DIAG[k]) {
           // No corner cutting: both cells the diagonal squeezes past, at the
           // height the step lands on either side.
-          const s1 = this.nodeNear(cz * this.cols + nx, cy);
-          const s2 = this.nodeNear(nz * this.cols + cx, cy);
-          if (s1 < 0 || s2 < 0 || !this.stepOk(cur, s1) || !this.stepOk(cur, s2)) continue;
+          // The straight neighbours came first (+x, -x, +z, -z): reuse them.
+          if (this.straight[DX[k]! > 0 ? 0 : 1]! < 0) continue;
+          if (this.straight[DZ[k]! > 0 ? 2 : 3]! < 0) continue;
         }
         const tentative = gc + (DIAG[k] ? this.cell * Math.SQRT2 : this.cell);
         if (this.openStamp[nb] === gen && tentative >= this.g[nb]!) continue;
         this.g[nb] = tentative;
         this.parent[nb] = cur;
         this.openStamp[nb] = gen;
-        this.heapSet(
-          nb, tentative +
-          (goal >= 0 ? this.heuristic(nb, goal) : this.heuristicCell(nb, best)),
-        );
+        // The heuristic inline, against the target read once per search:
+        // octile cells to the target, plus the height to a goal node.
+        const hx = nx > tx ? nx - tx : tx - nx;
+        const hz = nz > tz ? nz - tz : tz - nz;
+        const lo = hx < hz ? hx : hz;
+        let hcost = (lo * Math.SQRT2 + (hx + hz - 2 * lo)) * this.cell;
+        if (goal >= 0) hcost += Math.abs(this.layerY[nb]! - ty);
+        this.heapSet(nb, tentative + hcost);
       }
     }
     if (best < 0) return 0;

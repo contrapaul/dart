@@ -186,13 +186,28 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: nav path query back to its old speed (Claude)
+
+- The "flaky" nav timing test was a real slowdown. Alone, the 40 x 40 m
+  path query took 1.1 ms before BUG-01 and 1.85 ms after it (the two-layer
+  A*), against a 2 ms budget, so any load in the full run tipped it over.
+  The bake was unchanged (about 30 ms, budget 150).
+- Three changes in `src/ai/nav-grid.ts`, same paths as before:
+  `stepOk` is gone (every neighbour comes from `nodeNear`, which already
+  applies the same step rule, so it ran the check twice); `nodeNear` skips
+  the nearest-layer search for a one-layer cell (nearly all of them); the
+  heuristic reads its target once per search instead of per neighbour, and
+  the diagonal corner checks reuse the four straight neighbours' results.
+- Now 1.13 to 1.23 ms alone; five full parallel runs in a row all pass
+  (395 tests). The test and its budgets are unchanged.
+
 ### 2026-11-05: LVL-02a merged (Claude)
 
 - Merged clean; 395 tests and the build pass. `tests/ai/nav-grid.test.ts`'s
   timing test (bake a 40 x 40 m floor under 150 ms) failed twice today in
   the full parallel run (303 ms once) and passed alone every time. The
-  two-layer bake made it a little slower, and 57 files run at once. Worth a
-  fix: raise the limit or run that file on its own.
+  two-layer bake made it a little slower, and 57 files run at once. Fixed the same
+  day: it was a real slowdown, see the next entry up.
 - Still open for Paul: the ammo box holds 4 darts (see the review entry).
 
 ### 2026-11-05: LVL-02a review, ammo boxes played in the Pit (Claude)
