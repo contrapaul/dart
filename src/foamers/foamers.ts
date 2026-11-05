@@ -12,7 +12,7 @@ import { CHUNK_SIZE } from "../voxel/chunk";
 import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
-import { armourOf } from "./armour";
+import { armourOf, plateFaces } from "./armour";
 import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
 import { decideCharge } from "../ai/f05-brain";
@@ -1083,8 +1083,16 @@ export class FoamerSystem {
     const d = f.spec.damage[hit.type];
     const kind = f.spec.partDamage.kinds[part.spec.kind];
     // GAME-10b: a plate takes its share and the orange back takes extra.
+    // GAME-10e: a plate with an arc (the Blocker's shield) only covers its
+    // front, and not at all while the Blocker is staggered.
     const armour = armourOf(f.spec, part.spec.id);
-    const dmg = d * kind.hit * (armour?.damage ?? 1);
+    const covered = armour?.arcDeg === undefined
+      ? true
+      : plateFaces(f.spec, part.spec.id,
+        Math.sin(f.yaw), Math.cos(f.yaw),
+        -hit.direction.x, -hit.direction.z, // back toward the shooter
+        f.state === "stagger");
+    const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= dmg;
     f.health -= dmg * kind.total;
