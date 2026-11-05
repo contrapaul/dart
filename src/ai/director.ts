@@ -6,10 +6,12 @@ import aiData from "../../data/ai.json";
 // agent tables are fixed-size arrays sized by data/ai.json maxAgents, and
 // the token pools by the difficulty's counts.
 
-/** A Foamer's attack data says which pool it draws from. */
-export type TokenKind = "melee" | "ranged";
+/** A Foamer's attack data says which pool it draws from. GAME-10d: the
+ *  Swarmer's nibble draws from its own `swarm` pool, so a pack of them
+ *  cannot use up the melee tokens a Slowmer needs. */
+export type TokenKind = "melee" | "ranged" | "swarm";
 
-const KINDS: readonly TokenKind[] = ["melee", "ranged"];
+const KINDS: readonly TokenKind[] = ["melee", "ranged", "swarm"];
 /** Difficulty keys: story, normal, hard, fury. */
 export type DifficultyKey = keyof typeof aiData.difficulties;
 const DEFAULT: DifficultyKey = aiData.default as DifficultyKey;
@@ -24,6 +26,7 @@ const HOLDING = 2;
 export interface DirectorStats {
   melee: { inUse: number; cap: number };
   ranged: { inUse: number; cap: number };
+  swarm: { inUse: number; cap: number };
   waiting: number;
 }
 
@@ -39,7 +42,7 @@ export interface DirectorStats {
  * Agent ids must be integers in [0, maxAgents).
  */
 export class Director {
-  private readonly caps: number[] = [0, 0];
+  private readonly caps: number[] = [0, 0, 0];
   private readonly cooldown = aiData.tokenCooldown;
   private now = 0;
   /** holder[kind][token]: the agent holding it, or -1. */
@@ -54,7 +57,7 @@ export class Director {
 
   constructor(difficulty: DifficultyKey = DEFAULT) {
     const counts = aiData.difficulties[difficulty];
-    const cap = [counts.melee, counts.ranged];
+    const cap = [counts.melee, counts.ranged, counts.swarm];
     for (let k = 0; k < KINDS.length; k++) {
       this.caps[k] = cap[k];
       this.holder[k] = new Int32Array(cap[k]).fill(-1);
@@ -126,6 +129,7 @@ export class Director {
     return {
       melee: { inUse: inUse(0), cap: this.caps[0]! },
       ranged: { inUse: inUse(1), cap: this.caps[1]! },
+      swarm: { inUse: inUse(2), cap: this.caps[2]! },
       waiting,
     };
   }

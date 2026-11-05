@@ -14,6 +14,7 @@ import {
   type ReleaseReason,
 } from "./f01-brain";
 import { makeF02Brain, type F02Context } from "./f02-brain";
+import { makeF03Brain } from "./f03-brain";
 import { makeChargerBrain } from "./f05-brain";
 import { makePath, NavGrid, type PathPoints, type Point2 } from "./nav-grid";
 
@@ -32,8 +33,9 @@ export interface AgentSetup {
   initial: F01State;
   /** GAME-10a: the ranged brain for a thrower, the F01 one otherwise.
    *  GAME-10b: "f05" is the charger (the F01 four states plus telegraph,
-   *  charge and wallStun, which the Foamer system drives). */
-  brain?: "f01" | "f02" | "f05";
+   *  charge and wallStun, which the Foamer system drives). GAME-10d: "f03"
+   *  is the Swarmer, a hit and run biter on the swarm token pool. */
+  brain?: "f01" | "f02" | "f03" | "f05";
 }
 
 /** What the Foamer tells its agent each step. */
@@ -73,6 +75,9 @@ export interface AgentInput {
   /** The distance the circle stride keeps (metres): the bonker's hold ring,
    *  or the thrower's preferred distance. Filled by the system. */
   holdRange: number;
+  /** GAME-10d, the F03 brain only: seconds since its last nibble landed
+   *  (Infinity before the first). Low means it is on the ring, waiting. */
+  sinceNibble: number;
 }
 
 export class FoamerAgent {
@@ -110,8 +115,9 @@ export class FoamerAgent {
     this.tokenKind = setup.tokenKind;
     this.agentId = agentId;
     this.brain = setup.brain === "f02" ? makeF02Brain(setup.initial, 32)
-      : setup.brain === "f05" ? makeChargerBrain(setup.initial, 32)
-        : makeF01Brain(setup.initial, 32);
+      : setup.brain === "f03" ? makeF03Brain(setup.initial, 32)
+        : setup.brain === "f05" ? makeChargerBrain(setup.initial, 32)
+          : makeF01Brain(setup.initial, 32);
     this.ctx = makeF01Context(agentId) as F02Context;
   }
 
@@ -147,6 +153,7 @@ export class FoamerAgent {
     i.lineOfSight = input.lineOfSight;
     i.attackRange = input.attackRange;
     i.holdRange = input.holdRange;
+    i.sinceNibble = input.sinceNibble;
     i.throwRange = input.throwRange;
     i.preferredDistance = input.preferredDistance;
     i.retreatDistance = input.retreatDistance;
@@ -160,6 +167,7 @@ export class FoamerAgent {
     i.tookDamage = input.tookDamage;
     i.nearbyAlert = input.nearbyAlert;
     i.holdRange = input.holdRange;
+    i.sinceNibble = input.sinceNibble;
     i.throwRange = input.throwRange;
     i.preferredDistance = input.preferredDistance;
     i.retreatDistance = input.retreatDistance;
