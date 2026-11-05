@@ -225,6 +225,31 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: GAME-10d review, packs played in the Pit (Claude, overnight)
+
+- DeepSeek's first run broke off on an upstream provider error after
+  stage 1; resumed with `pi -c`, it finished stages 2 and 3. Reviewer
+  note taken: the spines were one lime tuft on the head (a turnip top),
+  now a row of five nubs along the back.
+- Merged main in (sounds.json: both sides' new sounds kept; HANDOFF
+  rebuilt from main plus this branch's entries, git had misaligned an old
+  entry). `foamer-rigs.json` was re-indented by the model: content checked,
+  only F03 changed. 426 tests and the build pass.
+- Played `arena.html?watch`: Swarmers dart in to about 1 m and back out
+  to about 3 m, the swarm pool filled to its cap of 3 while the F01s held
+  their own melee tokens, 14 nibbles in 12 s on a standing player. A pack
+  of 5 plus two more packs stopped at the live cap. No console errors.
+- My own test spawned a pack inside the Pit's centre block (x -4.8 to 4.8,
+  z 2.4 to 5.6) and four stayed trapped in its voxel shell: not a bug in
+  the Swarmer, but `spawnPack` does not check the spots are walkable.
+  Rifts sit on open floor, so it only matters for a hand placed pack.
+- For Paul's play test: a full pack is deadly to a player who stands still
+  (popped in about 2 s with health resets off). Hit and run feels right in
+  the numbers; the look of the scurry, the nibble and the sounds are
+  unverified by eye.
+- Merged into local main overnight under Paul's standing instruction;
+  not pushed.
+
 ### 2026-11-05: GAME-10d, the F03 Swarmer built (DeepSeek V4.1 Flash via Pi)
 
 Three commits on `game-10d`: `39112e0` the look, type and turnaround;
