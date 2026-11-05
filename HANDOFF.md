@@ -247,6 +247,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: LVL-02b review, Level 1-2 played through (Claude, overnight)
+
+- Code read: `LevelRunner` is small and keeps `ArenaRunner` unchanged; the
+  validator's new rules are sound. Main merged in (HANDOFF kept both
+  sides); tsc, 442 tests and the build pass.
+- Played `arena.html?level=1-2&watch` with the watch hooks: the parry
+  corridor locks on entry, its Roamer spawns and dies, both doors open and
+  the runner moves to the Ring (`arena` 1). The Ring locks, runs wave 1 (4)
+  and wave 2 (6), and opens every door on clear. Try again in the Ring kept
+  the parry corridor cleared and put the Ring back to waiting. The exit pad
+  shows the complete panel only after both arenas clear. The Pit still
+  loads as one arena. No console errors.
+- Seen in passing: Roamers on the far side of the centre block stand at
+  its corners and lob over it, so the block works as cover; a player who
+  hugs its south face is hard to reach. Worth a look in Paul's playtest.
+- Not checked by eye: the spaces and pacing, the north exit reveal, the
+  store window, the banner overlap. The rift spawn for the lone Roamer and
+  the half scale Ring are the model's format shortcuts (section 14); a
+  `placed` Foamer field is a candidate for a later card.
+
 ### 2026-11-06: LVL-02b, arenas in order and Level 1-2 beats 1 to 4 (Qwen 3.8 Flash Next via Pi)
 
 `src/level/level-runner.ts`: `LevelRunner` owns one `ArenaRunner` per arena
