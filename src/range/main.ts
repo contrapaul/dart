@@ -17,6 +17,7 @@ import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import type { Foamer } from "../foamers/foamer";
 import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { makeLevelAI } from "../ai/level";
 import { SettingsStore, DIFFICULTIES } from "../core/settings";
@@ -375,6 +376,27 @@ for (const t of Object.keys(foamerData.types)) {
   if (t === foamerType) b.classList.add("on");
   typeRow.appendChild(b);
 }
+// GAME-09b: spawn Foamers already finishable, so a chunk can be tried on an
+// F01 with B03 (its tier is Fodder, so at full health the rule refuses).
+const weakenRow = document.querySelector<HTMLDivElement>("#weaken")!;
+let weakenSpawn = false;
+for (const [label, on] of [["yes", true], ["no", false]] as const) {
+  const b = document.createElement("button");
+  b.textContent = label;
+  b.addEventListener("click", () => {
+    weakenSpawn = on;
+    weakenRow.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+  if (on === weakenSpawn) b.classList.add("on");
+  weakenRow.appendChild(b);
+}
+/** Put a fresh Foamer into the finishable band, with no stagger: the card
+ *  only needs the weakened flag and health under finisher.weakenShare. */
+function weaken(f: Foamer | null) {
+  if (!f || !weakenSpawn) return;
+  f.health = Math.min(f.health, f.spec.finisher.weakenShare * f.maxHealth * 0.5);
+  f.finishWeakened = true;
+}
 // Spawn a Foamer at set metres ahead of the player, on the floor.
 const _fwd = new THREE.Vector3();
 const _fwdxz = new THREE.Vector3();
@@ -385,8 +407,9 @@ function spawnAhead(m: number) {
   _feet.set(_fwdxz.x + _fwd.x * m, 0, _fwdxz.z + _fwd.z * m);
   // GAME-10d: the Swarmer comes as its whole pack, so one button press
   // shows the ring the card describes; the others still spawn singly.
-  if (foamerType === "F03") foamers.spawnPack(_feet, camera.position);
-  else foamers.spawn(_feet, camera.position, foamerType);
+  if (foamerType === "F03") {
+    for (const p of foamers.spawnPack(_feet, camera.position)) weaken(p);
+  } else weaken(foamers.spawn(_feet, camera.position, foamerType));
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));

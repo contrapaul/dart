@@ -6,6 +6,23 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-09b stage 1 and 2 done 2026-11-06, awaiting review
+(`tasks/GAME-09b.md`, DeepSeek V4.1 Flash via Pi): the chunk finish. A shot's
+darts now carry a shot id, the muzzle and their blaster's `chunk` block
+(B03, B01's slug mod; the others null). A killing dart hit that passes the
+rule in `src/foamers/chunk.ts` becomes a chunk instead of a plain go down:
+a sphere at that shot's mean hit point is carved through every part it
+reaches, debris is thrown inside `chunk.debrisMax`, and the ragdoll goes
+down with its push scaled by `chunk.push`. The rule needs the rig's tier in
+`chunk.tiers` (Heavy, Elite, Boss) or the Foamer already finishable before
+the shot began, and that shot's own damage inside `catastrophic.window` of
+at least `chunk.minShare` of max health, hit within the blaster's
+`rangeMetres` of the muzzle. The range page has a "Spawn weakened" row.
+Not checked by eye: the hole's look, the burst density and spread, the push,
+and the `FX-chunk` replay at the chunk (no browser here). Stage 3's range
+switch is in; the area blast half of the card (B05 and B06 mods, B07) is
+still open.
+
 OPS-02 done 2026-11-06, awaiting review (`tasks/OPS-02.md`, Qwen 3.8
 27B via Pi): the Rapier physics now ships as its own
 content-hashed `/assets/*.wasm` file instead of about 4.1 MB of base64
@@ -289,6 +306,41 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: GAME-09b stage 1 and 2, the chunk finish (DeepSeek V4.1 Flash via Pi)
+
+- `DartHit` carries `shot: DartShot | null` (`id`, `muzzle`, `chunk`), and
+  `darts.fire` takes it as an optional fourth argument. `blaster.ts` gives
+  each trigger pull one id in `beginShot()` (so B03's two barrels are one
+  shot) and copies the muzzle in `fireDart`, so a shot is judged by what it
+  did, not by what the player did earlier.
+- The rule lives in `src/foamers/chunk.ts` as data-reading pure functions
+  (`judgeChunk`, `shotSummary`, `addShotDamage`, `chunkRadius`), so a test
+  can try the cases without a world. `handleHit` keeps a capped per-Foamer
+  list of dart damage tagged with its shot, then at the kill checks pop,
+  then chunk, then go down.
+- "Already finishable" means before the shot began: the first dart's
+  `preWeakened` flag is carried by the rest of the shot. A volley that
+  weakens a Fodder and then kills it is a plain go down, as the card says
+  full health F01s are; a Fodder is otherwise never a chunk.
+- `goDown` and `buildRagdoll` take a push scale, default 1. A chunk sound
+  (`FoamerSoundKind` `"chunk"`) plays `FX-chunk`, the placeholder the card
+  names. `stats.chunks` counts chunk finishes.
+- Numbers: B03 `chunk` range 5 m, carve 0.35 m, push 2.0; B01 slug 8 m,
+  0.3 m, 1.6; Foamer base `catastrophic.chunk` minShare 0.25, tiers Heavy,
+  Elite, Boss, carve 0.35, debrisMax 40, push 1. The carve radius is the
+  larger of the Foamer's and the blaster's, so a blaster never carves less
+  than the base.
+- Range page: a "Spawn weakened" yes/no row puts a fresh Foamer into the
+  finishable band (health at half `finisher.weakenShare`, flag set, no
+  stagger) so B03 can be tried on an F01.
+- Tests `tests/foamers/chunk.test.ts` (9): data, the rule's cases, the shot
+  window, radius; live: F05 chunk at 3 m, plain go down at 8 m, F01 full
+  health go down and a weakened F01 chunk, slug yes and B01 no, the centre
+  of the hole empty and the back of the body intact, debris inside the cap.
+- Not checked by eye: the hole shape, how the burst reads, the push, the
+  sound. Verified: tsc clean, 457 tests (68 files, 2 skipped), build passes,
+  no em or en dashes in the touched files.
 
 ### 2026-11-06: OPS-02 review, the physics .wasm checked in a browser (Claude, overnight)
 
