@@ -591,7 +591,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | QA-04 | Accessibility pass (section 10) | F + P |
 | QA-05 | Content safety pass against section 2 rules | B + P |
 | OPS-01 | Hosting at dart.contrapaul.com on Paul's Cloudflare setup (set up early, at PRE-09, so every push is playable) | A + P |
-| OPS-02 | Asset loading/streaming and caching | A |
+| OPS-02 | (card: `tasks/OPS-02.md`) Asset loading/streaming and caching: the physics WebAssembly as its own hashed .wasm file instead of 4.1 MB of base64 in a chunk | In progress (Qwen 3.8-27B via Pi, qwen-machine) |
 | QA-06 | Final playtest round | P |
 
 ---
