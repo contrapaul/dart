@@ -95,3 +95,37 @@ describe("a Foamer blocked by a wall the grid does not know about (BUG-01)", () 
     expect(worstStill, `longest standstill ${worstStill.toFixed(2)} s`).toBeLessThan(2);
   });
 });
+
+describe("the stall guard's memory (BUG-01 round 2)", () => {
+  it("drops a walking Foamer's entry when the Foamer is removed", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 6);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0.2, 0), player, "F01")!;
+    const sys = r.foamers as unknown as {
+      progress: Map<unknown, { x: number; z: number; t: number; side: number }>;
+      removeFoamer(f: unknown): void;
+    };
+    for (let i = 0; i < 60 * 3; i++) tick(r, player);
+    expect(sys.progress.has(f), "a walking Foamer has an entry").toBe(true);
+    sys.removeFoamer(f);
+    expect(sys.progress.has(f), "a removed Foamer leaves none").toBe(false);
+    expect(sys.progress.size, "and nothing else is left behind").toBe(0);
+  });
+
+  it("starts a fresh window when a Foamer walks again", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 6);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0.2, 0), player, "F01")!;
+    const sys = r.foamers as unknown as {
+      progress: Map<unknown, { x: number; z: number; t: number; side: number }>;
+    };
+    for (let i = 0; i < 60 * 3; i++) tick(r, player);
+    expect(sys.progress.has(f), "it was walking").toBe(true);
+    // A Foamer that holds its ring (not walking a path) forgets where it was,
+    // so the first step after the hold is not read as a stall.
+    for (let i = 0; i < 60 * 4 && f.state !== "hold"; i++) tick(r, player);
+    expect(f.state, "it is holding its ring, not walking").toBe("hold");
+    tick(r, player);
+    expect(sys.progress.has(f), "a Foamer that stopped walking has no entry").toBe(false);
+  });
+});
