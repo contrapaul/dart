@@ -390,6 +390,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: BUG-03 review, the Pit's block seen by the grid (Claude, overnight)
+
+- Qwen 27B finished all three stages in one run, tests shown failing on
+  the old code first (it used `git stash` for that; the shared stash list
+  was checked afterwards and is empty). Main merged in (HANDOFF kept both
+  sides); tsc, 472 tests and the build pass.
+- On a fresh Pit page: the floor inside `pit-block` is no longer
+  standable (`canStandAt` false at (0, 4), (-3.2, 4), (3.2, 4)) and the
+  block's top is found at 3.2 m; a Swarmer pack centred on the block
+  spawns nobody (every ring spot is inside it), one beside it lands all
+  outside. Wave 1's Slowmers walked round the block from z 7 to a player
+  at z 1.2. Paths from the ring top down the ramps still exist with the
+  solid probe on (checked against a rebake with it off).
+- Seen, not BUG-03: four Swarmers stood on the ring level at z -13.9,
+  just outside the locked `pit-in` door, in `approach` with an empty path
+  for 10 s. How they got there is not clear (they came from a pack placed
+  by hand); worth a look with the Swarmer brain later.
+- A pack centred on a solid block skips every member rather than moving
+  out: fine for a hand placed spawn, but a level's pack spawn should not
+  sit on a block. The validator does not check that yet.
+
 ### 2026-11-06: BUG-03, the nav grid sees the level's solid voxel pieces (Qwen 3.8-27B via Pi, qwen-machine)
 
 `tasks/BUG-03.md`. Two faults from the BUG-02 review: the load-time bake
