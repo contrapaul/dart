@@ -2186,6 +2186,109 @@
         },
         "gain": 0.6
       }
+    },
+    "ML-swing": {
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.14,
+          "attack": 0.01,
+          "decay": 0.12,
+          "lowpass": 2400,
+          "highpass": 400
+        },
+        "gain": 0.5
+      }
+    },
+    "ML-hit": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.06,
+              "f0": 320,
+              "f1": 140,
+              "wave": "triangle",
+              "attack": 0.002,
+              "decay": 0.05
+            }
+          },
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.002,
+              "decay": 0.07,
+              "lowpass": 3200,
+              "highpass": 600
+            }
+          }
+        ],
+        "gain": 0.6
+      }
+    },
+    "ML-bash": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.04,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.18,
+              "attack": 0.005,
+              "decay": 0.16,
+              "lowpass": 900,
+              "highpass": 80
+            }
+          },
+          {
+            "crackle": {
+              "dur": 0.18,
+              "rate": 50,
+              "decay": 0.05
+            }
+          }
+        ],
+        "gain": 0.6
+      }
+    },
+    "ML-empty": {
+      "files": [],
+      "volume": 0.45,
+      "jitter": 0.02,
+      "maxVoices": 1,
+      "synth": {
+        "click": {
+          "dur": 0.04,
+          "freq": 1900
+        },
+        "gain": 0.5
+      }
+    },
+    "ML-charge": {
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0.02,
+      "maxVoices": 1,
+      "synth": {
+        "tone": {
+          "dur": 0.12,
+          "f0": 620,
+          "f1": 980,
+          "wave": "sine",
+          "attack": 0.004,
+          "decay": 0.1
+        },
+        "gain": 0.45
+      }
     }
   },
   "blasterCues": {

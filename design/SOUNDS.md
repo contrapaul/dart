@@ -271,6 +271,10 @@ The other Foamers (IDs given when each is built):
 | ML2-swing, ML2-hit | [Melee 2], slow and big: swing, hit | Later | 4 each | Foley |
 | ML3-charge, ML3-slam | [Melee 3]: charging, the slam | Later | 3 each | Foley |
 | ML-empty | Melee out of charges | Later | 2 | Code |
+| ML-swing | GAME-06 placeholder: the baton's sweep | Now (synth) | 0 | Synth in data/sounds.json |
+| ML-hit | GAME-06 placeholder: the baton's contact | Now (synth) | 0 | Synth in data/sounds.json |
+| ML-bash | GAME-06 placeholder: the shield bash | Now (synth) | 0 | Synth in data/sounds.json |
+| ML-charge | GAME-06 placeholder: a parry or timer refills a charge | Now (synth) | 0 | Synth in data/sounds.json |
 | FN-finisher | Finisher: squeeze, wring out, pop | Later | 3 per finisher | Foley: wring a wet sponge |
 | VC-start | [Vacuum] switching on | Later | 2 | Foley: a hand vacuum |
 | VC-loop | Sucking loop | Later | 2 long | Foley |

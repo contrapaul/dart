@@ -16,6 +16,7 @@
     "sprint": ["ShiftLeft"],
     "dash": ["KeyQ"],
     "melee": ["KeyF"],
+    "debugBlast": ["KeyB"],
     "reload": ["KeyR"],
     "use": ["KeyE"],
     "weapon1": ["Digit1"],
