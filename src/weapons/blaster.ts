@@ -80,6 +80,10 @@ export interface DartFiring {
   ): void;
 }
 
+// GAME-09b: shot ids, one counter for every blaster, so two blasters'
+// shots never share an id inside the chunk window.
+let shotSeq = 0;
+
 // The raw shape of one entry in data/blasters.json before mods merge in.
 interface RawMod {
   dartType?: string;
@@ -247,7 +251,6 @@ export class Blaster {
   // GAME-09b: the shot id and muzzle a shot's darts carry. One per trigger
   // pull: every dart that leaves for one press shares the id, so the hit
   // can add up what the shot did.
-  private shotSeq = 0;
   private readonly shot: DartShot = { id: 0, muzzle: new THREE.Vector3(), chunk: null };
   // Auto recoil recover: the values captured on release, eased to 0 over
   // `recover` seconds.
@@ -413,7 +416,7 @@ export class Blaster {
    *  or both barrels as one shot). Its darts carry the id, the muzzle they
    *  leave and the blaster's chunk block. */
   private beginShot(): void {
-    this.shot.id = ++this.shotSeq;
+    this.shot.id = ++shotSeq;
     this.shot.chunk = this.spec.chunk;
   }
 

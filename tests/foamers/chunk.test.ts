@@ -266,4 +266,16 @@ describe("GAME-09b: the chunk finish", () => {
     // Debris never goes past the engine's own cap, whatever the data says.
     expect(r.debris.live).toBeLessThanOrEqual(destruction.debris.max);
   });
+  it("10. a dart keeps its own shot: the next pull does not rewrite it in flight (review)", () => {
+    const r = rig();
+    const hits: number[] = [];
+    r.darts.onDartHit = (h) => { if (h.shot) hits.push(h.shot.id); };
+    const tag = { id: 7, muzzle: new THREE.Vector3(0, 1, 0), chunk: B03 };
+    r.darts.fire(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0), "standard", tag);
+    // The blaster reuses one object: the next trigger pull rewrites it.
+    tag.id = 8;
+    tag.muzzle.set(50, 50, 50);
+    for (let i = 0; i < 60 && hits.length === 0; i++) { r.darts.update(DT); r.world.step(); }
+    expect(hits).toEqual([7]);
+  });
 });

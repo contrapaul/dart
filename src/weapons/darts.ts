@@ -92,6 +92,7 @@ interface Slot {
   lquat: THREE.Quaternion;         // stuck rotation in body-local space
   inst: number;                   // index in list[type]
   shot: DartShot | null;         // GAME-09b: the shot it left on
+  shotBuf: DartShot;             // its own copy, so the next pull cannot change it
 }
 
 export class DartSystem {
@@ -173,6 +174,7 @@ export class DartSystem {
         lquat: new THREE.Quaternion(),
         inst: 0,
         shot: null,
+        shotBuf: { id: 0, muzzle: new THREE.Vector3(), chunk: null },
       });
       this.free.push(i);
     }
@@ -209,7 +211,14 @@ export class DartSystem {
     s.body = null;
     s.coll = null;
     this.count[FLYING]++;
-    s.shot = shot;
+    // A copy: the blaster reuses one shot object, and its next trigger pull
+    // must not rewrite the id and muzzle of darts still in flight.
+    if (shot) {
+      s.shotBuf.id = shot.id;
+      s.shotBuf.muzzle.copy(shot.muzzle);
+      s.shotBuf.chunk = shot.chunk;
+      s.shot = s.shotBuf;
+    } else s.shot = null;
     s.inst = this.list[type].length;
     this.list[type].push(i);
   }
