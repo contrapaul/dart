@@ -6,16 +6,19 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-BUG-01 done 2026-11-04: two Pit stalls, both fixed at the cause and both
-covered by tests on the real arena file. The nav bake now takes the lowest
-surface an agent fits on, so the pit floor under a ring bakes as floor and
-not as the ring's top 4 m up; a Foamer's walk now ignores the other Foamers'
-bodies, so a wave spawned in a clump no longer freezes; and a walk that stops
-making progress sidesteps instead of standing still. Not checked by eye: the
-two wave-2 spots on `arena.html?watch` (under the ring and at (0, 0, -4)),
-the sidestep's look when a Foamer meets a corner, and whether the sidestep is
-still needed now that the two underlying causes are fixed (it is a guard, and
-no test needs it for a natural stall).
+BUG-01 done 2026-11-05 (round 2, after a review found round 1 had traded one
+bug for another): the Pit's ring tops are back in the nav grid, as a second
+layer over the floor under them, so both a player on the ring and a player
+under it are walked to at the right height. The ramp-side stall is fixed at
+its real cause: the grid promised 0.45 m steps but the Foamer's character
+controller only autosteps 0.2 m at its walking cadence, so a path that
+climbed the ramp's east side left it walking into a wall for ever. The
+sidestep guard is still there as a backstop and now forgets a Foamer that is
+not walking, and the walk builds the other-Foamers set once per frame
+instead of once per Foamer. Not checked by eye: the ring route on
+`arena.html?watch`, whether Foamers now visibly prefer the ramp, the
+sidestep's look, and whether the 0.2 m climb cap makes any other level's
+step read as too tall to walk. No browser was available.
 
 GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
 (`telegraphSeconds`), locks its line at the player's position and runs at
@@ -161,6 +164,49 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-05: BUG-01 round 2, the ring's top and the real ramp stall (DeepSeek V4.1 Flash via Pi)
+
+- Review finding R1: round 1's "lowest surface wins" bake threw the Pit's
+  ring tops away. `groundAt(0, -11)` was 0, not 4, so a player standing on
+  the ring drew an F01 that walked to the pit floor under the slab and
+  struck at nothing 4 m below. Fixed with a layered grid:
+  `src/ai/nav-grid.ts` keeps up to `nav.maxLayers` (2) walkable surfaces per
+  cell, lowest first, and A* runs on `(cell, layer)` nodes. `groundAt` and
+  `walkableAt` take an optional height and pick the nearest layer (no height
+  still means the lowest, so old callers and tests are unchanged).
+  `findPath` takes the agent's and the goal's feet height; the pages pass
+  `player.eye - player.eyeHeight`, since `player.eye(1, ...)` is feet plus
+  1.6 m. The agent re-paths when the goal's height moves more than 0.5 m.
+- The bake is still allocation free: the ray hits reuse preallocated slots.
+- Review finding R2, the ramp-side stall, is the character controller's
+  autostep, not the string pull. Measured: at a Foamer's 1 m/s and 60 fps
+  (a 0.017 m frame move) Rapier autosteps a 0.2 m rise but not 0.25 m, no
+  matter what `maxHeight` is set to, because the autostep needs room ahead of
+  the capsule that a small step does not give it. The grid called any rise up
+  to 0.45 m a step, and the south ramp's east side is 0.44 m from the floor
+  at the next cell, so A* and the pull both routed through it. `nav` gained
+  `stepAutostepMetres` (0.2), and `stepOk`, `nodeNear` and `lineClear` cap a
+  climb with it; a drop still uses `maxStepMetres`. `steer`'s waypoint skip
+  also fell from 0.5 m to 0.1 m: at 0.5 m the walk cut the dogleg at the
+  ramp's foot and went into the side again.
+- Review finding R3: the stall guard drops a Foamer's entry when it is not
+  walking its path (so a Foamer that held its ring does not sidestep the
+  moment it walks again) and in `removeFoamer`. The walk builds the set of
+  every Foamer body once per `update` instead of once per Foamer, and the
+  old `others` set is gone (the predicate reads `allBodies` directly).
+- Tests added: `tests/ai/pit-foamers.test.ts` now has the ring's-top lookup
+  and a Foamer that walks the ramp up to a player standing on ring-s;
+  `tests/ai/stall.test.ts` has the guard's memory (entry dropped on remove,
+  entry dropped when not walking a path).
+- The card asked for the ring test to pass within 25 s. It takes about 35 s:
+  the only route up is the south ramp, which makes the walk about 28 m, and
+  an F01 walks 1 m/s. The test uses 45 s and says why in a comment. It is on
+  the ring by second 25 and reaches the player at about 35.
+- Not checked by eye (no browser here): the ring route on
+  `arena.html?watch`, whether the Foamer now prefers the ramp visually, the
+  sidestep's look, and whether the 0.2 m climb cap makes any other level's
+  step look too tall to walk. Nothing visual was run.
 
 ### 2026-11-04: BUG-01, two Pit stalls fixed (DeepSeek V4.1 Flash via Pi)
 
