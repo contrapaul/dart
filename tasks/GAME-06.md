@@ -63,8 +63,11 @@ All numbers in a new `data/melee.json`, with a `weapons` map keyed by an id
   the rule in PLAN section 14 as a starting point for Paul's play test.
 - **Placeholder look:** a code-built foam baton (toy colours, no art files)
   that sweeps across the view for each hit (left to right, right to left,
-  overhead), the blaster dipping out of the way. The shield bash nudges the
-  disc forward instead. Name and look are [Paul]: "M01" in code, "[Paul]"
+  overhead), the blaster dipping out of the way. The shield bash is a
+  short forward shove of the view (a camera kick) with no baton. **Do not
+  edit `src/player/shield.ts` or `data/shield.json`:** GAME-04c owns them
+  while it runs; read the shield's public state only (`parries`, raised,
+  thrown, charging). Name and look are [Paul]: "M01" in code, "[Paul]"
   in anything a player reads.
 - **HUD:** three charge pips near the shield area; a pip pulses when a
   parry refills it.

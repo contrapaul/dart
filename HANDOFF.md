@@ -186,6 +186,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
+
+- Paul on the shield: a round foam shield in the spirit of a classic round
+  hero shield, spinning when thrown, and a foam chainsaw type weapon if it
+  can be done. Card `tasks/GAME-04c.md` (DeepSeek): concentric foam rings,
+  the flying disc uses the held model and spins, and a throw lodges in the
+  first Foamer and grinds it, then ricochets. Not a copy of any real
+  shield (no star, no red, white and blue rings, no brand words, per
+  CLAUDE.md); the emblem and name stay [Paul].
+- GAME-06 no longer touches `src/player/shield.ts`: GAME-04c owns it while
+  both run; the bash is a camera shove.
+- Started together: GAME-08 (Qwen 27B, qwen-machine), GAME-06 (Spark),
+  GAME-04c (DeepSeek). Pi needs `.ts.net` in `NO_PROXY`: the local proxy on
+  7890 breaks the TLS handshake to qwen-machine.
+
 ### 2026-11-05: ammo boxes hold 20 darts (Paul)
 
 - Paul: start the ammo boxes at 20 darts and tune in play tests. Every
