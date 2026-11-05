@@ -213,7 +213,16 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // ENG-08 stage 3b: one director and one nav grid for the level, baked
   // over the level's bounds and re-baked where a carve or a resting piece
   // changed the ground.
-  const levelAI = makeLevelAI(rapier, world, built.navBounds, store.value.difficulty);
+  const levelAI = makeLevelAI(
+    rapier, world, built.navBounds, store.value.difficulty, built.voxels, built.voxelMesh.group.position,
+  );
+  // BUG-03: the level's voxel pieces are meshed off the main thread, so the
+  // load-time bake of the grid meets only their surfaces. When the mesher
+  // backlog clears their chunks are solid in the volume: re-bake the level
+  // once through its solid test, so the first Foamer to path already sees
+  // every block as an obstacle. A level with no pieces is never busy, so
+  // this fires on the page's first step, harmlessly.
+  let piecesReady = false;
   // Darts stuck to a broken-off island fall off as loose darts.
   pieces.onBreak = (c, r) => darts.releaseInSphere(c, r);
   // A piece that comes to rest may block a cell: re-bake its patch.
@@ -746,6 +755,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     frame(dt) {
       input.poll();
       voxelMesh.update();
+      if (!piecesReady && !voxelMesh.busy) {
+        piecesReady = true;
+        levelAI.piecesReady();
+      }
       if (ui.paused) return;
       const look = input.takeLook(dt);
       player.yaw -= look.yaw;

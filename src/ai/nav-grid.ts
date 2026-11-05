@@ -73,6 +73,9 @@ export class NavGrid {
 
   private readonly ray: RAPIER.Ray;
   private readonly shape: RAPIER.Shape;
+  /** The solid-voxel test the bake checks per cell (BUG-03). Null: no
+   *  pieces, so the bake is the shape cast alone, as before. */
+  private solidAt: ((x: number, y: number, z: number) => boolean) | null = null;
   private readonly cosMaxSlope = Math.cos((NAV.maxSlopeDeg * Math.PI) / 180);
   private readonly rayLength = NAV.topMetres * 2;
 
@@ -184,6 +187,13 @@ export class NavGrid {
   bake(): void {
     for (let i = 0; i < this.walkable.length; i++) this.bakeCell(i);
     this.version++;
+  }
+
+  /** Set the solid test (BUG-03). A cell whose bake ray puts the agent's
+   *  body inside solid voxels gets no layers; a carve that empties the space
+   *  passes the hook again on the carve's rebake. */
+  setSolidAt(fn: ((x: number, y: number, z: number) => boolean) | null): void {
+    this.solidAt = fn;
   }
 
   /** Bake the cells inside a world rectangle, plus one agent radius around it
@@ -388,6 +398,20 @@ export class NavGrid {
     cand.sort((a, b) => a - b);
     for (let k = 0; k < cand.length && this.layers[i]! < this.maxLayers; k++) {
       const y0 = cand[k]!;
+      // Solid voxels: the level's pieces collide as trimeshes, so the shape
+      // cast meets only their surfaces and a cell inside a block reads as
+      // floor under it (BUG-03). Probe the agent's body over the surface
+      // against the volume instead; a candidate the body presses into a
+      // solid voxel is not a floor.
+      if (this.solidAt) {
+        const s = this.solidAt;
+        const h = NAV.agentHeightMetres;
+        const solid =
+          s(x, y0 + h * 0.125, z) ||
+          s(x, y0 + h * 0.45, z) ||
+          s(x, y0 + h * 0.875, z);
+        if (solid) continue;
+      }
       // A surface swallowed by one within a step of it is not a floor of its
       // own: the floor under a 0.3 m step is the step's footprint, and the
       // agent stands on the step. An overhang is high above that (the Pit's
