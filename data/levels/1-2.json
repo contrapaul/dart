@@ -1,5 +1,5 @@
 {
-  "_note": "Level 1-2 beats 1 to 4 (LVL-02b) from design/levels/LEVEL-1-2.md: the open service corridor with the empty B02 plinth, the parry corridor (one Roamer alone, its own one wave arena), the yard, the Ring arena (A2: two waves of Roamers, the north exit a reveal) and the breather store with a window onto the ring and the level's exit pad for now. Beats 5 to 9 (the tower, Arena 2, the gauntlet) come with a later card. The path runs north: the player starts in the south corridor at y 0 and walks to -z. One floor, one ceiling and a perimeter wall enclose the level; the rooms are the open spaces between walls and the pinches between them are the arena doors. The B02 rack is [Paul] (B02 is not built): the plinth stands empty with a foam-yellow marking. Names, setting and the accent colour are [Paul]. Metres, Y up, positions are box centres, sizes are full extents. Tuning numbers (wave gaps and holds) live here, not in code.",
+  "_note": "Level 1-2 beats 1 to 4 (LVL-02b) and beats 6 to 9 (LVL-02c) from design/levels/LEVEL-1-2.md: the open service corridor with the empty B02 plinth, the parry corridor (one Roamer alone, its own one wave arena), the yard, the Ring arena (A2: two waves of Roamers, the north exit a reveal), the breather store, then the connecting corridor with the empty tower bay (beat 5, a later card: a _note marks it), the Crossroads arena (A7 scaled: hub, centre pillar with four foam skins, four spokes), breather 2 with marked empty spots where the U2 station and the S3 ledge will go ([Paul], not built), the tiered bowl gauntlet (A3 scaled: tiers at 0, 1.2 and 2.4 m reached by walkable ramps, rifts on the upper tier, four foam pillars on tier 1, ammo in both bottom corners; the floor island that drops is a later card, no falling floor exists yet) and the lit 4 m exit door on the far wall with the level's exit pad behind it. The path runs north: the player starts in the south corridor at y 0 and walks to -z. One floor, one ceiling and a perimeter wall enclose the level; the rooms are the open spaces between walls and the pinches between them are the arena doors. The B02 rack is [Paul] (B02 is not built): the plinth stands empty with a foam-yellow marking. Names, setting and the accent colour are [Paul]. Metres, Y up, positions are box centres, sizes are full extents. Tuning numbers (wave gaps and holds) live here, not in code.",
   "meta": {
     "id": "1-2",
     "name": "[Paul]",
@@ -15,12 +15,12 @@
       "pos": [
         -4.5,
         -0.5,
-        22
+        -24
       ],
       "size": [
         31,
         1,
-        84
+        176
       ],
       "material": "greybox-dark"
     },
@@ -75,12 +75,12 @@
       "pos": [
         -20.5,
         4.5,
-        22
+        -24
       ],
       "size": [
         1,
         9,
-        84
+        176
       ],
       "material": "greybox"
     },
@@ -124,21 +124,6 @@
       ],
       "size": [
         31,
-        9,
-        1
-      ],
-      "material": "greybox"
-    },
-    {
-      "id": "wall-n",
-      "shape": "box",
-      "pos": [
-        -4.5,
-        4.5,
-        -20.5
-      ],
-      "size": [
-        32,
         9,
         1
       ],
@@ -503,6 +488,704 @@
         1
       ],
       "material": "greybox"
+    },
+    {
+      "id": "wall-n-w",
+      "shape": "box",
+      "pos": [
+        -8.625,
+        4.5,
+        -20.5
+      ],
+      "size": [
+        22.75,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-n-e",
+      "shape": "box",
+      "pos": [
+        9.5,
+        4.5,
+        -20.75
+      ],
+      "size": [
+        5,
+        9,
+        0.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-store-out",
+      "shape": "box",
+      "pos": [
+        5,
+        6.5,
+        -20.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "north-ceiling",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        9.5,
+        -66.5
+      ],
+      "size": [
+        31,
+        1,
+        91
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-e-north",
+      "shape": "box",
+      "pos": [
+        11.5,
+        4.5,
+        -66
+      ],
+      "size": [
+        1,
+        9,
+        90
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "conn-a-w",
+      "shape": "box",
+      "pos": [
+        2.5,
+        4.5,
+        -29
+      ],
+      "size": [
+        1,
+        9,
+        16
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "conn-a-e",
+      "shape": "box",
+      "pos": [
+        7.5,
+        4.5,
+        -29
+      ],
+      "size": [
+        1,
+        9,
+        16
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-n-w",
+      "shape": "box",
+      "pos": [
+        -16,
+        4.5,
+        -37.5
+      ],
+      "size": [
+        8,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-n-e",
+      "shape": "box",
+      "pos": [
+        -3,
+        4.5,
+        -37.5
+      ],
+      "size": [
+        10,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bend-n-w",
+      "shape": "box",
+      "pos": [
+        -15,
+        4.5,
+        -42.5
+      ],
+      "size": [
+        10,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bend-n-e",
+      "shape": "box",
+      "pos": [
+        2,
+        4.5,
+        -42.5
+      ],
+      "size": [
+        10,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-s-w",
+      "shape": "box",
+      "pos": [
+        -9.5,
+        4.5,
+        -46
+      ],
+      "size": [
+        1,
+        9,
+        6
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-s-e",
+      "shape": "box",
+      "pos": [
+        -2.5,
+        4.5,
+        -46
+      ],
+      "size": [
+        1,
+        9,
+        6
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-s-w",
+      "shape": "box",
+      "pos": [
+        -11,
+        4.5,
+        -49.5
+      ],
+      "size": [
+        4,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-s-e",
+      "shape": "box",
+      "pos": [
+        -1,
+        4.5,
+        -49.5
+      ],
+      "size": [
+        4,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-w-s",
+      "shape": "box",
+      "pos": [
+        -13.5,
+        4.5,
+        -52.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-w-n",
+      "shape": "box",
+      "pos": [
+        -13.5,
+        4.5,
+        -63.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-e-s",
+      "shape": "box",
+      "pos": [
+        1.5,
+        4.5,
+        -52.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-e-n",
+      "shape": "box",
+      "pos": [
+        1.5,
+        4.5,
+        -63.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-n-w",
+      "shape": "box",
+      "pos": [
+        -9.5,
+        4.5,
+        -69.5
+      ],
+      "size": [
+        1,
+        9,
+        7
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-n-e",
+      "shape": "box",
+      "pos": [
+        -1.5,
+        4.5,
+        -69.5
+      ],
+      "size": [
+        1,
+        9,
+        7
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-e-s",
+      "shape": "box",
+      "pos": [
+        4.5,
+        4.5,
+        -54.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-e-n",
+      "shape": "box",
+      "pos": [
+        4.5,
+        4.5,
+        -61.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-w-s",
+      "shape": "box",
+      "pos": [
+        -16.5,
+        4.5,
+        -54.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-w-n",
+      "shape": "box",
+      "pos": [
+        -16.5,
+        4.5,
+        -61.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "cross-pillar-core",
+      "shape": "box",
+      "pos": [
+        -6,
+        1.4,
+        -58
+      ],
+      "size": [
+        1.6,
+        2.8,
+        1.6
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "lintel-cross-out",
+      "shape": "box",
+      "pos": [
+        -5.5,
+        6.5,
+        -73.5
+      ],
+      "size": [
+        9,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "breather-wall-w",
+      "shape": "box",
+      "pos": [
+        -10.5,
+        4.5,
+        -78
+      ],
+      "size": [
+        1,
+        9,
+        8
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "breather-wall-e",
+      "shape": "box",
+      "pos": [
+        -1.5,
+        4.5,
+        -78
+      ],
+      "size": [
+        1,
+        9,
+        8
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "breather-wall-n-w",
+      "shape": "box",
+      "pos": [
+        -9.25,
+        4.5,
+        -82.5
+      ],
+      "size": [
+        2.5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "breather-wall-n-e",
+      "shape": "box",
+      "pos": [
+        -2.5,
+        4.5,
+        -82.5
+      ],
+      "size": [
+        3,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-breather-out",
+      "shape": "box",
+      "pos": [
+        -6,
+        6.5,
+        -82.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bowl-wall-s-w",
+      "shape": "box",
+      "pos": [
+        -15.25,
+        4.5,
+        -82.5
+      ],
+      "size": [
+        9.5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bowl-wall-s-e",
+      "shape": "box",
+      "pos": [
+        5,
+        4.5,
+        -82.5
+      ],
+      "size": [
+        12,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bowl-wall-n-w",
+      "shape": "box",
+      "pos": [
+        -13,
+        4.5,
+        -108.5
+      ],
+      "size": [
+        14,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bowl-wall-n-e",
+      "shape": "box",
+      "pos": [
+        4.5,
+        4.5,
+        -108.5
+      ],
+      "size": [
+        13,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-bowl-out",
+      "shape": "box",
+      "pos": [
+        -4,
+        6.5,
+        -108.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "tier1-w",
+      "shape": "box",
+      "pos": [
+        -18,
+        0.6,
+        -95.5
+      ],
+      "size": [
+        4,
+        1.2,
+        25
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "tier1-e",
+      "shape": "box",
+      "pos": [
+        9,
+        0.6,
+        -95.5
+      ],
+      "size": [
+        4,
+        1.2,
+        25
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "tier2-w",
+      "shape": "box",
+      "pos": [
+        -11,
+        1.2,
+        -106
+      ],
+      "size": [
+        10,
+        2.4,
+        4
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "tier2-e",
+      "shape": "box",
+      "pos": [
+        2.5,
+        1.2,
+        -106
+      ],
+      "size": [
+        9,
+        2.4,
+        4
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bowl-ramp-w",
+      "shape": "ramp",
+      "pos": [
+        -14.5,
+        0.6,
+        -95
+      ],
+      "size": [
+        3,
+        1.2,
+        3
+      ],
+      "rotY": -90,
+      "rise": 1.2,
+      "material": "greybox-dark"
+    },
+    {
+      "id": "bowl-ramp-e",
+      "shape": "ramp",
+      "pos": [
+        5.5,
+        0.6,
+        -95
+      ],
+      "size": [
+        3,
+        1.2,
+        3
+      ],
+      "rotY": 90,
+      "rise": 1.2,
+      "material": "greybox-dark"
+    },
+    {
+      "id": "bowl-ramp-t2-w",
+      "shape": "ramp",
+      "pos": [
+        -18,
+        1.8,
+        -102.6
+      ],
+      "size": [
+        3,
+        1.2,
+        2.8
+      ],
+      "rotY": 180,
+      "rise": 1.2,
+      "material": "greybox-dark"
+    },
+    {
+      "id": "bowl-ramp-t2-e",
+      "shape": "ramp",
+      "pos": [
+        9,
+        1.8,
+        -102.6
+      ],
+      "size": [
+        3,
+        1.2,
+        2.8
+      ],
+      "rotY": 180,
+      "rise": 1.2,
+      "material": "greybox-dark"
+    },
+    {
+      "id": "wall-n-end",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        4.5,
+        -112.5
+      ],
+      "size": [
+        33,
+        9,
+        1
+      ],
+      "material": "greybox"
     }
   ],
   "pieces": [
@@ -642,6 +1325,226 @@
             0.3
           ],
           "material": "foam-white"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-n",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -6,
+            1.4,
+            -59.0
+          ],
+          "size": [
+            1.6,
+            2.8,
+            0.4
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-s",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -6,
+            1.4,
+            -57.0
+          ],
+          "size": [
+            1.6,
+            2.8,
+            0.4
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-w",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -7.0,
+            1.4,
+            -58
+          ],
+          "size": [
+            0.4,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-e",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -5.0,
+            1.4,
+            -58
+          ],
+          "size": [
+            0.4,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "tower-bay-marking",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -14,
+            0.05,
+            -40
+          ],
+          "size": [
+            3.2,
+            0.1,
+            3.2
+          ],
+          "material": "foam-yellow"
+        }
+      ]
+    },
+    {
+      "id": "bowl-pillar-1",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -18,
+            2.6,
+            -88
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "bowl-pillar-2",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -18,
+            2.6,
+            -100
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "bowl-pillar-3",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            9,
+            2.6,
+            -88
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "bowl-pillar-4",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            9,
+            2.6,
+            -100
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "u2-marking",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -4.5,
+            0.05,
+            -75.5
+          ],
+          "size": [
+            1.6,
+            0.1,
+            1.6
+          ],
+          "material": "foam-yellow"
+        }
+      ]
+    },
+    {
+      "id": "s3-marking",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -7.5,
+            0.05,
+            -75.5
+          ],
+          "size": [
+            1,
+            0.1,
+            1
+          ],
+          "material": "foam-yellow"
         }
       ]
     }
@@ -892,6 +1795,320 @@
         0,
         21
       ]
+    },
+    {
+      "id": "crossroads",
+      "archetype": "A7",
+      "trigger": {
+        "pos": [
+          -6,
+          2,
+          -53.5
+        ],
+        "size": [
+          10,
+          4,
+          4
+        ]
+      },
+      "doors": [
+        {
+          "id": "cross-in",
+          "pos": [
+            -6,
+            1.75,
+            -49.5
+          ],
+          "size": [
+            6,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "cross-out",
+          "pos": [
+            -6,
+            1.75,
+            -70
+          ],
+          "size": [
+            6,
+            3.5,
+            0.4
+          ],
+          "state": "locked"
+        },
+        {
+          "id": "cross-gate-w",
+          "pos": [
+            -15.5,
+            1.75,
+            -58
+          ],
+          "size": [
+            0.4,
+            3.5,
+            6
+          ],
+          "state": "locked"
+        },
+        {
+          "id": "cross-gate-e",
+          "pos": [
+            3.5,
+            1.75,
+            -58
+          ],
+          "size": [
+            0.4,
+            3.5,
+            6
+          ],
+          "state": "locked"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "cross-r-n",
+          "pos": [
+            -5.5,
+            0.2,
+            -68.5
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "cross-r-e",
+          "pos": [
+            2.6,
+            0.2,
+            -58
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "cross-r-w",
+          "pos": [
+            -14.6,
+            0.2,
+            -58
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "cross-r-pillar",
+          "pos": [
+            -6,
+            0.2,
+            -56.5
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "cross-w1",
+          "rifts": [
+            "cross-r-n",
+            "cross-r-e",
+            "cross-r-w"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 6
+            }
+          ],
+          "delaySeconds": 1.5,
+          "holdSeconds": 2.0
+        },
+        {
+          "id": "cross-w2",
+          "rifts": [
+            "cross-r-n",
+            "cross-r-e",
+            "cross-r-w",
+            "cross-r-n",
+            "cross-r-e",
+            "cross-r-w",
+            "cross-r-n",
+            "cross-r-pillar"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 7
+            },
+            {
+              "foamer": "F01",
+              "count": 1
+            }
+          ],
+          "delaySeconds": 6,
+          "holdSeconds": 1.5
+        }
+      ],
+      "unlockOnClear": [
+        "cross-out",
+        "cross-in",
+        "cross-gate-w",
+        "cross-gate-e"
+      ],
+      "checkpoint": true,
+      "checkpointPos": [
+        -6,
+        0,
+        -47
+      ],
+      "_note": "A7 scaled down from the design's 32 x 32 m to a 14 x 16 m hub with 6 m spokes, so the level fits one corridor: the validator's arena budget and the sight range both allow it. The way on is the north spoke, not the south spoke the player entered by (the design says the way back; see PLAN.md 14)."
+    },
+    {
+      "id": "gauntlet",
+      "archetype": "A3",
+      "trigger": {
+        "pos": [
+          -4.5,
+          2,
+          -88
+        ],
+        "size": [
+          14,
+          4,
+          5
+        ]
+      },
+      "doors": [
+        {
+          "id": "bowl-in",
+          "pos": [
+            -6,
+            1.75,
+            -82.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "bowl-out",
+          "pos": [
+            -4,
+            1.75,
+            -108.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "locked"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "bowl-r1",
+          "pos": [
+            -10,
+            2.6,
+            -106
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "bowl-r2",
+          "pos": [
+            2,
+            2.6,
+            -106
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "bowl-r3",
+          "pos": [
+            -4.5,
+            0.2,
+            -95
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "bowl-w1",
+          "rifts": [
+            "bowl-r1",
+            "bowl-r2"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 8
+            }
+          ],
+          "delaySeconds": 1.5,
+          "holdSeconds": 1.5
+        },
+        {
+          "id": "bowl-w2",
+          "rifts": [
+            "bowl-r1",
+            "bowl-r2",
+            "bowl-r3"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 10
+            }
+          ],
+          "delaySeconds": 6,
+          "holdSeconds": 1.2
+        }
+      ],
+      "unlockOnClear": [
+        "bowl-out",
+        "bowl-in"
+      ],
+      "checkpoint": true,
+      "checkpointPos": [
+        -6,
+        0,
+        -84
+      ]
     }
   ],
   "pickups": [
@@ -914,6 +2131,36 @@
         0.4,
         -16
       ]
+    },
+    {
+      "id": "breather-ammo",
+      "type": "darts-standard",
+      "count": 20,
+      "pos": [
+        -7.5,
+        0.4,
+        -77.5
+      ]
+    },
+    {
+      "id": "bowl-ammo-w",
+      "type": "darts-standard",
+      "count": 30,
+      "pos": [
+        -15.5,
+        0.4,
+        -84.5
+      ]
+    },
+    {
+      "id": "bowl-ammo-e",
+      "type": "darts-standard",
+      "count": 30,
+      "pos": [
+        6.5,
+        0.4,
+        -84.5
+      ]
     }
   ],
   "playerStart": {
@@ -926,14 +2173,19 @@
   },
   "exit": {
     "pos": [
-      6.5,
+      -4,
       2,
-      -16.5
+      -110
     ],
     "size": [
       3.4,
       4,
       3
     ]
-  }
+  },
+  "_notes": [
+    "tower-bay: the empty bay off the connecting corridor at x -20 to -8, z -30 is where the beat 5 tower (A5) will go; a later card builds it (four floors need more nav layers than data/ai.json nav.maxLayers holds today). The foam-yellow marking on its floor shows the footprint.",
+    "breather-2: the U2 upgrade station and the S3 ledge are [Paul] and not built; the foam-yellow markings at [-4.5,-75.5] and [-7.5,-75.5] mark their empty spots.",
+    "gauntlet: the floor island under the east tier-2 ledge that drops to tier 0 is not in the file: no falling floor exists yet (a later card)."
+  ]
 }

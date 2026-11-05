@@ -52,6 +52,35 @@ check both against a page). The old-estimate line is demonstrated in
 the test: the old wait on a 20 m loft is out of the window by more
 than a window.
 
+LVL-02c done 2026-11-06, awaiting review (`tasks/LVL-02c.md`, Qwen 3.8
+Flash Next via Pi): Level 1-2 beats 6 to 9 are in `data/levels/1-2.json`,
+so `arena.html?level=1-2` now plays four arenas in order. From the store
+the player goes north through a 4 m way on into a connecting corridor that
+bends past a marked empty bay where the beat 5 tower will go (`_note` in
+the file), and into the Crossroads (A7, scaled: a 14 x 16 m hub, one
+pillared centre with four carveable foam skins over a solid core, four
+6 m spokes with gates). Its lock shuts all four gates including the entry;
+wave 1 is 6 Roamers from the north, east and west spokes staggered, wave 2
+is 7 Roamers plus a Slowmer from a floor seam at the pillar's base (the
+behind you moment). The way on is the fourth (north) spoke, not the way
+back, so the level keeps turning north (section 14). Breather 2 (8 x 8 m)
+has one ammo box and marked empty spots where the U2 station and the S3
+ledge will go ([Paul], not built). The Gauntlet is the tiered bowl (A3,
+scaled to 31 x 25 m): tiers at 0, 1.2 and 2.4 m walked up by 22 degree
+shell ramps (Foamers can climb them: a 1.2 m step is over the nav
+autostep), two rifts on the upper tier for wave 1's 8 Roamers, plus a
+floor rift in the bottom tier's centre for wave 2's 10; four foam cover
+pillars on tier 1 and ammo in both bottom corners; the dropping floor
+island is a `_note` (no falling floor yet). The level's exit pad moved out
+of the store to the lit 4 m door on the bowl's far wall. Tests: four
+arenas in order, the walk start to exit on floor, the tiers and rifts
+walkable on the nav grid with paths up the ramps and down, and the pad
+dead until the fourth arena clears. Not checked by eye: the spaces and
+their pacing, the behind you moment, the tiers reading as three heights,
+the rifts' glow placement in the spokes, and that Foamers stream into the
+bowl well (see the Log entry). Beat 5 (the tower), stations, secrets, the
+B02 blaster and the level's name and setting are still to do.
+
 OPS-02 done 2026-11-06, awaiting review (`tasks/OPS-02.md`, Qwen 3.8
 27B via Pi): the Rapier physics now ships as its own
 content-hashed `/assets/*.wasm` file instead of about 4.1 MB of base64
@@ -93,9 +122,10 @@ One charge, 15 s to refill, full on start and retry, a recharge pip in
 the HUD; the placeholder tool is a code-built foam tube and nozzle. Not
 checked by eye: the tool's look, the nozzle puff, and the five VC-*
 placeholder sounds (see the Log entry).
-LVL-02b done 2026-11-06, awaiting review (`tasks/LVL-02b.md`, Qwen 3.8
-Flash Next via Pi): a level's `arenas` play in file order through a new
-`LevelRunner` in `src/level/level-runner.ts` that owns one `ArenaRunner`
+LVL-02b done 2026-11-06, reviewed by Claude, merged (`tasks/LVL-02b.md`,
+Qwen 3.8 Flash Next via Pi): a level's `arenas` play in file order through
+a new `LevelRunner` in `src/level/level-runner.ts` that owns one
+`ArenaRunner`
 per arena and steps only the current one, so a later arena's trigger does
 nothing until every earlier arena cleared. Each arena locks on its own
 trigger, runs its waves, opens its own doors and keeps its own checkpoint;
@@ -372,6 +402,89 @@ github.com/contrapaul/dart (public), MIT licence.
   walk itself is what the test walks: the range's rig, the page's
   own flight, the page's own shield read, the helper's wait and its
   hold, end to end at 60 Hz.
+
+### 2026-11-06: LVL-02c review, Level 1-2 played start to exit (Claude, overnight)
+
+- The Spark's first run hit its output limit writing the level in one
+  reply and saved nothing; resumed with "one room per edit", it finished
+  all three stages. Main merged in (HANDOFF Status rebuilt by hand);
+  tsc, 450 tests and the build pass.
+- Played `arena.html?level=1-2&watch` through all four arenas: the parry
+  corridor and the Ring as before; the Crossroads locks all four gates,
+  Roamers come from the spokes, and every gate opens on clear; the bowl's
+  wave 1 Roamers stand on the upper tier at the back, wave 2 clears, the
+  exit door opens and the pad completes the level only after the fourth
+  arena. No console errors.
+- For Paul's playtest: in the greybox the bowl's three tiers read weakly
+  (one grey); the lit exit sits between the two upper rifts, so it is seen
+  from the whole bowl but the Roamers guard it. The way on from the
+  Crossroads is the north spoke, not the way back the concept asked for
+  (section 14 says why).
+- Not checked by eye: pacing, the pillar seam's behind you moment, and
+  whether Foamers use the ramps well under pressure.
+
+### 2026-11-06: LVL-02c, Level 1-2 beats 6 to 9 (Qwen 3.8 Flash Next via Pi)
+
+Built, in `data/levels/1-2.json` (no `src/` changes; the page already
+drives any number of arenas through `LevelRunner`):
+
+- Beat 5 gap: from the store's north wall a 4 m way on into a connecting
+  corridor that runs north and bends west past an empty bay (x -20 to -8,
+  z -30) where the tower will go. The bay has a foam-yellow floor marking
+  and a `_note`; `data/ai.json` `nav.maxLayers` is too small for a four
+  floor tower today, so the later card needs that raised first.
+- Beat 6, the Crossroads (A7): a 14 x 16 m hub with a 1.6 m centre pillar
+  (solid core plus four carveable foam skins as separate pieces, so it
+  breaks off foam-style) and four 6 m spokes, each with a gate door. Lock
+  shuts all four gates including the entry. Wave 1: 6 Roamers from the
+  north, east and west spoke rifts, `delaySeconds` 2 so they arrive
+  staggered from three directions. Wave 2: 7 Roamers from the same three
+  plus 1 Slowmer from a floor seam rift at the pillar's base (the behind
+  you moment). Cleared unlocks the north gate (`unlockOnClear` also
+  reopens the others), checkpoint just inside the hub.
+- Beat 7, breather 2: 8 x 8 m off the hub's north gate, one 20 dart box,
+  two foam-yellow floor markings where the U2 station and the S3 ledge
+  will go ([Paul], not built), `_note` says so.
+- Beat 8, the Gauntlet (A3): a 31 x 25 m bowl. Tier 1 at 1.2 m along both
+  side walls (4 m deep), tier 2 at 2.4 m along the far wall with a 4 m
+  gap over the exit door. Ramps (1.2 m rise over 3 m) reach both tiers;
+  the nav grid walks them (verified: paths floor to tier 1 to tier 2 and
+  back down). Four foam cover pillars on tier 1, ammo boxes in both
+  bottom corners (30 darts each). Rifts: two on tier 2 at the far wall
+  (wave 1: 8 Roamers) and one floor rift in the bottom tier's centre
+  (wave 2 adds 10 more Roamers, from all three, the ring of Firebacks the
+  design asks for is a later tuning pass). Cleared unlocks the far door
+  and the entry; checkpoint at the bowl's mouth.
+- Beat 9: the level's `exit` pad moved from the store to behind a lit 4 m
+  door in the bowl's far wall (`bowl-out`). The store is a plain room.
+
+Decisions (PLAN.md section 14 row dated 2026-11-06): both arenas scaled
+down to fit one 31 m wide north bound corridor beside LVL-02b's Ring; tiers
+walked up by ramps not 1.2 m steps (a 1.2 m step is over the nav
+autostep of 0.2 m so Foamers could not climb the bowl); the Crossroads' way
+on is the spoke opposite the entry, not the design's south spoke, because
+breather 2, the bowl and the exit all lie north and the runner only lets
+you on once cleared anyway; the exit pad moved to the bowl's far door.
+
+Tests (`tests/level/level-1-2.test.ts`): arenas in order with archetypes
+and wave counts of all four; the walk from the start through all nine
+beats to the new exit; nav grid checks that tiers, rifts and both new
+triggers are walkable with paths up ramps and down; door block/open ray
+checks including `bowl-out`; and a `LevelRunner` test that the exit phase
+stays short of `complete` until the fourth arena clears. `npx tsc
+--noEmit`, `npx vitest run` (444 passed, 2 skipped), `npm run build` all
+pass. Level validator: no errors, one warning carried over from LVL-02b
+(ring voxel count).
+
+Not checked by eye (no browser here): pacing of the corridor, bay and hub;
+whether the three spoke rifts read as three directions in play; the
+pillar rift's surprise; whether the bowl's three heights read at a glance
+and the tiers feel like cover; rift glow placement in the dark spokes;
+Foamers streaming down the ramps sensibly; and that clearing the fourth
+arena plus walking to the lit door feels like an ending.
+
+Next: beat 5's tower card (raise `nav.maxLayers` first), U2/S3 stations
+([Paul] content), secrets, the B02 blaster, the level's name and setting.
 
 ### 2026-11-06: OPS-02 review, the physics .wasm checked in a browser (Claude, overnight)
 
@@ -1868,7 +1981,6 @@ that line. Worth a bug card.
 - Verified: 25 runs of the file alone and several full-suite runs under
   extra load, all green; `npx tsc --noEmit` and `npm test` pass.
 
-
 ### 2026-11-03: QA-watch, range watch mode for the in-app browser (Qwen3.8-27B via Pi)
 
 `range.html?watch` starts the range unpaused without pointer lock, which
@@ -2100,7 +2212,6 @@ with its voxel wall and towers is not measured; the 27.8 ms above is a
 plain floor in the test runner. The rebake cost per carve is not measured
 either, only reasoned about. Grid resolution 0.25 m is from the card and
 has not been tuned against a 0.35 m agent walking through the course.
-
 
 ### 2026-11-02: ENG-08 stage 1 (DeepSeek V4.1 Flash)
 
@@ -3059,8 +3170,6 @@ Review (Claude), in the browser on the range:
 
 Plain level, frame-time graph and the panel: `range.html` next to the
 game and the sandbox. Stage 1 built the parts behind it:
-
-
 
 - `data/range.json` exactly as the card gives it.
 - `src/core/loop.ts`: an optional `stats` hook called after render with one reused `FrameStats` (`raw`, `dt`, `steps`, `work`, `updateWork`; `raw` is the unsnapped rAF interval in ms, 0 on the first frame), `createFrameClock` takes a snap option and exposes the raw last interval, and `startLoop` returns `{ setSnap }`. The existing loop tests pass unchanged.
