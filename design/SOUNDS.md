@@ -255,6 +255,7 @@ The other Foamers (IDs given when each is built):
 | SH-raise | [Shield] raised | Yes | 3 | Foley: a plastic disc |
 | SH-block | Attack blocked | Yes | 6 | Foley: hit the disc with foam |
 | SH-parry | Parry (the "boing") | Yes | 4 | Foley: a spring or ruler twang, or Code |
+| SH-parry-hit | Parried ball hits the thrower | Yes | 3 | Foley: a solid foam ball thud |
 | SH-parry-return | Parried shot flying back | Yes | 3 | Code |
 | SH-throw | Shield thrown (frisbee whoosh) | Yes | 4 | Foley: throw a frisbee |
 | SH-ricochet | Thrown shield bouncing off a Foamer | Yes | 6 | Foley |

@@ -17,9 +17,9 @@ import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
-import { ProjectileSystem } from "../foamers/projectiles";
+import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { makeLevelAI } from "../ai/level";
-import { SettingsStore } from "../core/settings";
+import { SettingsStore, DIFFICULTIES } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
@@ -136,12 +136,13 @@ const voxelTargets: VoxelTarget[] = [];
 const impacts = new DartImpacts(darts, debris, voxelTargets);
 const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
 // GAME-10a: the F02's foam balls (kinematic raycasts, no physics bodies).
-const projectiles = new ProjectileSystem(rapier, world, debris, player.collider);
+const projectiles = new ProjectileSystem(rapier, world, debris, player.collider, foamers);
 scene.add(projectiles.group);
 foamers.projectiles = projectiles;
 projectiles.onSound = (kind, at) => {
   if (!engine) return;
   if (kind === "burst") engine.play("FB-burst", { position: at });
+  else if (kind === "parryHit") engine.play("SH-parry-hit", { position: at });
 };
 // GAME-04 stage 1: the shield on the range too, so its panel and watch
 // can drive it. Same class and data as the game pages; the wiring here is
@@ -153,6 +154,9 @@ foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
 // ENG-08 stage 3b: one director (its difficulty from the settings preset's
 // director key) and one nav grid, baked over the range floor at load.
 const store = new SettingsStore();
+// GAME-04 stage 2: the parry window's difficulty multiplier, like every other
+// preset value on this page.
+shield.parryWindowScale = DIFFICULTIES[store.value.difficulty]?.parryWindow ?? 1;
 const levelAI = makeLevelAI(
   rapier, world, { minX: -half, maxX: half, minZ: -half, maxZ: half }, store.value.difficulty,
 );
@@ -179,6 +183,9 @@ foamers.onBonk = (_f, attack) => {
 const _fromBall = new THREE.Vector3();
 projectiles.onHitPlayer = (b) => {
   if (switches.godMode || paused) return;
+  // GAME-04 stage 2: a ball the player did not make (a F02's, from the pack) can
+  // be parried back: it is one made with the shared BALL_MATERIAL.
+  const parryable = b.mesh.material === BALL_MATERIAL;
   const speed = Math.hypot(b.vel.x, b.vel.y, b.vel.z);
   _fromBall.set(
     b.pos.x - (b.vel.x / speed) * 0.5,
@@ -186,6 +193,15 @@ projectiles.onHitPlayer = (b) => {
     b.pos.z - (b.vel.z / speed) * 0.5,
   );
   const blocked = shield.blocksAttackFrom(_fromBall);
+  if (blocked && parryable && shield.canParry()) {
+    // The parry: the ball flies back to its thrower; the player takes no
+    // damage for it, and the page's feedback is the same set as on the
+    // game page (sound, flash, kick, the tiny hit-stop below).
+    shield.noteParry();
+    projectiles.bounce(b);
+    if (engine) engine.play("SH-parry");
+    return;
+  }
   const lost = health.damage(damageOf("throw") * (blocked ? shield.damageShare : 1), "throw");
   if (lost <= 0) return;
   if (blocked) {
@@ -649,10 +665,13 @@ loopCtl = startLoop({
     if (input.wasPressed("pause")) setPaused(!paused);
     if (!paused) {
       player.update(dt, input);
+      // GAME-04 stage 2: the tiny parry hit-stop slows the movables, like on the
+      // game page (the shield counts the true dt and hands back the rate).
+      const wdt = shield.slowed(dt);
       if (switches.foamers) {
-        foamers.update(dt, player.eye(1, _eye));
+        foamers.update(wdt, player.eye(1, _eye));
         // GAME-10a: the foam balls fly on their own rays, no bodies.
-        projectiles.update(dt);
+        projectiles.update(wdt);
         updateNavPaths();
       }
       // Switch: wheel down is next, up is prev; keys 1 to 3 select directly.
@@ -718,7 +737,7 @@ loopCtl = startLoop({
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own
     // pitch is unchanged, so releasing the trigger brings the view back).
-    const climb = loadout.active.climb + shield.kick;
+    const climb = loadout.active.climb + shield.kick + shield.parryKick;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
@@ -768,7 +787,19 @@ if (watch) {
         return e.thrown;
       },
       shieldState: () => shield.state,
+      /** GAME-04 stage 2: raise the disc with its hands-on lead preserved: for the
+       *  next ball that is still coming, raise it now; the range's watch
+       *  cannot run the page's own step, so it holds and lets the loop
+       *  raise it (the game page's parryNext runs the steps for it).
+       *  true when a ball was found to aim at. */
+      parryNext: () => {
+        let found = false;
+        for (const b of projectiles.list) if (!b.bounced) { found = true; break; }
+        if (found) shield.forcedHold = true;
+        return found;
+      },
       state: () => ({
+        parries: shield.parries,
         foamers: foamers.list.map((f) => ({
           type: f.spec.rig,
           // GAME-10b: the Darter's own states (telegraph, charge, wallStun)
