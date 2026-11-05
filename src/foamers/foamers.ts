@@ -23,7 +23,7 @@ import aiData from "../../data/ai.json";
 import { Director, type TokenKind } from "../ai/director";
 import { FoamerAgent } from "../ai/agent";
 import { steer, type Neighbour, type Velocity } from "../ai/steer";
-import type { NavGrid } from "../ai/nav-grid";
+import { makePath, type NavGrid } from "../ai/nav-grid";
 import type { ProjectileSystem } from "./projectiles";
 import { SIGHT_QUERY_GROUPS } from "../physics/world";
 
@@ -89,6 +89,14 @@ function attackRange(spec: FoamerSpec, attack: { id: string } | null): number {
  *  type without one uses the shared bonker ring. */
 function holdRangeOf(spec: FoamerSpec): number {
   return (spec as { holdRangeMetres?: number }).holdRangeMetres ?? BRAIN.holdRangeMetres;
+}
+
+/** GAME-10e: the shield wall slots of a Blocker, from its type (data/
+ *  foamers.json `slots`). A type without them is not a Blocker. */
+function slotsOf(
+  spec: FoamerSpec,
+): { holdMetres: number; spacingMetres: number } | undefined {
+  return (spec as { slots?: { holdMetres: number; spacingMetres: number } }).slots;
 }
 
 /** GAME-10d: how many make a pack, from the type (the rig's `pack` is the
@@ -172,7 +180,9 @@ export type FoamerSoundKind =
   | "scrape" | "charge" | "impact"
   // GAME-10d, the Swarmer: the yip when a pack wakes. Only the F03 has a
   // sound for it, so the others stay quiet rather than borrow one.
-  | "alert";
+  | "alert"
+  // GAME-10e, the Blocker: a dart into the shield, the shield coming off.
+  | "shield-hit" | "shield-break";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -260,6 +270,8 @@ export class FoamerSystem {
   private _wish = new THREE.Vector3();
   private _vel = new THREE.Vector3();
   private _velXZ: Velocity = { x: 0, z: 0 };
+  /** GAME-10e: a one-point path to a Blocker's slot, reused each step. */
+  private _slotPath = makePath(1);
   /** Neighbour scratch for steering, reused every step. */
   private readonly neighbours: Neighbour[] = [];
   private readonly agentAgent: { x: number; z: number; speed: number } = { x: 0, z: 0, speed: 0 };
@@ -340,9 +352,12 @@ export class FoamerSystem {
           // GAME-10b: a charger runs its own (telegraph, charge, wallStun).
           // GAME-10d: a type that nibbles on the swarm pool runs the Swarmer
           // brain (hit and run on a ring).
-          brain: chargeOf(spec) ? "f05"
-            : tokenKindOf(spec) === "ranged" ? "f02"
-              : tokenKindOf(spec) === "swarm" ? "f03" : "f01",
+          // GAME-10e: a type with slots is a Blocker and runs its own
+          // brain, which holds a place in the shield wall.
+          brain: slotsOf(spec) ? "f04"
+            : chargeOf(spec) ? "f05"
+              : tokenKindOf(spec) === "ranged" ? "f02"
+                : tokenKindOf(spec) === "swarm" ? "f03" : "f01",
         },
         agentId,
       );
@@ -357,7 +372,9 @@ export class FoamerSystem {
         retreatDistance: spec.retreatDistanceMetres,
         // A thrower sidles on the ring at the distance it keeps, a charger
         // on its own ring out at charge range; a bonker on the shared ring.
-        holdRange: chargeOf(spec)?.holdMetres
+        // A Blocker walks to its slot, so its ring is the slot line.
+        holdRange: slotsOf(spec)?.holdMetres
+          ?? chargeOf(spec)?.holdMetres
           ?? (tokenKindOf(spec) === "ranged" ? spec.preferredDistanceMetres : holdRangeOf(spec)),
         sinceNibble: Infinity,
       };
@@ -423,6 +440,44 @@ export class FoamerSystem {
     return out;
   }
 
+  /**
+   * GAME-10e: a Blocker line, for the range's type choice. Three of them
+   * side by side across the way the player faces, one slot apart, so the
+   * wall the card describes is there from the first press. A spot the nav
+   * grid says cannot be stood on is skipped, the way spawnPack skips a
+   * blocked ring spot. Returns the ones that were made.
+   */
+  spawnLine(feet: THREE.Vector3, facing: THREE.Vector3, type = "F04"): Foamer[] {
+    const spec = specFor(type);
+    const slots = slotsOf(spec) ?? { holdMetres: 9, spacingMetres: 1.2 };
+    const line = (spec as { line?: { count: number; inboundSteps: number } }).line
+      ?? { count: 3, inboundSteps: 4 };
+    const out: Foamer[] = [];
+    const n = line.count;
+    // Across the facing, on the ground plane.
+    let fx = -facing.x, fz = -facing.z;
+    const fl = Math.hypot(fx, fz);
+    if (fl < 1e-3) { fx = 0; fz = 1; } else { fx /= fl; fz /= fl; }
+    const rx = fz, rz = -fx;
+    const grid = this.navGrid;
+    for (let i = 0; i < n; i++) {
+      const off = (i - (n - 1) / 2) * slots.spacingMetres;
+      _packFeet.set(feet.x + rx * off, feet.y, feet.z + rz * off);
+      let placed = !grid || grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      // Blocked: slide the same slot outward along the line, a few times.
+      for (let k = 0; !placed && grid && k < line.inboundSteps; k++) {
+        _packFeet.x += rx * slots.spacingMetres;
+        _packFeet.z += rz * slots.spacingMetres;
+        placed = grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      }
+      if (!placed) continue;
+      const f = this.spawn(_packFeet, feet, type);
+      if (!f) break;
+      out.push(f);
+    }
+    return out;
+  }
+
   /** Fixed step, before world.step(). `player` is the player's position. */
   update(dt: number, player: THREE.Vector3): void {
     this.time += dt;
@@ -443,6 +498,10 @@ export class FoamerSystem {
     // than the first caller. Without a director none of this runs and the
     // Foamers walk in and attack as they did before the brain.
     if (this.director) {
+      // GAME-10e: the shield wall is laid out before the bids, so a Blocker
+      // bids from where it will stand, and every Blocker in the wall sees
+      // the same slots this step.
+      this.assignSlots(player);
       for (const f of this.list) if (f.state !== "down" && f.state !== "finish") this.bidAgent(f, player);
       this.director.update(dt);
     }
@@ -662,7 +721,13 @@ export class FoamerSystem {
             // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
             // Without a projectile system (the unit tests, the sandbox) the
             // windup and the throw pose still play, and nothing flies.
-            this.projectiles?.launch(f, player);
+            // GAME-10e: a volley fires `shots` balls fanned across
+            // `spreadDeg`, so the player can parry some and eat some.
+            const volley = atk as { shots?: number; spreadDeg?: number };
+            const shots = Math.max(1, volley.shots ?? 1);
+            const spread = volley.spreadDeg ?? 0;
+            for (let s = 0; s < shots; s++)
+              this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
             sound(this, "throw", f, f.centre);
           } else {
             f.bonk(atk.id);
@@ -778,6 +843,57 @@ export class FoamerSystem {
     f.poseParts(dt, moving);
   }
 
+  /**
+   * GAME-10e: a slot for every Blocker in the wall. The wall is a line
+   * across the player at the type's hold distance, one slot each, spacing
+   * from the type. Slots are handed out in agent id order, so they stay
+   * put as the wall walks: no Blocker swaps with another every frame. An
+   * index past the middle of the line spreads outward and stops at the
+   * end, where the wall simply gets longer.
+   */
+  private assignSlots(player: THREE.Vector3): void {
+    const wall: Foamer[] = [];
+    for (const f of this.list) {
+      if (f.state === "down" || f.state === "finish" || !f.agent) continue;
+      if (slotsOf(f.spec)) wall.push(f);
+    }
+    if (wall.length === 0) return;
+    wall.sort((a, b) => a.agent!.agentId - b.agent!.agentId);
+    const slots = slotsOf(wall[0]!.spec)!;
+    // Facing of the wall: from the player out to the middle of the group,
+    // on the ground plane. The group is still walking in on the first
+    // frame, so a degenerate spread faces +z (the arena's approach).
+    let gx = 0;
+    let gz = 0;
+    for (const f of wall) {
+      gx += f.centre.x;
+      gz += f.centre.z;
+    }
+    gx = gx / wall.length - player.x;
+    gz = gz / wall.length - player.z;
+    const gl = Math.hypot(gx, gz);
+    const fx = gl > 1e-3 ? gx / gl : 0;
+    const fz = gl > 1e-3 ? gz / gl : 1;
+    // Across the wall: the facing turned a quarter turn.
+    const rx = fz;
+    const rz = -fx;
+    const cx = player.x + fx * slots.holdMetres;
+    const cz = player.z + fz * slots.holdMetres;
+    const n = wall.length;
+    for (let i = 0; i < n; i++) {
+      const f = wall[i]!;
+      const off = (i - (n - 1) / 2) * slots.spacingMetres;
+      const sx = cx + rx * off;
+      const sz = cz + rz * off;
+      const input = f.agentInput!;
+      input.slotX = sx;
+      input.slotZ = sz;
+      input.slotDistance = Math.hypot(sx - f.centre.x, sz - f.centre.z);
+      // A shot-away shield leaves nothing to hold a wall with.
+      input.shieldBroken = !f.parts.has("shield");
+    }
+  }
+
   /** ENG-08 stage 3b: one step of the brain, before the state machine acts
    * on it. Fills the context from the world (distance, line of sight,
    * damage, neighbours), steps the brain on the decision it made last step,
@@ -874,7 +990,8 @@ export class FoamerSystem {
   /** Whether the brain's movement intent means walking this step. */
   private brainMoving(f: Foamer): boolean {
     const m = f.agent!.move;
-    return m === "followPath" || m === "circleLeft" || m === "circleRight" || m === "backOff";
+    return m === "followPath" || m === "circleLeft" || m === "circleRight" ||
+      m === "backOff" || m === "toSlot";
   }
 
   /**
@@ -900,6 +1017,22 @@ export class FoamerSystem {
       const dz = f.centre.z - player.z;
       const d = Math.hypot(dx, dz);
       if (d > 1e-4) this._wish.set((dx / d) * speed * dt, 0, (dz / d) * speed * dt);
+      return;
+    }
+    if (move === "toSlot") {
+      // GAME-10e: a straight walk to the slot the brain named. The nav grid
+      // only paths to the player, so the slot is walked to directly; the
+      // same steer() gives arrival slowing and separation from the wall.
+      const i4 = a.ctx.input as { slotX?: number; slotZ?: number };
+      const p = this._slotPath;
+      p.count = 1;
+      p.xs[0] = i4.slotX ?? f.centre.x;
+      p.zs[0] = i4.slotZ ?? f.centre.z;
+      this.agentAgent.x = f.centre.x;
+      this.agentAgent.z = f.centre.z;
+      this.agentAgent.speed = speed;
+      steer(this.agentAgent, p, this.neighbours, this._velXZ);
+      this._wish.set(this._velXZ.x * dt, 0, this._velXZ.z * dt);
       return;
     }
     if (move === "followPath" || move === "stand") {
@@ -1110,7 +1243,10 @@ export class FoamerSystem {
     // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
     f.damageSinceStep = true;
     this.paintWound(f, part, hit);
-    sound(this, "wound", f, partPoint(part));
+    // GAME-10e: a dart that the Blocker shield turns away thuds into the
+    // foam plate rather than into the Foamer.
+    const shielded = armour?.arcDeg !== undefined && covered;
+    sound(this, shielded ? "shield-hit" : "wound", f, partPoint(part));
     // Breaking: hp <= 0, or the carve took the part to wearBreak of its
     // starting voxels. The body never breaks; wear from slow chipping is
     // checked once per step in update.
@@ -1712,6 +1848,8 @@ export class FoamerSystem {
     part.pose.decompose(st2, q2, _sc);
     part.prevPose.decompose(_p, _q, _sc);
     sound(this, "part-off", f, partPoint(part));
+    // GAME-10e: the Blocker shield coming away is its own, bigger sound.
+    if (part.spec.id === "shield") sound(this, "shield-break", f, partPoint(part));
     // The part's last pose change over a step (the fling), plus 1.5 m/s
     // outward from the Foamer and up.
     const out2 = _v.set(st2.x - f.centre.x, 0, st2.z - f.centre.z);

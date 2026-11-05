@@ -213,12 +213,15 @@ The slice Foamers, one row per sound:
 | F03-yip | F03 (small fast biter): the yip that wakes a pack | Yes | 3 | Foley or Code |
 | F03-nibble | F03: the nibble | Yes | 3 | Foley: a quick snap of foam |
 | F03-scurry | F03: skittering steps (repeated patter) | Yes | 4 | Foley: light quick taps |
+| F04-alert | F04 (shield trooper): the shield lifts and the blaster comes up before a volley | Yes | 3 | Foley: a plastic clack, then a soft spring |
+| F04-volley | F04: three foam balls over the shield, one shot | Yes | 3 | Foley: a toy blaster puff, three quick shots |
+| F04-shieldhit | F04: a dart thudding into the shield plate | Yes | 4 | Foley: a dart on a foam board |
+| F04-shieldbreak | F04: the shield plate coming away | Yes | 3 | Foley: a foam plate tearing off velcro |
 
 The other Foamers (IDs given when each is built):
 
 | ID | Foamer | Sounds | Slice | Suggested source |
 |---|---|---|---|---|
-| F04 | Shield trooper | Volley fire, dart hitting its shield, shield carved away | Later | Blaster plus Foley |
 | F06 | Floating ball | Float hum (loop), jaw open, blob spit, blob bounce, big blob | Later | Foley plus Code |
 | F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |
 | F08 | Huge tank | Heavy steps, launcher volley, foam wall of balls | Later | Blaster plus Foley |

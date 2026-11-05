@@ -332,6 +332,7 @@
       },
       "slots": {
         "holdMetres": 9,
+        "_note": "GAME-10e: the shield wall. Blockers walk to a line across the player at holdMetres, one slot each spacingMetres apart; an index past the ends of the line spreads the wall.",
         "spacingMetres": 1.2
       },
       "armour": {
@@ -345,6 +346,8 @@
       "attacks": [
         {
           "id": "volley",
+          "_note": "GAME-10e: range pins the volley's reach, so a Blocker on its slot (the hold distance) is inside it and fires over the shield.",
+          "range": 16,
           "damage": 3,
           "token": "ranged",
           "needs": [
@@ -363,7 +366,12 @@
           "windup": 0.5,
           "strike": 0.2
         }
-      ]
+      ],
+      "line": {
+        "_note": "GAME-10e: the line the range spawns for the F04 type choice, so one press shows the wall. inboundSteps: a blocked slot slides outward this many slots before the member is skipped.",
+        "count": 3,
+        "inboundSteps": 4
+      }
     }
   },
   "spawner": {
