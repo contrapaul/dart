@@ -10,6 +10,7 @@ import {
 } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
+import type { ShotDamage } from "./chunk";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -117,6 +118,9 @@ export class Foamer {
   readonly motion: RigMotion = restMotion();
   /** Times and amounts of recent damage, for the catastrophic window. */
   readonly recentDamage: { time: number; amount: number }[] = [];
+  /** GAME-09b: dart damage tagged with the shot that dealt it, for the
+   *  chunk finish's rule and its carve centre. */
+  readonly shotDamage: ShotDamage[] = [];
   /** GAME-11: the fall, an inverted pendulum about the foot it still stands
    *  on. a is the tilt in radians from upright, integrated per fixed step
    *  (semi-implicit Euler); -1 means no fall has started. w is the angular

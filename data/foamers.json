@@ -78,7 +78,15 @@
       "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.",
       "share": 0.4,
       "window": 0.1,
-      "popTypes": []
+      "popTypes": [],
+      "chunk": {
+        "_note": "GAME-09b: the chunk finish. A blaster or mod with a chunk block, a hit inside its rangeMetres, qualifies when the killing shot's own damage on this Foamer inside the window above is at least minShare of max health, and the rig's tier is in tiers or the Foamer is already finishable (finishWeakened). Then carveRadius is carved as a sphere at the shot's mean hit point, up to debrisMax foam chunks burst out of the hole, and it goes down with the hole in it, pushed chunk.push times the ragdoll's kill push. Pops are unchanged.",
+        "minShare": 0.25,
+        "tiers": ["Heavy", "Elite", "Boss"],
+        "carveRadius": 0.35,
+        "debrisMax": 40,
+        "push": 1
+      }
     },
     "wound": {
       "coreShell": 1.0,

@@ -9,6 +9,24 @@ import { CAPSULE_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
 
 export type { DartTypeName } from "./dart-model";
 
+/** GAME-09b: the chunk block of a blaster or mod that can blow a hole
+ *  through a Foamer. rangeMetres: the farthest the muzzle may be from the
+ *  hit. carveRadius: the hole's radius in metres. push: multiplies the
+ *  ragdoll's kill push along the shot. */
+export interface ShotChunk {
+  rangeMetres: number;
+  carveRadius: number;
+  push: number;
+}
+
+/** GAME-09b: what a shot's darts carry so a hit can judge the chunk rule.
+ *  id groups the darts of one trigger pull; muzzle is where they left. */
+export interface DartShot {
+  id: number;
+  muzzle: THREE.Vector3;
+  chunk: ShotChunk | null;
+}
+
 export interface DartHit {
   point: THREE.Vector3;       // world position of the hit
   normal: THREE.Vector3;      // surface normal at the hit
@@ -21,6 +39,8 @@ export interface DartHit {
    *  or a Foamer part's "foamer" label from the Foamer system. Null when
    *  the hit was not on a voxel volume the sounds distinguish. */
   material: string | null;
+  /** GAME-09b: the shot this dart left on, when the caller tagged it. */
+  shot: DartShot | null;
 }
 
 /** Where a dart came to rest on a surface. `point` is the dart's own
@@ -71,6 +91,7 @@ interface Slot {
   local: THREE.Vector3;          // stuck offset in body-local space
   lquat: THREE.Quaternion;         // stuck rotation in body-local space
   inst: number;                   // index in list[type]
+  shot: DartShot | null;         // GAME-09b: the shot it left on
 }
 
 export class DartSystem {
@@ -151,13 +172,19 @@ export class DartSystem {
         local: new THREE.Vector3(),
         lquat: new THREE.Quaternion(),
         inst: 0,
+        shot: null,
       });
       this.free.push(i);
     }
     this._ray = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
   }
 
-  fire(origin: THREE.Vector3, direction: THREE.Vector3, type: DartTypeName): void {
+  fire(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    type: DartTypeName,
+    shot: DartShot | null = null,
+  ): void {
     const spec = TUNE.types[type];
     if (this.count[FLYING] >= this.capFly) this.killOldest(FLYING);
     const i = this.free.pop();
@@ -182,6 +209,7 @@ export class DartSystem {
     s.body = null;
     s.coll = null;
     this.count[FLYING]++;
+    s.shot = shot;
     s.inst = this.list[type].length;
     this.list[type].push(i);
   }
@@ -304,6 +332,7 @@ export class DartSystem {
         type: s.type,
         collider: hit.collider,
         material: null,
+        shot: s.shot,
       };
       this.onHit(dartHit);
       // After the onHit chain, so the sounds read the material.

@@ -9,9 +9,11 @@ import type { VoxelTarget } from "../weapons/impacts";
 import dartTuning from "../../data/darts.json";
 import { materialId, EMPTY } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
+import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
+import { addShotDamage, shotSummary, judgeChunk, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
@@ -130,6 +132,7 @@ const _pm = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 const _p = new THREE.Vector3();
 const _v = new THREE.Vector3();
+const _chunkC = new THREE.Vector3(); // GAME-09b: the carve centre scratch
 const _cv = new THREE.Vector3();
 const _topP = new THREE.Vector3();
 const _topQ = new THREE.Quaternion();
@@ -162,6 +165,8 @@ const NAV = aiData.nav;
 export type FoamerSoundKind =
   | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop"
   | "stagger" | "throw"
+  // GAME-09b: the burst out of a chunk finish's hole.
+  | "chunk"
   // GAME-10b, the charger: the scrape before a charge, the run starting,
   // and the wall or player it hits.
   | "scrape" | "charge" | "impact"
@@ -197,7 +202,7 @@ export class FoamerSystem {
   /** Called once per Foamer sound event, at the part's or the Foamer's own
    *  position (AUD-01 stage 3b). Foamer sounds are owned by GameSounds. */
   onSound: (kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) => void = () => {};
-  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0 };
+  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0, chunks: 0 };
   /** Fallen pieces, oldest first. Capped at brokenParts.max. */
   readonly broken: BrokenPiece[] = [];
   /** Downed Foamers, in the order they went down (oldest first). */
@@ -1046,7 +1051,15 @@ export class FoamerSystem {
     part.hp -= dmg;
     f.health -= dmg * kind.total;
     // Only dart types that can pop count toward a catastrophic hit.
-    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, dmg * kind.total);
+    const total = dmg * kind.total;
+    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, total);
+    // GAME-09b: the same damage on the shot that dealt it, so a chunk
+    // finish can judge the shot alone and carve at its darts' mean point.
+    if (hit.shot) {
+      addShotDamage(
+        f.shotDamage, hit.shot.id, this.time, total, hit.point, f.finishWeakened,
+      );
+    }
     this.stats.hits++;
     // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
     f.damageSinceStep = true;
@@ -1064,8 +1077,14 @@ export class FoamerSystem {
       const cutoff = this.time - f.spec.catastrophic.window;
       let recent = 0;
       for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
-      if (recent >= f.spec.catastrophic.share * f.maxHealth) this.pop(f);
-      else this.goDown(f, hit); // the killing hit pushes the ragdoll
+      if (recent >= f.spec.catastrophic.share * f.maxHealth) {
+        this.pop(f);
+      } else if (this.canChunk(f, hit)) {
+        // GAME-09b: the shot blows a hole through it instead.
+        this.chunk(f, hit);
+      } else {
+        this.goDown(f, hit); // the killing hit pushes the ragdoll
+      }
       return;
     }
     if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part);
@@ -1166,13 +1185,69 @@ export class FoamerSystem {
     return f.rig.parts.some((p) => p.kind === "arm" && !f.parts.has(p.id));
   }
 
+  /** GAME-09b: does this killing hit blow a hole through it? The rule is
+   *  pure (chunk.ts); this only gathers the parts it reads: the shot's own
+   *  damage on this Foamer inside catastrophic.window, the shot's mean hit
+   *  point, the rig's tier and whether it was already finishable. */
+  private canChunk(f: Foamer, hit: DartHit): boolean {
+    if (!hit.shot) return false;
+    const sum = shotSummary(f.shotDamage, hit.shot.id, this.time, f.spec.catastrophic.window);
+    if (!sum) return false;
+    return judgeChunk(
+      f.spec.catastrophic.chunk,
+      hit.shot.chunk,
+      hit.shot.muzzle,
+      f.rig.tier,
+      sum.preWeakened,
+      f.maxHealth,
+      sum.total,
+      sum.mean,
+    );
+  }
+
+  /** GAME-09b: the chunk finish. Carve a sphere of the shot's radius at the
+   *  shot's mean hit point through every part it reaches, throw the removed
+   *  foam out as one burst (inside the debris caps and chunk.debrisMax), and
+   *  go down with the hole in it, pushed hard along the shot. A part the
+   *  carve took below its break line breaks off on the next step's wear
+   *  check. Pops are untouched: a chunk is never a pop. */
+  private chunk(f: Foamer, hit: DartHit) {
+    const shot = hit.shot!;
+    if (!shot.chunk) return this.goDown(f, hit);
+    const sum = shotSummary(f.shotDamage, shot.id, this.time, f.spec.catastrophic.window)!;
+    const spec = f.spec.catastrophic.chunk;
+    const r = chunkRadius(spec, shot.chunk);
+    let left = spec.debrisMax;
+    // The mean point is world space; each part carves it in its own voxel
+    // space, so a hole through a hip takes the body and the leg. The debris
+    // goes out of the part that lost it, as a pop's does.
+    for (const part of f.parts.values()) {
+      if (left <= 0) break;
+      const vs = part.volume.voxelSize;
+      const rv = r / vs;
+      const c = part.worldToVoxel(_chunkC.copy(sum.mean));
+      const sz = part.spec.size;
+      // Skip a part the sphere cannot reach: its box plus the radius.
+      if (c.x < -rv || c.y < -rv || c.z < -rv) continue;
+      if (c.x > sz[0] + rv || c.y > sz[1] + rv || c.z > sz[2] + rv) continue;
+      const removed = carveSphere(part.volume, c.x, c.y, c.z, rv).slice(0, left);
+      if (removed.length === 0) continue;
+      left -= removed.length;
+      this.debris.spawn(removed, c, vs, (v) => part.voxelToWorld(v));
+    }
+    // The hole's own burst, before the down's topple: not a pop.
+    this.stats.chunks++;
+    sound(this, "chunk", f, sum.mean);
+    this.goDown(f, hit, spec.push);
+  }
+
   /** Go down (card "Go down"): it stops moving and attacking, its parts
    *  leave targets and lose their trimesh colliders (darts pass through),
    *  and the root capsule is removed. Then it becomes a ragdoll (ENG-12):
    *  every attached part is a dynamic body with a cuboid collider and a
    *  hinge to its parent, pushed by the killing hit. Stuck darts drop when
    *  its bodies are disposed. Counts as gone for the spawner. */
-  private goDown(f: Foamer, hit?: DartHit) {
+  private goDown(f: Foamer, hit?: DartHit, push = 1) {
     if (f.state === "down") return;
     f.state = "down";
     f.stateTime = 0;
@@ -1188,7 +1263,7 @@ export class FoamerSystem {
       if (t >= 0) this.targets.splice(t, 1);
       part.mesh.dropColliders();
     }
-    this.buildRagdoll(f, hit);
+    this.buildRagdoll(f, hit, push);
     this.downed.push(f);
   }
 
@@ -1208,7 +1283,7 @@ export class FoamerSystem {
    *  hit's height clamped inside the body's box, so a high hit tips it
    *  over away from the shooter. Runs once per death, so it allocates
    *  freely rather than reusing the per-step scratch. */
-  private buildRagdoll(f: Foamer, hit?: DartHit) {
+  private buildRagdoll(f: Foamer, hit?: DartHit, push = 1) {
     const rag = f.spec.down.ragdoll;
     const vs = f.rig.voxelSize;
     const dt = Math.max(this.dtPrev, 1 / 240);
@@ -1325,7 +1400,8 @@ export class FoamerSystem {
         const top = body ? this.topYOfPart(body) : 1;
         for (const part of f.parts.values()) {
           const c = part.voxelToWorld(_kbB.set(part.spec.size[0] / 2, part.spec.size[1] / 2, part.spec.size[2] / 2));
-          const k = rag.killSpeed * THREE.MathUtils.clamp(c.y / top, 0, 1.2);
+          // GAME-09b: a chunk finish pushes harder along the shot.
+          const k = push * rag.killSpeed * THREE.MathUtils.clamp(c.y / top, 0, 1.2);
           const v = part.body.linvel();
           part.body.setLinvel({ x: v.x + _kbV.x * k, y: v.y, z: v.z + _kbV.z * k }, true);
         }
