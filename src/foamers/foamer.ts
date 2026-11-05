@@ -10,6 +10,8 @@ import {
 } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
+import type { ShotDamage } from "./chunk";
+import type { DartHit } from "../weapons/darts";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -117,6 +119,9 @@ export class Foamer {
   readonly motion: RigMotion = restMotion();
   /** Times and amounts of recent damage, for the catastrophic window. */
   readonly recentDamage: { time: number; amount: number }[] = [];
+  /** GAME-09b: dart damage tagged with the shot that dealt it, for the
+   *  chunk finish's rule and its carve centre. */
+  readonly shotDamage: ShotDamage[] = [];
   /** GAME-11: the fall, an inverted pendulum about the foot it still stands
    *  on. a is the tilt in radians from upright, integrated per fixed step
    *  (semi-implicit Euler); -1 means no fall has started. w is the angular
@@ -147,6 +152,13 @@ export class Foamer {
    *  finishWeakened the Foamer glows and wobbles while it staggers, and a
    *  melee inside the finisher's reach ends it with the finisher. */
   finishWeakened = false;
+  /** GAME-09b: the dart that brought it to 0 health, while the rest of its
+   *  shot may still land. It is dying: it does not walk, attack or stagger,
+   *  and its parts keep their colliders so the shot's other darts hit it.
+   *  The kill resolves once, on the next update or on another shot's hit. */
+  dyingHit: DartHit | null = null;
+  /** The system step the held kill happened on. */
+  dyingStep = 0;
   /** GAME-07: true while the current stagger is the long, finishable one
    *  (weakenShare) rather than the short part-break one. Cleared each
    *  time a stagger starts. Exposed for the HUD prompt. */

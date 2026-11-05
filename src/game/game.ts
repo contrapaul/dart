@@ -543,7 +543,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
             const fwd = camera.getWorldDirection(_aimDir);
             let taken = false;
             for (const f of foamers.list) {
-              if (f.state !== "stagger") continue;
+              // GAME-09b: a dying Foamer's kill is already decided.
+              if (f.state !== "stagger" || f.dyingHit) continue;
               if (!finisher.attempt(f, eye, fwd, _muzzle)) continue;
               finisher.start(f, player, eye);
               input.consumePress("melee");

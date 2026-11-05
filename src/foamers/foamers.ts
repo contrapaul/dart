@@ -9,9 +9,11 @@ import type { VoxelTarget } from "../weapons/impacts";
 import dartTuning from "../../data/darts.json";
 import { materialId, EMPTY } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
+import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
+import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
@@ -130,6 +132,7 @@ const _pm = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 const _p = new THREE.Vector3();
 const _v = new THREE.Vector3();
+const _chunkC = new THREE.Vector3(); // GAME-09b: the carve centre scratch
 const _cv = new THREE.Vector3();
 const _topP = new THREE.Vector3();
 const _topQ = new THREE.Quaternion();
@@ -162,6 +165,8 @@ const NAV = aiData.nav;
 export type FoamerSoundKind =
   | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop"
   | "stagger" | "throw"
+  // GAME-09b: the burst out of a chunk finish's hole.
+  | "chunk"
   // GAME-10b, the charger: the scrape before a charge, the run starting,
   // and the wall or player it hits.
   | "scrape" | "charge" | "impact"
@@ -197,13 +202,16 @@ export class FoamerSystem {
   /** Called once per Foamer sound event, at the part's or the Foamer's own
    *  position (AUD-01 stage 3b). Foamer sounds are owned by GameSounds. */
   onSound: (kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) => void = () => {};
-  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0 };
+  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0, chunks: 0 };
   /** Fallen pieces, oldest first. Capped at brokenParts.max. */
   readonly broken: BrokenPiece[] = [];
   /** Downed Foamers, in the order they went down (oldest first). */
   readonly downed: Foamer[] = [];
   /** System clock in seconds; stamps the damage window. */
   time = 0;
+  /** GAME-09b: the update count. A held kill resolves on the step after the
+   *  one it was held on, not later in the same step's darts. */
+  private step = 0;
   /** How many Foamers the spawner keeps alive. Default is the data file's
    *  count; the range page sets its own (0 until the panel adds them). */
   spawnCount = SPAWNER.count;
@@ -419,6 +427,17 @@ export class FoamerSystem {
   update(dt: number, player: THREE.Vector3): void {
     this.time += dt;
     this.dtPrev = dt;
+    this.step++;
+    // GAME-09b: settle kills held for the rest of their shot (handleHit).
+    // This runs before the Foamers step, so a dying one never attacks, walks
+    // or staggers: it is only still alive for its shot's darts. The page
+    // steps the darts after the Foamers, so a hold from step N covers the
+    // darts of step N and N+1 and is settled at the start of N+2:
+    // `dyingStep + 1 < step`.
+    // (a copy: a pop splices the list)
+    for (const f of [...this.list]) {
+      if (f.dyingHit && f.dyingStep + 1 < this.step) this.resolveDying(f);
+    }
     // ENG-08 stage 3b: every living Foamer bids for a token before the
     // director resolves the bids, so the best bid wins a free token rather
     // than the first caller. Without a director none of this runs and the
@@ -439,9 +458,11 @@ export class FoamerSystem {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
       // Downed Foamers keep stepping (lie, sink) but no longer walk.
+      // GAME-09b: a dying Foamer (its kill held for the rest of its shot)
+      // keeps its colliders and its pose, and does nothing else.
       if (f.state === "down") {
         this.stepDown(f, dt);
-      } else {
+      } else if (!f.dyingHit) {
         this.stepFoamer(f, dt, player);
       }
       // The attached parts' meshes refresh here (wounds, stumps); the
@@ -451,7 +472,7 @@ export class FoamerSystem {
       // lost wearBreak of its starting voxels, breaks. The body never
       // breaks. A dart's hit that spends a part's hp is checked in
       // handleHit; this catches the slow wear.
-      if (f.state !== "down") {
+      if (f.state !== "down" && !f.dyingHit) {
         for (const part of f.parts.values()) {
           if (part.spec.kind === "body") continue;
           if (part.hp <= 0 ||
@@ -1047,6 +1068,12 @@ export class FoamerSystem {
       // NoSuchCollider evidence: some hits miss every part and the root.
     }
     if (!f || !part) return;
+    // GAME-09b: another shot's dart ends a dying Foamer at once, so the held
+    // shot cannot keep adding to a kill that is already decided.
+    if (f.dyingHit && f.dyingHit.shot?.id !== hit.shot?.id) {
+      this.resolveDying(f);
+      return; // the held kill is the kill; this dart has nothing left to hit
+    }
     // The dart sound (AUD-01) wants to tell a Foamer part from an ordinary
     // voxel wall, so the material name DartImpacts just wrote is swapped
     // for the "foamer" surface. This runs even below the damage speed, so
@@ -1062,7 +1089,15 @@ export class FoamerSystem {
     part.hp -= dmg;
     f.health -= dmg * kind.total;
     // Only dart types that can pop count toward a catastrophic hit.
-    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, dmg * kind.total);
+    const total = dmg * kind.total;
+    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, total);
+    // GAME-09b: the same damage on the shot that dealt it, so a chunk
+    // finish can judge the shot alone and carve at its darts' mean point.
+    if (hit.shot) {
+      addShotDamage(
+        f.shotDamage, hit.shot.id, this.time, total, hit.point, f.finishWeakened,
+      );
+    }
     this.stats.hits++;
     // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
     f.damageSinceStep = true;
@@ -1073,15 +1108,20 @@ export class FoamerSystem {
     // checked once per step in update.
     const worn = part.voxelCount <= part.startVoxels * (1 - f.spec.partDamage.wearBreak);
     if (f.health <= 0) {
-      // The card: pop if the damage taken in the last catastrophic.window
-      // seconds (the killing hit plus anything at the same moment) is at
-      // least catastrophic.share of the max health, otherwise go down.
-      // Only popTypes damage is in recentDamage.
-      const cutoff = this.time - f.spec.catastrophic.window;
-      let recent = 0;
-      for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
-      if (recent >= f.spec.catastrophic.share * f.maxHealth) this.pop(f);
-      else this.goDown(f, hit); // the killing hit pushes the ragdoll
+      // GAME-09b review: a chunk shot's first dart is usually not enough to
+      // clear minShare on its own (a weakened F01 dies to one dart's ~1.5
+      // damage), so hold the kill: mark it dying and keep its colliders, so
+      // the rest of this shot's darts still land, and resolve once on the
+      // next update (see resolveDying). A dart with no shot, or a chunk that
+      // cannot apply, resolves at once, exactly as before.
+      if (hit.shot && this.chunkCould(f, hit)) {
+        if (!f.dyingHit) {
+          f.dyingHit = hit;
+          f.dyingStep = this.step;
+        }
+        return;
+      }
+      this.resolveKill(f, hit);
       return;
     }
     if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part);
@@ -1098,6 +1138,43 @@ export class FoamerSystem {
       f.finishWeakened = true;
       this.startStagger(f, true);
     }
+  }
+
+  /** GAME-09b: could the hit's shot still be a chunk finish? The tier or
+   *  weakened flag and the shot's range; the share of health is left to the
+   *  shot's whole damage, which is what the hold is for. */
+  private chunkCould(f: Foamer, hit: DartHit): boolean {
+    return chunkPossible(
+      f.spec.catastrophic.chunk, hit.shot!.chunk, hit.shot!.muzzle,
+      f.rig.tier, f.finishWeakened, hit.point,
+    );
+  }
+
+  /** GAME-09b: the kill, once. Pop if the damage in the window is enough
+   *  (only popTypes count), else a chunk finish, else go down. */
+  private resolveKill(f: Foamer, hit: DartHit | null) {
+    const cutoff = this.time - f.spec.catastrophic.window;
+    let recent = 0;
+    for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
+    if (recent >= f.spec.catastrophic.share * f.maxHealth) {
+      this.pop(f);
+    } else if (hit && this.canChunk(f, hit)) {
+      // GAME-09b: the shot blows a hole through it instead.
+      this.chunk(f, hit);
+    } else {
+      this.goDown(f, hit ?? undefined); // the killing hit pushes the ragdoll
+    }
+  }
+
+  /** GAME-09b: settle a held kill. On the step after the hold's, or at once
+   *  when a dart from another shot hits it, the Foamer is killed: its parts
+   *  keep their colliders only until this runs, so the held shot's darts
+   *  that land in this step and the next still add their damage and their
+   *  hit points to the carve. */
+  private resolveDying(f: Foamer) {
+    const hit = f.dyingHit!;
+    f.dyingHit = null;
+    this.resolveKill(f, hit);
   }
 
   /** GAME-07: start a stagger, long (the finishable one) or short (a part
@@ -1122,6 +1199,8 @@ export class FoamerSystem {
    *  part break and the pop (a bounce is never a popping hit). */
   parryDamage(f: Foamer, amount: number): void {
     if (f.state === "down") return;
+    // GAME-09b: a kill held for a shot is decided; a bounce does not join it.
+    if (f.dyingHit) return;
     f.health -= amount;
     f.addDamage(this.time, amount);
     f.damageSinceStep = true;
@@ -1182,13 +1261,69 @@ export class FoamerSystem {
     return f.rig.parts.some((p) => p.kind === "arm" && !f.parts.has(p.id));
   }
 
+  /** GAME-09b: does this killing hit blow a hole through it? The rule is
+   *  pure (chunk.ts); this only gathers the parts it reads: the shot's own
+   *  damage on this Foamer inside catastrophic.window, the shot's mean hit
+   *  point, the rig's tier and whether it was already finishable. */
+  private canChunk(f: Foamer, hit: DartHit): boolean {
+    if (!hit.shot) return false;
+    const sum = shotSummary(f.shotDamage, hit.shot.id, this.time, f.spec.catastrophic.window);
+    if (!sum) return false;
+    return judgeChunk(
+      f.spec.catastrophic.chunk,
+      hit.shot.chunk,
+      hit.shot.muzzle,
+      f.rig.tier,
+      sum.preWeakened,
+      f.maxHealth,
+      sum.total,
+      sum.mean,
+    );
+  }
+
+  /** GAME-09b: the chunk finish. Carve a sphere of the shot's radius at the
+   *  shot's mean hit point through every part it reaches, throw the removed
+   *  foam out as one burst (inside the debris caps and chunk.debrisMax), and
+   *  go down with the hole in it, pushed hard along the shot. A part the
+   *  carve took below its break line breaks off on the next step's wear
+   *  check. Pops are untouched: a chunk is never a pop. */
+  private chunk(f: Foamer, hit: DartHit) {
+    const shot = hit.shot!;
+    if (!shot.chunk) return this.goDown(f, hit);
+    const sum = shotSummary(f.shotDamage, shot.id, this.time, f.spec.catastrophic.window)!;
+    const spec = f.spec.catastrophic.chunk;
+    const r = chunkRadius(spec, shot.chunk);
+    let left = spec.debrisMax;
+    // The mean point is world space; each part carves it in its own voxel
+    // space, so a hole through a hip takes the body and the leg. The debris
+    // goes out of the part that lost it, as a pop's does.
+    for (const part of f.parts.values()) {
+      if (left <= 0) break;
+      const vs = part.volume.voxelSize;
+      const rv = r / vs;
+      const c = part.worldToVoxel(_chunkC.copy(sum.mean));
+      const sz = part.spec.size;
+      // Skip a part the sphere cannot reach: its box plus the radius.
+      if (c.x < -rv || c.y < -rv || c.z < -rv) continue;
+      if (c.x > sz[0] + rv || c.y > sz[1] + rv || c.z > sz[2] + rv) continue;
+      const removed = carveSphere(part.volume, c.x, c.y, c.z, rv).slice(0, left);
+      if (removed.length === 0) continue;
+      left -= removed.length;
+      this.debris.spawn(removed, c, vs, (v) => part.voxelToWorld(v));
+    }
+    // The hole's own burst, before the down's topple: not a pop.
+    this.stats.chunks++;
+    sound(this, "chunk", f, sum.mean);
+    this.goDown(f, hit, spec.push);
+  }
+
   /** Go down (card "Go down"): it stops moving and attacking, its parts
    *  leave targets and lose their trimesh colliders (darts pass through),
    *  and the root capsule is removed. Then it becomes a ragdoll (ENG-12):
    *  every attached part is a dynamic body with a cuboid collider and a
    *  hinge to its parent, pushed by the killing hit. Stuck darts drop when
    *  its bodies are disposed. Counts as gone for the spawner. */
-  private goDown(f: Foamer, hit?: DartHit) {
+  private goDown(f: Foamer, hit?: DartHit, push = 1) {
     if (f.state === "down") return;
     f.state = "down";
     f.stateTime = 0;
@@ -1204,7 +1339,7 @@ export class FoamerSystem {
       if (t >= 0) this.targets.splice(t, 1);
       part.mesh.dropColliders();
     }
-    this.buildRagdoll(f, hit);
+    this.buildRagdoll(f, hit, push);
     this.downed.push(f);
   }
 
@@ -1224,7 +1359,7 @@ export class FoamerSystem {
    *  hit's height clamped inside the body's box, so a high hit tips it
    *  over away from the shooter. Runs once per death, so it allocates
    *  freely rather than reusing the per-step scratch. */
-  private buildRagdoll(f: Foamer, hit?: DartHit) {
+  private buildRagdoll(f: Foamer, hit?: DartHit, push = 1) {
     const rag = f.spec.down.ragdoll;
     const vs = f.rig.voxelSize;
     const dt = Math.max(this.dtPrev, 1 / 240);
@@ -1341,7 +1476,8 @@ export class FoamerSystem {
         const top = body ? this.topYOfPart(body) : 1;
         for (const part of f.parts.values()) {
           const c = part.voxelToWorld(_kbB.set(part.spec.size[0] / 2, part.spec.size[1] / 2, part.spec.size[2] / 2));
-          const k = rag.killSpeed * THREE.MathUtils.clamp(c.y / top, 0, 1.2);
+          // GAME-09b: a chunk finish pushes harder along the shot.
+          const k = push * rag.killSpeed * THREE.MathUtils.clamp(c.y / top, 0, 1.2);
           const v = part.body.linvel();
           part.body.setLinvel({ x: v.x + _kbV.x * k, y: v.y, z: v.z + _kbV.z * k }, true);
         }

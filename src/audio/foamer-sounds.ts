@@ -130,6 +130,11 @@ export class FoamerSounds {
       case "stagger":
         this.sink.play("FX-stagger", p);
         break;
+      // GAME-09b: the burst out of a chunk finish's hole. The down's own
+      // topple follows it from goDown.
+      case "chunk":
+        this.sink.play("FX-chunk", p);
+        break;
       // GAME-10b, the Darter's charge: the scrape, the run starting, and
       // the wall or player it hits (placeholder IDs, design/SOUNDS.md 4.2).
       case "scrape":

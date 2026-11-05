@@ -93,7 +93,9 @@ export class Finisher {
   /** Is there a one in reach and in the view the finisher can act on? */
   has(eye: THREE.Vector3, forward: THREE.Vector3) {
     for (const f of this.foamers.list)
-      if (f.state === "stagger" && this.attempt(f, eye, forward, _chest)) return true;
+      // GAME-09b: a dying Foamer is not finishable: its kill is held for
+      // the rest of the shot and settles on the next step.
+      if (f.state === "stagger" && !f.dyingHit && this.attempt(f, eye, forward, _chest)) return true;
     return false;
   }
 }
