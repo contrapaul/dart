@@ -122,6 +122,41 @@ body {
   letter-spacing: 0.04em;
   color: #fff6e8;
   text-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+}
+/* GAME-06: the melee's charge pips under the health bar (the shield area
+   sits here too). Foam-coloured dots; the newest one pulses on a refill. */
+#meleepips {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 0.55rem;
+  display: flex;
+  gap: 0.35rem;
+}
+#meleepips i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 45%);
+  border: 2px solid #fff6e8;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+}
+#meleepips i.full {
+  background: #ffd23f;
+}
+#meleepips i.pulse {
+  animation: pip-pulse 400ms ease-out;
+}
+@keyframes pip-pulse {
+  0% {
+    transform: scale(1);
+    background: #fff6e8;
+  }
+  50% {
+    transform: scale(1.6);
+  }
+  100% {
+    transform: scale(1);
+  }
   font-variant-numeric: tabular-nums;
 }
 #hitflash {
