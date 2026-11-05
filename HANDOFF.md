@@ -6,6 +6,29 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+LVL-02b done 2026-11-06, awaiting review (`tasks/LVL-02b.md`, Qwen 3.8
+Flash Next via Pi): a level's `arenas` play in file order through a new
+`LevelRunner` in `src/level/level-runner.ts` that owns one `ArenaRunner`
+per arena and steps only the current one, so a later arena's trigger does
+nothing until every earlier arena cleared. Each arena locks on its own
+trigger, runs its waves, opens its own doors and keeps its own checkpoint;
+Try again restarts the current arena with the earlier arenas still cleared,
+Play again or a fall resets them all; the exit pad ends the level only once
+the last arena has cleared. One arena levels (the Pit, the Ring) are
+unchanged. The watch's `dartArena.state()` gains `arena`, `arenaId` and
+`arenasCleared`. The validator now rejects a duplicated arena id, a trigger
+outside the shell, and a trigger inside an earlier arena's locked space.
+Level 1-2 beats 1 to 4 are `data/levels/1-2.json`, played by
+`arena.html?level=1-2` (the Pit stays the default): the service corridor
+with a foam wall and the empty B02 plinth, the parry corridor with one
+Roamer as its own one wave arena, the yard, the Ring arena (two waves of 4
+and 6 Roamers, the third rift behind the block, the north exit a reveal)
+and the breather store with the exit pad. Not checked by eye: the spaces
+and their pacing, the reveal, the lone Roamer's read at the corridor's far
+end, the store window, and that the ring's Foamers path round the block
+well (see the Log entry). Beats 5 to 9, the B02 blaster, stations, secrets
+and the level's name and setting are still to do.
+
 GAME-04c done 2026-11-05, awaiting review (`tasks/GAME-04c.md`, DeepSeek
 V4.1 Flash via Pi): the shield disc is one model of concentric foam bands
 with a ring of rounded nubs, domed, in the factory palette, and the same
@@ -206,6 +229,61 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: LVL-02b, arenas in order and Level 1-2 beats 1 to 4 (Qwen 3.8 Flash Next via Pi)
+
+`src/level/level-runner.ts`: `LevelRunner` owns one `ArenaRunner` per arena
+and steps only the current one, so a later arena's trigger does nothing until
+every earlier arena has cleared. It is built from the file's `arenas` array in
+order; every arena's runner is constructed up front, which puts every door in
+the file into its file state at load, so a player cannot run ahead through a
+later arena's open door. `state()` reports `phase` (the arena's own phase, or
+`complete` once every arena is down), `arenaIndex`, `arenaId`, `arenasCleared`
+and `progress`. `resetCurrent()` restarts the arena being played with the
+earlier ones still cleared (Try again); `resetAll()` puts every arena back to
+waiting (Play again, and a fall out of the world). `ArenaRunner` itself is
+untouched, so the Pit and the Ring play exactly as before and their tests pass
+unchanged. The page passes the same `ArenaEvents` it did plus `onArenaStart`
+(which moves the rift glow and, in a multi arena level, shows an `Arena n of m`
+banner) and `onLevelCleared`. The exit pad only ends the level once the
+runner's phase is `complete`; in a one arena level the locked door in front of
+the pad already kept the player out of the exit room, so nothing changed there.
+The watch's `dartArena.state()` gains `arena`, `arenaId` and `arenasCleared`.
+
+The validator gained three rules: arena ids unique, each arena's trigger inside
+the shell, and a later arena's trigger not inside the space an earlier arena
+seals when it locks (the trigger, doors and rifts box, ungrown, so a trigger
+you can never walk to is an error rather than a level that soft locks).
+
+`data/levels/1-2.json` is beats 1 to 4 of `design/levels/LEVEL-1-2.md`, played
+by `arena.html?level=1-2`: the service corridor with a two block foam wall to
+test a blaster on and the empty B02 plinth (the rack is [Paul]), the parry
+corridor with a west alcove and one Roamer at the far end as its own one wave
+arena, the yard, the Ring arena (two waves of Roamers, 4 then 6 with the third
+rift behind the block, two foam pillars, south west ammo, the north exit a
+reveal) and the breather store with a foam window onto the ring, one ammo box
+and the level's exit pad. Three choices a reviewer should see: the lone Roamer
+spawns at a rift at the corridor's far end rather than being placed at load,
+because the blockout format has no placed Foamer field and the wave machine is
+the only thing that spawns; the rooms share one floor slab, one ceiling and one
+perimeter wall with the walls between them as pinches, because rule 10 forbids
+two shell boxes sharing volume; and the Ring is a half scale A2 (26 x 30 m
+around a 12 x 10 m block), because a full 30 x 30 m arena would not fit a
+level that is mostly corridor. The parry arena opens its own entry door on
+clear as well as the exit, so a cleared player can walk back for the alcove.
+
+Tests: `tests/level/level-runner.test.ts` (a two arena level built by copying
+the Pit's arena 60 m north plays both in order; arena 2's trigger does nothing
+while arena 1 is fighting; Try again in arena 2 keeps arena 1 cleared and its
+doors open; Play again resets both; a one arena level is unchanged) and
+`tests/level/level-1-2.test.ts` (1-2 validates, floor under the whole walk from
+the start to the exit and under every rift, pickup and checkpoint, both arena
+exits block until opened, the triggers and the store bake walkable, `?level=1-2`
+selects it). Not checked by eye, no browser here: whether the spaces read and
+pace as the concept intends, the reveal of the north exit, the lone Roamer at
+the corridor's far end, the store window's read, the two banner texts
+competing (`Arena 2 of 2` over `Clear the arena`), and whether the Ring's
+Foamers path round the block well rather than hugging it.
 
 ### 2026-11-05: GAME-06 review, the combo played in the Pit (Claude, overnight)
 

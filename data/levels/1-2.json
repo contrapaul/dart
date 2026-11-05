@@ -723,7 +723,8 @@
         }
       ],
       "unlockOnClear": [
-        "parry-out"
+        "parry-out",
+        "parry-in"
       ],
       "checkpoint": true,
       "checkpointPos": [
