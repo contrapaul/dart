@@ -12,10 +12,15 @@ import type { Foamer } from "../../src/foamers/foamer";
 import { PlayerHealth } from "../../src/player/health";
 import { PickupSystem } from "../../src/pickups/pickups";
 import { Vacuum } from "../../src/game/vacuum";
+import { Loadout } from "../../src/weapons/loadout";
+import { Blaster, resolveSpec } from "../../src/weapons/blaster";
+import type { BlasterSpec, DartFiring } from "../../src/weapons/blaster";
+import type { PlayerController } from "../../src/player/controller";
 import vacuumData from "../../data/vacuum.json";
 
 const DT = 1 / 60;
 const HV = vacuumData.vacuum;
+const SPECS = [resolveSpec("B01"), resolveSpec("B04"), resolveSpec("B03")] as BlasterSpec[];
 
 function fakeMesher(): Mesher {
   const colors = linearColorTable();
@@ -27,17 +32,50 @@ function fakeMesher(): Mesher {
 class FakeSink {
   played: string[] = [];
   loops = 0;
+  loopsStopped = 0;
   play(id: string): void {
     this.played.push(id);
   }
   loop(_id: string) {
     this.loops++;
-    return { set: () => {}, setPosition: () => {}, stop: () => {} };
+    return {
+      set: () => {},
+      setPosition: () => {},
+      stop: () => { this.loopsStopped++; },
+    };
   }
 }
 
-/** World, floor, darts, the Foamer system and the vacuum. The player's
- *  eyes walk in from +z looking -z, as the finisher's rig does. */
+/** The fake dart fire the real Loadout's blasters share (nothing fires
+ *  in the vacuum's tests): the same shape the loadout's own test fakes. */
+class NoFire implements DartFiring {
+  fire(): void {}
+  get n(): number { return 0; }
+}
+
+/** The viewmodel face the Loadout drives (the loadout's test's FakeVM,
+ *  shaved to the vacuum's needs: no shots, no shots, no muzzles). */
+class NoVM {
+  setVisible(): void {}
+  setMods(): void {}
+  muzzleCameraPoint(_i: number, out: THREE.Vector3): THREE.Vector3 { return out; }
+  onShot = (): void => {};
+  setDip(): void {}
+}
+
+/** The real blaster set, built the way the loadout's own test builds
+ *  it: each Blaster on its shared no-fire darts, the reserves left at
+ *  the data's reserveStart (B01 40/40, B04 105/175, B03 12/24). */
+function makeLoadout(): Loadout {
+  const darts = new NoFire();
+  const ids = ["B01", "B04", "B03"];
+  const parts = SPECS.map((spec, i) => ({
+    id: ids[i]!,
+    blaster: new Blaster(spec, darts, () => new THREE.Vector3()),
+    viewmodel: new NoVM(),
+  }));
+  return new Loadout(parts, darts, 0.35);
+}
 function rig() {
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.createCollider(RAPIER.ColliderDesc.cuboid(40, 0.5, 40).setTranslation(0, -0.5, 0));
@@ -51,11 +89,13 @@ function rig() {
   const targets: VoxelTarget[] = [];
   const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
   new DartImpacts(darts, debris, targets);
-  new PickupSystem(RAPIER, world, scene, new PlayerHealth());
+  const pickups = new PickupSystem(RAPIER, world, scene, new PlayerHealth());
+  const loadout = makeLoadout();
   const sink = new FakeSink();
-  const vacuum = new Vacuum(foamers, sink);
+  const vacuum = new Vacuum(foamers, loadout, debris, sink);
+  const player = { yaw: 0, pitch: 0 } as unknown as PlayerController;
   world.step();
-  return { world, darts, targets, foamers, sink, vacuum };
+  return { world, darts, targets, foamers, pickups, loadout, sink, vacuum, player };
 }
 
 // The view looks down -z.
@@ -158,5 +198,119 @@ describe("GAME-08: the vacuum's target and its charge", () => {
     r.vacuum.reset();
     expect(r.vacuum.ready).toBe(true);
     expect(r.vacuum.chargeFrac).toBe(1);
+  });
+});
+
+describe("GAME-08: the vacuum's lock and its reward", () => {
+  it("4. the lock turns the view, pulls the Foamer in, and removes it with no pop", async () => {
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    f.finishWeakened = true;
+    f.state = "stagger";
+    const eye0 = chestEye(f, 2);
+    r.player.yaw = 0.6; // the view starts off target
+    expect(r.vacuum.press(eye0, fwd, r.player)).toBe("lock");
+    expect(r.vacuum.active).toBe(true);
+    expect(f.state).toBe("finish");
+    expect(r.sink.played).toEqual(["VC-start"]);
+    expect(r.sink.loops).toBe(1); // the suck's loop, started once
+    // Step the game's way until the run ends; the view has landed on
+    // the Foamer by the end, as the finisher's.
+    let steps = 0;
+    let taken: unknown = null;
+    // The choke that the lock aims at: the suck moves the group (the
+    // read of centre), so the view is compared to the choke as it was
+    // when the lock began.
+    const aim = new THREE.Vector3(f.centre.x, f.centre.y, f.centre.z);
+    while (r.vacuum.active && steps++ < 300) {
+      taken = r.vacuum.update(DT, r.player);
+      r.foamers.update(DT, eye0);
+      r.world.step();
+    }
+    expect(taken).toBe(f);
+    expect(steps).toBeGreaterThanOrEqual(Math.ceil(HV.total / DT) - 1);
+    expect(steps).toBeLessThanOrEqual(Math.ceil(HV.total / DT) + 1);
+    const wantYaw = Math.atan2(-(aim.x - eye0.x), -(aim.z - eye0.z));
+    expect(r.player.yaw).toBeCloseTo(wantYaw, 5);
+    // Removed, but NOT popped: out of the list, the pop's chunks are
+    // not there (the debris's live is unchanged by the run itself: the
+    // capped puff is the only debris, and it is a little). The suck's
+    // loop is stopped, and the done sound played.
+    expect(r.foamers.list).not.toContain(f);
+    expect(r.foamers.stats.popped).toBe(0);
+    expect(r.sink.played).toContain("VC-done");
+    expect(r.sink.loopsStopped).toBe(1);
+    // The charge is spent: full again after rechargeSeconds, and its
+    // VC-ready lands (a small margin absorbs the float wobble).
+    expect(r.vacuum.ready).toBe(false);
+    for (let i = 0; i < Math.ceil(HV.rechargeSeconds / DT) + 2; i++)
+      r.vacuum.stepCharge(DT);
+    expect(r.vacuum.ready).toBe(true);
+    expect(r.sink.played).toContain("VC-ready");
+  });
+
+  it("5. the reward: reserves rise by the shares and stop at reserveMax", async () => {
+    const r = rig();
+    const [b01, b04, b03] = r.loadout.blasters; // active B01 (0), then B04, B03
+    // B01 is full at start: its rise is capped by its reserveMax, so
+    // pull one of the others back to see a full rise; B01's reserve
+    // stays where the data puts it.
+    b04.reserve = 70;
+    b03.reserve = 6;
+    const before = [b01.reserve, b04.reserve, b03.reserve];
+    // Drop the target under the vacuum and run its lock; the reward
+    // credits the type's shares on the way out.
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    f.finishWeakened = true;
+    f.state = "stagger";
+    const eye0 = chestEye(f, 2);
+    expect(r.vacuum.press(eye0, fwd, r.player)).toBe("lock");
+    while (r.vacuum.active) {
+      r.vacuum.update(DT, r.player);
+      r.foamers.update(DT, eye0);
+      r.world.step();
+    }
+    // F01's shares (data/foamers.json): the active blaster takes its
+    // 0.5, the others take their 0.25, each rounded up, each capped
+    // at its own reserveMax.
+    const shares = [0.5, 0.25, 0.25]; // in the loadout's B01, B04, B03 order
+    for (let i = 0; i < 3; i++) {
+      const b = r.loadout.blasters[i];
+      const want = Math.min(
+        b.spec.reserveMax - before[i],
+        Math.ceil(b.spec.reserveMax * shares[i]!),
+      );
+      expect(b.reserve).toBe(before[i] + want);
+      expect(b.reserve).toBeLessThanOrEqual(b.spec.reserveMax);
+    }
+    // B04: 70 up by ceil(0.25 * 175) = 44; B03: 6 up by ceil(0.25 * 24) = 6.
+    expect(b04.reserve).toBe(70 + 44);
+    expect(b03.reserve).toBe(6 + 6);
+    // A second vacuum on a fresh charge credits again, still capped.
+    expect(r.vacuum.ready).toBe(false); // the lock spent it
+  });
+
+  it("6. no charge: the empty sound, no lock, and a target with no entry is never a target", async () => {
+    const r = rig();
+    // The no charge: spend the one, and the press on an in-reach
+    // weakened target only plays the empty sound (the game's use key
+    // still consumes the press: press returns "empty", not null).
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    f.finishWeakened = true;
+    f.state = "stagger";
+    r.vacuum.spend();
+    expect(r.vacuum.ready).toBe(false);
+    expect(r.vacuum.press(chestEye(f, 2), fwd, r.player)).toBe("empty");
+    expect(r.vacuum.active).toBe(false);
+    expect(f.state).toBe("stagger"); // not locked
+    expect(r.sink.played).toEqual(["VC-empty"]);
+    expect(r.foamers.list).toContain(f);
+    // And with no target at all (not staggering): press is null, the
+    // page keeps its old use (the course's block throw reads the press
+    // the game left unconsumed).
+    f.state = "approach";
+    expect(r.vacuum.press(chestEye(f, 2), fwd, r.player)).toBeNull();
+    expect(r.vacuum.active).toBe(false);
+    expect(r.sink.played).toEqual(["VC-empty"]); // no new sound
   });
 });

@@ -112,6 +112,25 @@ export class Loadout {
   get activeViewmodel(): LoadoutViewmodel { return this.viewmodels[this.idx]; }
   get switching(): boolean { return this.switchTimer >= 0; }
 
+  /** GAME-08: the foam vacuum's reward. The active blaster takes
+   *  ceil(reserveMax * activeShare) darts, every other blaster in the
+   *  loadout ceil(reserveMax * otherShare), each capped at its own
+   *  reserveMax (the board's cap, as the ammo box's is). No pickups are
+   *  spawned (CONTENT-PLAN D08). Returns the darts actually added. */
+  refillReserves(activeShare: number, otherShare: number): number {
+    let given = 0;
+    for (let i = 0; i < this.blasters.length; i++) {
+      const b = this.blasters[i];
+      const share = i === this.idx ? activeShare : otherShare;
+      const want = Math.ceil(b.spec.reserveMax * share);
+      const space = Math.max(0, b.spec.reserveMax - b.reserve);
+      const take = Math.min(space, want);
+      b.reserve += take;
+      given += take;
+    }
+    return given;
+  }
+
   select(i: number): void {
     if (this.switchTimer >= 0 || i === this.idx) return;
     if (i < 0 || i >= this.blasters.length) return;

@@ -269,9 +269,10 @@ The other Foamers (IDs given when each is built):
 | ML-empty | Melee out of charges | Later | 2 | Code |
 | FN-finisher | Finisher: squeeze, wring out, pop | Later | 3 per finisher | Foley: wring a wet sponge |
 | VC-start | [Vacuum] switching on | Later | 2 | Foley: a hand vacuum |
-| VC-loop | Sucking loop | Later | 2 long | Foley |
-| VC-extract | Pulling the Foamer in, darts spat out | Later | 3 | Foley plus a dart rattle |
+| VC-suck | Sucking loop | Later | 2 long | Foley |
+| VC-done | Pulling the Foamer in, darts spat out | Later | 3 | Foley plus a dart rattle |
 | VC-empty | Tool not ready | Later | 2 | Code |
+| VC-ready | Charge full, ready to use again | Later | 2 | Code |
 
 ### 5.3 Pickups
 

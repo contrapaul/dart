@@ -1,7 +1,7 @@
 import type * as THREE from "three";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
-import type { PlayOptions } from "../audio/sink";
+import type { PlayOptions, LoopHandle } from "../audio/sink";
 import type { Loadout } from "../weapons/loadout";
 import type { PlayerController } from "../player/controller";
 import type { DartSystem } from "../weapons/darts";
@@ -36,12 +36,24 @@ export interface GameAudio {
   setPaused(p: boolean): void;
   /** One one-shot, or nothing while the engine is still loading. */
   play(id: string, opts?: PlayOptions): void;
+  /** One held-while-it-runs loop (the vacuum's suck, GAME-08): a
+   *  no-op handle while the engine is still loading. */
+  loop(id: string, opts?: PlayOptions): LoopHandle;
 }
 
 export function createAudio(deps: GameAudioDeps): GameAudio {
   let engine: AudioEngine | null = null;
   let sounds: GameSounds | null = null;
   let starting = false;
+
+  // The loop's no-op handle for the silent window (the engine not up
+  // yet, or no Web Audio on the host): the same shape the engine's
+  // real handle has, doing nothing.
+  const NOOP_LOOP: LoopHandle = {
+    set() {},
+    setPosition() {},
+    stop() {},
+  };
 
   function start(): void {
     if (engine || starting) return;
@@ -77,6 +89,10 @@ export function createAudio(deps: GameAudioDeps): GameAudio {
     },
     play(id, opts) {
       if (engine) engine.play(id, opts);
+    },
+    loop(id, opts) {
+      if (engine) return engine.loop(id, opts);
+      return NOOP_LOOP;
     },
   };
 }
