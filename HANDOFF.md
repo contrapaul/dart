@@ -6,6 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10e done 2026-11-06, awaiting review (`tasks/GAME-10e.md`, DeepSeek
+V4.1 Flash via Pi): the F04 Blocker. Blockers walk to a line of slots
+across the player, 1.2 m apart at 9 m, shields to the front inside a 120
+degree arc; front darts do a twentieth of their damage and carve the plate
+slowly, side and back darts do full damage. With the ranged token one
+fires the type's three ball volley over the shield. The player's shield
+charge staggers a Blocker 1.2 s with its shield down, which is the window
+on the wall. A shot-away shield gives full damage and the Roamer's
+keep-distance brain. Not checked by eye: the wall's look and read, the
+parry fairness of the spread, the sounds, the frame cost of three. Full
+suite 492 pass, 2 skipped; `tsc` and `npm run build` clean.
+
 GAME-09b stage 1 and 2 done 2026-11-06, awaiting review
 (`tasks/GAME-09b.md`, DeepSeek V4.1 Flash via Pi): the chunk finish. A shot's
 darts now carry a shot id, the muzzle and their blaster's `chunk` block
@@ -382,6 +394,58 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: GAME-10e, the F04 Blocker and its shield wall (DeepSeek V4.1 Flash via Pi)
+
+Task card `tasks/GAME-10e.md`. Three stages, each committed green.
+
+- **The type and the look.** `F04` in `data/foamer-rigs.json` (orange body
+  and head with a wide lime visor bar, no eyes: a faceless blocker; arms
+  and legs purple; a deep purple shield plate with a lime boss held ahead
+  of the body; a blaster box over the right shoulder) and in
+  `data/foamers.json` (`slots` 9 m hold, 1.2 m spacing; `stagger`
+  0.5 s / `shieldChargeTime` 1.2 s; `line` count 3; armour `shield`
+  damage 0.05, carve 0.3, arc 120 degrees; a 3 ball `volley` with a 5
+  degree spread, pinned `range` 16 m, and a `bash`). Turnaround sheet in
+  `design/foamers/F04-sheet.png`. `src/foamers/armour.ts` is the one
+  cover rule: `armourOf` reads the part's table, `plateFaces` answers
+  whether a dart came in inside the arc, and `handleHit` multiplies by
+  `damage` only when the plate covers the hit.
+- **The wall.** `src/ai/f04-brain.ts`: four states as the other brains,
+  but the slot comes from the system, not the brain. `assignSlots` runs
+  before the bids each step, sorts the live Blockers by agent id (no
+  swapping), and puts them on a line across the player at the hold
+  distance. Reaching one needed a new `toSlot` intent, because the nav
+  grid only paths to the player. A token sends it from hold back to
+  approach, where the state machine starts the attack, and the volley
+  fires `atk.shots` balls fanned by `spreadDeg` through the existing
+  `ProjectileSystem.launch`. A broken shield hands the step to the
+  Roamer's keep-distance brain.
+- **The charge.** `knockBack` uses `stagger.shieldChargeTime` (1.2 s);
+  a staggered Foamer is already outside every cover arc, so the shield is
+  down for free. The charge's own branch is untouched.
+- **Sounds and range.** `F04-alert`, `F04-volley`, `F04-shieldhit`,
+  `F04-shieldbreak` are placeholder synth entries in `data/sounds.json`,
+  wired in `src/audio/foamer-sounds.ts` (the shield hit and break are new
+  system sound kinds), and moved into the real table in
+  `design/SOUNDS.md`. The range's F04 choice spawns the line of three
+  (`spawnLine`); the watch lists them from `foamers.list` with no change.
+
+Tests: `tests/ai/f04-brain.test.ts` (8) and
+`tests/foamers/blocker-wall.test.ts` (8), plus the existing armour tests in
+`tests/foamers/blocker.test.ts`. Full suite 492 pass, 2 skipped; `tsc` and
+`npm run build` clean; dash scan clean on every file touched.
+
+**Not checked by eye** (no browser here): how the wall reads as a line at
+9 m, whether the 120 degree plate is wide enough to feel like a shield to
+shoot around rather than a wall to give up on, whether three balls at a 5
+degree spread are fair to parry, whether the shield-break sound lands with
+the plate coming off, and how the Blocker's rig looks walking and firing.
+The frame cost of three Blockers is unmeasured.
+
+**Decisions** are in `PLAN.md` section 14, `PLAN.md`'s GAME-10e row is
+updated, and the card's out of scope items (level 2-1, F06 and later, new
+finished art) are untouched.
 
 ### 2026-11-06: GAME-09b review, the chunk finish played in the Pit (Claude, overnight)
 

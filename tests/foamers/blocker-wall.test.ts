@@ -157,6 +157,23 @@ describe("F04 wall: the volley", () => {
   });
 });
 
+describe("F04 wall: the shield charge stagger", () => {
+  it("holds the longer stagger from the type, and the shield is down in it", () => {
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 9), new THREE.Vector3(0, 0, 0), "F04")!;
+    const st = F04.stagger as { time: number; shieldChargeTime: number };
+    r.foamers.startStagger(f, false, st.shieldChargeTime);
+    expect(f.state).toBe("stagger");
+    // Past a dart's stagger (0.5 s) it is still down, which is the window
+    // the charge opens in the wall.
+    step(r, PLAYER, Math.ceil(0.9 / DT));
+    expect(f.state).toBe("stagger");
+    // And back on its feet by the charge time plus a frame of slack.
+    step(r, PLAYER, Math.ceil((st.shieldChargeTime - 0.9) / DT) + 2);
+    expect(f.state).not.toBe("stagger");
+  });
+});
+
 describe("F04 spec: reads its data, not a copy", () => {
   it("takes its distances from the type, and its own wall data", () => {
     // The spec is the JSON object itself: no copy, so tuning in data/ is
