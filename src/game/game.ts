@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import { createRenderer, type SceneOptions } from "../render/scene";
+import { createFoamMaterial } from "../render/foam-material";
 import { createPhysics, type Rapier } from "../physics/world";
 import { startLoop, STEP } from "../core/loop";
 import { Input, settings as lookSettings } from "../core/input";
@@ -19,6 +20,9 @@ import { materialId } from "../voxel/materials";
 import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
+import { Vacuum } from "./vacuum";
+import vacuumData from "../../data/vacuum.json";
+const VacData = vacuumData;
 import { Melee } from "./melee";
 import { MeleeView } from "./meleeView";
 import inputJson from "../../data/input.json";
@@ -235,6 +239,36 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // same way the blaster's does); the disc in flight is a scene object.
   const shield = new Shield(rapier, world, scene, camera, player, loadout, foamers, debris, voxelTargets);
   camera.add(shield.group);
+  // GAME-08: the vacuum's placeholder viewmodel, a code-built toy (no art
+  // files): a foam-orange tube and a plastic wide nozzle at the end the
+  // Foamer is drawn toward. It hangs off the camera like the shield's
+  // viewmodel does, sits in the lower right of the view while the lock
+  // runs, and is gone the moment it ends.
+  const vacuumModel = new THREE.Group();
+  {
+    const tube = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.04, 0.5, 12),
+      createFoamMaterial({ cellsPerUnit: 5, wrapCells: 0, color: "#ff7a1a" }),
+    );
+    tube.position.y = 0.1;
+    const nozzle = new THREE.Mesh(
+      new THREE.ConeGeometry(0.09, 0.12, 12, 1, true),
+      createFoamMaterial({ cellsPerUnit: 5, wrapCells: 0, color: "#e8e4f0" }),
+    );
+    nozzle.position.y = -0.08;
+    nozzle.rotation.x = Math.PI; // open base to the top, the wide end
+    const collar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, 0.02, 12),
+      new THREE.MeshStandardMaterial({ color: 0x2a2340, roughness: 0.5 }),
+    );
+    collar.position.y = -0.02;
+    vacuumModel.add(tube, nozzle, collar);
+    vacuumModel.visible = false;
+    // Aim the tool at the view: the nozzle leans down-left toward where
+    // the Foamer is held by the lock, in the lower right.
+    vacuumModel.rotation.set(0.5, -0.6, 0.15);
+    camera.add(vacuumModel);
+  }
   shield.onCarveAt = (p) => audio.play("DT-carve", { position: p });
   foamers.director = levelAI.director;
   foamers.navGrid = levelAI.grid;
@@ -276,6 +310,13 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     return k.startsWith("Key") ? k.slice(3) : k;
   }
 
+  /** The bound key as a label for the vacuum prompt (data-driven, the
+   *  card: from the input map): E, not KeyE. */
+  function useKey() {
+    const k = (inputJson.keyboard as Record<string, string[]>).use?.[0] ?? "KeyE";
+    return k.startsWith("Key") ? k.slice(3) : k;
+  }
+
   let ui: UIController;
   // The audio engine can arrive before the UI controller exists (a click
   // during the loadout load), so the pause flag is tracked here too.
@@ -285,6 +326,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     paused: () => paused,
     onReady: () => applySettings(store.value, camera, health, hud, audio, shield),
   });
+  // GAME-08: the foam vacuum, E on a weakened stagger: the lock, the
+  // suck, and the blasters' reserves credited with the type's shares.
+  // After the audio: its loops and one-shots ride on the engine's sink.
+  const vacuum = new Vacuum(foamers, loadout, debris, audio);
 
   /** GAME-04c: the foam saw's grind loop, while a thrown disc grinds. */
   let sawLoop: LoopHandle | null = null;
@@ -419,9 +464,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     {
       completeOpen: h.completeOpen,
       overlayAllowed: h.overlayAllowed,
-      onRestart: () => { shield.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onRestart?.(); },
-      onTryAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onTryAgain?.(); },
-      onPlayAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onPlayAgain?.(); },
+      onRestart: () => { shield.reset(); vacuum.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onRestart?.(); },
+      onTryAgain: () => { shield.reset(); vacuum.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onTryAgain?.(); },
+      onPlayAgain: () => { shield.reset(); vacuum.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onPlayAgain?.(); },
     },
   );
   game.ui = ui;
@@ -434,11 +479,18 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // shield counts the true dt, so the slow lasts that long).
       const w = shield.slowed(dt);
       // GAME-07: the finisher holds the player for its whole run; while it
-      // is active the controller is not stepped at all.
+      // is active the controller is not stepped at all. GAME-08: the
+      // vacuum holds the player exactly as the finisher does (whatever
+      // that is on main: the controller, the melee and the flash's use
+      // block are all off while it sucks). The charge counts up either
+      // way: it fills in rechargeSeconds, lock or no lock.
+      vacuum.stepCharge(dt);
       if (finisher.active) {
         // The pop step sounds FX-pop itself (FoamerSystem.pop); only the
         // squeeze sound goes with the start below.
         finisher.update(dt, player);
+      } else if (vacuum.active) {
+        vacuum.update(dt, player);
       } else {
         // GAME-05: the dash goes to the shield first. The disc is up and
         // a target is locked, so it is the charge instead of the normal
@@ -488,6 +540,17 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
               for (const p of me.carved) audio.play("DT-carve", { position: p });
               if (me.refills > 0) hud.meleePips(melee.charges, melee.maxCharges, true);
             }
+          }
+          // GAME-08: the foam vacuum's use key. With a target and a
+          // charge the vacuum takes the press (consumePress, as the
+          // finisher does with melee) and begins the lock. With a target
+          // but no charge it plays the empty sound and still takes the
+          // press: the page's old use (the course's block throw) must not
+          // run behind the tool. With no target at all the press stays
+          // for the page's old use.
+          if (input.wasPressed("use")) {
+            const r = vacuum.press(player.eye(1, _playerPos), camera.getWorldDirection(_aimDir), player);
+            if (r !== null) input.consumePress("use");
           }
         }
       }
@@ -556,8 +619,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // where they met, and no hit sound.
       if (se.chargeBlocked) audio.play("F05-impact", { position: shield.discPosition });
       // No shooting while the disc is up, a finisher holds the player, or
-      // a swing is running (GAME-06: the blaster cannot fire during a swing).
-      const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active && !melee.swinging;
+      // a swing is running (GAME-06: the blaster cannot fire during a swing),
+      // or the vacuum locks it (GAME-08).
+      const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active && !melee.swinging && !vacuum.active;
       loadout.update(
         dt,
         {
@@ -610,6 +674,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     const climb = loadout.active.climb + shield.kick + shield.parryKick + melee.kick;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
+    // GAME-08: lowered while the vacuum runs (added to the switch's dip).
+    loadout.lowered = vacuum.active ? VacData.vacuum.blasterDip : 0;
     loadout.render(dt, input.isDown("fire"));
     // GAME-06: the baton's sweep, and the blaster dipped out of its way.
     // Applied after loadout.render, whose own dip only runs during a
@@ -624,15 +690,33 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     hud.setAmmo(loadout.active, loadout.active.state);
     hud.setHealth(health.hp, health.max);
     // GAME-07: the prompt by the crosshair, with the bound key's label.
+    // GAME-08: the vacuum's prompt rides the same element: a vacuum
+    // target and a finisher target are the same stagger on the same
+    // gate, so at most one reads at a time, and the key names the tool
+    // that would take it (the vacuum, E, then the finisher, F).
     {
       const eye = player.eye(ui.paused ? 1 : alpha, _playerPos);
       const fwd = camera.getWorldDirection(_aimDir);
-      hud.setFinishPrompt(!ui.paused && !finisher.active && finisher.has(eye, fwd), meleeKey());
+      const done = !ui.paused && !finisher.active && !vacuum.active && finisher.has(eye, fwd);
+      const vac = !ui.paused && !vacuum.active && !done && vacuum.hasTarget(eye, fwd) != null;
+      hud.setFinishPrompt(done || vac, done ? meleeKey() : useKey());
+      // GAME-08: the charge's one pip, filling as it recharges.
+      hud.setVacCharge(vacuum.chargeFrac);
       // GAME-05: the lock marker at the crosshair, on while a charge
       // target is locked (the lock only lives while the disc is up).
       hud.setChargeLock(!ui.paused && shield.lockedTarget != null);
       // GAME-06: the charge pips beside the shield area.
       hud.meleePips(melee.charges, melee.maxCharges, false);
+      // GAME-08: while the vacuum locks the player the blaster dips and
+      // the placeholder vacuum (a toy tube and a wide nozzle, code-built,
+      // no art files) rises in the lower right of the view.
+      vacuumModel.visible = vacuum.active;
+      if (vacuum.active) {
+        // The rise: from off the bottom edge up into the lower right
+        // corner over the first tenths of the lock, then it stays.
+        const u = THREE.MathUtils.clamp(vacuum.lockT / (VacData.vacuum.turnTime + 0.1), 0, 1);
+        vacuumModel.position.set(0.42, -0.34 + 0.05 * u, -1.0);
+      }
     }
     h.renderLate?.(dt, alpha);
     darts.syncRender(alpha);
@@ -723,6 +807,14 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
           swing: Number(melee.swingLeft.toFixed(3)), bash: Number(melee.bashLeft.toFixed(3)),
           swinging: melee.swinging,
         },
+        // GAME-08: the vacuum's charge and recharge, and each Foamer's
+        // vacuumable flag (a weakened stagger of an allowed type).
+        vacuum: {
+          charge: Number(vacuum.chargeFrac.toFixed(3)),
+          ready: vacuum.ready,
+        },
+        vacuumable: foamers.list.map((f) =>
+          f.state === "stagger" && f.finishWeakened && vacuum.canVacuum(f)),
       }),
       moveTo: (x: number, y: number, z: number) => player.teleport(_move.set(x, y, z)),
       look: (yaw: number, pitch: number) => {
@@ -786,6 +878,14 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         input.simulatePress("melee");
         fixedStep(STEP);
         return { charges: melee.charges, swung: lastSwing };
+      },
+      /** GAME-08: press the use key for one step: a vacuum target in
+       *  reach and in the view is sucked (the lock runs out over the
+       *  step's the fixed steps), or the key is left for the page's old
+       *  use. */
+      vacuum: () => {
+        input.simulatePress("use");
+        fixedStep(STEP);
       },
       /** GAME-05: press the dash once. With the disc up and a target
        *  locked it is a charge; otherwise it is the normal dash (the

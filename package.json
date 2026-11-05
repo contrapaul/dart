@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node tools/check-no-inlined-wasm.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "test": "vitest run"
   },
   "dependencies": {
+    "@dimforge/rapier3d": "0.21.0",
     "@dimforge/rapier3d-compat": "0.21.0",
     "three": "0.186.1"
   },

@@ -34,6 +34,48 @@ their pacing, the behind you moment, the tiers reading as three heights,
 the rifts' glow placement in the spokes, and that Foamers stream into the
 bowl well (see the Log entry). Beat 5 (the tower), stations, secrets, the
 B02 blaster and the level's name and setting are still to do.
+
+OPS-02 done 2026-11-06, awaiting review (`tasks/OPS-02.md`, Qwen 3.8
+27B via Pi): the Rapier physics now ships as its own
+content-hashed `/assets/*.wasm` file instead of about 4.1 MB of base64
+inside the `game-sounds` chunk. The 58 files keep importing
+`"@dimforge/rapier3d-compat"`; that name is aliased in `vite.config.ts`
+and `vitest.config.ts` to a new shim, `src/physics/rapier-shim.ts`, which
+re-exports the non-compat `@dimforge/rapier3d@0.21.0` (a new,
+exact-pinned dependency) with a no-op `init()` so the 38 `RAPIER.init()`
+call sites need no change. Vite 8's built-in wasm plugin reads the
+package's `.wasm` ES-module import and, in the build, emits it as a
+separate file under `/assets` that the browser streams and compiles in
+parallel, and in `vitest run` loads it from disk. No extra plugin and no
+copy of the engine in the repo. Because all four pages share the
+`game-sounds` chunk, the `.wasm` is requested by whichever of them loads
+first, and the `/assets/*` immutable cache rule (`public/_headers`)
+already covers it; the Worker serves a `.wasm` as `application/wasm` by
+extension. Chunk and .wasm sizes (raw / gzip), before to after:
+`game-sounds` 4,556,407 B (1,722,764 B) down to 223,152 B (68,846 B);
+a new `rapier` glue chunk, 295,950 B (51,479 B), is added for the
+non-compat build's JS wrapper (loaded in parallel with the `.wasm`, not
+blocking it); the `.wasm` is 3,082,103 B (1,171,203 B);
+`mesher-pool` is untouched at 615,054 B (153,751 B). The first-visit
+download is roughly unchanged, but the physics engine now carries a
+stable content hash, so a returning player does not re-download it when
+only the game code changed (the old hash of `game-sounds` changed on
+every game change, so the inlined engine came down again).
+Not checked by eye: that each page actually plays (no browser here).
+Checked over curl: all four pages return 200 `text/html` in `npm run
+dev` (port 5199) and in `npx vite preview` (port 5198), and the
+`.wasm` returns 200 `application/wasm` with the 3,082,103-byte wasm
+magic `\0asm` in both. Whether the physics actually runs in a real
+browser (the stream-compile path) is not verified here.
+
+GAME-08 done 2026-11-06: the foam vacuum (D09): E on a weakened
+Foamer in its stagger locks on, sucks it into the nozzle
+place (no pop chunks, one capped foam puff), and its darts go straight
+into the blasters' reserves by the type's share (never past reserveMax).
+One charge, 15 s to refill, full on start and retry, a recharge pip in
+the HUD; the placeholder tool is a code-built foam tube and nozzle. Not
+checked by eye: the tool's look, the nozzle puff, and the five VC-*
+placeholder sounds (see the Log entry).
 LVL-02b done 2026-11-06, reviewed by Claude, merged (`tasks/LVL-02b.md`,
 Qwen 3.8 Flash Next via Pi): a level's `arenas` play in file order through
 a new `LevelRunner` in `src/level/level-runner.ts` that owns one
@@ -259,10 +301,12 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Gotchas that have already bitten
 
-- **Bundle is 4.9 MB (1.8 MB gzipped), almost all Rapier.** The compat
-  build inlines its WebAssembly as base64. Fine for now; at OPS-02 consider
-  the non-compat `@dimforge/rapier3d` with the `.wasm` served as its own
-  file, and splitting Three.js into its own cached chunk.
+- **The game-sounds chunk used to be 4.5 MB (1.7 MB gzipped), almost all
+  Rapier, because the compat build inlined its WebAssembly as base64.**
+  OPS-02 fixed this: the engine is now a separate content-hashed .wasm
+  under /assets behind a shim (see Status and the OPS-02 log entry).
+  Splitting Three.js and the mesher into their own cached chunks is still
+  open.
 - **A new custom domain answers 500 for about a minute** after the first
   deploy while Cloudflare provisions it. Wait before assuming it failed.
 - **`display` beats the `hidden` attribute.** An element with a CSS
@@ -339,6 +383,151 @@ arena plus walking to the lit door feels like an ending.
 Next: beat 5's tower card (raise `nav.maxLayers` first), U2/S3 stations
 ([Paul] content), secrets, the B02 blaster, the level's name and setting.
 
+### 2026-11-06: OPS-02 review, the physics .wasm checked in a browser (Claude, overnight)
+
+- Qwen 27B's route is sound: `@dimforge/rapier3d` 0.21.0 behind a shim
+  that the compat name aliases to, so no import line changed. Main merged
+  in cleanly; tsc, 449 tests and the build pass.
+- Fixed in review: (1) the dev server hung on Loading. Vite's dependency
+  pre-bundler put the Rapier glue in `.vite/deps` while its .wasm binding
+  loaded from `node_modules`, two copies, and the one the game called had
+  no wasm instance (the same split the model found and fixed in Vitest;
+  curl could not see it). `optimizeDeps.exclude` keeps it one copy.
+  (2) The guard test threw on a fresh clone with no `dist/` instead of
+  skipping (`statSync` of a missing path throws), and it read whatever
+  `dist/` was on disk, so a stale build failed it. It is now
+  `tools/check-no-inlined-wasm.mjs`, run by `npm run build` on the fresh
+  `dist/` (checked: it fails on a planted file and passes clean). (3) `vitest.config.ts` repeated the aliases; it merges
+  `vite.config.ts` now, so the two cannot drift.
+- Played in the browser, dev server and `vite preview` of the build: the
+  Pit locks, Foamers spawn and go down to darts; the game, range and
+  sandbox pages load with no errors. In the build the .wasm is its own
+  file (3.0 MB raw, 1.19 MB gzip) and the game chunk is 223 kB (67 kB
+  gzip), down from 4.5 MB.
+- Not checked: the deployed site (Cloudflare serves `.wasm` as
+  `application/wasm` and compresses it; check after the push), and older
+  Safari (the build uses top-level await for the wasm import: Safari 15
+  and later).
+
+### 2026-11-06: OPS-02, the physics WebAssembly as its own file (Qwen 3.8 27B via Pi)
+
+- Stage 1 (spike) succeeded, so the card proceeded to the guard test and
+  the size check rather than a Blocked result. Route 1 from the card: the
+  non-compat `@dimforge/rapier3d@0.21.0` (the same engine, exact-pinned, a
+  new dependency) rather than keeping the compat build behind it.
+- `src/physics/rapier-shim.ts` is the single re-export the card allows:
+  it does `import * as RAPIER from "@dimforge/rapier3d"` and
+  `export default { ...RAPIER, init }`, where `init()` is a no-op
+  `Promise.resolve()`. The non-compat build has no `init`; its `.wasm` is
+  an ES-module import, so by the time the shim's module loads the
+  WebAssembly is already compiled. The 38 `RAPIER.init()` call sites and
+  the `import type RAPIER from "@dimforge/rapier3d-compat"` type imports
+  keep working because the default export still exposes the same surface
+  (World, Collider, Ray, ...).
+- `vite.config.ts` gains two `resolve.alias` entries. The first points
+  `@dimforge/rapier3d-compat` at the shim. The second points
+  `@dimforge/rapier3d` at the raw `node_modules/@dimforge/rapier3d/rapier.js`
+  because the non-compat package has no `"exports"` field (only
+  `"module"`), so the bare name would not resolve on its own.
+- `vitest.config.ts` (new) has the same two aliases plus
+  `test.server.deps.inline: [/@dimforge\/rapier3d/]`. This was the
+  non-obvious blocker. Left external, Vitest evaluates the engine twice in
+  one worker, once through raw Node ESM and once through Vite's transform,
+  and the glue sets its wasm instance on the copy the tests do not use, so
+  `wasm.memory` is undefined on the other and every World construction
+  throws (203 test failures before the fix). Inlining the whole package
+  forces one shared module graph, and 36 files failed / 203 tests before,
+  all 67 pass after.
+- Guard test `tests/core/no-inlined-wasm.test.ts`: runs only when
+  `dist/` exists; fails if any `.js` there contains `AGFzbQ` (the base64
+  head of the `\0asm` magic). It passes on the new build. `@types/node` is
+  not installed, so the file carries `// @ts-nocheck` like the existing
+  file reader, `tests/weapons/models.test.ts`.
+- `public/_headers` needed no new rule: the `.wasm` lands under
+  `/assets/*` (already immutable) and the Worker maps the `.wasm`
+  extension to `application/wasm` by default. Verified by curl on
+  `npx vite preview`: 200, `application/wasm`, and the `\0asm` magic in
+  the body.
+- Sizes (raw / gzip) recorded in the Status entry: `game-sounds` went from
+  4,556,407 B (1,722,764 B) to 223,152 B (68,846 B); a new `rapier` glue
+  chunk is 295,950 B (51,479 B); the `.wasm` is 3,082,103 B (1,171,203 B);
+  `mesher-pool` is unchanged.
+- Not checked by eye (no browser here): that each of the four pages loads
+  and plays in a real browser, including the stream-compile of the
+  `.wasm`. Verified by curl only: status 200 and content-type for the four
+  `.html` pages and the `.wasm`, under `npm run dev` and under
+  `npx vite preview` of the build.
+### 2026-11-06: GAME-08 review, the vacuum played in the Pit (Claude, overnight)
+
+- Qwen 27B finished all three stages. Main merged in: `game.ts` took both
+  the melee (GAME-06) and the vacuum in every block (restart hooks,
+  `canFire`, the HUD, `state()`, the watch helpers); `audio.ts` kept
+  main's `loop` from GAME-04c (the branch had added the same thing);
+  `sounds.json` is main plus the five VC entries. tsc, 448 tests and the
+  build pass.
+- Fixed in review: (1) the suck drew the Foamer toward a fixed world -z
+  point, so a player facing +z pulled it through and behind them; the
+  nozzle now sits along the lock's view. (2) The render set the active
+  blaster's dip to 0 every frame, which undid the weapon switch's rise,
+  and its -0.28 never showed (the loadout applies its dip first). The
+  loadout now takes a `lowered` offset that it adds itself, set from
+  `vacuum.blasterDip` in `data/vacuum.json`.
+- Played in the Pit with the watch: a weakened stagger shows as
+  vacuumable; E locks, the view turns, the blaster dips away, the tube
+  rises at the lower right, the Foamer shrinks toward it and is removed
+  with no pop (`popped` 0). Reserves rose by the shares exactly (20 of 40
+  active, 44 of 175 and 6 of 24 others). A press before the recharge is
+  the empty case. A player facing +z draws the Foamer toward them.
+- For Paul: the placeholder tube stands upright, so it reads as a stick
+  more than a nozzle aimed at the Foamer. The look is [Paul] anyway. The
+  ammo box still credits through its own code in `pickups.ts`, not
+  `loadout.refillReserves` (different rule: darts from a box, not a
+  share), so "one credit path" is not quite true; fine as is.
+- Not checked by ear or eye: the five VC sounds, the puff, the shrink at
+  full speed.
+
+### 2026-11-06: GAME-08 done, the foam vacuum (Qwen 3.8-27B via Pi)
+
+Built. The vacuum (`src/game/vacuum.ts`) is the finisher's sibling: E on a
+weakened Foamer in its stagger, inside 3 m of the hollow and in the view
+cone, locks on. One charge, `rechargeSeconds` (15 s) to refill, full on level
+start and retry. The lock holds the player the way the finisher does and turns
+the view onto the Foamer; from half the turn the Foamer is drawn to the nozzle
+and shrunk to nothing (scale and position ease). Removed with no pop chunks,
+a capped white-foam puff at the nozzle. Reward: darts straight into each
+blaster's reserve, the type's `ammoShare` (active 0.5, others 0.25) of its own
+`reserveMax`, rounded up, capped at `reserveMax` via `loadout.refillReserves`
+(the one credit path the ammo box's refill shares).
+
+Files: `src/game/vacuum.ts` (new), `src/foamers/foamers.ts` (`suck`, no-pop
+removal), `src/weapons/loadout.ts` (`refillReserves`), `src/game/audio.ts`
+(`loop` on the sink), `src/game/game.ts` (use-key wiring, charge step, the
+placeholder viewmodel, the render (recharge meter), watch helpers),
+`src/ui/hud.ts` (`setVacCharge`, `#vacpip`), `data/vacuum.json` (new),
+`data/foamers.json` (per-type `vacuum` block: `allowed` and `ammoShare`),
+`data/sounds.json` (VC-* placeholder synths), `design/SOUNDS.md` (IDs match),
+`index.html`/`arena.html` (`#vacpip`), `src/style.css` (the meter),
+`tests/foamers/vacuum.test.ts` (new).
+
+All numbers in `data/`: reach 3, cone cos 0.97, lock 0.9 s, recharge 15 s,
+one charge, the nozzle puff count and size in `data/vacuum.json`; the per-type
+`vacuum` entry (allowed: F01, F02 and F05, with each `ammoShare`) in
+`data/foamers.json`.
+
+Decisions: the reward is darts into reserves, never past `reserveMax` (the
+card, and no pickups, keeping Paul's "no loot drops" rule clean); the types with a per-type `vacuum`
+entry and `allowed: true` (F01, F02 and F05) are the allowed ones; a type
+with no entry is not allowed (heavies come later); the placeholder viewmodel is
+code (no art files), rising in the lower right as the blaster dips, as the
+card asks.
+
+Still unverified by eye (no browser on this machine): the vacuum's look and
+how it reads rising, the nozzle's foam puff, and the five VC-* placeholder
+sounds (all code synths, not Paul's beds). Not done by card: Paul's name for
+the tool, upgrades (faster recharge, heavies), the range-panel "Fill vacuum"
+button. Reviewer: Claude. Not merged or pushed.
+
+### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
 ### 2026-11-06: LVL-02b review, Level 1-2 played through (Claude, overnight)
 
 - Code read: `LevelRunner` is small and keeps `ArenaRunner` unchanged; the

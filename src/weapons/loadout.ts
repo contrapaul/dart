@@ -110,7 +110,29 @@ export class Loadout {
   get activeIndex(): number { return this.idx; }
   get active(): Blaster { return this.blasters[this.idx]; }
   get activeViewmodel(): LoadoutViewmodel { return this.viewmodels[this.idx]; }
+  /** GAME-08: an extra dip on the active blaster, in local Y, added to
+   *  the switch's own (the vacuum's lock sets it while it runs). */
+  lowered = 0;
   get switching(): boolean { return this.switchTimer >= 0; }
+
+  /** GAME-08: the foam vacuum's reward. The active blaster takes
+   *  ceil(reserveMax * activeShare) darts, every other blaster in the
+   *  loadout ceil(reserveMax * otherShare), each capped at its own
+   *  reserveMax (the board's cap, as the ammo box's is). No pickups are
+   *  spawned (CONTENT-PLAN D08). Returns the darts actually added. */
+  refillReserves(activeShare: number, otherShare: number): number {
+    let given = 0;
+    for (let i = 0; i < this.blasters.length; i++) {
+      const b = this.blasters[i];
+      const share = i === this.idx ? activeShare : otherShare;
+      const want = Math.ceil(b.spec.reserveMax * share);
+      const space = Math.max(0, b.spec.reserveMax - b.reserve);
+      const take = Math.min(space, want);
+      b.reserve += take;
+      given += take;
+    }
+    return given;
+  }
 
   select(i: number): void {
     if (this.switchTimer >= 0 || i === this.idx) return;
@@ -197,6 +219,8 @@ export class Loadout {
           dip = -0.3 * (1 - Math.sin(u * Math.PI / 2));
         }
       }
+      // GAME-08: the vacuum's lock lowers the active blaster too.
+      if (i === this.idx) dip += this.lowered;
       const withDip = vm as Partial<typeof vm> & { setDip?(y: number): void };
       if (withDip.setDip) withDip.setDip(dip);
       if (i === this.idx) {

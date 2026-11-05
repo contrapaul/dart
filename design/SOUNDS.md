@@ -277,9 +277,10 @@ The other Foamers (IDs given when each is built):
 | ML-charge | GAME-06 placeholder: a parry or timer refills a charge | Now (synth) | 0 | Synth in data/sounds.json |
 | FN-finisher | Finisher: squeeze, wring out, pop | Later | 3 per finisher | Foley: wring a wet sponge |
 | VC-start | [Vacuum] switching on | Later | 2 | Foley: a hand vacuum |
-| VC-loop | Sucking loop | Later | 2 long | Foley |
-| VC-extract | Pulling the Foamer in, darts spat out | Later | 3 | Foley plus a dart rattle |
+| VC-suck | Sucking loop | Later | 2 long | Foley |
+| VC-done | Pulling the Foamer in, darts spat out | Later | 3 | Foley plus a dart rattle |
 | VC-empty | Tool not ready | Later | 2 | Code |
+| VC-ready | Charge full, ready to use again | Later | 2 | Code |
 
 ### 5.3 Pickups
 

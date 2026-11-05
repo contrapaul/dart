@@ -1740,4 +1740,11 @@ export class FoamerSystem {
     f.dispose(this.world);
     this.stats.popped++;
   }
+
+  /** GAME-08: the vacuum's quiet removal: taken out as pop takes it, but
+   *  without the pop's chunks (the suck's look is the shrink to nothing,
+   *  not a burst) and without a pop count. */
+  suck(f: Foamer) {
+    this.removeFoamer(f);
+  }
 }

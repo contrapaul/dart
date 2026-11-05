@@ -2,8 +2,10 @@ import RAPIER from "@dimforge/rapier3d-compat";
 
 export type Rapier = typeof RAPIER;
 
-// The compat build carries its WebAssembly inline, so it is bundled with the
-// game and never fetched from another host.
+// "@dimforge/rapier3d-compat" is aliased to a shim that re-exports the
+// non-compat build, whose WebAssembly is a separate content-hashed file
+// (OPS-02), so init() here is awaited for the compat-build call sites but
+// does nothing: the module import already loaded the engine.
 export async function createPhysics(): Promise<{ rapier: Rapier; world: RAPIER.World }> {
   await RAPIER.init();
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
