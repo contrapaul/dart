@@ -35,7 +35,7 @@ const T = shieldJson as unknown as {
     diameter: number; rimThickness: number; domeDepth: number;
     bands: { radiusShare: number; thicknessShare: number; color: "rim" | "ring" | "inner" }[];
     nubCount: number; nubRadius: number;
-    bossRadius: number; bossDepth: number; spinRevPerSec: number;
+    bossRadius: number; bossDepth: number; spinRevPerSec: number; flightTiltDeg: number;
     colors: { rim: string; ring: string; inner: string; nub: string; boss: string };
     lowered: { position: [number, number, number]; rotationDeg: [number, number, number] };
     raised: { position: [number, number, number]; rotationDeg: [number, number, number] };
@@ -282,6 +282,8 @@ export class Shield {
   private readonly spinQ = new THREE.Quaternion();
   private readonly spinQ2 = new THREE.Quaternion();
   private readonly zAxis = new THREE.Vector3(0, 0, 1);
+  private readonly spinTravel = new THREE.Vector3();
+  private readonly spinFace = new THREE.Vector3();
   /** The watch's `grinding`: the target's type label and the seconds left
    *  in the grind. Null when the disc is not grinding. */
   get grinding(): { target: string; seconds: number } | null {
@@ -777,15 +779,21 @@ export class Shield {
     return this.sawPart.voxelToWorld(out.copy(this.sawPoint));
   }
 
-  /** Spin the disc about its own axis: the face keeps pointing along the
-   *  flight (the model's -z), and the disc turns in its own plane, so the
-   *  rings and teeth are seen turning as it goes. */
+  /** Spin the disc about its own axis. It flies flat and edge first, as a
+   *  thrown shield does, so the nubbed rim leads and cuts (review: it flew
+   *  face first, a plate seen from behind). The face (the model's -z)
+   *  points up, tipped back toward the thrower by look.flightTiltDeg so
+   *  the rings still read, and the disc turns in its own plane. */
   private spinFor(dt: number, along: THREE.Vector3): void {
     this.spinAngle += this.spin * Math.PI * 2 * dt;
-    const d = this.aim.copy(along);
-    if (d.lengthSq() < 1e-9) d.set(0, 0, -1);
-    d.normalize();
-    // Face along the flight, then turn about the face's own axis.
+    const t = this.spinTravel.copy(along);
+    t.y = 0;
+    if (t.lengthSq() < 1e-9) t.set(0, 0, -1);
+    t.normalize();
+    // Up, tipped back against the horizontal travel.
+    const tilt = T.look.flightTiltDeg * DEG;
+    const d = this.spinFace.set(0, Math.cos(tilt), 0).addScaledVector(t, -Math.sin(tilt));
+    // The face along d, then turn about the face's own axis.
     this.spinQ.setFromUnitVectors(this.zAxis, d.negate());
     this.spinQ2.setFromAxisAngle(this.zAxis, this.spinAngle);
     this.flight.quaternion.copy(this.spinQ).multiply(this.spinQ2);

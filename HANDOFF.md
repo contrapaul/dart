@@ -198,6 +198,25 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: GAME-04c review, the saw played in the Pit (Claude)
+
+- Played `arena.html?watch`, one F01, a throw from 4 to 8 m: the disc
+  lodged, ground for 0.9 s (9 ticks), held the F01 staggered the whole
+  time, then flew home. The F01 went from 6 health to 0.5 (the throw's 1
+  plus 9 x 0.5): never killed, left finishable. No console errors.
+- Fixed: the flying disc flew face first (its face 0.99 along the travel),
+  a plate seen from behind. It now flies flat and edge first, the nubbed
+  rim leading, its face up and tipped back toward the thrower by
+  `look.flightTiltDeg` (20) so the rings still read. A screenshot shows it
+  meeting the Foamer edge on.
+- For Paul's play test: one saw throw takes 92 percent of a Slowmer's
+  health. That makes the saw plus a finisher a two button kill on fodder;
+  `saw.damagePerTick` (0.5) and `grindSeconds` (0.9) are the knobs.
+- The nav timing test failed in this branch's full run while two other
+  models were testing on the same Mac; the 39 shield and saw tests pass.
+- Not checked by eye: the look held on the arm, the grind on a Darter's
+  plates, the sounds.
+
 ### 2026-11-05: GAME-04c built: disc look, spin, foam saw (DeepSeek)
 
 - Look: `data/shield.json` `look` is now three concentric foam bands
