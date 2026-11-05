@@ -6,6 +6,24 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10d done 2026-11-05, awaiting review (`tasks/GAME-10d.md`, DeepSeek
+V4.1 Flash via Pi): the F03 Swarmer is playable. It has its own factory
+palette look (purple body, five small rounded lime nubs along its back,
+orange toothless gape, angry eyes), a turnaround in `design/foamers/`, and
+the F03 type in `data/foamers.json` (health 2, nibble damage 3, windup
+0.25 s, a pack of 5). `src/ai/f03-brain.ts` is hit and run: it runs in with
+a `swarm` token, bites, darts back out to a 3 m ring, circles there for
+1.2 s and runs in again. `swarm` is its own token pool per difficulty
+(Story 2, Normal 3, Hard 4, Foam Fury 6), so a pack never starves the
+F01s. `spawnPack` puts the whole pack round a point and skips past the
+live cap of 12. Placeholder sounds `F03-yip`, `F03-nibble`, `F03-scurry`.
+Benchmark, headless only: two packs, 10 Swarmers, 600 frames at 60 Hz, the
+simulation half of a frame (dart + Foamer update + physics step) is 0.20 ms
+mean, 0.18 median, 0.30 p95. The first frames reach 125 to 146 ms once
+while the mesh workers warm up. No renderer, so no fps. Not checked by eye:
+the look, the skitter and nibble poses, the swing of the ring, and the
+three sounds (see the Log entry). Not pushed or merged.
+
 GAME-04c done 2026-11-05, awaiting review (`tasks/GAME-04c.md`, DeepSeek
 V4.1 Flash via Pi): the shield disc is one model of concentric foam bands
 with a ring of rounded nubs, domed, in the factory palette, and the same
@@ -197,6 +215,67 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-05: GAME-10d, the F03 Swarmer built (DeepSeek V4.1 Flash via Pi)
+
+Three commits on `game-10d`: `39112e0` the look, type and turnaround;
+`d22fea3` the swarm pool, F03 brain, `spawnPack` and the cap; `d2732ef`
+the sounds, the range pack spawn and the benchmark. `npx tsc --noEmit`,
+`npx vitest run` (63 files, 417 passed, 2 skipped) and `npm run build`
+pass; no em or en dashes in any touched file.
+
+- Look: `data/foamer-rigs.json` F03, five `spine1..5` detail parts on the
+  body's back (ellipsoids `[5,6,5]`, taper `[1,0.4]`, `pivot [0,-1,0]`,
+  `foam-lime`), a body ellipsoid `[11,9,15]`, a head `[12,11,12]` with the
+  angry eyes and an orange `gape`. The reviewer's note that the first try
+  read as one lime tuft on the head, like a turnip top, is what moved them
+  onto the back as a row of small nubs. Turnaround re-rendered with
+  `npx tsx tools/render-rig.ts F03` (four views, sheet, README row).
+- Brain: `src/ai/f03-brain.ts`, an F01 sibling with four states, no new
+  ones. `decideF03` is pure so the test asks it directly. Range is the
+  type's `attackRange` (1.4) to bite and `holdRangeMetres` (3.0) to ring,
+  gap `pack.nibbleGapSeconds` (1.2). The clock is `sinceNibble` on
+  `AgentInput`: `Infinity` at spawn, set to 0 by the system when a nibble
+  lands (only for a swarm member), plus `dt` each step. It is not a new
+  Foamer state, so the recover, the stagger, the fall and the crawl all
+  behave exactly as they did for the others.
+- Tokens: `swarm` is a third `TokenKind` in `src/ai/director.ts` and
+  `data/ai.json`, with its own cap per difficulty and its own `stats()`
+  row. `tokenKindOf` reads it off the attack's token, and `spawn` picks
+  the f03 brain from it.
+- Pack and cap: `spawnPack(feet, facing?, count?, type = "F03")` places
+  `pack` members on a ring round the point at 55 to 100 percent of
+  `pack.spreadMetres` (1.6), and stops at `pack.maxAlive` (12). Past the
+  cap a spawn is skipped, and nobody is trimmed. The system's own
+  `SPAWNER.max` (12) still applies underneath.
+- Damage: a nibble is the ordinary attack path, so `damageOf`,
+  `blocksAttackFrom` and the 0.5 s grace all apply and the shield blocks
+  it from the front. `tests/foamers/swarmer.test.ts` checks the nibble id
+  and the dart-free path; the shield test for it is the existing one,
+  unchanged.
+- Range: `src/range/main.ts` spawns a whole pack when F03 is the chosen
+  type, singly for the others, so one press shows the ring.
+- Sounds: `F03-yip` on the new `"alert"` event (sent only for a swarm
+  member), `F03-nibble` picked from the attack's token, `F03-scurry` for
+  an F03's steps. Recipes are in `data/sounds.json`, rows in
+  `design/SOUNDS.md` 4.2, and the old "later" F03 row is gone from the
+  other-Foamers table.
+- Tests: `tests/ai/f03-brain.test.ts` (5: wake and run in, back out and
+  ring, the type's ring not the shared one, one alert waking a pack, the
+  data numbers), `tests/foamers/swarmer.test.ts` (5: own spec and health,
+  `spawnPack` count and cap, swarm tokens not eating melee ones, nibble
+  then back out, the pack waking together), `tests/foamers/swarmer-sounds.test.ts`
+  (3: the yip and no shared alert line, the nibble line and not a swing,
+  skitter against a thump). F01, F02 and F05 tests are unchanged and pass.
+- Benchmark: `npx tsx tools/bench-swarmer.ts` (new, headless, the same rig
+  the tests use): 10 Swarmers, 600 frames, 0.20 ms mean, 0.18 median,
+  0.30 p95, 18 nibbles. There is no browser here, so this is the
+  simulation half of a frame only, not a frame rate.
+- Unverified by eye: the look (whether the five nubs read as nubs and not
+  as a lumpy ridge), the skitter and the nibble poses at speed, whether
+  the ring reads as a pack circling rather than a crowd jittering, and the
+  three placeholder sounds. Also unverified: the real fps with two packs
+  in the Ring or Pit.
 
 ### 2026-11-05: GAME-10d card, the F03 Swarmer, started (Claude)
 
