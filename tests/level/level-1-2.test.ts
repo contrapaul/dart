@@ -53,13 +53,17 @@ describe("Level 1-2 loads (LVL-02b)", () => {
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     const arenas = level.arenas!;
-    expect(arenas.map((a) => a.id)).toEqual(["parry-corridor", "ring"]);
-    expect(arenas.map((a) => a.archetype)).toEqual(["A6", "A2"]);
+    expect(arenas.map((a) => a.id)).toEqual(["parry-corridor", "ring", "crossroads"]);
+    expect(arenas.map((a) => a.archetype)).toEqual(["A6", "A2", "A7"]);
     // Beat 2: one Roamer alone, its own one wave arena.
     expect(arenas[0]!.waves).toHaveLength(1);
     expect(arenas[0]!.waves[0]!.spawns).toEqual([{ foamer: "F02", count: 1 }]);
     // Beat 3: the Ring, two waves of Roamers (4, then 6).
     expect(arenas[1]!.waves.map((w) => w.spawns[0]!.count)).toEqual([4, 6]);
+    // Beat 6: the Crossroads (LVL-02c), 6 from three spokes, then 7 plus a
+    // Slowmer from the pillar's floor seam.
+    expect(arenas[2]!.waves.map((w) => w.spawns.reduce((n, s) => n + s.count, 0))).toEqual([6, 8]);
+    expect(arenas[2]!.waves[1]!.spawns.map((s) => s.foamer)).toEqual(["F02", "F01"]);
   });
 
   it("2. has floor under the walk from the start to the exit", async () => {

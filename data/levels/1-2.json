@@ -15,12 +15,12 @@
       "pos": [
         -4.5,
         -0.5,
-        22
+        -24
       ],
       "size": [
         31,
         1,
-        84
+        176
       ],
       "material": "greybox-dark"
     },
@@ -75,12 +75,12 @@
       "pos": [
         -20.5,
         4.5,
-        22
+        -24
       ],
       "size": [
         1,
         9,
-        84
+        176
       ],
       "material": "greybox"
     },
@@ -124,21 +124,6 @@
       ],
       "size": [
         31,
-        9,
-        1
-      ],
-      "material": "greybox"
-    },
-    {
-      "id": "wall-n",
-      "shape": "box",
-      "pos": [
-        -4.5,
-        4.5,
-        -20.5
-      ],
-      "size": [
-        32,
         9,
         1
       ],
@@ -503,6 +488,426 @@
         1
       ],
       "material": "greybox"
+    },
+    {
+      "id": "wall-n-w",
+      "shape": "box",
+      "pos": [
+        -8.625,
+        4.5,
+        -20.5
+      ],
+      "size": [
+        22.75,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-n-e",
+      "shape": "box",
+      "pos": [
+        9.5,
+        4.5,
+        -20.75
+      ],
+      "size": [
+        5,
+        9,
+        0.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-store-out",
+      "shape": "box",
+      "pos": [
+        5,
+        6.5,
+        -20.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "north-ceiling",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        9.5,
+        -66.5
+      ],
+      "size": [
+        31,
+        1,
+        91
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-e-north",
+      "shape": "box",
+      "pos": [
+        11.5,
+        4.5,
+        -66
+      ],
+      "size": [
+        1,
+        9,
+        90
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "conn-a-w",
+      "shape": "box",
+      "pos": [
+        2.5,
+        4.5,
+        -29
+      ],
+      "size": [
+        1,
+        9,
+        16
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "conn-a-e",
+      "shape": "box",
+      "pos": [
+        7.5,
+        4.5,
+        -29
+      ],
+      "size": [
+        1,
+        9,
+        16
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-n-w",
+      "shape": "box",
+      "pos": [
+        -16,
+        4.5,
+        -37.5
+      ],
+      "size": [
+        8,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-n-e",
+      "shape": "box",
+      "pos": [
+        -3,
+        4.5,
+        -37.5
+      ],
+      "size": [
+        10,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bend-n-w",
+      "shape": "box",
+      "pos": [
+        -15,
+        4.5,
+        -42.5
+      ],
+      "size": [
+        10,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bend-n-e",
+      "shape": "box",
+      "pos": [
+        2,
+        4.5,
+        -42.5
+      ],
+      "size": [
+        10,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-s-w",
+      "shape": "box",
+      "pos": [
+        -9.5,
+        4.5,
+        -46
+      ],
+      "size": [
+        1,
+        9,
+        6
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-s-e",
+      "shape": "box",
+      "pos": [
+        -2.5,
+        4.5,
+        -46
+      ],
+      "size": [
+        1,
+        9,
+        6
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-s-w",
+      "shape": "box",
+      "pos": [
+        -11,
+        4.5,
+        -49.5
+      ],
+      "size": [
+        4,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-s-e",
+      "shape": "box",
+      "pos": [
+        -1,
+        4.5,
+        -49.5
+      ],
+      "size": [
+        4,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-w-s",
+      "shape": "box",
+      "pos": [
+        -13.5,
+        4.5,
+        -52.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-w-n",
+      "shape": "box",
+      "pos": [
+        -13.5,
+        4.5,
+        -63.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-e-s",
+      "shape": "box",
+      "pos": [
+        1.5,
+        4.5,
+        -52.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "hub-e-n",
+      "shape": "box",
+      "pos": [
+        1.5,
+        4.5,
+        -63.5
+      ],
+      "size": [
+        1,
+        9,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-n-w",
+      "shape": "box",
+      "pos": [
+        -9.5,
+        4.5,
+        -69.5
+      ],
+      "size": [
+        1,
+        9,
+        7
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-n-e",
+      "shape": "box",
+      "pos": [
+        -1.5,
+        4.5,
+        -69.5
+      ],
+      "size": [
+        1,
+        9,
+        7
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-n-end",
+      "shape": "box",
+      "pos": [
+        -5.5,
+        4.5,
+        -73.5
+      ],
+      "size": [
+        9,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-e-s",
+      "shape": "box",
+      "pos": [
+        4.5,
+        4.5,
+        -54.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-e-n",
+      "shape": "box",
+      "pos": [
+        4.5,
+        4.5,
+        -61.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-e-end",
+      "shape": "box",
+      "pos": [
+        7.5,
+        4.5,
+        -58
+      ],
+      "size": [
+        1,
+        9,
+        6
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-w-s",
+      "shape": "box",
+      "pos": [
+        -16.5,
+        4.5,
+        -54.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "spoke-w-n",
+      "shape": "box",
+      "pos": [
+        -16.5,
+        4.5,
+        -61.5
+      ],
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "cross-pillar-core",
+      "shape": "box",
+      "pos": [
+        -6,
+        1.4,
+        -58
+      ],
+      "size": [
+        1.6,
+        2.8,
+        1.6
+      ],
+      "material": "greybox-dark"
     }
   ],
   "pieces": [
@@ -642,6 +1047,106 @@
             0.3
           ],
           "material": "foam-white"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-n",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -6,
+            1.4,
+            -59.0
+          ],
+          "size": [
+            1.6,
+            2.8,
+            0.4
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-s",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -6,
+            1.4,
+            -57.0
+          ],
+          "size": [
+            1.6,
+            2.8,
+            0.4
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-w",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -7.0,
+            1.4,
+            -58
+          ],
+          "size": [
+            0.4,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "cross-skin-e",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -5.0,
+            1.4,
+            -58
+          ],
+          "size": [
+            0.4,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "tower-bay-marking",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -14,
+            0.05,
+            -40
+          ],
+          "size": [
+            3.2,
+            0.1,
+            3.2
+          ],
+          "material": "foam-yellow"
         }
       ]
     }
@@ -891,6 +1396,189 @@
         -4,
         0,
         21
+      ]
+    },
+    {
+      "id": "crossroads",
+      "archetype": "A7",
+      "trigger": {
+        "pos": [
+          -6,
+          2,
+          -53.5
+        ],
+        "size": [
+          10,
+          4,
+          4
+        ]
+      },
+      "doors": [
+        {
+          "id": "cross-in",
+          "pos": [
+            -6,
+            1.75,
+            -49.5
+          ],
+          "size": [
+            6,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "cross-out",
+          "pos": [
+            -6,
+            1.75,
+            -70
+          ],
+          "size": [
+            6,
+            3.5,
+            0.4
+          ],
+          "state": "locked"
+        },
+        {
+          "id": "cross-gate-w",
+          "pos": [
+            -15.5,
+            1.75,
+            -58
+          ],
+          "size": [
+            0.4,
+            3.5,
+            6
+          ],
+          "state": "locked"
+        },
+        {
+          "id": "cross-gate-e",
+          "pos": [
+            3.5,
+            1.75,
+            -58
+          ],
+          "size": [
+            0.4,
+            3.5,
+            6
+          ],
+          "state": "locked"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "cross-r-n",
+          "pos": [
+            -5.5,
+            0.2,
+            -68.5
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "cross-r-e",
+          "pos": [
+            2.6,
+            0.2,
+            -58
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "cross-r-w",
+          "pos": [
+            -14.6,
+            0.2,
+            -58
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "cross-r-pillar",
+          "pos": [
+            -6,
+            0.2,
+            -56.5
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "cross-w1",
+          "rifts": [
+            "cross-r-n",
+            "cross-r-e",
+            "cross-r-w"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 6
+            }
+          ],
+          "delaySeconds": 1.5,
+          "holdSeconds": 2.0
+        },
+        {
+          "id": "cross-w2",
+          "rifts": [
+            "cross-r-n",
+            "cross-r-e",
+            "cross-r-w",
+            "cross-r-n",
+            "cross-r-e",
+            "cross-r-w",
+            "cross-r-n",
+            "cross-r-pillar"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 7
+            },
+            {
+              "foamer": "F01",
+              "count": 1
+            }
+          ],
+          "delaySeconds": 6,
+          "holdSeconds": 1.5
+        }
+      ],
+      "unlockOnClear": [
+        "cross-out",
+        "cross-in",
+        "cross-gate-w",
+        "cross-gate-e"
+      ],
+      "checkpoint": true,
+      "checkpointPos": [
+        -6,
+        0,
+        -47
       ]
     }
   ],
