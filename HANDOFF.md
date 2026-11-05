@@ -198,6 +198,14 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: GAME-10d card, the F03 Swarmer, started (Claude)
+
+- Paul asked for a DeepSeek task while GAME-08 and GAME-06 run. Card
+  `tasks/GAME-10d.md`: the Swarmer's palette look and turnaround, a pack
+  brain (hit and run nibbles), a `swarm` token pool, `spawnPack` and a
+  live cap. Kept clear of the shield, the melee and use blocks, pickups
+  and vacuum entries. Running on `game-10d`.
+
 ### 2026-11-05: GAME-04c review, the saw played in the Pit (Claude)
 
 - Played `arena.html?watch`, one F01, a throw from 4 to 8 m: the disc
