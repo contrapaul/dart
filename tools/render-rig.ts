@@ -5,7 +5,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import * as THREE from "three";
 import rigData from "../data/foamer-rigs.json";
-import { buildPartVolume, restMotion, solvePose, type RigSpec } from "../src/foamers/rig";
+import { buildPartVolume, restMotion, solvePose, type RigMotion, type RigSpec } from "../src/foamers/rig";
+import { chargeMotion, scrapeMotion, strikeMotion, wallStunMotion, windupMotion } from "../src/foamers/rig-states";
 import { VoxelVolume } from "../src/voxel/chunk";
 import { material, materialId } from "../src/voxel/materials";
 
@@ -27,8 +28,8 @@ const FACE_DATA = [
 ] as const;
 const NORMAL_MATRIX = new THREE.Matrix3();
 
-function rigFaces(rig: RigSpec, view: View): { faces: Face[]; bounds: number[] } {
-  const pose = solvePose(rig, new THREE.Vector3(), 0, restMotion(), new Map());
+function rigFaces(rig: RigSpec, view: View, motion: RigMotion = restMotion()): { faces: Face[]; bounds: number[] } {
+  const pose = solvePose(rig, new THREE.Vector3(), 0, motion, new Map());
   const yaw = YAWS[view], elevation = 0.16;
   const camera = new THREE.Vector3(Math.sin(yaw) * Math.cos(elevation), Math.sin(elevation), Math.cos(yaw) * Math.cos(elevation));
   const faces: Face[] = [], bounds = [Infinity, Infinity, -Infinity, -Infinity];
@@ -106,8 +107,8 @@ function fillPolygon(im: Image, points: [number, number][], color: RGB): void {
   }
 }
 
-export function renderView(rig: RigSpec, view: View): Image {
-  const { faces, bounds } = rigFaces(rig, view);
+export function renderView(rig: RigSpec, view: View, motion?: RigMotion): Image {
+  const { faces, bounds } = rigFaces(rig, view, motion);
   const im = image(VIEW_SIZE, VIEW_SIZE, [232, 230, 236]);
   const margin = 42, yaw = YAWS[view], elevation = 0.16;
   const scale = Math.min((VIEW_SIZE - margin * 2) / (bounds[2] - bounds[0]), (VIEW_SIZE - margin * 2) / (bounds[3] - bounds[1]));
@@ -179,8 +180,22 @@ export function renderSheet(rig: RigSpec, views: Record<View, Image>): Image {
   sheetLabel(im, `${rig.id} ${rig.label.toUpperCase()}`);
   return im;
 }
-export function renderRigViews(rig: RigSpec): Record<View, Image> {
-  return Object.fromEntries(VIEWS.map((view) => [view, renderView(rig, view)])) as Record<View, Image>;
+export function renderRigViews(rig: RigSpec, motion?: RigMotion): Record<View, Image> {
+  return Object.fromEntries(VIEWS.map((view) => [view, renderView(rig, view, motion)])) as Record<View, Image>;
+}
+/** ANIM-01: the motion for one state at a point of it, k 0..1 within the
+ *  state: windup and strike with an attack id, telegraph and charge by the
+ *  game's state names, wallStun as t over its duration, or rest. */
+export function stateMotion(rig: RigSpec, state: string, k: number, attack?: string): RigMotion {
+  const m = restMotion();
+  const atk = attack ?? ((rig.motions as unknown as Record<string, unknown>)?.throw ? "throw" : "bonk");
+  if (state === "windup") windupMotion(rig, atk, k, m);
+  else if (state === "strike") strikeMotion(rig, atk, k, m);
+  else if (state === "telegraph") scrapeMotion(rig, k, m);
+  else if (state === "charge") chargeMotion(rig, k * 2, m); // one stride over the window
+  else if (state === "wallStun") wallStunMotion(rig, k, 1, m);
+  else if (state !== "rest") console.warn(`ANIM-01: no pose for state ${state}, rendering rest`);
+  return m;
 }
 export function writeRigRenders(rig: RigSpec, directory = "design/foamers"): void {
   mkdirSync(directory, { recursive: true });
@@ -190,10 +205,29 @@ export function writeRigRenders(rig: RigSpec, directory = "design/foamers"): voi
 }
 
 if (process.argv[1]?.endsWith("render-rig.ts")) {
-  const id = process.argv[2] ?? "F01";
+  const args = process.argv.slice(2);
+  const id = args.find((a) => !a.startsWith("--")) ?? "F01";
+  const flag = (name: string): string | undefined => {
+    const i = args.indexOf(`--${name}`);
+    return i === -1 ? undefined : args[i + 1];
+  };
   const rig = (rigData.rigs as unknown as RigSpec[]).find((entry) => entry.id === id);
   if (!rig) throw new Error(`Unknown rig ${id}`);
   for (const part of rig.parts) materialId(part.material ?? rig.material);
-  writeRigRenders(rig);
-  console.log(`Rendered ${id} to design/foamers/`);
+  const state = flag("state");
+  if (state) {
+    // ANIM-01: one state at a point of it (default k 1, fully developed),
+    // every view to design/foamers/poses/.
+    const k = parseFloat(flag("t") ?? "1");
+    const attack = flag("attack");
+    const m = stateMotion(rig, state, k, attack);
+    const dir = "design/foamers/poses";
+    mkdirSync(dir, { recursive: true });
+    const views = renderRigViews(rig, m);
+    for (const view of VIEWS) writeFileSync(`${dir}/${rig.id}-${state}-t${String(k)}-${view}.png`, encodePng(views[view]));
+    console.log(`Rendered ${id} ${state} t=${String(k)} to ${dir}/`);
+  } else {
+    writeRigRenders(rig);
+    console.log(`Rendered ${id} to design/foamers/`);
+  }
 }

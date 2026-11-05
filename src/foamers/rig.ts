@@ -73,6 +73,10 @@ export interface RigSpec {
   voxelSize: number;
   material: string;
   parts: PartSpec[];
+  /** ANIM-01: the state poses the game builds (F02 throw, F05 scrape, charge,
+   *  wall stun). Angles in radians, cycles whole; read as an any tree, the
+   *  shape is the data file's, per rig, not shared. */
+  motions?: Record<string, unknown>;
 }
 
 /** Joint rotations by part id, plus root motion, for one moment. */
@@ -82,6 +86,8 @@ export interface RigMotion {
   /** Root lean: pitch (x) and roll (z), radians. */
   pitch: number;
   roll: number;
+  /** ANIM-01: root yaw, radians: the body turns in place (the throw's off-axis load). */
+  turn?: number;
   /** Per part extra rotation about its joint, radians. */
   rot: Map<string, [number, number, number]>;
   /** Squash and stretch of the whole rig in y (1 = none). */
@@ -286,7 +292,7 @@ function solveRaw(
   const vs = rig.voxelSize;
   const root = new THREE.Matrix4()
     .makeTranslation(feet.x, feet.y + lift + motion.y, feet.z)
-    .multiply(_m.makeRotationY(yaw))
+    .multiply(_m.makeRotationY(yaw + (motion.turn ?? 0)))
     .multiply(_m.makeRotationFromEuler(_e.set(motion.pitch, 0, motion.roll)))
     .multiply(_m.makeScale(1 / Math.sqrt(motion.squash), motion.squash, 1 / Math.sqrt(motion.squash)));
   for (const p of partOrder(rig)) {

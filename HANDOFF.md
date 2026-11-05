@@ -21,6 +21,15 @@ attacked, the Roamers threw); merged 2026-11-05. Still to watch: the
 sidestep's look, and whether the 0.2 m climb cap makes another level's step
 read as too tall to walk.
 
+ANIM-01 stages 1 and 2 done 2026-11-04: the F02 Roamer now winds up its
+throw (ball arm back over the head, body turned away, readable as the cue
+to raise the shield) and whips it through past the shoulder, and the F05
+Darter's telegraph, charge and wall stun have their own poses; every number
+is in a `motions` block in `data/foamer-rigs.json`. Key frames are in
+`design/foamers/poses/`. Unverified by eye (no browser on the AI machine):
+the poses by PNG, and the throw and charge in the game (see the Log entry;
+reviewer: Claude Opus 5.5).
+
 GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
 (`telegraphSeconds`), locks its line at the player's position and runs at
 11 m/s for up to 18 m with no steering, staggers for 1.2 s when it hits a
@@ -382,6 +391,52 @@ names such as the ring's).
   (UI-01 grace), so health drops undercount ball hits while Slowmers bonk;
   count `foamers.projectiles.stats.hitPlayer` instead.
 - Corrected: the PLAN row said "Paul approved" before he had.
+### 2026-11-04: ANIM-01 review, key frames viewed (Claude)
+
+- Viewed the key frames Qwen could not: the F02 windup holds the ball high
+  beside the head with the arm cocked, and the strike whips the arm and
+  ball out past the shoulder; the F05 telegraph dips the head, the charge
+  pitches the whole body forward, and the wall stun rocks it back with
+  the orange back showing. All read at a glance. 32 PNGs, 208 KB.
+- Unverified: timing and readability at 10 m in a live game.
+
+### 2026-11-04: ANIM-01, the F02 throw and the F05 scrape and charge poses (Qwen 3.8-27B via Pi)
+
+- Card: `tasks/ANIM-01.md`. Two stages, each committed green (tsc, vitest,
+  build, no em or en dashes):
+  - Stage 1 (bd18c74): the poses. A per-rig `motions` block in
+    `data/foamer-rigs.json` holds every number (angles in degrees, distances
+    in metres). F02 `throw.wind` lifts the ball arm back and over the head
+    (armR -180, foreArmR 80) and turns the body 15 degrees away; `strike`
+    whips it through past the shoulder (armR -60, foreArmR 100) with the
+    body swung to the far side so it reads as coming through. F05 `scrape`
+    dips the body forward and sweeps a leg back and forward twice; `charge`
+    pitches 25 degrees forward on a 34 degree stride; `wallStun` rocks the
+    body back with a wobble, and on a rig whose body is its head (F05) the
+    head shake judders the pitch. `poseNums` reads the block; a missing
+    block reads zero, so no other rig changes (F01 tested at rest).
+  - Stage 2 (aec6522): `npx tsx tools/render-rig.ts <id> --state <state>
+    --t <0..1> [--attack <id>]` renders every view for that state and time
+    to `design/foamers/poses/`. Key frames for the F02 throw (windup t.5,
+    t1; strike t.7, t1) and the F05 telegraph (t.25, t.75), charge (t.5)
+    and wall stun (t.25) are rendered there. `tools/pose-check.ts`
+    measures each key frame's part extents numerically, `tools/pose-ascii.ts`
+    prints a front and side silhouette so the shape can be checked without
+    a browser.
+- New `RigMotion.turn` (root yaw, radians) carries the body's in-place turn;
+  `poseParts` eases it like the other root motion, `solveRaw` folds it into
+  the root yaw.
+- Tests (`tests/foamers/poses.test.ts`): the F02 ball sits behind its rest
+  position at full windup and in front through the strike, and the body
+  turns away then through the target; the F05 charge pitches forward, the
+  telegraph dips and moves a leg, the wall stun rocks back and wobbles; F01
+  with no block keeps its old poses.
+- Unverified by eye: this is a headless AI machine, no browser. The pose
+  math is verified numerically and sketched as silhouettes, but the PNG key
+  frames in `design/foamers/poses/` should be looked at, and a real F02
+  throw and F05 charge watched in the game to check the timing, the 10 m
+  readability of the windup, the shake of the wall stun, and the charge's
+  look. No em or en dashes.
 
 ### 2026-11-04: GAME-10b review, Darters played in the ring, merged (Claude)
 
