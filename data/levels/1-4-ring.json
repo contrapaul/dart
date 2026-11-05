@@ -102,8 +102,8 @@
   ],
 
   "pickups": [
-    { "id": "ring-ammo-w", "type": "darts-standard", "count": 4, "pos": [-11, 0.4, 1.6] },
-    { "id": "ring-ammo-e", "type": "darts-standard", "count": 4, "pos": [11, 0.4, 1.6] }
+    { "id": "ring-ammo-w", "type": "darts-standard", "count": 20, "pos": [-11, 0.4, 1.6] },
+    { "id": "ring-ammo-e", "type": "darts-standard", "count": 20, "pos": [11, 0.4, 1.6] }
   ],
 
   "playerStart": { "pos": [-6, 0, 18.5], "yaw": 0 },

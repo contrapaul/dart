@@ -239,7 +239,7 @@ describe("PickupSystem.loadLevelBoxes (LVL-02a)", () => {
     expect(r.pickups.count("ammo")).toBe(2); // pit-ammo and pit-ammo-far
     for (const it of r.pickups.list) {
       expect(it.dartType).toBe("standard");
-      expect(it.dartCount).toBe(4);
+      expect(it.dartCount).toBe(20);
     }
   });
 

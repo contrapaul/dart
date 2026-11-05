@@ -186,6 +186,12 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: ammo boxes hold 20 darts (Paul)
+
+- Paul: start the ammo boxes at 20 darts and tune in play tests. Every
+  `darts-standard` box in the Pit and the Ring now has `count` 20 (it was
+  4). `count` stays darts, not magazines.
+
 ### 2026-11-05: nav path query back to its old speed (Claude)
 
 - The "flaky" nav timing test was a real slowdown. Alone, the 40 x 40 m
@@ -224,7 +230,7 @@ github.com/contrapaul/dart (public), MIT licence.
   took B01, B04 and B03 from 10 to 14 each; at full reserves the other box
   stayed; Try again brought both back. A screenshot shows a readable yellow
   box on the pit floor. No console errors.
-- For Paul: a box holds 4 darts (`count` in the level files, from the
+- Answered 2026-11-05 (20 darts, see above). Was: a box holds 4 darts (`count` in the level files, from the
   original Pit file). That is half a B01 magazine and about a tenth of a
   B04 one, so it barely reads as a pickup. Pick the number, or say whether
   `count` should mean magazines instead of darts.
