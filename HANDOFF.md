@@ -151,6 +151,75 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: START HERE, session handoff for Claude (Claude)
+
+Paul ended the long 2026-11-03/04 session to save usage. Read this, then
+the Status section; do not re-read the whole Log.
+
+**How the work runs.** Pi models write the code; Claude writes the task
+card (`tasks/<ID>.md`), starts the model in its own worktree, reviews,
+fixes small things with a test, and asks Paul before every merge ("Approve
+and merge"). Pushing main is publishing: only as part of an approved merge.
+- Worktree: `git worktree add -q ../dart-<b> -b <b> && ln -s
+  ../dart/node_modules ../dart-<b>/node_modules`.
+- Start a model: `tools/pi/run-pi.sh <worktree> <provider> <model>
+  <thinking> <brief file> <log>` (retries a start-up hang; never kills
+  pi's children, which may own the local context proxy on 18787). Brief:
+  `tools/pi/brief-template.txt`.
+- Providers: DeepSeek `openrouter deepseek/deepseek-v4.1-flash-1017
+  medium` (long cards); Qwen 27b `qwen-machine qwen3.8-27b-1cat low`
+  (shorter cards, Paul's Linux AI machine; PAUSED by Paul until he says
+  so); Spark `dgx-spark qwen3.8-flash-next medium` (travels with Paul,
+  check it answers first); Kimi `moonshotai` (art).
+- A run that stops with nothing committed: Qwen can overthink and hit
+  its output limit (resume with `pi -c` and "stop planning, write code");
+  DeepSeek can break down in a very long session (start a fresh one with
+  a brief on what is on disk).
+
+**Reviewing.** Each worktree gets a `.claude/launch.json` entry (in the
+GitHub folder) on its own port; `preview_start` it and drive
+`arena.html?watch` or `index.html?watch` with `dartArena` / `dartGame`
+(`state`, `moveTo`, `look`, `aimNearest`, `fire`, `step`, `block`,
+`throwShield`, `charge`, `finish`, `parryNext`) and the dev hook
+`__arena` / `__dart` (`foamers`, `foamers.projectiles`, `player`,
+`health`, `loadout`, `camera`). Lessons:
+- Await a `setTimeout(0)` between steps after a spawn: Foamer part
+  colliders come from the mesher worker and never land in one long
+  synchronous loop (darts then pass through every Foamer).
+- After a hit the player ignores damage for 0.5 s: count
+  `foamers.projectiles.stats.hitPlayer`, not health drops.
+- A popped player pauses the game; reset health each step in long runs.
+- Standing under the Pit's ring overhang breaks Foamer pathing (BUG-01).
+- Keep browser checks short; the costly part of the last session was
+  long debugging in the conversation.
+- `set -o pipefail` before `npx vitest run | grep`, or a failing suite
+  still lets the commit through. `tests/ai/nav-grid.test.ts` timing test
+  flakes under load; rerun alone.
+
+**Jobs remaining, in order.**
+1. Review `bug-01` (DeepSeek, 3 commits, BUG-01 Pit stall; not yet
+   reviewed: check the two-level nav grid, that the probe tests are gone,
+   and the stall is fixed in the Pit), then ask Paul to merge.
+2. Ask Paul to merge `game-04b` (parry, GAME-04 stage 2, reviewed: one
+   clean parry seen; main already merged in) and `anim-01` (ANIM-01
+   throw and charge poses, reviewed by key frames). They conflict with
+   each other in the docs only.
+3. Review `lvl-02a` (Qwen, 3 commits, placed ammo pickups; not yet
+   reviewed), then ask Paul.
+4. Main here is 3 commits ahead of origin (the BUG-01, ANIM-01 and
+   LVL-02a cards, plus this entry); they go out with the next approved
+   merge.
+5. Next cards when Paul says: GAME-06 melee weapon, GAME-08 ammo for
+   kills (vacuum, D09), GAME-10c the heavy, GAME-09b catastrophic hits,
+   ART-05 first person animations, AUD-01b Paul's recordings, QA-01
+   low-end machine check (due 2026-11-12).
+
+**Waiting on Paul.** Whether the player is safe during a finisher; the
+shield's name and look, and whether the lowered disc should sit lower
+(it fills the lower left); the content plan review (1-2 blaster clash,
+act settings and accent colours, the "Foam Demon" working name, level
+names such as the ring's).
+
 ### 2026-11-04: GAME-10b review, Darters played in the ring, merged (Claude)
 
 - Played `arena.html?level=1-4-ring&watch`: two Darters, the lime plates
