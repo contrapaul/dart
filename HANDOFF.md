@@ -402,6 +402,22 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: LVL-02d parked after stage 1 (Claude, overnight)
+
+- The Spark committed stage 1 on branch `lvl-02d`: `nav.maxLayers` 2 to
+  4 and `nav.topMetres` 8 to 17 (so the bake reaches a 15 m floor), with
+  tests (four floors in one cell, a path up switchback stairs) and the
+  timing test unchanged (bake 36 to 39 ms, path 1.1 ms). Not merged:
+  it only matters with the tower, and `topMetres` 17 also lets the bake
+  see roof and ceiling tops in the other levels (floors still win the
+  four slots, lowest first), which wants a check in the Pit and the Ring.
+- Stage 2, the tower, failed four times: every run (resumed, thinking
+  low, fresh, and with orders to write the level by small scripts) hit
+  the Spark's output limit before saving anything. The Spark also slowed
+  to about 25 s for a one word reply after the third. Parked for Paul:
+  a smaller tower card, another model, or the Spark with a higher output
+  limit.
+
 ### 2026-11-06: GAME-10e review, a Blocker wall in the Ring (Claude, overnight)
 
 - DeepSeek finished all three stages in one run (the read-once brief
