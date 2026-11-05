@@ -6,6 +6,13 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-03 done 2026-11-06, awaiting review (`tasks/BUG-03.md`, Qwen 3.8-27B
+via Pi): the nav grid bakes the level's solid voxel pieces, so a cell
+inside a destructible block reads as an obstacle from the first frame a
+Foamer can path and a cell's interior is never a stand-able floor. Not
+checked by eye: Foamers walking round the Pit's central block in the
+browser (the reviewer's).
+
 BUG-02 done 2026-11-06, awaiting review (`tasks/BUG-02.md`, Qwen 3.8-27B
 via Pi): the watch helper lands parries against a lobbed ball, and packs
 spawn on floor the grid says an agent can stand on. The parry's own unit
@@ -365,6 +372,58 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: BUG-03, the nav grid sees the level's solid voxel pieces (Qwen 3.8-27B via Pi, qwen-machine)
+
+`tasks/BUG-03.md`. Two faults from the BUG-02 review: the load-time bake
+ran before the level's voxel pieces had their colliders (they mesh off
+the main thread, a few frames later; feet and colliders arrive
+separately) so on a fresh page the bake met only the shell, and a cell
+inside a solid block read as floor because the pieces collide as hollow
+trimeshes and the bake's shape cast meets only surfaces. In the Pit a
+Swarmer pack round the centre block could stand in it.
+
+- The grid takes a new private hook `solidAt(x,y,z)`, set by a public
+  `setSolidAt` (default null, it doesn't change the grid's own tests or
+  pages without pieces). `bakeCell` rejects a stand-able surface when
+  a probe finds the agent's body inside the solid volume: samples at
+  heights of 1/8, 9/20 and 7/8 of the agent's height above the surface,
+  so a flat floor reads clear and a body pressed inside the block does
+  not. A tunnel that cuts through a block passes the probes again on the
+  carve's own rebake. `nav-grid.ts`'s bake did not touch the layer
+  search, `nodeNear` or the A* (the card's limit, LVL-02d).
+- `makeLevelAI` takes the level's voxel volume and the voxel mesh's
+  world origin, and wires the hook to read the volume in world space
+  (`src/ai/level.ts`); the origin is the mesh's because it carries the
+  snap, and the range (no pieces) builds it without one. `levelAI
+  .piecesReady()` re-bakes the level's bounds. The shared game frame
+  (`src/game/game.ts`) notices the level mesher's first time it stops
+  being busy (that backlog is dirty, then pending jobs; both a piece
+  needs and live chunks; an empty level is not busy from load) and
+  calls it once, so the first Foamer to path already sees every block.
+- Bake timings on the Pit's bounds (once per load, the page pays them
+  once):
+  - full bake, no solid hook (old): 55.8 ms;
+  - `piecesReady` rebake with the hook on (the page's second bake):
+    45.4 ms;
+  - the 40x40 budget test (bake + a query): bake 36.4 ms, query 1.158
+    ms; the budget is 150 ms and 2 ms.
+  The hook is nearly free: about one `volume.get` per stand-able
+  candidate, and the volume is an in-memory array that the game mutates
+  every frame already.
+- Tests (all fail on the old code, pass on the new):
+  - `tests/level/voxel-block.test.ts` builds a level with a 3 m solid
+    block on a floor the way the page builds it (FAKE mesher, the
+    microtasks, `piecesReady`), then the real Pit the same way. In the
+    test level: the cell inside the block is "not" floor-height (read
+    as floor on the old code), the block's top "is" stand-able, the
+    floor round it is, and a carve tunnel through the block (and its
+    piece's rebake) makes the floor under the hole walkable again. In
+    the real Pit: for the centre of `pit-block`, `groundAt(0,4)` is
+    3.2 (was 0), `canStandAt(0,4,0)` is false (was true: that is the
+    read `spawnPack` used), floor under the ring and the exit room are
+    untouched. The timing scratch is not committed; the numbers are
+    here.
 
 ### 2026-11-06: BUG-02 review, parries and packs tried in the Pit (Claude, overnight)
 
