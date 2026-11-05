@@ -207,6 +207,22 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: GAME-06 review, the combo played in the Pit (Claude, overnight)
+
+- Merged main in; `game.ts` restart hooks now reset the melee and stop
+  the saw loop. 413 tests and the build pass.
+- Played `arena.html?watch` against one F01: hits of 1, 1 and 2 damage,
+  the third staggered it and knocked it 2 m back, charges 3 to 0; the next
+  press was the bash (it missed: the knockback had put the F01 past the
+  bash's 1.8 m reach), the one after the empty click on the bash's
+  cooldown. The new shield and the three charge pips under the health bar
+  show in the screenshots. No console errors.
+- Not checked by eye: the baton's sweep. It animates on render time, and
+  the watch harness renders one frame per step call, so a screenshot could
+  not catch it mid swing; the shoves and sounds too. For Paul's play test.
+- Merged into local main overnight under Paul's standing instruction;
+  not pushed.
+
 ### 2026-11-05: GAME-10d card, the F03 Swarmer, started (Claude)
 
 - Paul asked for a DeepSeek task while GAME-08 and GAME-06 run. Card
