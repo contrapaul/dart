@@ -6,6 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-04c done 2026-11-05, awaiting review (`tasks/GAME-04c.md`, DeepSeek
+V4.1 Flash via Pi): the shield disc is one model of concentric foam bands
+with a ring of rounded nubs, domed, in the factory palette, and the same
+model is held and thrown; it spins about its own axis. A throw that strikes
+a Foamer lodges and grinds it for 0.9 s (carve, damage, capped debris, the
+Foamer held staggered, plates take the full tick), then ricochets on as
+before. The saw never kills: it weakens a Foamer into the finisher band.
+Sounds `SH-saw` (loop) and `SH-sawEnd` are placeholders; the watch gains
+`grinding`. Not checked by eye: the look (bands, dome, nubs, the boss
+placeholder), the spin's speed and direction, the grind reading as a saw,
+and the two sounds (see the Log entry). The centre emblem is still [Paul].
+
 BUG-01 done 2026-11-05 (round 2, after a review found round 1 had traded one
 bug for another): the Pit's ring tops are back in the nav grid, as a second
 layer over the floor under them, so both a player on the ring and a player
@@ -185,6 +197,70 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-05: GAME-04c review, the saw played in the Pit (Claude)
+
+- Played `arena.html?watch`, one F01, a throw from 4 to 8 m: the disc
+  lodged, ground for 0.9 s (9 ticks), held the F01 staggered the whole
+  time, then flew home. The F01 went from 6 health to 0.5 (the throw's 1
+  plus 9 x 0.5): never killed, left finishable. No console errors.
+- Fixed: the flying disc flew face first (its face 0.99 along the travel),
+  a plate seen from behind. It now flies flat and edge first, the nubbed
+  rim leading, its face up and tipped back toward the thrower by
+  `look.flightTiltDeg` (20) so the rings still read. A screenshot shows it
+  meeting the Foamer edge on.
+- For Paul's play test: one saw throw takes 92 percent of a Slowmer's
+  health. That makes the saw plus a finisher a two button kill on fodder;
+  `saw.damagePerTick` (0.5) and `grindSeconds` (0.9) are the knobs.
+- The nav timing test failed in this branch's full run while two other
+  models were testing on the same Mac; the 39 shield and saw tests pass.
+- Not checked by eye: the look held on the arm, the grind on a Darter's
+  plates, the sounds.
+
+### 2026-11-05: GAME-04c built: disc look, spin, foam saw (DeepSeek)
+
+- Look: `data/shield.json` `look` is now three concentric foam bands
+  (`bands`, each thinner and stepped forward by `domeDepth`, so the face
+  domes), 16 rounded nubs on the rim (`nubCount`, `nubRadius`) as the saw's
+  teeth, and the factory palette in `look.colors`. The boss is a plain foam
+  cylinder with a `[Paul]` note: the emblem is Paul's. The disc is built
+  once in the `Shield` constructor as `discModel` and the throw reparents
+  that one group into a scene-level `flight` holder (the catch returns it to
+  the arm), so the held and the flying disc are the same model; the old
+  `discMesh` name is kept as a getter on `flight`.
+- Spin: about the disc's own axis (the face along the flight), at
+  `look.spinRevPerSec` (6) out and back and `saw.spinRevPerSec` (14) while
+  grinding. Chose in-plane spin over edge over edge: the card says about its
+  own axis, and the bands and teeth are what should be seen turning.
+- Foam saw: a new `saw` block. The first Foamer a flight strikes is lodged
+  in: the disc holds its contact point in the struck part's voxel frame (so
+  it rides a Foamer that walks or is shoved), spins fast, carves a
+  `carveRadius` sphere every `tickSeconds`, deals `damagePerTick` (plates
+  take `plateShare` 1.0, against a dart's 0.15, measured with `armourOf`),
+  throws at most `debrisPerTick` chunks a tick and keeps the Foamer
+  staggered for the grind. Then it ricochets as before (bounces and range
+  unchanged). It never kills (`canKill` false): it keeps the throw's floor
+  and sets `finishWeakened`, the point of the weapon. A prone Foamer takes
+  it without the stagger. No block, parry or charge while it is lodged
+  (unchanged: `state` is not `raised`).
+- Sounds: `SH-saw` (a loop, started on the lodge, followed to the disc,
+  pitched by the grind time left, stopped when the grind ends or the disc
+  comes home or the run restarts) and `SH-sawEnd`, with placeholder synth
+  recipes and `design/SOUNDS.md` rows. No separate spin whirr: the card
+  allowed it only if cheap, and the saw's loop carries the spin's sound.
+  `src/game/audio.ts` gained a `loop` pass-through (a no-op handle while
+  the engine loads).
+- Watch: `state()` gains `grinding` (the target's rig and seconds left).
+- Tests: `tests/player/saw.test.ts` (9): grind length, riding a moved
+  Foamer, tick count and damage, the Darter's plate share, never kills and
+  leaves it finishable, ricochet and return after the grind, no block or
+  parry while lodged, one model held and flown, and the look data's bands
+  and spin. `tests/shield/throw.test.ts` test 2 now asserts the total cost
+  is more than the throw's own damage (the grind adds its ticks).
+- `npx tsc --noEmit`, `npx vitest run` (404 passed, 2 skipped) and
+  `npm run build` pass. Not checked by eye: the look, the spin's speed and
+  direction, the disc sitting on the body rather than in it during the
+  grind, and the two sounds. Reviewer: Opus 5.5.
 
 ### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
 

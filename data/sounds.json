@@ -1203,6 +1203,67 @@
         "gain": 0.7
       }
     },
+    "SH-saw": {
+      "files": [],
+      "volume": 0.75,
+      "jitter": 0,
+      "maxVoices": 1,
+      "_note": "GAME-04c: the foam saw grinding, a loop while a thrown disc lodges. Placeholder synth: a buzzy sawtooth with a slow wobble, the page pitches it by the spin.",
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 110,
+              "f1": 112,
+              "wave": "sawtooth",
+              "attack": 0,
+              "decay": 0
+            },
+            "gain": 0.3
+          },
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 165,
+              "f1": 163,
+              "wave": "square",
+              "attack": 0,
+              "decay": 0
+            },
+            "gain": 0.12
+          },
+          {
+            "noise": {
+              "dur": 0.5,
+              "attack": 0,
+              "decay": 0,
+              "lowpass": 2200,
+              "highpass": 300
+            },
+            "gain": 0.18
+          }
+        ],
+        "loop": true
+      }
+    },
+    "SH-sawEnd": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.05,
+      "maxVoices": 1,
+      "synth": {
+        "noise": {
+          "dur": 0.16,
+          "attack": 0.005,
+          "decay": 0.15,
+          "lowpass": 1400,
+          "highpass": 120,
+          "lowpassEnd": 400
+        },
+        "gain": 0.5
+      }
+    },
     "PL-step-hard": {
       "files": [],
       "volume": 0.7,
