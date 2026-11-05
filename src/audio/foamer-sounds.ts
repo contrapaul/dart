@@ -61,7 +61,15 @@ export class FoamerSounds {
       if (seen !== undefined && step !== seen) {
         this.plantSeen.set(f, step);
         // GAME-10b: the Darter's run is the charge loop, not plain steps.
-        this.sink.play(f.state === "charge" ? "F05-run-loop" : "FX-step-medium", { position: f.centre });
+        // GAME-10d: a Swarmer skitters, a lighter and quicker patter.
+        this.sink.play(
+          f.state === "charge"
+            ? "F05-run-loop"
+            : f.spec.rig === "F03"
+              ? "F03-scurry"
+              : "FX-step-medium",
+          { position: f.centre },
+        );
       } else if (seen === undefined) {
         this.plantSeen.set(f, step);
       }
@@ -89,11 +97,17 @@ export class FoamerSounds {
       case "part-off":
         this.sink.play("FX-part-off", p);
         break;
-      case "attack":
+      case "attack": {
         // A thrower's windup shows before the ball leaves the hand
-        // (GAME-10a); a bonker's swing keeps its own whoosh.
-        this.sink.play(f.attack()?.token === "ranged" ? "F02-windup" : "F01-swing", p);
+        // (GAME-10a); a bonker's swing keeps its own whoosh. GAME-10d: a
+        // Swarmer's is a nibble, a small high snap, not a club.
+        const token = f.attack()?.token;
+        this.sink.play(
+          token === "ranged" ? "F02-windup" : token === "swarm" ? "F03-nibble" : "F01-swing",
+          p,
+        );
         break;
+      }
       case "throw":
         this.sink.play("F02-throw", p);
         break;
@@ -126,6 +140,11 @@ export class FoamerSounds {
         break;
       case "impact":
         this.sink.play("F05-impact", p);
+        break;
+      // GAME-10d, the Swarmer: a pack waking yips as one (the system only
+      // sends this for a swarm member, so no other Foamer picks it up).
+      case "alert":
+        this.sink.play("F03-yip", p);
         break;
     }
   }

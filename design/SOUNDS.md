@@ -210,12 +210,14 @@ The slice Foamers, one row per sound:
 | F05-run-loop | F05: charge run (loop) | Yes | 2 | Foley: fast thumps on a cushion |
 | F05-impact | F05: charge hitting a wall or the player | Yes | 4 | Foley: drop a heavy cushion |
 | F05-stun | F05: stunned after hitting a wall | Yes | 2 | Foley or Code |
+| F03-yip | F03 (small fast biter): the yip that wakes a pack | Yes | 3 | Foley or Code |
+| F03-nibble | F03: the nibble | Yes | 3 | Foley: a quick snap of foam |
+| F03-scurry | F03: skittering steps (repeated patter) | Yes | 4 | Foley: light quick taps |
 
 The other Foamers (IDs given when each is built):
 
 | ID | Foamer | Sounds | Slice | Suggested source |
 |---|---|---|---|---|
-| F03 | Small fast biter (packs) | Skittering steps (loop), nibble attack, a tiny pop | Later | Foley |
 | F04 | Shield trooper | Volley fire, dart hitting its shield, shield carved away | Later | Blaster plus Foley |
 | F06 | Floating ball | Float hum (loop), jaw open, blob spit, blob bounce, big blob | Later | Foley plus Code |
 | F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |

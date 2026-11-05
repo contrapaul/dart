@@ -164,7 +164,10 @@ export type FoamerSoundKind =
   | "stagger" | "throw"
   // GAME-10b, the charger: the scrape before a charge, the run starting,
   // and the wall or player it hits.
-  | "scrape" | "charge" | "impact";
+  | "scrape" | "charge" | "impact"
+  // GAME-10d, the Swarmer: the yip when a pack wakes. Only the F03 has a
+  // sound for it, so the others stay quiet rather than borrow one.
+  | "alert";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -783,6 +786,7 @@ export class FoamerSystem {
     // Entering alert this step (the brain resets stateTime on a transition):
     // a neighbour of an idle one picks the alarm up on its next step.
     f.justAlerted = a.state === "alert" && a.brain.stateTime === 0;
+    if (f.justAlerted && tokenKindOf(f.spec) === "swarm") sound(this, "alert", f, f.centre);
   }
 
   /** A step of the bid: what the agent's token request and distance read. */

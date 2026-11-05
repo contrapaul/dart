@@ -2105,6 +2105,87 @@
           }
         ]
       }
+    },
+    "F03-yip": {
+      "files": [],
+      "volume": 0.55,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.14,
+              "f0": 760,
+              "f1": 1040,
+              "wave": "triangle",
+              "attack": 0.008,
+              "decay": 0.11
+            },
+            "gain": 0.5
+          },
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.004,
+              "decay": 0.08,
+              "lowpass": 3200,
+              "highpass": 900,
+              "lowpassEnd": 2000
+            },
+            "gain": 0.2
+          }
+        ]
+      }
+    },
+    "F03-nibble": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.07,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.09,
+              "attack": 0.002,
+              "decay": 0.07,
+              "lowpass": 2600,
+              "highpass": 300,
+              "lowpassEnd": 900
+            },
+            "gain": 0.7
+          },
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 300,
+              "f1": 170,
+              "wave": "square",
+              "attack": 0.002,
+              "decay": 0.08
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "F03-scurry": {
+      "files": [],
+      "volume": 0.45,
+      "jitter": 0.1,
+      "maxVoices": 4,
+      "synth": {
+        "noise": {
+          "dur": 0.06,
+          "attack": 0.002,
+          "decay": 0.05,
+          "lowpass": 3800,
+          "highpass": 900,
+          "lowpassEnd": 2400
+        },
+        "gain": 0.6
+      }
     }
   },
   "blasterCues": {
