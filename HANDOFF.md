@@ -168,10 +168,8 @@ and merge"). Pushing main is publishing: only as part of an approved merge.
   `git worktree list` is the truth; as of 2026-11-05:
   - Waiting (not merged): `dart-bug-01` (BUG-01, review), `dart-game-04b`
     (parry, ready to merge), `dart-anim-01` (ANIM-01, ready to merge),
-    `dart-lvl-02a` (LVL-02a, review).
-  - Merged and safe to remove: `dart-art-00`, `dart-art-04-b03`,
-    `dart-art-04-b04` (branch `b04-closed`), `dart-aud-01`, `dart-eng-10`,
-    `dart-eng-11`, `dart-eng-12`, `dart-game-09`, `dart-ui-01`.
+    `dart-lvl-02a` (LVL-02a, review). These four are the only ones; the
+    nine merged leftovers were removed on 2026-11-05.
 - Start a model: `tools/pi/run-pi.sh <worktree> <provider> <model>
   <thinking> <brief file> <log>` (retries a start-up hang; never kills
   pi's children, which may own the local context proxy on 18787). Brief:
