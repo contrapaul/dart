@@ -210,12 +210,14 @@ The slice Foamers, one row per sound:
 | F05-run-loop | F05: charge run (loop) | Yes | 2 | Foley: fast thumps on a cushion |
 | F05-impact | F05: charge hitting a wall or the player | Yes | 4 | Foley: drop a heavy cushion |
 | F05-stun | F05: stunned after hitting a wall | Yes | 2 | Foley or Code |
+| F03-yip | F03 (small fast biter): the yip that wakes a pack | Yes | 3 | Foley or Code |
+| F03-nibble | F03: the nibble | Yes | 3 | Foley: a quick snap of foam |
+| F03-scurry | F03: skittering steps (repeated patter) | Yes | 4 | Foley: light quick taps |
 
 The other Foamers (IDs given when each is built):
 
 | ID | Foamer | Sounds | Slice | Suggested source |
 |---|---|---|---|---|
-| F03 | Small fast biter (packs) | Skittering steps (loop), nibble attack, a tiny pop | Later | Foley |
 | F04 | Shield trooper | Volley fire, dart hitting its shield, shield carved away | Later | Blaster plus Foley |
 | F06 | Floating ball | Float hum (loop), jaw open, blob spit, blob bounce, big blob | Later | Foley plus Code |
 | F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |
@@ -260,6 +262,8 @@ The other Foamers (IDs given when each is built):
 | SH-throw | Shield thrown (frisbee whoosh) | Yes | 4 | Foley: throw a frisbee |
 | SH-ricochet | Thrown shield bouncing off a Foamer | Yes | 6 | Foley |
 | SH-catch | Shield caught back on the arm | Yes | 3 | Foley |
+| SH-saw | Foam saw: the disc grinding a Foamer (a loop, pitched by the spin) | Yes | 3 | Foley: a foam block on a spinning toy |
+| SH-sawEnd | Foam saw: the grind ends and the disc tears free | Yes | 3 | Foley: a soft tearing pop |
 | SH-lock | Shield charge: a target is locked | Yes | 3 | Code: a short rising blip |
 | SH-charge | Shield charge rush (the whoosh) | Yes | 3 | Foley: a sharp exhale past the ear |
 | SH-charge-hit | Shield charge impact (the thud into the Foamer) | Yes | 3 | Foley: a heavy cushion drop |
@@ -267,6 +271,10 @@ The other Foamers (IDs given when each is built):
 | ML2-swing, ML2-hit | [Melee 2], slow and big: swing, hit | Later | 4 each | Foley |
 | ML3-charge, ML3-slam | [Melee 3]: charging, the slam | Later | 3 each | Foley |
 | ML-empty | Melee out of charges | Later | 2 | Code |
+| ML-swing | GAME-06 placeholder: the baton's sweep | Now (synth) | 0 | Synth in data/sounds.json |
+| ML-hit | GAME-06 placeholder: the baton's contact | Now (synth) | 0 | Synth in data/sounds.json |
+| ML-bash | GAME-06 placeholder: the shield bash | Now (synth) | 0 | Synth in data/sounds.json |
+| ML-charge | GAME-06 placeholder: a parry or timer refills a charge | Now (synth) | 0 | Synth in data/sounds.json |
 | FN-finisher | Finisher: squeeze, wring out, pop | Later | 3 per finisher | Foley: wring a wet sponge |
 | VC-start | [Vacuum] switching on | Later | 2 | Foley: a hand vacuum |
 | VC-suck | Sucking loop | Later | 2 long | Foley |

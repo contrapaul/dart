@@ -242,8 +242,15 @@ export class Vacuum {
     f.group.matrix.elements[14] += (nozzle.z - f.centre.z) * pull * 0.9;
   }
 
+  /** Half a metre ahead of the lock's eye along the view it turns to,
+   *  and a little down: where the placeholder rises. (Review: a fixed
+   *  world -z offset pulled the Foamer behind a player facing +z.) */
   private nozzleInto(out: THREE.Vector3): THREE.Vector3 {
-    return out.set(this.eyeAt.x, this.eyeAt.y - 0.25, this.eyeAt.z - 0.5);
+    return out.set(
+      this.eyeAt.x - Math.sin(this.endYaw) * 0.5,
+      this.eyeAt.y - 0.25,
+      this.eyeAt.z - Math.cos(this.endYaw) * 0.5,
+    );
   }
 
   /** The type's shares: the active blaster its own share of its own

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import pitJson from "../../data/levels/1-1-pit.json";
 import { validateLevel } from "../../src/level/validate";
-import type { Level, Pickup } from "../../src/level/format";
+import type { Arena, Level, Pickup } from "../../src/level/format";
 
 // Rule numbers are design/levels/BLOCKOUT.md section 5.
 
@@ -192,6 +192,65 @@ describe("LVL-02a: a darts-* pickup names a real dart type", () => {
       l.pickups!.push({ id: "x", type: "darts-bogus" as Pickup["type"], count: 4, pos: [0, 0, 0] });
     });
     expect(errorsOf(level).join(" ")).toMatch(/is not a dart type/);
+  });
+});
+
+describe("LVL-02b: arenas in file order", () => {
+  /** The Pit's arena copied with new ids and moved 60 m north. */
+  function secondArena(id: string): Arena {
+    const copy = structuredClone(pit.arenas![0]);
+    copy.id = id;
+    copy.trigger = { pos: [0, 2, 54], size: [20, 4, 6] };
+    for (const door of copy.doors) {
+      door.id = door.id.replace("pit-", "p2-");
+      door.pos = [door.pos[0], door.pos[1], door.pos[2] + 60];
+    }
+    for (const rift of copy.rifts) {
+      rift.id = rift.id.replace("pit-", "p2-");
+      rift.pos = [rift.pos[0], rift.pos[1], rift.pos[2] + 60];
+    }
+    for (const wave of copy.waves) {
+      wave.id = wave.id.replace("pit-", "p2-");
+      wave.rifts = wave.rifts.map((r) => r.replace("pit-", "p2-"));
+    }
+    copy.unlockOnClear = copy.unlockOnClear.map((d) => d.replace("pit-", "p2-"));
+    return copy;
+  }
+
+  it("accepts two arenas in a reachable order", () => {
+    const level = broken((l) => {
+      l.shell.push(
+        { id: "t2-floor", shape: "box", pos: [0, -0.5, 60], size: [34, 1, 26], material: "greybox" },
+        { id: "t2-wall-n", shape: "box", pos: [0, 6, 73.5], size: [34, 12, 1], material: "greybox" },
+        { id: "t2-wall-e", shape: "box", pos: [17.5, 6, 60], size: [1, 12, 28], material: "greybox" },
+        { id: "t2-wall-w", shape: "box", pos: [-17.5, 6, 60], size: [1, 12, 28], material: "greybox" },
+      );
+      l.arenas!.push(secondArena("pit-2"));
+    });
+    expect(errorsOf(level)).toEqual([]);
+  });
+
+  it("rejects a duplicated arena id", () => {
+    const level = broken((l) => {
+      l.arenas!.push(secondArena("pit"));
+    });
+    expect(errorsOf(level).join(" ")).toMatch(/arena id pit is used twice/);
+  });
+
+  it("rejects a trigger outside the shell", () => {
+    const level = broken((l) => {
+      l.arenas!.push(secondArena("pit-2")); // its trigger is at z 54, no shell there
+    });
+    expect(errorsOf(level).join(" ")).toMatch(/arena pit-2: trigger outside the shell/);
+  });
+
+  it("rejects a trigger inside an earlier arena's locked space", () => {
+    const level = broken((l) => {
+      const copy = secondArena("pit-2");
+      copy.trigger = { pos: [0, 2, 7], size: [4, 4, 4] }; // inside the Pit
+      l.arenas!.push(copy);
+    });
+    expect(errorsOf(level).join(" ")).toMatch(/trigger is inside arena pit, which locks first/);
   });
 });
 

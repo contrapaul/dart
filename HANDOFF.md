@@ -14,6 +14,66 @@ One charge, 15 s to refill, full on start and retry, a recharge pip in
 the HUD; the placeholder tool is a code-built foam tube and nozzle. Not
 checked by eye: the tool's look, the nozzle puff, and the five VC-*
 placeholder sounds (see the Log entry).
+LVL-02b done 2026-11-06, awaiting review (`tasks/LVL-02b.md`, Qwen 3.8
+Flash Next via Pi): a level's `arenas` play in file order through a new
+`LevelRunner` in `src/level/level-runner.ts` that owns one `ArenaRunner`
+per arena and steps only the current one, so a later arena's trigger does
+nothing until every earlier arena cleared. Each arena locks on its own
+trigger, runs its waves, opens its own doors and keeps its own checkpoint;
+Try again restarts the current arena with the earlier arenas still cleared,
+Play again or a fall resets them all; the exit pad ends the level only once
+the last arena has cleared. One arena levels (the Pit, the Ring) are
+unchanged. The watch's `dartArena.state()` gains `arena`, `arenaId` and
+`arenasCleared`. The validator now rejects a duplicated arena id, a trigger
+outside the shell, and a trigger inside an earlier arena's locked space.
+Level 1-2 beats 1 to 4 are `data/levels/1-2.json`, played by
+`arena.html?level=1-2` (the Pit stays the default): the service corridor
+with a foam wall and the empty B02 plinth, the parry corridor with one
+Roamer as its own one wave arena, the yard, the Ring arena (two waves of 4
+and 6 Roamers, the third rift behind the block, the north exit a reveal)
+and the breather store with the exit pad. Not checked by eye: the spaces
+and their pacing, the reveal, the lone Roamer's read at the corridor's far
+end, the store window, and that the ring's Foamers path round the block
+well (see the Log entry). Beats 5 to 9, the B02 blaster, stations, secrets
+and the level's name and setting are still to do.
+GAME-10d done 2026-11-05, awaiting review (`tasks/GAME-10d.md`, DeepSeek
+V4.1 Flash via Pi): the F03 Swarmer is playable. It has its own factory
+palette look (purple body, five small rounded lime nubs along its back,
+orange toothless gape, angry eyes), a turnaround in `design/foamers/`, and
+the F03 type in `data/foamers.json` (health 2, nibble damage 3, windup
+0.25 s, a pack of 5). `src/ai/f03-brain.ts` is hit and run: it runs in with
+a `swarm` token, bites, darts back out to a 3 m ring, circles there for
+1.2 s and runs in again. `swarm` is its own token pool per difficulty
+(Story 2, Normal 3, Hard 4, Foam Fury 6), so a pack never starves the
+F01s. `spawnPack` puts the whole pack round a point and skips past the
+live cap of 12. Placeholder sounds `F03-yip`, `F03-nibble`, `F03-scurry`.
+Benchmark, headless only: two packs, 10 Swarmers, 600 frames at 60 Hz, the
+simulation half of a frame (dart + Foamer update + physics step) is 0.20 ms
+mean, 0.18 median, 0.30 p95. The first frames reach 125 to 146 ms once
+while the mesh workers warm up. No renderer, so no fps. Not checked by eye:
+the look, the skitter and nibble poses, the swing of the ring, and the
+three sounds (see the Log entry). Not pushed or merged.
+
+GAME-04c done 2026-11-05, awaiting review (`tasks/GAME-04c.md`, DeepSeek
+V4.1 Flash via Pi): the shield disc is one model of concentric foam bands
+with a ring of rounded nubs, domed, in the factory palette, and the same
+model is held and thrown; it spins about its own axis. A throw that strikes
+a Foamer lodges and grinds it for 0.9 s (carve, damage, capped debris, the
+Foamer held staggered, plates take the full tick), then ricochets on as
+before. The saw never kills: it weakens a Foamer into the finisher band.
+Sounds `SH-saw` (loop) and `SH-sawEnd` are placeholders; the watch gains
+`grinding`. Not checked by eye: the look (bands, dome, nubs, the boss
+placeholder), the spin's speed and direction, the grind reading as a saw,
+and the two sounds (see the Log entry). The centre emblem is still [Paul].
+
+GAME-06 done 2026-11-05: melee weapon 1 (M01, name [Paul]) swings on the
+melee key after the finisher passed on the press: a three-hit combo that
+spends charges (three, one back per parry, one back every 8 s below full,
+full at start and retry), hit 3 staggers and knocks back, each hit carves
+foam cover, and with no charge a press is the shield bash. `data/melee.json`
+holds every number; the course's debug blast moved to KeyB. Not checked by
+eye: the baton's sweeps and the blaster dip, the feel, the sounds, the
+pips' placement (see the Log entry).
 
 BUG-01 done 2026-11-05 (round 2, after a review found round 1 had traded one
 bug for another): the Pit's ring tops are back in the nav grid, as a second
@@ -237,6 +297,308 @@ the tool, upgrades (faster recharge, heavies), the range-panel "Fill vacuum"
 button. Reviewer: Claude. Not merged or pushed.
 
 ### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
+### 2026-11-06: LVL-02b review, Level 1-2 played through (Claude, overnight)
+
+- Code read: `LevelRunner` is small and keeps `ArenaRunner` unchanged; the
+  validator's new rules are sound. Main merged in (HANDOFF kept both
+  sides); tsc, 442 tests and the build pass.
+- Played `arena.html?level=1-2&watch` with the watch hooks: the parry
+  corridor locks on entry, its Roamer spawns and dies, both doors open and
+  the runner moves to the Ring (`arena` 1). The Ring locks, runs wave 1 (4)
+  and wave 2 (6), and opens every door on clear. Try again in the Ring kept
+  the parry corridor cleared and put the Ring back to waiting. The exit pad
+  shows the complete panel only after both arenas clear. The Pit still
+  loads as one arena. No console errors.
+- Seen in passing: Roamers on the far side of the centre block stand at
+  its corners and lob over it, so the block works as cover; a player who
+  hugs its south face is hard to reach. Worth a look in Paul's playtest.
+- Not checked by eye: the spaces and pacing, the north exit reveal, the
+  store window, the banner overlap. The rift spawn for the lone Roamer and
+  the half scale Ring are the model's format shortcuts (section 14); a
+  `placed` Foamer field is a candidate for a later card.
+
+### 2026-11-06: LVL-02b, arenas in order and Level 1-2 beats 1 to 4 (Qwen 3.8 Flash Next via Pi)
+
+`src/level/level-runner.ts`: `LevelRunner` owns one `ArenaRunner` per arena
+and steps only the current one, so a later arena's trigger does nothing until
+every earlier arena has cleared. It is built from the file's `arenas` array in
+order; every arena's runner is constructed up front, which puts every door in
+the file into its file state at load, so a player cannot run ahead through a
+later arena's open door. `state()` reports `phase` (the arena's own phase, or
+`complete` once every arena is down), `arenaIndex`, `arenaId`, `arenasCleared`
+and `progress`. `resetCurrent()` restarts the arena being played with the
+earlier ones still cleared (Try again); `resetAll()` puts every arena back to
+waiting (Play again, and a fall out of the world). `ArenaRunner` itself is
+untouched, so the Pit and the Ring play exactly as before and their tests pass
+unchanged. The page passes the same `ArenaEvents` it did plus `onArenaStart`
+(which moves the rift glow and, in a multi arena level, shows an `Arena n of m`
+banner) and `onLevelCleared`. The exit pad only ends the level once the
+runner's phase is `complete`; in a one arena level the locked door in front of
+the pad already kept the player out of the exit room, so nothing changed there.
+The watch's `dartArena.state()` gains `arena`, `arenaId` and `arenasCleared`.
+
+The validator gained three rules: arena ids unique, each arena's trigger inside
+the shell, and a later arena's trigger not inside the space an earlier arena
+seals when it locks (the trigger, doors and rifts box, ungrown, so a trigger
+you can never walk to is an error rather than a level that soft locks).
+
+`data/levels/1-2.json` is beats 1 to 4 of `design/levels/LEVEL-1-2.md`, played
+by `arena.html?level=1-2`: the service corridor with a two block foam wall to
+test a blaster on and the empty B02 plinth (the rack is [Paul]), the parry
+corridor with a west alcove and one Roamer at the far end as its own one wave
+arena, the yard, the Ring arena (two waves of Roamers, 4 then 6 with the third
+rift behind the block, two foam pillars, south west ammo, the north exit a
+reveal) and the breather store with a foam window onto the ring, one ammo box
+and the level's exit pad. Three choices a reviewer should see: the lone Roamer
+spawns at a rift at the corridor's far end rather than being placed at load,
+because the blockout format has no placed Foamer field and the wave machine is
+the only thing that spawns; the rooms share one floor slab, one ceiling and one
+perimeter wall with the walls between them as pinches, because rule 10 forbids
+two shell boxes sharing volume; and the Ring is a half scale A2 (26 x 30 m
+around a 12 x 10 m block), because a full 30 x 30 m arena would not fit a
+level that is mostly corridor. The parry arena opens its own entry door on
+clear as well as the exit, so a cleared player can walk back for the alcove.
+
+Tests: `tests/level/level-runner.test.ts` (a two arena level built by copying
+the Pit's arena 60 m north plays both in order; arena 2's trigger does nothing
+while arena 1 is fighting; Try again in arena 2 keeps arena 1 cleared and its
+doors open; Play again resets both; a one arena level is unchanged) and
+`tests/level/level-1-2.test.ts` (1-2 validates, floor under the whole walk from
+the start to the exit and under every rift, pickup and checkpoint, both arena
+exits block until opened, the triggers and the store bake walkable, `?level=1-2`
+selects it). Not checked by eye, no browser here: whether the spaces read and
+pace as the concept intends, the reveal of the north exit, the lone Roamer at
+the corridor's far end, the store window's read, the two banner texts
+competing (`Arena 2 of 2` over `Clear the arena`), and whether the Ring's
+Foamers path round the block well rather than hugging it.
+### 2026-11-05: GAME-10d review, packs played in the Pit (Claude, overnight)
+
+- DeepSeek's first run broke off on an upstream provider error after
+  stage 1; resumed with `pi -c`, it finished stages 2 and 3. Reviewer
+  note taken: the spines were one lime tuft on the head (a turnip top),
+  now a row of five nubs along the back.
+- Merged main in (sounds.json: both sides' new sounds kept; HANDOFF
+  rebuilt from main plus this branch's entries, git had misaligned an old
+  entry). `foamer-rigs.json` was re-indented by the model: content checked,
+  only F03 changed. 426 tests and the build pass.
+- Played `arena.html?watch`: Swarmers dart in to about 1 m and back out
+  to about 3 m, the swarm pool filled to its cap of 3 while the F01s held
+  their own melee tokens, 14 nibbles in 12 s on a standing player. A pack
+  of 5 plus two more packs stopped at the live cap. No console errors.
+- My own test spawned a pack inside the Pit's centre block (x -4.8 to 4.8,
+  z 2.4 to 5.6) and four stayed trapped in its voxel shell: not a bug in
+  the Swarmer, but `spawnPack` does not check the spots are walkable.
+  Rifts sit on open floor, so it only matters for a hand placed pack.
+- For Paul's play test: a full pack is deadly to a player who stands still
+  (popped in about 2 s with health resets off). Hit and run feels right in
+  the numbers; the look of the scurry, the nibble and the sounds are
+  unverified by eye.
+- Merged into local main overnight under Paul's standing instruction;
+  not pushed.
+
+### 2026-11-05: GAME-10d, the F03 Swarmer built (DeepSeek V4.1 Flash via Pi)
+
+Three commits on `game-10d`: `39112e0` the look, type and turnaround;
+`d22fea3` the swarm pool, F03 brain, `spawnPack` and the cap; `d2732ef`
+the sounds, the range pack spawn and the benchmark. `npx tsc --noEmit`,
+`npx vitest run` (63 files, 417 passed, 2 skipped) and `npm run build`
+pass; no em or en dashes in any touched file.
+
+- Look: `data/foamer-rigs.json` F03, five `spine1..5` detail parts on the
+  body's back (ellipsoids `[5,6,5]`, taper `[1,0.4]`, `pivot [0,-1,0]`,
+  `foam-lime`), a body ellipsoid `[11,9,15]`, a head `[12,11,12]` with the
+  angry eyes and an orange `gape`. The reviewer's note that the first try
+  read as one lime tuft on the head, like a turnip top, is what moved them
+  onto the back as a row of small nubs. Turnaround re-rendered with
+  `npx tsx tools/render-rig.ts F03` (four views, sheet, README row).
+- Brain: `src/ai/f03-brain.ts`, an F01 sibling with four states, no new
+  ones. `decideF03` is pure so the test asks it directly. Range is the
+  type's `attackRange` (1.4) to bite and `holdRangeMetres` (3.0) to ring,
+  gap `pack.nibbleGapSeconds` (1.2). The clock is `sinceNibble` on
+  `AgentInput`: `Infinity` at spawn, set to 0 by the system when a nibble
+  lands (only for a swarm member), plus `dt` each step. It is not a new
+  Foamer state, so the recover, the stagger, the fall and the crawl all
+  behave exactly as they did for the others.
+- Tokens: `swarm` is a third `TokenKind` in `src/ai/director.ts` and
+  `data/ai.json`, with its own cap per difficulty and its own `stats()`
+  row. `tokenKindOf` reads it off the attack's token, and `spawn` picks
+  the f03 brain from it.
+- Pack and cap: `spawnPack(feet, facing?, count?, type = "F03")` places
+  `pack` members on a ring round the point at 55 to 100 percent of
+  `pack.spreadMetres` (1.6), and stops at `pack.maxAlive` (12). Past the
+  cap a spawn is skipped, and nobody is trimmed. The system's own
+  `SPAWNER.max` (12) still applies underneath.
+- Damage: a nibble is the ordinary attack path, so `damageOf`,
+  `blocksAttackFrom` and the 0.5 s grace all apply and the shield blocks
+  it from the front. `tests/foamers/swarmer.test.ts` checks the nibble id
+  and the dart-free path; the shield test for it is the existing one,
+  unchanged.
+- Range: `src/range/main.ts` spawns a whole pack when F03 is the chosen
+  type, singly for the others, so one press shows the ring.
+- Sounds: `F03-yip` on the new `"alert"` event (sent only for a swarm
+  member), `F03-nibble` picked from the attack's token, `F03-scurry` for
+  an F03's steps. Recipes are in `data/sounds.json`, rows in
+  `design/SOUNDS.md` 4.2, and the old "later" F03 row is gone from the
+  other-Foamers table.
+- Tests: `tests/ai/f03-brain.test.ts` (5: wake and run in, back out and
+  ring, the type's ring not the shared one, one alert waking a pack, the
+  data numbers), `tests/foamers/swarmer.test.ts` (5: own spec and health,
+  `spawnPack` count and cap, swarm tokens not eating melee ones, nibble
+  then back out, the pack waking together), `tests/foamers/swarmer-sounds.test.ts`
+  (3: the yip and no shared alert line, the nibble line and not a swing,
+  skitter against a thump). F01, F02 and F05 tests are unchanged and pass.
+- Benchmark: `npx tsx tools/bench-swarmer.ts` (new, headless, the same rig
+  the tests use): 10 Swarmers, 600 frames, 0.20 ms mean, 0.18 median,
+  0.30 p95, 18 nibbles. There is no browser here, so this is the
+  simulation half of a frame only, not a frame rate.
+- Unverified by eye: the look (whether the five nubs read as nubs and not
+  as a lumpy ridge), the skitter and the nibble poses at speed, whether
+  the ring reads as a pack circling rather than a crowd jittering, and the
+  three placeholder sounds. Also unverified: the real fps with two packs
+  in the Ring or Pit.
+
+### 2026-11-05: GAME-06 review, the combo played in the Pit (Claude, overnight)
+
+- Merged main in; `game.ts` restart hooks now reset the melee and stop
+  the saw loop. 413 tests and the build pass.
+- Played `arena.html?watch` against one F01: hits of 1, 1 and 2 damage,
+  the third staggered it and knocked it 2 m back, charges 3 to 0; the next
+  press was the bash (it missed: the knockback had put the F01 past the
+  bash's 1.8 m reach), the one after the empty click on the bash's
+  cooldown. The new shield and the three charge pips under the health bar
+  show in the screenshots. No console errors.
+- Not checked by eye: the baton's sweep. It animates on render time, and
+  the watch harness renders one frame per step call, so a screenshot could
+  not catch it mid swing; the shoves and sounds too. For Paul's play test.
+- Merged into local main overnight under Paul's standing instruction;
+  not pushed.
+
+### 2026-11-05: GAME-10d card, the F03 Swarmer, started (Claude)
+
+- Paul asked for a DeepSeek task while GAME-08 and GAME-06 run. Card
+  `tasks/GAME-10d.md`: the Swarmer's palette look and turnaround, a pack
+  brain (hit and run nibbles), a `swarm` token pool, `spawnPack` and a
+  live cap. Kept clear of the shield, the melee and use blocks, pickups
+  and vacuum entries. Running on `game-10d`.
+
+### 2026-11-05: GAME-04c review, the saw played in the Pit (Claude)
+
+- Played `arena.html?watch`, one F01, a throw from 4 to 8 m: the disc
+  lodged, ground for 0.9 s (9 ticks), held the F01 staggered the whole
+  time, then flew home. The F01 went from 6 health to 0.5 (the throw's 1
+  plus 9 x 0.5): never killed, left finishable. No console errors.
+- Fixed: the flying disc flew face first (its face 0.99 along the travel),
+  a plate seen from behind. It now flies flat and edge first, the nubbed
+  rim leading, its face up and tipped back toward the thrower by
+  `look.flightTiltDeg` (20) so the rings still read. A screenshot shows it
+  meeting the Foamer edge on.
+- For Paul's play test: one saw throw takes 92 percent of a Slowmer's
+  health. That makes the saw plus a finisher a two button kill on fodder;
+  `saw.damagePerTick` (0.5) and `grindSeconds` (0.9) are the knobs.
+- The nav timing test failed in this branch's full run while two other
+  models were testing on the same Mac; the 39 shield and saw tests pass.
+- Not checked by eye: the look held on the arm, the grind on a Darter's
+  plates, the sounds.
+
+### 2026-11-05: GAME-04c built: disc look, spin, foam saw (DeepSeek)
+
+- Look: `data/shield.json` `look` is now three concentric foam bands
+  (`bands`, each thinner and stepped forward by `domeDepth`, so the face
+  domes), 16 rounded nubs on the rim (`nubCount`, `nubRadius`) as the saw's
+  teeth, and the factory palette in `look.colors`. The boss is a plain foam
+  cylinder with a `[Paul]` note: the emblem is Paul's. The disc is built
+  once in the `Shield` constructor as `discModel` and the throw reparents
+  that one group into a scene-level `flight` holder (the catch returns it to
+  the arm), so the held and the flying disc are the same model; the old
+  `discMesh` name is kept as a getter on `flight`.
+- Spin: about the disc's own axis (the face along the flight), at
+  `look.spinRevPerSec` (6) out and back and `saw.spinRevPerSec` (14) while
+  grinding. Chose in-plane spin over edge over edge: the card says about its
+  own axis, and the bands and teeth are what should be seen turning.
+- Foam saw: a new `saw` block. The first Foamer a flight strikes is lodged
+  in: the disc holds its contact point in the struck part's voxel frame (so
+  it rides a Foamer that walks or is shoved), spins fast, carves a
+  `carveRadius` sphere every `tickSeconds`, deals `damagePerTick` (plates
+  take `plateShare` 1.0, against a dart's 0.15, measured with `armourOf`),
+  throws at most `debrisPerTick` chunks a tick and keeps the Foamer
+  staggered for the grind. Then it ricochets as before (bounces and range
+  unchanged). It never kills (`canKill` false): it keeps the throw's floor
+  and sets `finishWeakened`, the point of the weapon. A prone Foamer takes
+  it without the stagger. No block, parry or charge while it is lodged
+  (unchanged: `state` is not `raised`).
+- Sounds: `SH-saw` (a loop, started on the lodge, followed to the disc,
+  pitched by the grind time left, stopped when the grind ends or the disc
+  comes home or the run restarts) and `SH-sawEnd`, with placeholder synth
+  recipes and `design/SOUNDS.md` rows. No separate spin whirr: the card
+  allowed it only if cheap, and the saw's loop carries the spin's sound.
+  `src/game/audio.ts` gained a `loop` pass-through (a no-op handle while
+  the engine loads).
+- Watch: `state()` gains `grinding` (the target's rig and seconds left).
+- Tests: `tests/player/saw.test.ts` (9): grind length, riding a moved
+  Foamer, tick count and damage, the Darter's plate share, never kills and
+  leaves it finishable, ricochet and return after the grind, no block or
+  parry while lodged, one model held and flown, and the look data's bands
+  and spin. `tests/shield/throw.test.ts` test 2 now asserts the total cost
+  is more than the throw's own damage (the grind adds its ticks).
+- `npx tsc --noEmit`, `npx vitest run` (404 passed, 2 skipped) and
+  `npm run build` pass. Not checked by eye: the look, the spin's speed and
+  direction, the disc sitting on the body rather than in it during the
+  grind, and the two sounds. Reviewer: Opus 5.5.
+
+### 2026-11-05: GAME-06 done: melee weapon 1 M01, the combo, the bash, the charges (Qwen 3.8 Flash Next via Pi, dgx-spark)
+
+- New `src/game/melee.ts` (`Melee`) owns the combo, the charges and the hit
+  query; `data/melee.json` owns every number (active id `M01`, `weapons`
+  map so weapons 2 and 3 are data plus small code later). Three charges:
+  each press within `comboWindow` (0.6 s) swings the combo's next hit and
+  spends one, a later press restarts at hit 1; each hit takes every Foamer
+  in reach (eye to chest), inside the 70-degree arc, in sight of the eye,
+  nearest first, at most `maxTargets` (3), through the existing
+  `parryDamage`; hit 3 staggers (the existing stagger) and knocks back via
+  each Foamer's own `knockStep`; each hit carves a small foam sphere at the
+  contact through the dart carve path with its own debris cap. With no
+  charge a press is the shield bash (weak damage, a small push, no
+  stagger, its own cooldown, never nothing) plus the view's short shove
+  (`melee.kick` rides the camera climb with the shield's kicks). A parry
+  gives a charge back (reads the shield's `parries` only), and below full
+  one returns every `rechargeSeconds` (8); full at start and retry
+  (`melee.reset()` on the restart hooks). No swing while the disc is
+  raised or a charge runs; a swing with the disc thrown is fine. A running
+  swing blocks the blaster (`canFire` gains `!melee.swinging`).
+- Key order (PLAN 14): the finisher sees the press first, unchanged; with
+  none finishable the weapon takes it and the press is spent. The
+  course's debug blast (which had borrowed `melee`) moved to its own
+  binding `debugBlast` (KeyB, `data/input.json`, `src/core/input.ts`),
+  course page only.
+- Look: `src/game/meleeView.ts`, a code-built foam baton (orange handle,
+  cream foam ball, `look` block in `data/melee.json`) that sweeps L-to-R,
+  R-to-L, then overhead over `swingTime`, easing out; the blaster dips
+  out of the way (applied after `loadout.render`). The bash shows no
+  baton. [Paul]'s look to come.
+- HUD: `hud.meleePips(charges, max, pulse)`: three pips under the health
+  bar in `index.html` and `arena.html` (`#meleepips`); the newest full
+  one pulses on a refill. Sounds: placeholder synth recipes for
+  `ML-swing`, `ML-hit`, `ML-bash`, `ML-empty`, `ML-charge` in
+  `data/sounds.json` (rows in `design/SOUNDS.md`).
+- Watch: `swing()` (one melee press, one step; reports `{charges, swung}`;
+  `swung` is the hit index, -1 the bash, null nothing) and `state().melee`
+  (charges, max, combo step, swing and bash seconds left). `meleePress()`
+  is exported from `src/game/melee.ts` as the shared key-order helper the
+  finisher-first test uses.
+- Tests: `tests/game/melee.test.ts`, 9 tests on a real Rapier world with
+  spawned Foamers and a carve wall: the combo steps and restarts, each
+  charged hit spends one charge and takes only Foamers in reach, arc and
+  sight at most maxTargets, hit 3 staggers and knocks back, the swing
+  gates the next press, the bash is weak and never staggers, parries and
+  the timer refill one at a time never past max, `reset` refills, the
+  raised/charging gate (thrown is fine), and the finisher takes the press
+  first. `npx tsc --noEmit`, `npx vitest run` (404 passed) and
+  `npm run build` pass.
+- Not checked by eye (no browser here): the swing look (baton sweeps and
+  the blaster dip), the feel (timing, the bash's shove), and the sounds.
+  The pips' placement relative to GAME-04c's shield area is my guess (the
+  pips sit under the health bar); Paul to judge.
+
 ### 2026-11-05: GAME-04c card; GAME-08, GAME-06 and GAME-04c started (Claude)
 
 - Paul on the shield: a round foam shield in the spirit of a classic round

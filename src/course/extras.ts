@@ -83,7 +83,9 @@ export function courseExtras(g: Game): CourseExtras {
 
   const hooks: Partial<GameHooks> = {
     step() {
-      if (g.input.wasPressed("melee")) debugBlast();
+      // GAME-06: the debug blast had the melee key while the melee was
+      // unbuilt; it has its own binding now (data/input.json, KeyB).
+      if (g.input.wasPressed("debugBlast")) debugBlast();
     },
 
     afterPieces() {

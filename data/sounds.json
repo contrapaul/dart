@@ -1203,131 +1203,63 @@
         "gain": 0.7
       }
     },
-    "VC-start": {
+    "SH-saw": {
       "files": [],
-      "volume": 0.7,
-      "jitter": 0.03,
+      "volume": 0.75,
+      "jitter": 0,
       "maxVoices": 1,
+      "_note": "GAME-04c: the foam saw grinding, a loop while a thrown disc lodges. Placeholder synth: a buzzy sawtooth with a slow wobble, the page pitches it by the spin.",
       "synth": {
         "layers": [
           {
             "tone": {
-              "dur": 0.1,
-              "f0": 160,
-              "f1": 520,
-              "wave": "triangle",
-              "attack": 0.004,
-              "decay": 0.09
-            },
-            "gain": 0.4
-          },
-          {
-            "noise": {
-              "dur": 0.06,
-              "attack": 0.002,
-              "decay": 0.05,
-              "lowpass": 1800,
-              "highpass": 200
-            },
-            "gain": 0.3
-          }
-        ]
-      }
-    },
-    "VC-suck": {
-      "files": [],
-      "volume": 0.65,
-      "jitter": 0.0,
-      "maxVoices": 1,
-      "synth": {
-        "layers": [
-          {
-            "noise": {
-              "dur": 0.8,
-              "attack": 0.08,
-              "decay": 0,
-              "lowpass": 900,
-              "highpass": 120
-            },
-            "gain": 0.9
-          },
-          {
-            "tone": {
-              "dur": 0.8,
+              "dur": 0.5,
               "f0": 110,
-              "f1": 110,
-              "wave": "triangle",
-              "attack": 0.08,
+              "f1": 112,
+              "wave": "sawtooth",
+              "attack": 0,
               "decay": 0
             },
-            "gain": 0.35
+            "gain": 0.3
+          },
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 165,
+              "f1": 163,
+              "wave": "square",
+              "attack": 0,
+              "decay": 0
+            },
+            "gain": 0.12
+          },
+          {
+            "noise": {
+              "dur": 0.5,
+              "attack": 0,
+              "decay": 0,
+              "lowpass": 2200,
+              "highpass": 300
+            },
+            "gain": 0.18
           }
         ],
         "loop": true
       }
     },
-    "VC-done": {
-      "files": [],
-      "volume": 0.7,
-      "jitter": 0.04,
-      "maxVoices": 2,
-      "synth": {
-        "layers": [
-          {
-            "noise": {
-              "dur": 0.16,
-              "attack": 0.002,
-              "decay": 0.15,
-              "lowpass": 1400,
-              "highpass": 240,
-              "lowpassEnd": 340
-            },
-            "gain": 0.8
-          },
-          {
-            "tone": {
-              "dur": 0.14,
-              "f0": 420,
-              "f1": 180,
-              "wave": "sine",
-              "attack": 0.002,
-              "decay": 0.13
-            },
-            "gain": 0.5
-          }
-        ]
-      }
-    },
-    "VC-empty": {
+    "SH-sawEnd": {
       "files": [],
       "volume": 0.6,
-      "jitter": 0.02,
+      "jitter": 0.05,
       "maxVoices": 1,
       "synth": {
-        "tone": {
-          "dur": 0.06,
-          "f0": 220,
-          "f1": 130,
-          "wave": "square",
-          "attack": 0.002,
-          "decay": 0.055
-        },
-        "gain": 0.35
-      }
-    },
-    "VC-ready": {
-      "files": [],
-      "volume": 0.55,
-      "jitter": 0.02,
-      "maxVoices": 1,
-      "synth": {
-        "tone": {
-          "dur": 0.12,
-          "f0": 560,
-          "f1": 940,
-          "wave": "sine",
-          "attack": 0.002,
-          "decay": 0.11
+        "noise": {
+          "dur": 0.16,
+          "attack": 0.005,
+          "decay": 0.15,
+          "lowpass": 1400,
+          "highpass": 120,
+          "lowpassEnd": 400
         },
         "gain": 0.5
       }
@@ -2172,6 +2104,319 @@
             "gain": 0.4
           }
         ]
+      }
+    },
+    "F03-yip": {
+      "files": [],
+      "volume": 0.55,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.14,
+              "f0": 760,
+              "f1": 1040,
+              "wave": "triangle",
+              "attack": 0.008,
+              "decay": 0.11
+            },
+            "gain": 0.5
+          },
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.004,
+              "decay": 0.08,
+              "lowpass": 3200,
+              "highpass": 900,
+              "lowpassEnd": 2000
+            },
+            "gain": 0.2
+          }
+        ]
+      }
+    },
+    "F03-nibble": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.07,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.09,
+              "attack": 0.002,
+              "decay": 0.07,
+              "lowpass": 2600,
+              "highpass": 300,
+              "lowpassEnd": 900
+            },
+            "gain": 0.7
+          },
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 300,
+              "f1": 170,
+              "wave": "square",
+              "attack": 0.002,
+              "decay": 0.08
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "F03-scurry": {
+      "files": [],
+      "volume": 0.45,
+      "jitter": 0.1,
+      "maxVoices": 4,
+      "synth": {
+        "noise": {
+          "dur": 0.06,
+          "attack": 0.002,
+          "decay": 0.05,
+          "lowpass": 3800,
+          "highpass": 900,
+          "lowpassEnd": 2400
+        },
+        "gain": 0.6
+      }
+    },
+    "ML-swing": {
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.14,
+          "attack": 0.01,
+          "decay": 0.12,
+          "lowpass": 2400,
+          "highpass": 400
+        },
+        "gain": 0.5
+      }
+    },
+    "ML-hit": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.06,
+              "f0": 320,
+              "f1": 140,
+              "wave": "triangle",
+              "attack": 0.002,
+              "decay": 0.05
+            }
+          },
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.002,
+              "decay": 0.07,
+              "lowpass": 3200,
+              "highpass": 600
+            }
+          }
+        ],
+        "gain": 0.6
+      }
+    },
+    "ML-bash": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.04,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.18,
+              "attack": 0.005,
+              "decay": 0.16,
+              "lowpass": 900,
+              "highpass": 80
+            }
+          },
+          {
+            "crackle": {
+              "dur": 0.18,
+              "rate": 50,
+              "decay": 0.05
+            }
+          }
+        ],
+        "gain": 0.6
+      }
+    },
+    "ML-empty": {
+      "files": [],
+      "volume": 0.45,
+      "jitter": 0.02,
+      "maxVoices": 1,
+      "synth": {
+        "click": {
+          "dur": 0.04,
+          "freq": 1900
+        },
+        "gain": 0.5
+      }
+    },
+    "ML-charge": {
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0.02,
+      "maxVoices": 1,
+      "synth": {
+        "tone": {
+          "dur": 0.12,
+          "f0": 620,
+          "f1": 980,
+          "wave": "sine",
+          "attack": 0.004,
+          "decay": 0.1
+        },
+        "gain": 0.45
+      }
+    },
+    "VC-start": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.03,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 160,
+              "f1": 520,
+              "wave": "triangle",
+              "attack": 0.004,
+              "decay": 0.09
+            },
+            "gain": 0.4
+          },
+          {
+            "noise": {
+              "dur": 0.06,
+              "attack": 0.002,
+              "decay": 0.05,
+              "lowpass": 1800,
+              "highpass": 200
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "VC-suck": {
+      "files": [],
+      "volume": 0.65,
+      "jitter": 0.0,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.8,
+              "attack": 0.08,
+              "decay": 0,
+              "lowpass": 900,
+              "highpass": 120
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.8,
+              "f0": 110,
+              "f1": 110,
+              "wave": "triangle",
+              "attack": 0.08,
+              "decay": 0
+            },
+            "gain": 0.35
+          }
+        ],
+        "loop": true
+      }
+    },
+    "VC-done": {
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.16,
+              "attack": 0.002,
+              "decay": 0.15,
+              "lowpass": 1400,
+              "highpass": 240,
+              "lowpassEnd": 340
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.14,
+              "f0": 420,
+              "f1": 180,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.13
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "VC-empty": {
+      "files": [],
+      "volume": 0.6,
+      "jitter": 0.02,
+      "maxVoices": 1,
+      "synth": {
+        "tone": {
+          "dur": 0.06,
+          "f0": 220,
+          "f1": 130,
+          "wave": "square",
+          "attack": 0.002,
+          "decay": 0.055
+        },
+        "gain": 0.35
+      }
+    },
+    "VC-ready": {
+      "files": [],
+      "volume": 0.55,
+      "jitter": 0.02,
+      "maxVoices": 1,
+      "synth": {
+        "tone": {
+          "dur": 0.12,
+          "f0": 560,
+          "f1": 940,
+          "wave": "sine",
+          "attack": 0.002,
+          "decay": 0.11
+        },
+        "gain": 0.5
       }
     }
   },

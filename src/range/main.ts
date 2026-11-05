@@ -383,7 +383,10 @@ function spawnAhead(m: number) {
   camera.getWorldDirection(_fwd);
   player.eye(1, _fwdxz);
   _feet.set(_fwdxz.x + _fwd.x * m, 0, _fwdxz.z + _fwd.z * m);
-  foamers.spawn(_feet, camera.position, foamerType);
+  // GAME-10d: the Swarmer comes as its whole pack, so one button press
+  // shows the ring the card describes; the others still spawn singly.
+  if (foamerType === "F03") foamers.spawnPack(_feet, camera.position);
+  else foamers.spawn(_feet, camera.position, foamerType);
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));

@@ -30,6 +30,8 @@ export class Hud {
   private lastPrompt = "";
   private lock: HTMLElement | null = null;
   private lastLock = false;
+  private pips = document.querySelector<HTMLElement>("#meleepips");
+  private lastPips = "";
   private heal: HTMLElement;
   private healTimer = 0;
   private ammoTimer = 0;
@@ -77,6 +79,31 @@ export class Hud {
     this.lastPrompt = text;
     this.prompt.hidden = !show;
     if (show) this.prompt.textContent = key;
+  }
+
+  /** GAME-06: the melee's charge pips near the shield area (under the
+   *  health bar): one filled pip per charge, and a pip that pulses when a
+   *  parry (or the timer) refills one. Writes only on a change. */
+  meleePips(charges: number, max: number, pulse: boolean) {
+    const el = this.pips;
+    if (!el || this.root.hidden) return;
+    const key = `${charges}/${max}`;
+    if (key !== this.lastPips) {
+      this.lastPips = key;
+      el.textContent = "";
+      for (let i = 0; i < max; i++) {
+        const pip = document.createElement("i");
+        if (i < charges) pip.classList.add("full");
+        el.appendChild(pip);
+      }
+    }
+    if (!pulse) return;
+    const pip = el.children[Math.max(0, Math.min(charges, max) - 1)];
+    if (!pip) return;
+    pip.classList.remove("pulse");
+    // Restart the animation even when the class was already on.
+    void (pip as HTMLElement).offsetWidth;
+    pip.classList.add("pulse");
   }
 
   /** GAME-05: the lock marker, the crosshair's ring while a charge

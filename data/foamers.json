@@ -287,6 +287,24 @@
           "stance": "prone"
         }
       ]
+    },
+    "F03": {
+      "rig": "F03",
+      "_note": "GAME-10d: the Swarmer. Weak point: none. Health 2 comes from its rig (it pops in one or two hits). nibble is its whole attack: a short windup, hit and run. pack is how many a pack spawn makes; the swarm ring and gaps are in data/ai.json pack. The type reads its own speed and health from the rig.",
+      "turnRate": 9,
+      "attackRange": 1.4,
+      "holdRangeMetres": 3.0,
+      "pack": 5,
+      "attacks": [
+        {
+          "id": "nibble",
+          "damage": 3,
+          "token": "swarm",
+          "needs": [],
+          "windup": 0.25,
+          "strike": 0.15
+        }
+      ]
     }
   },
   "spawner": {

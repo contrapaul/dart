@@ -1,0 +1,939 @@
+{
+  "_note": "Level 1-2 beats 1 to 4 (LVL-02b) from design/levels/LEVEL-1-2.md: the open service corridor with the empty B02 plinth, the parry corridor (one Roamer alone, its own one wave arena), the yard, the Ring arena (A2: two waves of Roamers, the north exit a reveal) and the breather store with a window onto the ring and the level's exit pad for now. Beats 5 to 9 (the tower, Arena 2, the gauntlet) come with a later card. The path runs north: the player starts in the south corridor at y 0 and walks to -z. One floor, one ceiling and a perimeter wall enclose the level; the rooms are the open spaces between walls and the pinches between them are the arena doors. The B02 rack is [Paul] (B02 is not built): the plinth stands empty with a foam-yellow marking. Names, setting and the accent colour are [Paul]. Metres, Y up, positions are box centres, sizes are full extents. Tuning numbers (wave gaps and holds) live here, not in code.",
+  "meta": {
+    "id": "1-2",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 390,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+  "shell": [
+    {
+      "id": "floor",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        -0.5,
+        22
+      ],
+      "size": [
+        31,
+        1,
+        84
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "ceiling",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        9.5,
+        41.25
+      ],
+      "size": [
+        31,
+        1,
+        45.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-ceiling",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        9.5,
+        2.75
+      ],
+      "size": [
+        31,
+        1,
+        31.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "store-ceiling",
+      "shape": "box",
+      "pos": [
+        6.5,
+        9.5,
+        -16.75
+      ],
+      "size": [
+        11,
+        1,
+        6.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-w",
+      "shape": "box",
+      "pos": [
+        -20.5,
+        4.5,
+        22
+      ],
+      "size": [
+        1,
+        9,
+        84
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-e-open",
+      "shape": "box",
+      "pos": [
+        11.5,
+        4.5,
+        56.25
+      ],
+      "size": [
+        1,
+        9,
+        15.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-e-store",
+      "shape": "box",
+      "pos": [
+        11.5,
+        4.5,
+        -16.75
+      ],
+      "size": [
+        1,
+        9,
+        6.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-s",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        4.5,
+        64.5
+      ],
+      "size": [
+        31,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "wall-n",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        4.5,
+        -20.5
+      ],
+      "size": [
+        32,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "b02-plinth",
+      "shape": "box",
+      "pos": [
+        -1.5,
+        0.4,
+        61
+      ],
+      "size": [
+        1,
+        0.8,
+        1.4
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "divider-n-w",
+      "shape": "box",
+      "pos": [
+        -14,
+        4.5,
+        48
+      ],
+      "size": [
+        12,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "divider-n-e",
+      "shape": "box",
+      "pos": [
+        5,
+        4.5,
+        48
+      ],
+      "size": [
+        14,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "junction-wall-w",
+      "shape": "box",
+      "pos": [
+        -7,
+        4.5,
+        48
+      ],
+      "size": [
+        2,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corridor-wall-w-s",
+      "shape": "box",
+      "pos": [
+        -6.5,
+        4.5,
+        30
+      ],
+      "size": [
+        1,
+        9,
+        8
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corridor-wall-w-n",
+      "shape": "box",
+      "pos": [
+        -6.5,
+        4.5,
+        42.5
+      ],
+      "size": [
+        1,
+        9,
+        9
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corridor-wall-e",
+      "shape": "box",
+      "pos": [
+        -1.5,
+        4.5,
+        36.25
+      ],
+      "size": [
+        1,
+        9,
+        22.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "divider-w",
+      "shape": "box",
+      "pos": [
+        -10.5,
+        4.5,
+        33.25
+      ],
+      "size": [
+        1,
+        9,
+        28.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-w",
+      "shape": "box",
+      "pos": [
+        -6.5,
+        4.5,
+        22.5
+      ],
+      "size": [
+        1,
+        9,
+        7
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-e",
+      "shape": "box",
+      "pos": [
+        -1.5,
+        4.5,
+        22
+      ],
+      "size": [
+        1,
+        9,
+        6
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-wall-s-w",
+      "shape": "box",
+      "pos": [
+        -13,
+        4.5,
+        18.5
+      ],
+      "size": [
+        14,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-wall-s-e",
+      "shape": "box",
+      "pos": [
+        4.5,
+        4.5,
+        18.5
+      ],
+      "size": [
+        13,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-wall-w",
+      "shape": "box",
+      "pos": [
+        -19.5,
+        4.5,
+        3
+      ],
+      "size": [
+        1,
+        9,
+        30
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-wall-e",
+      "shape": "box",
+      "pos": [
+        11.5,
+        4.5,
+        3
+      ],
+      "size": [
+        1,
+        9,
+        30
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-wall-n-w",
+      "shape": "box",
+      "pos": [
+        -10,
+        4.5,
+        -13
+      ],
+      "size": [
+        20,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-wall-n-e",
+      "shape": "box",
+      "pos": [
+        10,
+        4.5,
+        -13
+      ],
+      "size": [
+        4,
+        9,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "ring-centre-block",
+      "shape": "box",
+      "pos": [
+        -4,
+        1.75,
+        3
+      ],
+      "size": [
+        12,
+        3.5,
+        10
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "window-sill",
+      "shape": "box",
+      "pos": [
+        6,
+        0.5,
+        -13
+      ],
+      "size": [
+        4,
+        1,
+        1
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "window-lintel",
+      "shape": "box",
+      "pos": [
+        6,
+        8,
+        -13
+      ],
+      "size": [
+        4,
+        2,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "store-wall-w",
+      "shape": "box",
+      "pos": [
+        1,
+        4.5,
+        -16.75
+      ],
+      "size": [
+        2,
+        9,
+        6.5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-parry-in",
+      "shape": "box",
+      "pos": [
+        -4,
+        6.5,
+        48
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-parry-out",
+      "shape": "box",
+      "pos": [
+        -4,
+        6.5,
+        26
+      ],
+      "size": [
+        4,
+        5,
+        0.4
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-ring-in",
+      "shape": "box",
+      "pos": [
+        -4,
+        6.5,
+        18.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "lintel-ring-out",
+      "shape": "box",
+      "pos": [
+        2,
+        6.5,
+        -13
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    }
+  ],
+  "pieces": [
+    {
+      "id": "open-foam-wall",
+      "kind": "plug",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -5.25,
+            1.2,
+            56
+          ],
+          "size": [
+            2.5,
+            2.4,
+            0.6
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "pos": [
+            -2.75,
+            1.2,
+            56
+          ],
+          "size": [
+            2.5,
+            2.4,
+            0.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "b02-marking",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -1.5,
+            0.9,
+            61
+          ],
+          "size": [
+            1,
+            0.2,
+            1.4
+          ],
+          "material": "foam-yellow"
+        }
+      ]
+    },
+    {
+      "id": "ring-pillar-w",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -15,
+            1.4,
+            3
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "ring-pillar-e",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            5,
+            1.4,
+            3
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "store-window",
+      "kind": "cover",
+      "anchor": "wall",
+      "volumes": [
+        {
+          "pos": [
+            6,
+            2,
+            -13
+          ],
+          "size": [
+            3,
+            2,
+            0.3
+          ],
+          "material": "foam-white"
+        },
+        {
+          "pos": [
+            6,
+            4,
+            -13
+          ],
+          "size": [
+            3,
+            2,
+            0.3
+          ],
+          "material": "foam-white"
+        },
+        {
+          "pos": [
+            6,
+            6,
+            -13
+          ],
+          "size": [
+            3,
+            2,
+            0.3
+          ],
+          "material": "foam-white"
+        }
+      ]
+    }
+  ],
+  "arenas": [
+    {
+      "id": "parry-corridor",
+      "archetype": "A6",
+      "trigger": {
+        "pos": [
+          -4,
+          2,
+          40
+        ],
+        "size": [
+          4,
+          4,
+          6
+        ]
+      },
+      "doors": [
+        {
+          "id": "parry-in",
+          "pos": [
+            -4,
+            1.75,
+            48
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "parry-out",
+          "pos": [
+            -4,
+            1.75,
+            26.2
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "locked"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "parry-r1",
+          "pos": [
+            -4,
+            0.2,
+            27.5
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "parry-w1",
+          "rifts": [
+            "parry-r1"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 1
+            }
+          ],
+          "delaySeconds": 1.5
+        }
+      ],
+      "unlockOnClear": [
+        "parry-out",
+        "parry-in"
+      ],
+      "checkpoint": true,
+      "checkpointPos": [
+        -4,
+        0,
+        45
+      ]
+    },
+    {
+      "id": "ring",
+      "archetype": "A2",
+      "trigger": {
+        "pos": [
+          -4,
+          2,
+          10
+        ],
+        "size": [
+          24,
+          4,
+          6
+        ]
+      },
+      "doors": [
+        {
+          "id": "ring-shutter-w",
+          "pos": [
+            -14,
+            1.75,
+            18.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "ring-shutter-e",
+          "pos": [
+            6,
+            1.75,
+            18.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "ring-in",
+          "pos": [
+            -4,
+            1.75,
+            18.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "ring-out",
+          "pos": [
+            2,
+            1.75,
+            -13
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "locked"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "ring-r1",
+          "pos": [
+            -14,
+            0.2,
+            -8
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "ring-r2",
+          "pos": [
+            6,
+            0.2,
+            -8
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "ring-r3",
+          "pos": [
+            10,
+            0.2,
+            0
+          ],
+          "facing": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "ring-w1",
+          "rifts": [
+            "ring-r1",
+            "ring-r2"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 4
+            }
+          ],
+          "delaySeconds": 1.5,
+          "holdSeconds": 2.0
+        },
+        {
+          "id": "ring-w2",
+          "rifts": [
+            "ring-r1",
+            "ring-r2",
+            "ring-r3"
+          ],
+          "spawns": [
+            {
+              "foamer": "F02",
+              "count": 6
+            }
+          ],
+          "delaySeconds": 6,
+          "holdSeconds": 1.5
+        }
+      ],
+      "unlockOnClear": [
+        "ring-out",
+        "ring-in",
+        "ring-shutter-w",
+        "ring-shutter-e"
+      ],
+      "checkpoint": true,
+      "checkpointPos": [
+        -4,
+        0,
+        21
+      ]
+    }
+  ],
+  "pickups": [
+    {
+      "id": "ring-ammo-sw",
+      "type": "darts-standard",
+      "count": 20,
+      "pos": [
+        -17.5,
+        0.4,
+        15
+      ]
+    },
+    {
+      "id": "store-ammo",
+      "type": "darts-standard",
+      "count": 20,
+      "pos": [
+        10,
+        0.4,
+        -16
+      ]
+    }
+  ],
+  "playerStart": {
+    "pos": [
+      -4,
+      0,
+      60
+    ],
+    "yaw": 0
+  },
+  "exit": {
+    "pos": [
+      6.5,
+      2,
+      -16.5
+    ],
+    "size": [
+      3.4,
+      4,
+      3
+    ]
+  }
+}
