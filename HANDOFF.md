@@ -307,6 +307,34 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: GAME-09b review fix, a held kill so a whole shot counts (DeepSeek V4.1 Flash via Pi)
+
+- The fault (found by Claude in the browser): a weakened Foamer died to the
+  first dart of a B03 shot, the kill was judged on that one dart's ~1
+  damage against `minShare` x 6 = 1.5, it went down, its colliders dropped
+  and the rest of the shot flew through. A B03 shot at 2.5 m on a weakened
+  F01 gave 1 hit and 0 chunks.
+- Fix: when a dart that carries a shot with a chunk block brings a Foamer to
+  0 health and the chunk could still apply (`chunkPossible`: tier or
+  `finishWeakened`, inside `rangeMetres`; the health share is not checked
+  yet), the kill is held. `Foamer.dyingHit` keeps the killing hit and
+  `dyingStep` the update count, so the Foamer keeps its colliders and its
+  pose and does nothing else: no walk, no attack, no part wear, no finisher
+  (`finisher.has` and the melee loop both skip it). The hold is settled by
+  `resolveKill` (pop, then chunk, then go down, as before) at the start of
+  the update two steps later, so the shot's darts of that step and the next
+  all land, or at once when a dart from another shot hits it. Darts with no
+  shot, and kills the chunk cannot apply to, resolve at once as before.
+- Tests: test 7's weakened case now uses `finisher.weakenShare` x max
+  (1.8) instead of 3, which was not weakened in play. New test 11: a full
+  B03 shot at 2.5 m on an F01 at half `weakenShare` (0.9, the range page's
+  spawn) counts more than one hit and more than `minShare` x max of the
+  shot's own damage, and is a chunk. Confirmed test 11 fails on the old
+  code ("expected 1 to be greater than 1") and passes now. Pop and go down
+  tests unchanged.
+- Verified: tsc clean, 459 tests (68 files, 2 skipped), build passes, no
+  em or en dashes. Not checked by eye: the hole and burst on the range page.
+
 ### 2026-11-06: GAME-09b stage 1 and 2, the chunk finish (DeepSeek V4.1 Flash via Pi)
 
 - `DartHit` carries `shot: DartShot | null` (`id`, `muzzle`, `chunk`), and

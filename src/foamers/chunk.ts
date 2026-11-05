@@ -73,6 +73,24 @@ export function shotSummary(
   return { total, mean: mean.divideScalar(n), preWeakened };
 }
 
+/** GAME-09b: could a shot with this chunk block blow a hole through this
+ *  Foamer at all? The tier or the weakened flag, and the range. The share
+ *  of health is not checked: on a kill's first dart it is not there yet,
+ *  and the rest of the shot still has to land (review: a held kill). */
+export function chunkPossible(
+  spec: ChunkSpec,
+  shot: ShotChunk | null,
+  muzzle: THREE.Vector3 | null,
+  tier: string,
+  finishWeakened: boolean,
+  mean: THREE.Vector3,
+): boolean {
+  if (!shot) return false;
+  if (!spec.tiers.includes(tier) && !finishWeakened) return false;
+  if (muzzle && muzzle.distanceTo(mean) > shot.rangeMetres) return false;
+  return true;
+}
+
 /** GAME-09b: is this killing hit a chunk finish? It needs a blaster or mod
  *  with a chunk block, a Foamer of a listed rig tier or one already
  *  finishable, a shot whose mean hit point is inside the blaster's range
@@ -88,11 +106,8 @@ export function judgeChunk(
   shotDamage: number,
   mean: THREE.Vector3,
 ): boolean {
-  if (!shot) return false;
-  if (!spec.tiers.includes(tier) && !finishWeakened) return false;
   if (shotDamage < spec.minShare * maxHealth) return false;
-  if (muzzle && muzzle.distanceTo(mean) > shot.rangeMetres) return false;
-  return true;
+  return chunkPossible(spec, shot, muzzle, tier, finishWeakened, mean);
 }
 
 /** GAME-09b: the hole's carve radius in metres. The Foamer base's

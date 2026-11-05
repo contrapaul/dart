@@ -206,8 +206,10 @@ describe("GAME-09b: the chunk finish", () => {
 
     const r2 = rig();
     const g = await spawn(r2, "F01");
+    // Weakened, as the game means it: at or below finisher.weakenShare of
+    // max health (0.3 of 6 is 1.8). The old 3 was not weakened in play.
     g.finishWeakened = true;
-    g.health = 3;
+    g.health = BASE.finisher.weakenShare * g.maxHealth;
     const gb = g.parts.get("body")!;
     const gBefore = gb.voxelCount;
     shot(r2, g, 3);
@@ -266,6 +268,32 @@ describe("GAME-09b: the chunk finish", () => {
     // Debris never goes past the engine's own cap, whatever the data says.
     expect(r.debris.live).toBeLessThanOrEqual(destruction.debris.max);
   });
+  it("11. a whole B03 shot on a weakened F01 counts more than one dart's damage", async () => {
+    const r = rig();
+    const f = await spawn(r, "F01");
+    f.finishWeakened = true;
+    // The range page's weakened spawn (half of weakenShare of max): 0.9,
+    // so the first dart of the shot kills it and the old code judged the
+    // chunk on that one dart alone (1 under minShare x 6 = 1.5).
+    f.health = BASE.finisher.weakenShare * f.maxHealth * 0.5;
+    const body = f.parts.get("body")!;
+    const before = body.voxelCount;
+    shot(r, f, 2.5); // eight darts, close in
+    stepUntilSettled(r, f);
+    expect(f.state).toBe("down");
+    // The kill was held, so the shot's later darts still hit the weakened
+    // F01: more than the one hit that would have ended a plain go down.
+    expect(r.foamers.stats.hits).toBeGreaterThan(1);
+    // And the shot's damage, not one dart's, decided the chunk (the
+    // summary is read after the window has closed, so read the record).
+    const total = f.shotDamage.filter((d) => d.id === 900)
+      .reduce((n, d) => n + d.amount, 0);
+    expect(total).toBeGreaterThan(BASE.catastrophic.chunk.minShare * f.maxHealth);
+    expect(body.voxelCount).toBeLessThan(before);
+    expect(r.foamers.stats.chunks).toBe(1);
+    expect(r.foamers.stats.popped).toBe(0);
+  });
+
   it("10. a dart keeps its own shot: the next pull does not rewrite it in flight (review)", () => {
     const r = rig();
     const hits: number[] = [];

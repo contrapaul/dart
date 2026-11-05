@@ -11,6 +11,7 @@ import {
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
 import type { ShotDamage } from "./chunk";
+import type { DartHit } from "../weapons/darts";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
@@ -151,6 +152,13 @@ export class Foamer {
    *  finishWeakened the Foamer glows and wobbles while it staggers, and a
    *  melee inside the finisher's reach ends it with the finisher. */
   finishWeakened = false;
+  /** GAME-09b: the dart that brought it to 0 health, while the rest of its
+   *  shot may still land. It is dying: it does not walk, attack or stagger,
+   *  and its parts keep their colliders so the shot's other darts hit it.
+   *  The kill resolves once, on the next update or on another shot's hit. */
+  dyingHit: DartHit | null = null;
+  /** The system step the held kill happened on. */
+  dyingStep = 0;
   /** GAME-07: true while the current stagger is the long, finishable one
    *  (weakenShare) rather than the short part-break one. Cleared each
    *  time a stagger starts. Exposed for the HUD prompt. */
