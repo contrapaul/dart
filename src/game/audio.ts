@@ -1,7 +1,7 @@
 import type * as THREE from "three";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
-import type { PlayOptions } from "../audio/sink";
+import type { LoopHandle, PlayOptions } from "../audio/sink";
 import type { Loadout } from "../weapons/loadout";
 import type { PlayerController } from "../player/controller";
 import type { DartSystem } from "../weapons/darts";
@@ -36,7 +36,13 @@ export interface GameAudio {
   setPaused(p: boolean): void;
   /** One one-shot, or nothing while the engine is still loading. */
   play(id: string, opts?: PlayOptions): void;
+  /** A loop that runs until its handle is stopped, or a handle that does
+   *  nothing while the engine is still loading (GAME-04c's foam saw). */
+  loop(id: string, opts?: PlayOptions): LoopHandle;
 }
+
+/** The loop handle before the engine is up: safe to set and stop. */
+const NO_LOOP: LoopHandle = { set() {}, setPosition() {}, stop() {} };
 
 export function createAudio(deps: GameAudioDeps): GameAudio {
   let engine: AudioEngine | null = null;
@@ -77,6 +83,9 @@ export function createAudio(deps: GameAudioDeps): GameAudio {
     },
     play(id, opts) {
       if (engine) engine.play(id, opts);
+    },
+    loop(id, opts) {
+      return engine ? engine.loop(id, opts) : NO_LOOP;
     },
   };
 }

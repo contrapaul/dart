@@ -260,6 +260,8 @@ The other Foamers (IDs given when each is built):
 | SH-throw | Shield thrown (frisbee whoosh) | Yes | 4 | Foley: throw a frisbee |
 | SH-ricochet | Thrown shield bouncing off a Foamer | Yes | 6 | Foley |
 | SH-catch | Shield caught back on the arm | Yes | 3 | Foley |
+| SH-saw | Foam saw: the disc grinding a Foamer (a loop, pitched by the spin) | Yes | 3 | Foley: a foam block on a spinning toy |
+| SH-sawEnd | Foam saw: the grind ends and the disc tears free | Yes | 3 | Foley: a soft tearing pop |
 | SH-lock | Shield charge: a target is locked | Yes | 3 | Code: a short rising blip |
 | SH-charge | Shield charge rush (the whoosh) | Yes | 3 | Foley: a sharp exhale past the ear |
 | SH-charge-hit | Shield charge impact (the thud into the Foamer) | Yes | 3 | Foley: a heavy cushion drop |

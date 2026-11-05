@@ -5,6 +5,8 @@ import type { PlayerController } from "./controller";
 import type { Loadout } from "../weapons/loadout";
 import type { FoamerSystem } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
+import type { FoamerPart } from "../foamers/foamer-part";
+import { armourOf } from "../foamers/armour";
 import type { VoxelTarget } from "../weapons/impacts";
 import type { DebrisSystem } from "../voxel/debris";
 import { carveSphere } from "../voxel/carve";
@@ -30,11 +32,20 @@ export type ShieldState = "lowered" | "raised" | "thrown" | "returning";
 
 const T = shieldJson as unknown as {
   look: {
-    diameter: number; rimThickness: number; bossRadius: number; bossDepth: number;
-    colors: { rim: string; face: string; boss: string };
+    diameter: number; rimThickness: number; domeDepth: number;
+    bands: { radiusShare: number; thicknessShare: number; color: "rim" | "ring" | "inner" }[];
+    nubCount: number; nubRadius: number;
+    bossRadius: number; bossDepth: number; spinRevPerSec: number; flightTiltDeg: number;
+    colors: { rim: string; ring: string; inner: string; nub: string; boss: string };
     lowered: { position: [number, number, number]; rotationDeg: [number, number, number] };
     raised: { position: [number, number, number]; rotationDeg: [number, number, number] };
     handOffset: [number, number, number];
+  };
+  /** GAME-04c: the foam saw (see the note in data/shield.json). */
+  saw: {
+    grindSeconds: number; tickSeconds: number; spinRevPerSec: number;
+    carveRadius: number; damagePerTick: number; plateShare: number;
+    debrisPerTick: number; canKill: boolean;
   };
   block: {
     raiseTime: number; frontArcDeg: number; damageShare: number;
@@ -102,6 +113,10 @@ export interface ShieldEvents {
   chargeEnd: boolean;
   /** GAME-10b: the charge met the Darter's plates and bounced off. */
   chargeBlocked: boolean;
+  /** GAME-04c: the disc lodged in a Foamer this step and started grinding. */
+  sawStart: boolean;
+  /** GAME-04c: the grind ended this step (the page's SH-sawEnd). */
+  sawEnd: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -110,8 +125,20 @@ const EXCLUDE_SENSORS = 8; // QueryFilterFlags.EXCLUDE_SENSORS (as darts.ts)
 export class Shield {
   /** The viewmodel group: add it to the camera once. */
   readonly group = new THREE.Group();
-  /** The disc while it is out, in the world: add it to the scene once. */
-  readonly discMesh: THREE.Mesh;
+  /** GAME-04c: the disc model. The same group is on the arm while it is
+   *  held and in `flight` while it is out, so the held and the flying disc
+   *  are one model. */
+  readonly discModel: THREE.Group;
+  /** The world holder of the flying disc: its position is the disc's and
+   *  its rotation is the spin. Add it to the scene once; it is only
+   *  visible while the disc is out. */
+  readonly flight = new THREE.Group();
+  /** The disc while it is out, in the world (the flight holder, for the
+   *  tests and the page's sound). Kept as `discMesh` so nothing that read
+   *  it changes. */
+  get discMesh(): THREE.Object3D {
+    return this.flight;
+  }
   state: ShieldState = "lowered";
   /** 0 lowered, 1 fully raised; the disc slides and tilts with it. */
   raise = 0;
@@ -231,9 +258,42 @@ export class Shield {
   private lastHit: Foamer | null = null;
   /** Foam chunks this flight has thrown so far (the data caps the flight). */
   private debrisThisFlight = 0;
+  /** GAME-04c: the spin in revolutions a second (look.spinRevPerSec in
+   *  flight, saw.spinRevPerSec while grinding). */
+  private spin = T.look.spinRevPerSec;
+  /** GAME-04c: the foam saw. Set when the disc lodges in a Foamer: the
+   *  Foamer, the part under the disc, the point the disc holds (in that
+   *  part's voxel coordinates, so it rides the Foamer as it moves), the
+   *  seconds of grind left and the seconds until the next tick. */
+  private lodged = false;
+  private sawTarget: Foamer | null = null;
+  private sawPart: FoamerPart | null = null;
+  private readonly sawPoint = new THREE.Vector3();
+  private sawLeft = 0;
+  private sawTick = 0;
+  /** Ticks the last grind did (the tests count against the data). */
+  sawTicks = 0;
+  /** Whether a grind has already happened on this flight: only the first
+   *  Foamer struck is ground. */
+  private groundOnce = false;
+  /** The spin's angle (radians) about the disc's own axis (its face
+   *  normal, which points along the flight). */
+  private spinAngle = 0;
+  private readonly spinQ = new THREE.Quaternion();
+  private readonly spinQ2 = new THREE.Quaternion();
+  private readonly zAxis = new THREE.Vector3(0, 0, 1);
+  private readonly spinTravel = new THREE.Vector3();
+  private readonly spinFace = new THREE.Vector3();
+  /** The watch's `grinding`: the target's type label and the seconds left
+   *  in the grind. Null when the disc is not grinding. */
+  get grinding(): { target: string; seconds: number } | null {
+    if (!this.lodged || !this.sawTarget) return null;
+    return { target: this.sawTarget.spec.rig, seconds: this.sawLeft };
+  }
   private readonly events: ShieldEvents = {
     raised: false, lowered: false, thrown: false, hits: [], caught: false,
     chargeStart: false, chargeVictim: null, chargeEnd: false, chargeBlocked: false,
+    sawStart: false, sawEnd: false,
   };
   private readonly forward = new THREE.Vector3();
   private readonly hand = new THREE.Vector3();
@@ -269,16 +329,45 @@ export class Shield {
     this.ray = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
     const L = T.look;
     const cells = renderJson.foam.poreCellsPerVoxel / 0.1; // geometry is in metres
-    const geo = new THREE.CylinderGeometry(L.diameter / 2, L.diameter / 2, L.rimThickness, 24);
-    const rim = new THREE.Mesh(geo, createFoamMaterial({ cellsPerUnit: cells, wrapCells: 0, color: L.colors.rim }));
-    const face = new THREE.Mesh(
-      new THREE.CylinderGeometry(L.diameter * 0.43, L.diameter * 0.43, L.rimThickness * 1.3, 24),
-      createFoamMaterial({ cellsPerUnit: cells, wrapCells: 0, color: L.colors.face }),
-    );
+    // GAME-04c: the disc is one model, built here once and shown both on
+    // the arm and in flight (the flight reparents this group to the scene).
+    // Concentric foam bands, each a little thinner and a little further
+    // forward than the one outside it, so the face domes.
+    this.discModel = new THREE.Group();
+    this.discModel.name = "shield-disc";
+    const mat = (color: string) => createFoamMaterial({ cellsPerUnit: cells, wrapCells: 0, color });
+    const n = L.bands.length;
+    for (let i = 0; i < n; i++) {
+      const b = L.bands[i]!;
+      const r = (L.diameter / 2) * b.radiusShare;
+      const th = L.rimThickness * b.thicknessShare;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, th, 24), mat(L.colors[b.color]));
+      m.rotation.x = Math.PI / 2;
+      // The outermost band sets the back face; each one inside steps
+      // forward by the dome share of its inward position.
+      m.position.z = -L.rimThickness / 2 + th / 2 + (1 - b.radiusShare) * L.domeDepth;
+      this.discModel.add(m);
+    }
+    // The saw's teeth: rounded foam nubs standing on the rim's edge.
+    const nubGeo = new THREE.SphereGeometry(L.nubRadius, 8, 6);
+    const nubMat = mat(L.colors.nub);
+    const rimR = L.diameter / 2;
+    for (let i = 0; i < L.nubCount; i++) {
+      const a = (i / L.nubCount) * Math.PI * 2;
+      const nub = new THREE.Mesh(nubGeo, nubMat);
+      nub.position.set(Math.cos(a) * rimR, Math.sin(a) * rimR, 0);
+      this.discModel.add(nub);
+    }
     const boss = new THREE.Mesh(
       new THREE.CylinderGeometry(L.bossRadius, L.bossRadius, L.bossDepth, 16),
       new THREE.MeshStandardMaterial({ color: L.colors.boss, roughness: 0.6 }),
     );
+    // [Paul] the centre emblem: this plain foam boss is a placeholder.
+    boss.rotation.x = Math.PI / 2;
+    const inner = L.bands[L.bands.length - 1]!;
+    boss.position.z = -L.rimThickness / 2 + L.rimThickness * inner.thicknessShare
+      + (1 - inner.radiusShare) * L.domeDepth + L.bossDepth / 2 - 0.01;
+    this.discModel.add(boss);
     // The parry's flash: a plain emissive disc one size over the face,
     // hidden until a parry (the bloom's no-flash variant stays a flat
     // brightened plate, which is all the look needs here).
@@ -291,13 +380,13 @@ export class Shield {
       new THREE.CylinderGeometry(L.diameter * 0.5, L.diameter * 0.5, 0.03, 24),
       this.faceMat,
     );
-    // A cylinder's axis is its own y; the disc faces along -z, so turn it.
-    for (const m of [rim, face, boss, this.flashMesh]) m.rotation.x = Math.PI / 2;
-    boss.position.z = -(L.rimThickness / 2 + L.bossDepth / 2 - 0.01);
-    this.group.add(rim, face, boss, this.flashMesh);
-    this.discMesh = new THREE.Mesh(geo, rim.material);
-    this.discMesh.visible = false;
-    scene.add(this.discMesh);
+    this.flashMesh.rotation.x = Math.PI / 2;
+    this.discModel.add(this.flashMesh);
+    this.group.add(this.discModel);
+    // While it flies the same group hangs off the scene at the disc's
+    // world position, spun about its own axis; the throw reparents it.
+    this.flight.visible = false;
+    scene.add(this.flight);
   }
 
   // ---- blocking ----
@@ -331,6 +420,7 @@ export class Shield {
     e.raised = false; e.lowered = false; e.thrown = false;
     e.caught = false; e.hits.length = 0;
     e.chargeStart = false; e.chargeVictim = null; e.chargeEnd = false; e.chargeBlocked = false;
+    e.sawStart = false; e.sawEnd = false;
     this.usedFire = false;
 
     // The shield action as the setting wants it: hold, or one press to
@@ -434,7 +524,16 @@ export class Shield {
     this.pkickLeft = 0;
     this.flashLeft = 0;
     this.hitStopLeft = 0;
-    this.discMesh.visible = false;
+    this.reparentDisc(false);
+    this.lodged = false;
+    this.sawTarget = null;
+    this.sawPart = null;
+    this.sawLeft = 0;
+    this.sawTick = 0;
+    this.sawTicks = 0;
+    this.groundOnce = false;
+    this.spin = T.look.spinRevPerSec;
+    this.spinAngle = 0;
     this.placeViewmodel(0);
   }
 
@@ -461,23 +560,33 @@ export class Shield {
     this.disc.copy(this.hand);
     this.prevDisc.copy(this.hand);
     this.dir.copy(this.forward);
-    this.discMesh.visible = true;
-    this.discMesh.position.copy(this.disc);
+    this.reparentDisc(true);
+    this.flight.position.copy(this.disc);
     this.state = "thrown";
     this.travelled = 0;
     this.hitsLeft = 1 + T2.bounces;
     this.lastHit = null;
     this.debrisThisFlight = 0;
+    this.groundOnce = false;
+    this.spin = T.look.spinRevPerSec;
+    this.spinAngle = 0;
   }
 
   /** One step of the flying or returning disc. */
   private stepDisc(dt: number, e: ShieldEvents): void {
     const T2 = T.throw;
+    // GAME-04c: a lodged disc grinds and does not travel: the disc stays
+    // at its point on the Foamer, which may be walking.
+    if (this.lodged) {
+      this.stepSaw(dt, e);
+      return;
+    }
     const stepLen = (this.state === "thrown" ? T2.speed : T2.returnSpeed) * dt;
     this.prevDisc.copy(this.disc);
     this.travelled += stepLen;
     this.disc.addScaledVector(this.dir, stepLen);
-    this.discMesh.position.copy(this.disc);
+    this.flight.position.copy(this.disc);
+    this.spinFor(dt, this.dir);
 
     if (this.state === "returning") {
       this.handPoint(this.hand);
@@ -492,6 +601,13 @@ export class Shield {
       e.hits.push(victim.centre.clone());
       this.lastHit = victim;
       this.hitsLeft -= 1;
+      // GAME-04c: the foam saw. The first Foamer of a flight is ground
+      // where the disc struck it; only then does the disc carry on to
+      // the ricochet (or home).
+      if (!this.groundOnce) {
+        this.lodge(victim, e);
+        return;
+      }
       const next = this.hitsLeft > 0 ? this.nextTarget(victim) : null;
       if (next) this.aimAt(this.scratchTo(next));
       else this.sendHome();
@@ -518,6 +634,171 @@ export class Shield {
     if (this.travelled >= T2.range) this.sendHome();
   }
 
+  // ---- the foam saw (GAME-04c) ----
+
+  /** The disc lodges at the point it struck this Foamer and starts to
+   *  grind. The point is held in the struck part's voxel coordinates, so
+   *  the disc rides the Foamer as it moves or turns. */
+  private lodge(f: Foamer, e: ShieldEvents): void {
+    const S = T.saw;
+    // The part the disc reached: the one whose voxels are nearest the
+    // disc, stepping in from the contact point a little as a dart does.
+    const part = this.nearestPart(f);
+    this.groundOnce = true;
+    this.lodged = true;
+    this.sawTarget = f;
+    this.sawPart = part;
+    this.sawPoint.set(0, 0, 0);
+    if (part) {
+      // The contact point, a little inside the surface as a dart's is.
+      this.aim.copy(this.disc).addScaledVector(this.dir, part.volume.voxelSize * 0.5);
+      part.worldToVoxel(this.aim);
+      this.sawPoint.copy(this.aim);
+    }
+    this.sawWorldPoint(this.disc);
+    this.flight.position.copy(this.disc);
+    this.sawLeft = S.grindSeconds;
+    this.sawTick = 0;
+    this.sawTicks = 0;
+    this.spin = S.spinRevPerSec;
+    this.spinFor(0, this.dir);
+    e.sawStart = true;
+    // The grind holds it: the stagger the throw already gave it runs for
+    // the whole grind, so it cannot attack out of the saw.
+    if (!f.prone) this.foamers.startStagger(f, false, Math.max(f.spec.stagger.time, S.grindSeconds + 0.1));
+  }
+
+  /** One step of the grind: hold the disc at its point on the Foamer
+   *  (which may have walked), spin fast, and tick damage, carve and
+   *  debris every saw.tickSeconds. The grind ends on its time, on the
+   *  Foamer going down or popping, or on the part under the disc
+   *  breaking away; the ricochet then carries on as before. */
+  private stepSaw(dt: number, e: ShieldEvents): void {
+    const S = T.saw;
+    const f = this.sawTarget;
+    if (!f || f.state === "down" || !this.sawPart || !f.parts.has(this.sawPart.spec.id)) {
+      this.endSaw(e);
+      return;
+    }
+    // The disc rides the Foamer: its point is in the part's own frame.
+    this.disc.copy(this.sawPart.voxelToWorld(this.aim.copy(this.sawPoint)));
+    this.flight.position.copy(this.disc);
+    this.spinFor(dt, this.dir);
+    this.sawLeft -= dt;
+    this.sawTick -= dt;
+    while (this.sawTick <= 0 && this.sawLeft > 0) {
+      this.sawTick += S.tickSeconds;
+      this.sawTickOnce();
+    }
+    // Keep the Foamer held for as long as the disc is on it.
+    if (!f.prone && f.state !== "stagger" && this.sawLeft > 0)
+      this.foamers.startStagger(f, false, S.grindSeconds + 0.1);
+    if (this.sawLeft <= 0) this.endSaw(e);
+  }
+
+  /** One tick of the grind: the part under the disc is carved, the Foamer
+   *  takes the tick's damage (a plate takes saw.plateShare of it, against
+   *  a dart's 0.15), and a little foam flies. The saw never kills: the
+   *  throw's floor holds, and the Foamer is left finishable. */
+  private sawTickOnce(): void {
+    const S = T.saw;
+    const f = this.sawTarget;
+    const part = this.sawPart;
+    if (!f || !part) return;
+    this.sawTicks++;
+    const vs = part.volume.voxelSize;
+    // A plate under the disc takes the tick's plateShare; foam takes it
+    // whole. This is the saw's counter to the Darter, whose plates take
+    // 0.15 of a dart's hit: one flat tick, not the dart's kind shares.
+    const share = armourOf(f.spec, part.spec.id) ? S.plateShare : 1;
+    const dmg = S.damagePerTick * share;
+    // The carve, into the part under the disc (capped like a throw).
+    const room = S.debrisPerTick;
+    const removed = carveSphere(
+      part.volume, this.sawPoint.x, this.sawPoint.y, this.sawPoint.z, S.carveRadius / vs,
+    );
+    if (removed.length > 0 && room > 0) {
+      this.debris.spawn(
+        removed.slice(0, room), this.sawWorldPoint(this.scratch), vs,
+        (v) => part.voxelToWorld(v),
+      );
+    }
+    if (removed.length > 0) this.onCarveAt(this.disc);
+    // The part under the disc wears, so its own break (or the wear check
+    // in the Foamer's step) can take it off, and with it the disc.
+    part.hp -= dmg;
+    // Never a killing blow: the damage floor the throw uses.
+    f.health -= dmg;
+    if (!S.canKill && f.health <= 0) f.health = 0.0001;
+    // GAME-07: crossing the finishable band opens the finisher, as the
+    // dart's own damage does.
+    if (
+      !f.finishWeakened && f.health > 0
+      && f.health <= f.spec.finisher.weakenShare * f.maxHealth
+      && !f.prone && f.state !== "finish"
+    ) {
+      f.finishWeakened = true;
+    }
+  }
+
+  /** The grind is over: the disc carries on with the throw's ricochet. */
+  private endSaw(e: ShieldEvents): void {
+    e.sawEnd = true;
+    this.lodged = false;
+    this.sawTarget = null;
+    this.sawPart = null;
+    this.sawLeft = 0;
+    this.spin = T.look.spinRevPerSec;
+    const next = this.hitsLeft > 0 ? this.nextTarget(this.lastHit!) : null;
+    if (next) this.aimAt(this.scratchTo(next));
+    else this.sendHome();
+  }
+
+  /** The part of this Foamer nearest the disc (the surface the disc
+   *  reached). */
+  private nearestPart(f: Foamer): FoamerPart | null {
+    let best: FoamerPart | null = null;
+    let best2 = Infinity;
+    for (const p of f.parts.values()) {
+      const c = this.scratch.copy(this.disc);
+      p.worldToVoxel(c);
+      const size = p.spec.size;
+      const dx = Math.max(0, Math.max(-c.x, c.x - size[0]));
+      const dy = Math.max(0, Math.max(-c.y, c.y - size[1]));
+      const dz = Math.max(0, Math.max(-c.z, c.z - size[2]));
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < best2) { best2 = d2; best = p; }
+    }
+    return best;
+  }
+
+  /** The world position of the disc's point on the Foamer (the part's own
+   *  frame, or the disc's place when the part is gone), in out. */
+  private sawWorldPoint(out: THREE.Vector3): THREE.Vector3 {
+    if (!this.sawPart) return out;
+    return this.sawPart.voxelToWorld(out.copy(this.sawPoint));
+  }
+
+  /** Spin the disc about its own axis. It flies flat and edge first, as a
+   *  thrown shield does, so the nubbed rim leads and cuts (review: it flew
+   *  face first, a plate seen from behind). The face (the model's -z)
+   *  points up, tipped back toward the thrower by look.flightTiltDeg so
+   *  the rings still read, and the disc turns in its own plane. */
+  private spinFor(dt: number, along: THREE.Vector3): void {
+    this.spinAngle += this.spin * Math.PI * 2 * dt;
+    const t = this.spinTravel.copy(along);
+    t.y = 0;
+    if (t.lengthSq() < 1e-9) t.set(0, 0, -1);
+    t.normalize();
+    // Up, tipped back against the horizontal travel.
+    const tilt = T.look.flightTiltDeg * DEG;
+    const d = this.spinFace.set(0, Math.cos(tilt), 0).addScaledVector(t, -Math.sin(tilt));
+    // The face along d, then turn about the face's own axis.
+    this.spinQ.setFromUnitVectors(this.zAxis, d.negate());
+    this.spinQ2.setFromAxisAngle(this.zAxis, this.spinAngle);
+    this.flight.quaternion.copy(this.spinQ).multiply(this.spinQ2);
+  }
+
   /** The disc stops where it is and turns for the arm. */
   private sendHome(): void {
     this.state = "returning";
@@ -525,9 +806,20 @@ export class Shield {
     this.aimAt(this.hand);
   }
 
+  /** GAME-04c: hand the one disc model to the flight holder (true) or
+   *  back to the arm (false). */
+  private reparentDisc(flying: boolean): void {
+    this.flight.visible = flying;
+    if (flying) this.flight.add(this.discModel);
+    else {
+      this.group.add(this.discModel);
+      this.flight.rotation.set(0, 0, 0);
+    }
+  }
+
   private catchDisc(e: ShieldEvents): void {
     this.state = "lowered";
-    this.discMesh.visible = false;
+    this.reparentDisc(false);
     this.cooldown = T.cooldown;
     this.lastHit = null;
     e.caught = true;

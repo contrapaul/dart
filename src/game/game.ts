@@ -34,6 +34,7 @@ import renderJson from "../../data/render.json";
 import { carveBounds } from "./shared";
 import { damageOf } from "./attack";
 import { createAudio, type GameAudio } from "./audio";
+import type { LoopHandle } from "../audio/sink";
 import { createUI, type UIController } from "./ui";
 
 // The game both playable pages share (ENG-13): renderer, physics, input,
@@ -285,6 +286,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     onReady: () => applySettings(store.value, camera, health, hud, audio, shield),
   });
 
+  /** GAME-04c: the foam saw's grind loop, while a thrown disc grinds. */
+  let sawLoop: LoopHandle | null = null;
+
   /** The settings live. */
   function applyAll(): void {
     applySettings(store.value, camera, health, hud, audio, shield);
@@ -415,9 +419,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     {
       completeOpen: h.completeOpen,
       overlayAllowed: h.overlayAllowed,
-      onRestart: () => { shield.reset(); melee.reset(); meleeView.reset(); h.onRestart?.(); },
-      onTryAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); h.onTryAgain?.(); },
-      onPlayAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); h.onPlayAgain?.(); },
+      onRestart: () => { shield.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onRestart?.(); },
+      onTryAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onTryAgain?.(); },
+      onPlayAgain: () => { shield.reset(); melee.reset(); meleeView.reset(); sawLoop?.stop(); sawLoop = null; h.onPlayAgain?.(); },
     },
   );
   game.ui = ui;
@@ -529,6 +533,21 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       if (se.thrown) audio.play("SH-throw", { position: shield.discPosition });
       for (const p of se.hits) audio.play("SH-ricochet", { position: p });
       if (se.caught) audio.play("SH-catch");
+      // GAME-04c: the foam saw. A loop while the disc grinds, pitched by
+      // the fast spin, stopped when the grind ends (or the disc comes
+      // home: catchDisc ends it too, so the stop is checked here).
+      if (se.sawStart && !sawLoop) sawLoop = audio.loop("SH-saw");
+      if (sawLoop) {
+        const g = shield.grinding;
+        if (g) {
+          sawLoop.set(1, 0.85 + 0.3 * Math.min(1, g.seconds));
+          sawLoop.setPosition(shield.discPosition);
+        } else {
+          sawLoop.stop();
+          sawLoop = null;
+        }
+      }
+      if (se.sawEnd) audio.play("SH-sawEnd", { position: shield.discPosition });
       // GAME-05: the charge's sounds: the whoosh on the first step, the
       // thud where it meets the Foamer.
       if (se.chargeStart) audio.play("SH-charge");
@@ -670,6 +689,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         shield: shield.state,
         // GAME-04 stage 2: parries landed, for the watch's helpers.
         parries: shield.parries,
+        // GAME-04c: the foam saw: the target's rig and the grind's
+        // seconds left, null when the disc is not grinding.
+        grinding: shield.grinding,
         // GAME-05: the charge state for the watch: which Foamer it is
         // locked on and which one the running charge is driving at (they
         // agree while it runs).
