@@ -272,3 +272,30 @@ describe("PickupSystem.loadLevelBoxes (LVL-02a)", () => {
     expect(r.pickups.count("ammo")).toBe(2);
   });
 });
+
+// LVL-02a review (Claude): the cap is per kind, and a box fills every
+// blaster of its dart type with its full count (the card's rule).
+describe("PickupSystem (LVL-02a review)", () => {
+  it("a health spray at its cap never removes a placed ammo box", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(pitJson as unknown as Level);
+    expect(r.pickups.count("ammo")).toBe(2);
+    // Far more blobs than the health cap: the oldest blobs go, not the boxes.
+    for (let i = 0; i < H.max + 6; i++) {
+      r.pickups.spawn("health", new THREE.Vector3(0, 1, 0), new THREE.Vector3());
+    }
+    expect(r.pickups.count("ammo")).toBe(2);
+    expect(r.pickups.count("health")).toBe(H.max);
+  });
+
+  it("adds its full count to every blaster that takes its dart type", () => {
+    const a = blaster(10, "standard");
+    const b = blaster(10, "standard");
+    const r = ammoRig([a, b]);
+    r.pickups.spawn("ammo", new THREE.Vector3(0, A.size / 2, 0), new THREE.Vector3(), "standard", 4);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(14);
+    expect(b.reserve).toBe(14);
+    expect(r.pickups.count("ammo")).toBe(0);
+  });
+});

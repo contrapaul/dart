@@ -186,6 +186,25 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: LVL-02a review, ammo boxes played in the Pit (Claude)
+
+- Merged main in (23 commits); only the docs conflicted.
+- Fixed, with tests: the pickup cap counted every kind together and
+  trimmed the oldest item, and the level's ammo boxes are the oldest, so a
+  few finishers' health sprays deleted them. The cap is now per kind and
+  trims the oldest of that kind.
+- Fixed, with a test: a box split one pool of darts, first blaster first,
+  and all three blasters take standard darts, so B01 took the whole box.
+  The card says every blaster of the type gets the count; it does now.
+- Played `arena.html?watch`: the Pit starts with 2 boxes; walking onto one
+  took B01, B04 and B03 from 10 to 14 each; at full reserves the other box
+  stayed; Try again brought both back. A screenshot shows a readable yellow
+  box on the pit floor. No console errors.
+- For Paul: a box holds 4 darts (`count` in the level files, from the
+  original Pit file). That is half a B01 magazine and about a tenth of a
+  B04 one, so it barely reads as a pickup. Pick the number, or say whether
+  `count` should mean magazines instead of darts.
+
 ### 2026-11-05: GAME-04b and ANIM-01 merged (Claude)
 
 - Merged after BUG-01; only the docs and the BUG-01 card conflicted (kept

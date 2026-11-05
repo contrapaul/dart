@@ -101,7 +101,13 @@ export class PickupSystem {
     // blob its full radius: the foot is where the collider hangs. The box
     // is a ball of half edge, the blob a ball of its radius.
     const foot = this.baseOf(kind);
-    while (this.list.length >= k.max) this.remove(0);
+    // The cap is per kind (LVL-02a review): a full health spray must trim the
+    // oldest blob, never a placed ammo box that happens to be older.
+    while (this.count(kind) >= k.max) {
+      const oldest = this.list.findIndex((it) => !it.gone && it.kind === kind);
+      if (oldest < 0) break;
+      this.remove(oldest);
+    }
     const scale = this.radius[kind];
     const mesh = new THREE.Mesh(kind === "ammo" ? this.boxGeo : this.geo, this.mats[kind]);
     mesh.castShadow = true;
@@ -215,14 +221,16 @@ export class PickupSystem {
   }
 
   /** The darts an ammo box actually gave (0 when every matching blaster was
-   *  already at reserveMax: the box stays put). Called from update while it
-   *  is within collectRadius. */
+   *  already at reserveMax: the box stays put). Every blaster that takes the
+   *  box's dart type gets the full count into its own reserve (the card's
+   *  rule; LVL-02a review: it was one pool, first blaster first). Called
+   *  from update while it is within collectRadius. */
   private giveAmmo(it: Item): number {
     let gave = 0;
     for (const b of this.blasters) {
       if (b.dartType !== it.dartType) continue;
       const space = Math.max(0, b.spec.reserveMax - b.reserve);
-      const take = Math.min(space, (it.dartCount ?? 0) - gave);
+      const take = Math.min(space, it.dartCount ?? 0);
       b.reserve += take;
       gave += take;
     }
