@@ -402,6 +402,22 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: BUG-05 not merged, the review's test was the cause (Claude, overnight)
+
+- DeepSeek reproduced the stuck Swarmers headless and found why: when
+  the pack was placed, the player was still at the level start in the
+  corridor beyond the open `pit-in` door, so the shortest path to them
+  left the pit; the door then locked them out. That is normal chasing,
+  and the "too fast" trip was over more time than the BUG-03 review
+  thought. In play, arena waves spawn Swarmers at rifts inside the arena
+  after it locks.
+- Its fix leashes a hand placed pack to 11 m from where it was put. Only
+  the range calls `spawnPack`, so the leash changes nothing in a level,
+  but on the range a pack spawned 20 or 30 m out would stop 9 m short of
+  the player. Not merged. The branch `bug-05` also updates
+  `tests/ai/pit-rig.ts` to build the grid with the voxel pieces the way
+  the page does (BUG-03): worth taking on its own later.
+
 ### 2026-11-06: LVL-02d parked after stage 1 (Claude, overnight)
 
 - The Spark committed stage 1 on branch `lvl-02d`: `nav.maxLayers` 2 to
