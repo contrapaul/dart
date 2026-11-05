@@ -2,502 +2,516 @@
   "_note": "Foamer rigs for the sandbox (sandbox.html), one per roster role in design/CONTENT-PLAN.md section 3. F01, F02 and F05 use the ART-03 designs. The other shapes and proportions remain greybox placeholders for discussion, not final designs. Sizes in voxels (0.05 m). 'at' is where a part's joint sits on its parent's box and 'pivot' where it sits on the part's own box, both -1 to 1 per axis (0 centre, 1 the +x / top / front face). 'rest' is a rest rotation in radians. Feet are put on the ground automatically.",
   "rigs": [
     {
-        "id": "F01",
-        "label": "Slowmer",
-        "tier": "Fodder",
-        "behaviour": "Slow, walks at you in groups. Bonks up close. Free finishers.",
-        "movement": "shuffle",
-        "speed": 1.0,
-        "voxelSize": 0.05,
-        "material": "foam-lime",
-        "parts": [
-            {
-                "id": "body",
-                "kind": "body",
-                "shape": "ellipsoid",
-                "size": [
-                    14,
-                    15,
-                    12
-                ],
-                "parent": null,
-                "shag": true
-            },
-            {
-                "id": "head",
-                "kind": "head",
-                "shape": "ellipsoid",
-                "size": [
-                    11,
-                    10,
-                    11
-                ],
-                "parent": "body",
-                "at": [
-                    0,
-                    0.6,
-                    0.55
-                ],
-                "pivot": [
-                    0,
-                    -0.5,
-                    -0.4
-                ],
-                "eyes": "round",
-                "eyeHeight": 0.12,
-                "mouth": "grin",
-                "taper": [
-                    1.65,
-                    1.65
-                ],
-                "nubs": [
-                    [
-                        0,
-                        1,
-                        0
-                    ],
-                    [
-                        -1,
-                        0.1,
-                        0.2
-                    ],
-                    [
-                        1,
-                        0.1,
-                        0.2
-                    ]
-                ]
-            },
-            {
-                "id": "armL",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    5,
-                    10,
-                    5
-                ],
-                "parent": "body",
-                "at": [
-                    -1.0,
-                    0.4,
-                    0.1
-                ],
-                "rest": [
-                    -0.3,
-                    0,
-                    -0.15
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "foreArmL",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    5,
-                    10,
-                    5
-                ],
-                "parent": "armL",
-                "at": [
-                    0,
-                    -0.85,
-                    0
-                ],
-                "rest": [
-                    -1.2,
-                    0,
-                    0
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "armR",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    5,
-                    10,
-                    5
-                ],
-                "parent": "body",
-                "at": [
-                    1.0,
-                    0.4,
-                    0.1
-                ],
-                "rest": [
-                    -0.3,
-                    0,
-                    0.15
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "foreArmR",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    5,
-                    10,
-                    5
-                ],
-                "parent": "armR",
-                "at": [
-                    0,
-                    -0.85,
-                    0
-                ],
-                "rest": [
-                    -1.2,
-                    0,
-                    0
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "club",
-                "kind": "weapon",
-                "shape": "ellipsoid",
-                "size": [
-                    8,
-                    15,
-                    8
-                ],
-                "parent": "foreArmR",
-                "at": [
-                    0,
-                    -0.9,
-                    0.2
-                ],
-                "pivot": [
-                    0,
-                    0.9,
-                    0
-                ],
-                "rest": [
-                    -0.9,
-                    0,
-                    0
-                ],
-                "taper": [
-                    1,
-                    0.45
-                ],
-                "material": "foam-orange"
-            },
-            {
-                "id": "legL",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    6,
-                    8,
-                    6
-                ],
-                "parent": "body",
-                "at": [
-                    -0.45,
-                    -0.8,
-                    0
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "legR",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    6,
-                    8,
-                    6
-                ],
-                "parent": "body",
-                "at": [
-                    0.45,
-                    -0.8,
-                    0
-                ],
-                "material": "foam-purple"
-            }
-        ],
-        "health": 6
+      "id": "F01",
+      "label": "Slowmer",
+      "tier": "Fodder",
+      "behaviour": "Slow, walks at you in groups. Bonks up close. Free finishers.",
+      "movement": "shuffle",
+      "speed": 1.0,
+      "voxelSize": 0.05,
+      "material": "foam-lime",
+      "parts": [
+        {
+          "id": "body",
+          "kind": "body",
+          "shape": "ellipsoid",
+          "size": [
+            14,
+            15,
+            12
+          ],
+          "parent": null,
+          "shag": true
+        },
+        {
+          "id": "head",
+          "kind": "head",
+          "shape": "ellipsoid",
+          "size": [
+            11,
+            10,
+            11
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0.6,
+            0.55
+          ],
+          "pivot": [
+            0,
+            -0.5,
+            -0.4
+          ],
+          "eyes": "round",
+          "eyeHeight": 0.12,
+          "mouth": "grin",
+          "taper": [
+            1.65,
+            1.65
+          ],
+          "nubs": [
+            [
+              0,
+              1,
+              0
+            ],
+            [
+              -1,
+              0.1,
+              0.2
+            ],
+            [
+              1,
+              0.1,
+              0.2
+            ]
+          ]
+        },
+        {
+          "id": "armL",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            5,
+            10,
+            5
+          ],
+          "parent": "body",
+          "at": [
+            -1.0,
+            0.4,
+            0.1
+          ],
+          "rest": [
+            -0.3,
+            0,
+            -0.15
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "foreArmL",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            5,
+            10,
+            5
+          ],
+          "parent": "armL",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            -1.2,
+            0,
+            0
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "armR",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            5,
+            10,
+            5
+          ],
+          "parent": "body",
+          "at": [
+            1.0,
+            0.4,
+            0.1
+          ],
+          "rest": [
+            -0.3,
+            0,
+            0.15
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "foreArmR",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            5,
+            10,
+            5
+          ],
+          "parent": "armR",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            -1.2,
+            0,
+            0
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "club",
+          "kind": "weapon",
+          "shape": "ellipsoid",
+          "size": [
+            8,
+            15,
+            8
+          ],
+          "parent": "foreArmR",
+          "at": [
+            0,
+            -0.9,
+            0.2
+          ],
+          "pivot": [
+            0,
+            0.9,
+            0
+          ],
+          "rest": [
+            -0.9,
+            0,
+            0
+          ],
+          "taper": [
+            1,
+            0.45
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "id": "legL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            6,
+            8,
+            6
+          ],
+          "parent": "body",
+          "at": [
+            -0.45,
+            -0.8,
+            0
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "legR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            6,
+            8,
+            6
+          ],
+          "parent": "body",
+          "at": [
+            0.45,
+            -0.8,
+            0
+          ],
+          "material": "foam-purple"
+        }
+      ],
+      "health": 6
     },
     {
-        "id": "F02",
-        "label": "Roamer",
-        "tier": "Fodder",
-        "behaviour": "Agile, keeps its distance, throws slow parryable foam balls.",
-        "movement": "throw",
-        "speed": 2.6,
-        "voxelSize": 0.05,
-        "material": "foam-orange",
-        "parts": [
-            {
-                "id": "body",
-                "kind": "body",
-                "shape": "ellipsoid",
-                "size": [
-                    10,
-                    15,
-                    8
-                ],
-                "parent": null
-            },
-            {
-                "id": "head",
-                "kind": "head",
-                "shape": "ellipsoid",
-                "size": [
-                    10,
-                    11,
-                    10
-                ],
-                "parent": "body",
-                "at": [
-                    0,
-                    0.9,
-                    0.2
-                ],
-                "pivot": [
-                    0,
-                    -0.8,
-                    -0.2
-                ],
-                "eyes": "angry",
-                "eyeScale": 1.15,
-                "mouth": "grin"
-            },
-            {
-                "id": "satchel",
-                "kind": "ability",
-                "shape": "ellipsoid",
-                "size": [
-                    10,
-                    11,
-                    6
-                ],
-                "parent": "body",
-                "at": [
-                    0,
-                    0.2,
-                    -1.0
-                ],
-                "pivot": [
-                    0,
-                    0,
-                    1
-                ],
-                "material": "foam-lime"
-            },
-            {
-                "id": "armL",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    3,
-                    10,
-                    3
-                ],
-                "parent": "body",
-                "at": [
-                    -1.05,
-                    0.5,
-                    0
-                ],
-                "rest": [
-                    0,
-                    0,
-                    -0.1
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "foreArmL",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    3,
-                    10,
-                    3
-                ],
-                "parent": "armL",
-                "at": [
-                    0,
-                    -0.85,
-                    0
-                ],
-                "rest": [
-                    -0.3,
-                    0,
-                    0
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "armR",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    3,
-                    10,
-                    3
-                ],
-                "parent": "body",
-                "at": [
-                    1.05,
-                    0.5,
-                    0
-                ],
-                "rest": [
-                    0,
-                    0,
-                    0.1
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "foreArmR",
-                "kind": "arm",
-                "shape": "capsule",
-                "size": [
-                    3,
-                    10,
-                    3
-                ],
-                "parent": "armR",
-                "at": [
-                    0,
-                    -0.85,
-                    0
-                ],
-                "rest": [
-                    -2.15,
-                    0,
-                    0
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "ball",
-                "kind": "weapon",
-                "shape": "ellipsoid",
-                "size": [
-                    6,
-                    6,
-                    6
-                ],
-                "parent": "foreArmR",
-                "at": [
-                    0,
-                    -1,
-                    0
-                ],
-                "pivot": [
-                    0,
-                    0.6,
-                    0
-                ],
-                "material": "foam-orange"
-            },
-            {
-                "id": "legL",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    4,
-                    8,
-                    4
-                ],
-                "parent": "body",
-                "at": [
-                    -0.45,
-                    -0.8,
-                    0
-                ],
-                "rest": [
-                    -0.25,
-                    0,
-                    -0.06
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "shinL",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    4,
-                    8,
-                    4
-                ],
-                "parent": "legL",
-                "at": [
-                    0,
-                    -0.85,
-                    0
-                ],
-                "rest": [
-                    0.4,
-                    0,
-                    0
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "legR",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    4,
-                    8,
-                    4
-                ],
-                "parent": "body",
-                "at": [
-                    0.45,
-                    -0.8,
-                    0
-                ],
-                "rest": [
-                    -0.25,
-                    0,
-                    0.06
-                ],
-                "material": "foam-purple"
-            },
-            {
-                "id": "shinR",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    4,
-                    8,
-                    4
-                ],
-                "parent": "legR",
-                "at": [
-                    0,
-                    -0.85,
-                    0
-                ],
-                "rest": [
-                    0.4,
-                    0,
-                    0
-                ],
-                "material": "foam-purple"
-            }
-        ],
-        "motions": {
-            "_note": "ANIM-01: the Roamer's throw, from the load to the follow. Part rotations and root lean and turn in degrees, k 0..1 within each state; there is no recover block, the recover state eases back to rest on its own. wind: armR swings the ball arm overhead and back, foreArmR straightens the elbow so the ball sits behind the head, turn swings the body a little away from the target, head and roll drop the throwing side. strike: the arm whips forward past the shoulder and the body turns through. The values keep the ball's arc up and behind in the wind and level and out in front in the strike (checked with tools/throw-probe.ts).",
-            "throw": {
-                "wind": { "armR": -180, "foreArmR": 80, "headX": -15, "headYaw": -25, "roll": -12, "pitch": -6, "turn": 15 },
-                "strike": { "armR": -60, "foreArmR": 100, "headX": 25, "pitch": 10, "turn": -10 }
-            }
+      "id": "F02",
+      "label": "Roamer",
+      "tier": "Fodder",
+      "behaviour": "Agile, keeps its distance, throws slow parryable foam balls.",
+      "movement": "throw",
+      "speed": 2.6,
+      "voxelSize": 0.05,
+      "material": "foam-orange",
+      "parts": [
+        {
+          "id": "body",
+          "kind": "body",
+          "shape": "ellipsoid",
+          "size": [
+            10,
+            15,
+            8
+          ],
+          "parent": null
         },
-        "health": 8
+        {
+          "id": "head",
+          "kind": "head",
+          "shape": "ellipsoid",
+          "size": [
+            10,
+            11,
+            10
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0.9,
+            0.2
+          ],
+          "pivot": [
+            0,
+            -0.8,
+            -0.2
+          ],
+          "eyes": "angry",
+          "eyeScale": 1.15,
+          "mouth": "grin"
+        },
+        {
+          "id": "satchel",
+          "kind": "ability",
+          "shape": "ellipsoid",
+          "size": [
+            10,
+            11,
+            6
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0.2,
+            -1.0
+          ],
+          "pivot": [
+            0,
+            0,
+            1
+          ],
+          "material": "foam-lime"
+        },
+        {
+          "id": "armL",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            3,
+            10,
+            3
+          ],
+          "parent": "body",
+          "at": [
+            -1.05,
+            0.5,
+            0
+          ],
+          "rest": [
+            0,
+            0,
+            -0.1
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "foreArmL",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            3,
+            10,
+            3
+          ],
+          "parent": "armL",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            -0.3,
+            0,
+            0
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "armR",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            3,
+            10,
+            3
+          ],
+          "parent": "body",
+          "at": [
+            1.05,
+            0.5,
+            0
+          ],
+          "rest": [
+            0,
+            0,
+            0.1
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "foreArmR",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            3,
+            10,
+            3
+          ],
+          "parent": "armR",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            -2.15,
+            0,
+            0
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "ball",
+          "kind": "weapon",
+          "shape": "ellipsoid",
+          "size": [
+            6,
+            6,
+            6
+          ],
+          "parent": "foreArmR",
+          "at": [
+            0,
+            -1,
+            0
+          ],
+          "pivot": [
+            0,
+            0.6,
+            0
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "id": "legL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "body",
+          "at": [
+            -0.45,
+            -0.8,
+            0
+          ],
+          "rest": [
+            -0.25,
+            0,
+            -0.06
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "shinL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "legL",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            0.4,
+            0,
+            0
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "legR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "body",
+          "at": [
+            0.45,
+            -0.8,
+            0
+          ],
+          "rest": [
+            -0.25,
+            0,
+            0.06
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "shinR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "legR",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            0.4,
+            0,
+            0
+          ],
+          "material": "foam-purple"
+        }
+      ],
+      "motions": {
+        "_note": "ANIM-01: the Roamer's throw, from the load to the follow. Part rotations and root lean and turn in degrees, k 0..1 within each state; there is no recover block, the recover state eases back to rest on its own. wind: armR swings the ball arm overhead and back, foreArmR straightens the elbow so the ball sits behind the head, turn swings the body a little away from the target, head and roll drop the throwing side. strike: the arm whips forward past the shoulder and the body turns through. The values keep the ball's arc up and behind in the wind and level and out in front in the strike (checked with tools/throw-probe.ts).",
+        "throw": {
+          "wind": {
+            "armR": -180,
+            "foreArmR": 80,
+            "headX": -15,
+            "headYaw": -25,
+            "roll": -12,
+            "pitch": -6,
+            "turn": 15
+          },
+          "strike": {
+            "armR": -60,
+            "foreArmR": 100,
+            "headX": 25,
+            "pitch": 10,
+            "turn": -10
+          }
+        }
+      },
+      "health": 8
     },
     {
       "id": "F03",
@@ -513,30 +527,141 @@
           "id": "body",
           "kind": "body",
           "shape": "ellipsoid",
-          "size": [11, 9, 15],
+          "size": [
+            11,
+            9,
+            15
+          ],
           "parent": null,
-          "taper": [1.05, 0.85]
+          "taper": [
+            1.05,
+            0.85
+          ]
         },
         {
-          "id": "spines",
-          "kind": "fin",
+          "id": "spine1",
+          "kind": "detail",
           "shape": "ellipsoid",
-          "size": [9, 11, 16],
+          "size": [
+            5,
+            6,
+            5
+          ],
           "parent": "body",
-          "at": [0, 0.6, -0.2],
-          "pivot": [0, -0.85, 0],
-          "taper": [1, 0.9],
-          "nubs": [[0, 1, 0.62], [0, 1, 0.2], [0, 1, -0.2], [0, 0.95, -0.66]],
-          "material": "foam-lime"
+          "at": [
+            0,
+            0.72,
+            0.55
+          ],
+          "taper": [
+            1,
+            0.4
+          ],
+          "material": "foam-lime",
+          "pivot": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "spine2",
+          "kind": "detail",
+          "shape": "ellipsoid",
+          "size": [
+            5,
+            6,
+            5
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0.85,
+            0.28
+          ],
+          "taper": [
+            1,
+            0.4
+          ],
+          "material": "foam-lime",
+          "pivot": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "spine3",
+          "kind": "detail",
+          "shape": "ellipsoid",
+          "size": [
+            5,
+            6,
+            5
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0.9,
+            0.0
+          ],
+          "taper": [
+            1,
+            0.4
+          ],
+          "material": "foam-lime",
+          "pivot": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "spine4",
+          "kind": "detail",
+          "shape": "ellipsoid",
+          "size": [
+            5,
+            6,
+            5
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0.85,
+            -0.28
+          ],
+          "taper": [
+            1,
+            0.4
+          ],
+          "material": "foam-lime",
+          "pivot": [
+            0,
+            -1,
+            0
+          ]
         },
         {
           "id": "head",
           "kind": "head",
           "shape": "ellipsoid",
-          "size": [12, 11, 12],
+          "size": [
+            12,
+            11,
+            12
+          ],
           "parent": "body",
-          "at": [0, -0.15, 1.0],
-          "pivot": [0, 0, -0.85],
+          "at": [
+            0,
+            -0.15,
+            1.0
+          ],
+          "pivot": [
+            0,
+            0,
+            -0.85
+          ],
           "eyes": "angry",
           "mouth": "gape",
           "gapeScale": 1.3,
@@ -546,47 +671,103 @@
           "id": "legFL",
           "kind": "leg",
           "shape": "capsule",
-          "size": [4, 6, 4],
+          "size": [
+            4,
+            6,
+            4
+          ],
           "parent": "body",
-          "at": [-0.62, -0.55, 0.45],
-          "rest": [0, 0, -0.25],
+          "at": [
+            -0.62,
+            -0.55,
+            0.45
+          ],
+          "rest": [
+            0,
+            0,
+            -0.25
+          ],
           "material": "foam-purple-deep"
         },
         {
           "id": "legBL",
           "kind": "leg",
           "shape": "capsule",
-          "size": [4, 6, 4],
+          "size": [
+            4,
+            6,
+            4
+          ],
           "parent": "body",
-          "at": [-0.62, -0.55, -0.45],
-          "rest": [0, 0, -0.25],
+          "at": [
+            -0.62,
+            -0.55,
+            -0.45
+          ],
+          "rest": [
+            0,
+            0,
+            -0.25
+          ],
           "material": "foam-purple-deep"
         },
         {
           "id": "legFR",
           "kind": "leg",
           "shape": "capsule",
-          "size": [4, 6, 4],
+          "size": [
+            4,
+            6,
+            4
+          ],
           "parent": "body",
-          "at": [0.62, -0.55, 0.45],
-          "rest": [0, 0, 0.25],
+          "at": [
+            0.62,
+            -0.55,
+            0.45
+          ],
+          "rest": [
+            0,
+            0,
+            0.25
+          ],
           "material": "foam-purple-deep"
         },
         {
           "id": "legBR",
           "kind": "leg",
           "shape": "capsule",
-          "size": [4, 6, 4],
+          "size": [
+            4,
+            6,
+            4
+          ],
           "parent": "body",
-          "at": [0.62, -0.55, -0.45],
-          "rest": [0, 0, 0.25],
+          "at": [
+            0.62,
+            -0.55,
+            -0.45
+          ],
+          "rest": [
+            0,
+            0,
+            0.25
+          ],
           "material": "foam-purple-deep"
         }
       ],
       "motions": {
         "_note": "GAME-10d: the Swarmer's poses, degrees and metres, read by src/foamers/rig-states.ts. nibble: the mouth snap (the head lunges and bites down). backOut: the hop out after a nibble (the body rears up and springs back).",
-        "nibble": { "pitch": 12, "head": 20, "y": 0.02 },
-        "backOut": { "pitchBack": 10, "y": 0.04, "legs": 18 }
+        "nibble": {
+          "pitch": 12,
+          "head": 20,
+          "y": 0.02
+        },
+        "backOut": {
+          "pitchBack": 10,
+          "y": 0.04,
+          "legs": 18
+        }
       },
       "pack": 5,
       "health": 2
@@ -803,171 +984,171 @@
       "health": 10
     },
     {
-        "id": "F05",
-        "label": "Darter",
-        "tier": "Heavy",
-        "behaviour": "Charges in a straight line. Armoured front, weak back.",
-        "movement": "charge",
-        "speed": 2.0,
-        "voxelSize": 0.05,
-        "material": "foam-purple-deep",
-        "parts": [
-            {
-                "id": "body",
-                "kind": "head",
-                "shape": "ellipsoid",
-                "size": [
-                    18,
-                    14,
-                    18
-                ],
-                "parent": null,
-                "eyes": "angry",
-                "mouth": "gape",
-                "gapeScale": 1.25
-            },
-            {
-                "id": "chest",
-                "kind": "ability",
-                "shape": "ellipsoid",
-                "size": [
-                    18,
-                    7,
-                    14
-                ],
-                "parent": "body",
-                "at": [
-                    0,
-                    -0.8,
-                    -0.48
-                ],
-                "pivot": [
-                    0,
-                    0,
-                    -1
-                ],
-                "taper": [
-                    0.65,
-                    1
-                ],
-                "material": "foam-lime"
-            },
-            {
-                "id": "brow",
-                "kind": "ability",
-                "shape": "ellipsoid",
-                "size": [
-                    16,
-                    4,
-                    12
-                ],
-                "parent": "body",
-                "at": [
-                    0,
-                    0.35,
-                    -0.18
-                ],
-                "pivot": [
-                    0,
-                    0,
-                    -1
-                ],
-                "taper": [
-                    1,
-                    0.55
-                ],
-                "material": "foam-lime"
-            },
-            {
-                "id": "weakpoint",
-                "kind": "ability",
-                "shape": "ellipsoid",
-                "size": [
-                    16,
-                    10,
-                    6
-                ],
-                "parent": "body",
-                "at": [
-                    0,
-                    0,
-                    -0.65
-                ],
-                "pivot": [
-                    0,
-                    0,
-                    1
-                ],
-                "material": "foam-orange"
-            },
-            {
-                "id": "legL",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    7,
-                    9,
-                    7
-                ],
-                "parent": "body",
-                "at": [
-                    -0.5,
-                    -0.75,
-                    0
-                ],
-                "rest": [
-                    0.18,
-                    0,
-                    -0.08
-                ],
-                "material": "foam-purple-deep"
-            },
-            {
-                "id": "legR",
-                "kind": "leg",
-                "shape": "capsule",
-                "size": [
-                    7,
-                    9,
-                    7
-                ],
-                "parent": "body",
-                "at": [
-                    0.5,
-                    -0.75,
-                    0
-                ],
-                "rest": [
-                    -0.12,
-                    0,
-                    0.08
-                ],
-                "material": "foam-purple-deep"
-            }
-        ],
-        "motions": {
-            "_note": "ANIM-01: the Darter poses, replacing the GAME-10b placeholders. Angles in degrees, distances in metres; the scrape's cycles are whole number of strokes so the leg is at rest when the telegraph ends, and the state edge never jumps. The wall stun's headShake is a fast pitch shake of the whole body: this rig has no separate head part, its body is its head.",
-            "scrape": {
-                "pitch": 17,
-                "dip": 0.08,
-                "leg": 29,
-                "stand": 12,
-                "cycles": 2,
-                "rollShake": 2
-            },
-            "charge": {
-                "pitch": 25,
-                "bob": 0.03,
-                "stride": 34
-            },
-            "wallStun": {
-                "pitchBack": 14,
-                "wobble": 6,
-                "headShake": 10,
-                "freq": 24
-            }
+      "id": "F05",
+      "label": "Darter",
+      "tier": "Heavy",
+      "behaviour": "Charges in a straight line. Armoured front, weak back.",
+      "movement": "charge",
+      "speed": 2.0,
+      "voxelSize": 0.05,
+      "material": "foam-purple-deep",
+      "parts": [
+        {
+          "id": "body",
+          "kind": "head",
+          "shape": "ellipsoid",
+          "size": [
+            18,
+            14,
+            18
+          ],
+          "parent": null,
+          "eyes": "angry",
+          "mouth": "gape",
+          "gapeScale": 1.25
         },
-        "health": 30
+        {
+          "id": "chest",
+          "kind": "ability",
+          "shape": "ellipsoid",
+          "size": [
+            18,
+            7,
+            14
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            -0.8,
+            -0.48
+          ],
+          "pivot": [
+            0,
+            0,
+            -1
+          ],
+          "taper": [
+            0.65,
+            1
+          ],
+          "material": "foam-lime"
+        },
+        {
+          "id": "brow",
+          "kind": "ability",
+          "shape": "ellipsoid",
+          "size": [
+            16,
+            4,
+            12
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0.35,
+            -0.18
+          ],
+          "pivot": [
+            0,
+            0,
+            -1
+          ],
+          "taper": [
+            1,
+            0.55
+          ],
+          "material": "foam-lime"
+        },
+        {
+          "id": "weakpoint",
+          "kind": "ability",
+          "shape": "ellipsoid",
+          "size": [
+            16,
+            10,
+            6
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            0,
+            -0.65
+          ],
+          "pivot": [
+            0,
+            0,
+            1
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "id": "legL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            7,
+            9,
+            7
+          ],
+          "parent": "body",
+          "at": [
+            -0.5,
+            -0.75,
+            0
+          ],
+          "rest": [
+            0.18,
+            0,
+            -0.08
+          ],
+          "material": "foam-purple-deep"
+        },
+        {
+          "id": "legR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            7,
+            9,
+            7
+          ],
+          "parent": "body",
+          "at": [
+            0.5,
+            -0.75,
+            0
+          ],
+          "rest": [
+            -0.12,
+            0,
+            0.08
+          ],
+          "material": "foam-purple-deep"
+        }
+      ],
+      "motions": {
+        "_note": "ANIM-01: the Darter poses, replacing the GAME-10b placeholders. Angles in degrees, distances in metres; the scrape's cycles are whole number of strokes so the leg is at rest when the telegraph ends, and the state edge never jumps. The wall stun's headShake is a fast pitch shake of the whole body: this rig has no separate head part, its body is its head.",
+        "scrape": {
+          "pitch": 17,
+          "dip": 0.08,
+          "leg": 29,
+          "stand": 12,
+          "cycles": 2,
+          "rollShake": 2
+        },
+        "charge": {
+          "pitch": 25,
+          "bob": 0.03,
+          "stride": 34
+        },
+        "wallStun": {
+          "pitchBack": 14,
+          "wobble": 6,
+          "headShake": 10,
+          "freq": 24
+        }
+      },
+      "health": 30
     },
     {
       "id": "F06",

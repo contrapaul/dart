@@ -30,6 +30,9 @@ export interface F01Input {
   attackRange: number;
   /** The distance it holds at without a token (metres). */
   holdRange: number;
+  /** GAME-10d: seconds since its last nibble landed (Infinity before the
+   *  first). Only the Swarmer's brain reads it. */
+  sinceNibble: number;
 }
 
 /** What the brain wants done this step. */
@@ -200,6 +203,7 @@ export function makeF01Context(agentId: number): F01Context {
       hasToken: false,
       attackRange: 0,
       holdRange: BRAIN.holdRangeMetres,
+      sinceNibble: Infinity,
     },
     decision: { state: "idle", move: "stand", wantsToken: false },
   };

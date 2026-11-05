@@ -153,6 +153,7 @@ export function makeF02Context(agentId: number): F02Context {
       throwRange: 0,
       preferredDistance: 0,
       retreatDistance: 0,
+      sinceNibble: Infinity,
     },
     decision: { state: "idle", move: "stand", wantsToken: false },
   };

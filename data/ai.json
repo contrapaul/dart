@@ -17,11 +17,10 @@
     "circleDeadbandMetres": 0.15
   },
   "pack": {
-    "_note": "GAME-10d: the Swarmer pack. maxAlive is the hard cap on live Swarmers: a pack spawn past it is skipped, never made by removing the oldest, so a swarm never outruns the frame budget. ringMetres is the ring a Swarmer backs out to after a nibble and waits on, nibbleGapSeconds how long it must wait there before it may nibble again, waveSeconds the stagger between the members of one pack leaving the pack centre, and spreadMetres how far round the ring the members are placed.",
+    "_note": "GAME-10d: the Swarmer pack. maxAlive is the hard cap on live Swarmers: a pack spawn past it is skipped, never made by removing the oldest, so a swarm never outruns the frame budget. ringMetres is the ring a Swarmer backs out to after a nibble and waits on, nibbleGapSeconds how long it must wait there before it may nibble again, and spreadMetres how far round the ring the members are placed.",
     "maxAlive": 12,
     "ringMetres": 3.0,
     "nibbleGapSeconds": 1.2,
-    "waveSeconds": 0.08,
     "spreadMetres": 1.6
   },
   "default": "normal",
