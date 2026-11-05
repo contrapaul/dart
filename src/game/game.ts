@@ -19,6 +19,7 @@ import { materialId } from "../voxel/materials";
 import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { PickupSystem } from "../pickups/pickups";
 import { Finisher } from "./finisher";
+import { Melee } from "./melee";
 import inputJson from "../../data/input.json";
 import { makeLevelAI, type LevelAI } from "../ai/level";
 import type { NavBounds } from "../ai/nav-grid";
@@ -123,6 +124,7 @@ export interface Game<T extends BuiltGame = BuiltGame> {
   shield: Shield;
   pickups: PickupSystem;
   finisher: Finisher;
+  melee: Melee;
   impacts: DartImpacts;
   debris: DebrisSystem;
   pieces: FallingPieces;
@@ -241,6 +243,11 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // ammo box plays its own short sound and a small (not green) flash.
   const pickups = new PickupSystem(rapier, world, scene, health);
   const finisher = new Finisher(foamers, pickups);
+  // GAME-06: melee weapon 1 and its charges. It reads the shield's public
+  // state only (raised, charging, parries): GAME-04c owns that module.
+  const melee = new Melee(rapier, world, foamers, debris, voxelTargets, player.collider);
+  /** What the last watch swing() press did (null: nothing swung). */
+  let lastSwing: number | null = null;
   pickups.onCollected = (kind, pos) => {
     if (kind === "ammo") {
       audio.play("PU-ammo", { position: pos });
@@ -384,7 +391,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
 
   const game = {
     renderer, scene, camera, rapier, world, input, hud, store, health, player,
-    darts, loadout, shield, pickups, finisher, impacts, debris, pieces, mesherPool, foamers, levelAI,
+    darts, loadout, shield, pickups, finisher, melee, impacts, debris, pieces, mesherPool, foamers, levelAI,
     voxels, voxelMesh, audio, ui: null as unknown as UIController, built,
     loop: null as unknown as ReturnType<typeof startLoop>,
   };
@@ -405,9 +412,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     {
       completeOpen: h.completeOpen,
       overlayAllowed: h.overlayAllowed,
-      onRestart: () => { shield.reset(); h.onRestart?.(); },
-      onTryAgain: () => { shield.reset(); h.onTryAgain?.(); },
-      onPlayAgain: () => { shield.reset(); h.onPlayAgain?.(); },
+      onRestart: () => { shield.reset(); melee.reset(); h.onRestart?.(); },
+      onTryAgain: () => { shield.reset(); melee.reset(); h.onTryAgain?.(); },
+      onPlayAgain: () => { shield.reset(); melee.reset(); h.onPlayAgain?.(); },
     },
   );
   game.ui = ui;
@@ -448,6 +455,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
           if (input.wasPressed("melee")) {
             const eye = player.eye(1, _playerPos);
             const fwd = camera.getWorldDirection(_aimDir);
+            let taken = false;
             for (const f of foamers.list) {
               if (f.state !== "stagger") continue;
               if (!finisher.attempt(f, eye, fwd, _muzzle)) continue;
@@ -455,7 +463,21 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
               input.consumePress("melee");
               // The squeeze; the pop's FX-pop comes with the pop itself.
               audio.play("FN-finisher", { position: f.centre });
+              taken = true;
               break;
+            }
+            // GAME-06: the card's key order: the finisher saw the press
+            // first; with none finishable it is the weapon's. The press is
+            // spent either way (the bash is never nothing).
+            if (!taken) {
+              input.consumePress("melee");
+              const me = melee.press(eye, fwd, shield);
+              lastSwing = me.swung;
+              if (me.swung !== null) audio.play(me.swung < 0 ? "ML-bash" : "ML-swing");
+              if (me.empty) audio.play("ML-empty");
+              for (const f of me.hits) audio.play("ML-hit", { position: f.centre });
+              for (const p of me.carved) audio.play("DT-carve", { position: p });
+              if (me.refills > 0) hud.meleePips(melee.charges, melee.maxCharges, true);
             }
           }
         }
@@ -476,6 +498,14 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       }
       if (input.wasPressed("weaponNext")) loadout.next();
       if (input.wasPressed("weaponPrev")) loadout.prev();
+      // GAME-06: the melee's timers (the swing, the bash's cooldown, the
+      // parry and timer refills) with the shield's own read handed over.
+      const me = melee.update(dt, shield);
+      if (me.refills > 0) {
+        audio.play("ML-charge");
+        // The pip's pulse when a parry (or the timer) refills a charge.
+        hud.meleePips(melee.charges, melee.maxCharges, true);
+      }
       // GAME-04: the shield after the player, so it can take this step's
       // fire press as the throw before the blaster sees it. Its own gate
       // says when the blaster may not fire (the disc is up, or out in the
@@ -501,8 +531,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // GAME-10b: the Darter's front plates stop a charge. A plate clang
       // where they met, and no hit sound.
       if (se.chargeBlocked) audio.play("F05-impact", { position: shield.discPosition });
-      // No shooting while the disc is up or a finisher holds the player.
-      const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active;
+      // No shooting while the disc is up, a finisher holds the player, or
+      // a swing is running (GAME-06: the blaster cannot fire during a swing).
+      const canFire = !shield.blocksFire && !shield.usedFirePress && !finisher.active && !melee.swinging;
       loadout.update(
         dt,
         {
@@ -552,7 +583,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // pitch is unchanged, so releasing the trigger brings the view back up).
     // The parry's kick rides the same tilt as the blaster's climb and the
     // block's (GAME-04 stage 2).
-    const climb = loadout.active.climb + shield.kick + shield.parryKick;
+    const climb = loadout.active.climb + shield.kick + shield.parryKick + melee.kick;
     camera.rotation.set(player.pitch + climb, player.yaw, 0);
     // The active blaster's viewmodel animates once per render frame.
     loadout.render(dt, input.isDown("fire"));
@@ -566,6 +597,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // GAME-05: the lock marker at the crosshair, on while a charge
       // target is locked (the lock only lives while the disc is up).
       hud.setChargeLock(!ui.paused && shield.lockedTarget != null);
+      // GAME-06: the charge pips beside the shield area.
+      hud.meleePips(melee.charges, melee.maxCharges, false);
     }
     h.renderLate?.(dt, alpha);
     darts.syncRender(alpha);
@@ -646,6 +679,13 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         // finishable flag (a stagger is what the finisher acts on).
         pickups: { health: pickups.count("health") },
         finishable: foamers.list.map((f) => f.state === "stagger"),
+        // GAME-06: the melee's charges, the combo step it is on, and the
+        // seconds left of the running swing.
+        melee: {
+          charges: melee.charges, max: melee.maxCharges, step: melee.comboStep,
+          swing: Number(melee.swingLeft.toFixed(3)), bash: Number(melee.bashLeft.toFixed(3)),
+          swinging: melee.swinging,
+        },
       }),
       moveTo: (x: number, y: number, z: number) => player.teleport(_move.set(x, y, z)),
       look: (yaw: number, pitch: number) => {
@@ -700,6 +740,15 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       finish: () => {
         input.simulatePress("melee");
         fixedStep(STEP);
+      },
+      /** GAME-06: the watch helper. One step of the melee press: with a
+       *  finishable Foamer in the view the finisher takes it, else the
+       *  weapon swings (or bashes). The state's melee fields say what ran. */
+      swing: () => {
+        lastSwing = null;
+        input.simulatePress("melee");
+        fixedStep(STEP);
+        return { charges: melee.charges, swung: lastSwing };
       },
       /** GAME-05: press the dash once. With the disc up and a target
        *  locked it is a charge; otherwise it is the normal dash (the
