@@ -402,6 +402,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: GAME-10e review, a Blocker wall in the Ring (Claude, overnight)
+
+- DeepSeek finished all three stages in one run (the read-once brief
+  worked). Checked by value: of `data/foamer-rigs.json` only F04 changed
+  (the rest is number formatting), of `data/foamers.json` only the F04
+  type; the F01 brain change is one new move intent; `shield.ts` gets one
+  line, the Blocker's longer charge stagger with a fallback to the old
+  time. Main merged in; tsc, 495 tests and the build pass.
+- Played in the Ring with the watch: three Blockers walked to a line at
+  9.3 to 9.4 m, about 1 to 1.4 m apart, shields up, and fired a three ball
+  volley over the top. A B01 shot into the front: 3 darts, 0.08 damage.
+- Changed in review: F04 `turnRate` 5 to 1.4 rad/s (the Darter's). At 5 a
+  Blocker faced a strafing player within a second, so a side shot met the
+  shield and flanking, the thing it teaches, could not work. At 1.4 it
+  lagged a quick strafe by about 25 degrees. Tune in playtest.
+- Not verified in the browser: a flank shot landing full damage (my
+  scripted strafe and aim missed three times; the unit test for side
+  damage passes), the shield charge stagger, the shield breaking, the
+  look up close, the four sounds.
+
 ### 2026-11-06: GAME-10e, the F04 Blocker and its shield wall (DeepSeek V4.1 Flash via Pi)
 
 Task card `tasks/GAME-10e.md`. Three stages, each committed green.

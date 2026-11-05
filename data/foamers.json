@@ -320,8 +320,8 @@
     },
     "F04": {
       "rig": "F04",
-      "_note": "GAME-10e: the Blocker. Holds a shield wall: slots side by side at slots.holdMetres, a volley over the shield with the ranged token. The shield is armour on the shield part, but only across its arcDeg front: a side or back dart takes full damage, and a staggered Blocker has the shield down. shieldChargeTime is the stagger the player shield charge leaves it in (a longer one than the base).",
-      "turnRate": 5,
+      "_note": "GAME-10e: the Blocker. Holds a shield wall: slots side by side at slots.holdMetres, a volley over the shield with the ranged token. The shield is armour on the shield part, but only across its arcDeg front: a side or back dart takes full damage, and a staggered Blocker has the shield down. shieldChargeTime is the stagger the player shield charge leaves it in (a longer one than the base). turnRate 1.4 rad/s, the Darter's (review: at 5 it faced a strafing player within a second, so flanking could not work).",
+      "turnRate": 1.4,
       "attackRange": 1.4,
       "throwRangeMetres": 16,
       "preferredDistanceMetres": 9,
