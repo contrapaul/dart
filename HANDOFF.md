@@ -402,6 +402,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: BUG-04 stopped at 2 in 10, a lead (Claude, morning)
+
+- Qwen 27B ran about ten hours in all and was stopped at 07:10 so the
+  machines are idle while Paul is out. Its work is on branch `bug-04`
+  (commit "work in progress"), not merged: the Pit test's stage 2 still
+  gives 2 parries in 10 and fails.
+- On the branch: a headless Pit repro (`tests/shield/parry-pit.test.ts`,
+  stage 1 records the old helper), and a helper that times the earliest
+  ball, faces that ball's thrower and lowers the disc after the ball is
+  done. Facing the right thrower did not change the count, so that was
+  not the cause.
+- Lead from its instrumented run, not confirmed: ball 14 first touches
+  the capsule 0.39 m in front of it, above the top, but the hit is
+  judged with the ball at z -8.6, behind the capsule centre (-8.0), at
+  138 degrees to the view, so the shield reads it as from behind and
+  the player is hurt. If so the cause is where the hit is judged in
+  `src/foamers/projectiles.ts` (the ball moves on past the contact
+  before `onHitPlayer` runs), outside the card's files: a next card
+  should check that first.
+- Nothing checked in the browser.
+
 ### 2026-11-06: BUG-05 not merged, the review's test was the cause (Claude, overnight)
 
 - DeepSeek reproduced the stuck Swarmers headless and found why: when
