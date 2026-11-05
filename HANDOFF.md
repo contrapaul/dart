@@ -6,6 +6,39 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+OPS-02 done 2026-11-06, awaiting review (`tasks/OPS-02.md`, Qwen 3.8
+27B via Pi): the Rapier physics now ships as its own
+content-hashed `/assets/*.wasm` file instead of about 4.1 MB of base64
+inside the `game-sounds` chunk. The 58 files keep importing
+`"@dimforge/rapier3d-compat"`; that name is aliased in `vite.config.ts`
+and `vitest.config.ts` to a new shim, `src/physics/rapier-shim.ts`, which
+re-exports the non-compat `@dimforge/rapier3d@0.21.0` (a new,
+exact-pinned dependency) with a no-op `init()` so the 38 `RAPIER.init()`
+call sites need no change. Vite 8's built-in wasm plugin reads the
+package's `.wasm` ES-module import and, in the build, emits it as a
+separate file under `/assets` that the browser streams and compiles in
+parallel, and in `vitest run` loads it from disk. No extra plugin and no
+copy of the engine in the repo. Because all four pages share the
+`game-sounds` chunk, the `.wasm` is requested by whichever of them loads
+first, and the `/assets/*` immutable cache rule (`public/_headers`)
+already covers it; the Worker serves a `.wasm` as `application/wasm` by
+extension. Chunk and .wasm sizes (raw / gzip), before to after:
+`game-sounds` 4,556,407 B (1,722,764 B) down to 223,152 B (68,846 B);
+a new `rapier` glue chunk, 295,950 B (51,479 B), is added for the
+non-compat build's JS wrapper (loaded in parallel with the `.wasm`, not
+blocking it); the `.wasm` is 3,082,103 B (1,171,203 B);
+`mesher-pool` is untouched at 615,054 B (153,751 B). The first-visit
+download is roughly unchanged, but the physics engine now carries a
+stable content hash, so a returning player does not re-download it when
+only the game code changed (the old hash of `game-sounds` changed on
+every game change, so the inlined engine came down again).
+Not checked by eye: that each page actually plays (no browser here).
+Checked over curl: all four pages return 200 `text/html` in `npm run
+dev` (port 5199) and in `npx vite preview` (port 5198), and the
+`.wasm` returns 200 `application/wasm` with the 3,082,103-byte wasm
+magic `\0asm` in both. Whether the physics actually runs in a real
+browser (the stream-compile path) is not verified here.
+
 GAME-08 done 2026-11-06: the foam vacuum (D09): E on a weakened
 Foamer in its stagger locks on, sucks it into the nozzle
 place (no pop chunks, one capped foam puff), and its darts go straight
@@ -238,10 +271,12 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Gotchas that have already bitten
 
-- **Bundle is 4.9 MB (1.8 MB gzipped), almost all Rapier.** The compat
-  build inlines its WebAssembly as base64. Fine for now; at OPS-02 consider
-  the non-compat `@dimforge/rapier3d` with the `.wasm` served as its own
-  file, and splitting Three.js into its own cached chunk.
+- **The game-sounds chunk used to be 4.5 MB (1.7 MB gzipped), almost all
+  Rapier, because the compat build inlined its WebAssembly as base64.**
+  OPS-02 fixed this: the engine is now a separate content-hashed .wasm
+  under /assets behind a shim (see Status and the OPS-02 log entry).
+  Splitting Three.js and the mesher into their own cached chunks is still
+  open.
 - **A new custom domain answers 500 for about a minute** after the first
   deploy while Cloudflare provisions it. Wait before assuming it failed.
 - **`display` beats the `hidden` attribute.** An element with a CSS
@@ -255,6 +290,54 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: OPS-02, the physics WebAssembly as its own file (Qwen 3.8 27B via Pi)
+
+- Stage 1 (spike) succeeded, so the card proceeded to the guard test and
+  the size check rather than a Blocked result. Route 1 from the card: the
+  non-compat `@dimforge/rapier3d@0.21.0` (the same engine, exact-pinned, a
+  new dependency) rather than keeping the compat build behind it.
+- `src/physics/rapier-shim.ts` is the single re-export the card allows:
+  it does `import * as RAPIER from "@dimforge/rapier3d"` and
+  `export default { ...RAPIER, init }`, where `init()` is a no-op
+  `Promise.resolve()`. The non-compat build has no `init`; its `.wasm` is
+  an ES-module import, so by the time the shim's module loads the
+  WebAssembly is already compiled. The 38 `RAPIER.init()` call sites and
+  the `import type RAPIER from "@dimforge/rapier3d-compat"` type imports
+  keep working because the default export still exposes the same surface
+  (World, Collider, Ray, ...).
+- `vite.config.ts` gains two `resolve.alias` entries. The first points
+  `@dimforge/rapier3d-compat` at the shim. The second points
+  `@dimforge/rapier3d` at the raw `node_modules/@dimforge/rapier3d/rapier.js`
+  because the non-compat package has no `"exports"` field (only
+  `"module"`), so the bare name would not resolve on its own.
+- `vitest.config.ts` (new) has the same two aliases plus
+  `test.server.deps.inline: [/@dimforge\/rapier3d/]`. This was the
+  non-obvious blocker. Left external, Vitest evaluates the engine twice in
+  one worker, once through raw Node ESM and once through Vite's transform,
+  and the glue sets its wasm instance on the copy the tests do not use, so
+  `wasm.memory` is undefined on the other and every World construction
+  throws (203 test failures before the fix). Inlining the whole package
+  forces one shared module graph, and 36 files failed / 203 tests before,
+  all 67 pass after.
+- Guard test `tests/core/no-inlined-wasm.test.ts`: runs only when
+  `dist/` exists; fails if any `.js` there contains `AGFzbQ` (the base64
+  head of the `\0asm` magic). It passes on the new build. `@types/node` is
+  not installed, so the file carries `// @ts-nocheck` like the existing
+  file reader, `tests/weapons/models.test.ts`.
+- `public/_headers` needed no new rule: the `.wasm` lands under
+  `/assets/*` (already immutable) and the Worker maps the `.wasm`
+  extension to `application/wasm` by default. Verified by curl on
+  `npx vite preview`: 200, `application/wasm`, and the `\0asm` magic in
+  the body.
+- Sizes (raw / gzip) recorded in the Status entry: `game-sounds` went from
+  4,556,407 B (1,722,764 B) to 223,152 B (68,846 B); a new `rapier` glue
+  chunk is 295,950 B (51,479 B); the `.wasm` is 3,082,103 B (1,171,203 B);
+  `mesher-pool` is unchanged.
+- Not checked by eye (no browser here): that each of the four pages loads
+  and plays in a real browser, including the stream-compile of the
+  `.wasm`. Verified by curl only: status 200 and content-type for the four
+  `.html` pages and the `.wasm`, under `npm run dev` and under
+  `npx vite preview` of the build.
 ### 2026-11-06: GAME-08 review, the vacuum played in the Pit (Claude, overnight)
 
 - Qwen 27B finished all three stages. Main merged in: `game.ts` took both
