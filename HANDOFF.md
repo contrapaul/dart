@@ -30,6 +30,8 @@ is in a `motions` block in `data/foamer-rigs.json`. Key frames are in
 the poses by PNG, and the throw and charge in the game (see the Log entry;
 reviewer: Claude Opus 5.5).
 
+LVL-02a done 2026-11-04: the level file places ammo. The Pit keeps pit-ammo and gains a box on the far side of the floor, the Ring one box by each pillar; a `darts-*` pickup spawns a 0.35 m foam box that refills the reserve of every held blaster with that dart type (never past reserveMax; at a full reserve it stays), respawns on Try again and Play again, sounds PU-ammo and pulses the ammo counter (not the green heal glow), and dartArena.state().ammoBoxes counts the boxes left. Not checked by eye: the box turn and bob in play, the collect sound and pulse, and the new positions (see the Log entry).
+
 GAME-10b done 2026-11-04: the F05 Darter charges. It scrapes for 0.9 s
 (`telegraphSeconds`), locks its line at the player's position and runs at
 11 m/s for up to 18 m with no steering, staggers for 1.2 s when it hits a
@@ -183,6 +185,25 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-05: LVL-02a review, ammo boxes played in the Pit (Claude)
+
+- Merged main in (23 commits); only the docs conflicted.
+- Fixed, with tests: the pickup cap counted every kind together and
+  trimmed the oldest item, and the level's ammo boxes are the oldest, so a
+  few finishers' health sprays deleted them. The cap is now per kind and
+  trims the oldest of that kind.
+- Fixed, with a test: a box split one pool of darts, first blaster first,
+  and all three blasters take standard darts, so B01 took the whole box.
+  The card says every blaster of the type gets the count; it does now.
+- Played `arena.html?watch`: the Pit starts with 2 boxes; walking onto one
+  took B01, B04 and B03 from 10 to 14 each; at full reserves the other box
+  stayed; Try again brought both back. A screenshot shows a readable yellow
+  box on the pit floor. No console errors.
+- For Paul: a box holds 4 darts (`count` in the level files, from the
+  original Pit file). That is half a B01 magazine and about a tenth of a
+  B04 one, so it barely reads as a pickup. Pick the number, or say whether
+  `count` should mean magazines instead of darts.
 
 ### 2026-11-05: GAME-04b and ANIM-01 merged (Claude)
 
@@ -452,6 +473,39 @@ names such as the ring's).
   throw and F05 charge watched in the game to check the timing, the 10 m
   readability of the windup, the shake of the wall stun, and the charge's
   look. No em or en dashes.
+
+### 2026-11-04: LVL-02a, placed ammo boxes from the level file (Qwen 3.8-27B via Pi)
+
+- The level file now places ammo: the `ammo` pickup kind in
+  `src/pickups/pickups.ts` is a 0.35 m foam box on the floor (no hop, a slow
+  turn and a bob until it settles), collected by walking within 1 m of the
+  feet. It adds its `count` to the `reserve` of every blaster the system
+  holds (`PickupSystem.blasters`) that takes its dart type, caps each at
+  `reserveMax`, and a box that would give nothing stays on the floor (like a
+  health blob at full health). A dead player never collects.
+- The arena page (`src/arena/extras.ts`) gives the system the loadout's
+  blasters and calls `pickups.loadLevelBoxes(LEVEL)` at load; `respawnAtEntry`
+  (Try again, Play again) and the fall respawn clear and reload, so a
+  collected box comes back on a restart. `dartArena.state().ammoBoxes` counts
+  the boxes still on the floor.
+- The validator (`src/level/validate.ts`) rejects a `darts-*` pickup whose
+  type slice is not in `data/darts.json.types`; non `darts-*` pickup types are
+  ignored.
+- The Pit keeps `pit-ammo` and gains `pit-ammo-far` at `[-12, 0.4, 7]` (the
+  far side of the pit floor from `pit-ammo` at `[12, 0.4, -7]`). The Ring's
+  single `ring-ammo` becomes `ring-ammo-w` `[-11, 0.4, 1.6]` and
+  `ring-ammo-e` `[11, 0.4, 1.6]`, one by each pillar, as the card asks.
+- A collected box plays `PU-ammo` (new synth placeholder in
+  `data/sounds.json`, noise rattle; `design/SOUNDS.md` already lists the ID)
+  and pulses the ammo counter in the box's yellow (`hud.ammoFlash`, the
+  `#ammo.topped` class), never the green heal glow.
+- Not in scope per card: Foamer ammo drops, GAME-08 (ammo-for-kills), new dart
+  types.
+- Not verified by eye: how the box turn and bob read, the collect sound and
+  counter pulse on the real page, and the new box positions (the far Pit box
+  and the two by the Ring pillars) feel-right in play. `tests/ai/nav-grid.test.ts`
+  flakes under the full parallel run (passes alone and in a rerun); everything
+  else is green (tsc, vitest 375, build).
 
 ### 2026-11-04: GAME-10b review, Darters played in the ring, merged (Claude)
 

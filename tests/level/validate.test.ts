@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import pitJson from "../../data/levels/1-1-pit.json";
 import { validateLevel } from "../../src/level/validate";
-import type { Level } from "../../src/level/format";
+import type { Level, Pickup } from "../../src/level/format";
 
 // Rule numbers are design/levels/BLOCKOUT.md section 5.
 
@@ -182,6 +182,19 @@ describe("rule 12: foamer IDs exist with health", () => {
   });
 });
 
+describe("LVL-02a: a darts-* pickup names a real dart type", () => {
+  it("accepts a real dart type (the Pit's darts-standard box)", () => {
+    expect(errorsOf(pit)).toEqual([]);
+  });
+
+  it("rejects a pickup whose dart type is not in data/darts.json", () => {
+    const level = broken((l) => {
+      l.pickups!.push({ id: "x", type: "darts-bogus" as Pickup["type"], count: 4, pos: [0, 0, 0] });
+    });
+    expect(errorsOf(level).join(" ")).toMatch(/is not a dart type/);
+  });
+});
+
 describe("structural errors", () => {
   it("refuses a level with no shell", () => {
     const level = broken((l) => {
@@ -197,3 +210,4 @@ describe("structural errors", () => {
     expect(errorsOf(level).join(" ")).toMatch(/size must be positive/);
   });
 });
+

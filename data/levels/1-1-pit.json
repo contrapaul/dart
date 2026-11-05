@@ -127,7 +127,8 @@
   ],
 
   "pickups": [
-    { "id": "pit-ammo", "type": "darts-standard", "count": 4, "pos": [12, 0.4, -7] }
+    { "id": "pit-ammo", "type": "darts-standard", "count": 4, "pos": [12, 0.4, -7] },
+    { "id": "pit-ammo-far", "type": "darts-standard", "count": 4, "pos": [-12, 0.4, 7] }
   ],
 
   "playerStart": { "pos": [0, 4, -29], "yaw": 3.141592653589793 },

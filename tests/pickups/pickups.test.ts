@@ -4,9 +4,16 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { PickupSystem } from "../../src/pickups/pickups";
 import { PlayerHealth } from "../../src/player/health";
 import pickupData from "../../data/pickups.json";
+import { Blaster, resolveSpec } from "../../src/weapons/blaster";
+import type { DartFiring } from "../../src/weapons/blaster";
+import type { DartTypeName } from "../../src/weapons/dart-model";
+import pitJson from "../../data/levels/1-1-pit.json";
+import ringJson from "../../data/levels/1-4-ring.json";
+import type { Level } from "../../src/level/format";
 
 const DT = 1 / 60;
 const H = pickupData.health;
+const A = pickupData.ammo;
 
 beforeAll(async () => {
   await RAPIER.init();
@@ -133,5 +140,162 @@ describe("PickupSystem (GAME-07, the health blob)", () => {
     expect(steps).toBeLessThan(240); // and it arrived in a second or two, not never
     expect(r.health.hp).toBe(60);
     expect(r.pickups.count("health")).toBe(0);
+  });
+});
+
+// A fake dart system: enough for the Blaster's constructor; the tests never
+//  update it, so it keeps nothing.
+class NullDarts implements DartFiring {
+  readonly origins: THREE.Vector3[] = [];
+  readonly dirs: THREE.Vector3[] = [];
+  readonly types: DartTypeName[] = [];
+  fire(o: THREE.Vector3, d: THREE.Vector3, t: DartTypeName): void {
+    this.origins.push(o);
+    this.dirs.push(d.clone());
+    this.types.push(t);
+  }
+  get n(): number { return this.dirs.length; }
+}
+
+/** The blaster B01 (standard darts) with a given reserve and dart type. */
+function blaster(reserve: number, dartType: DartTypeName = "standard"): Blaster {
+  const b = new Blaster(resolveSpec("B01"), new NullDarts(), () => new THREE.Vector3());
+  b.dartType = dartType;
+  b.reserve = reserve;
+  return b;
+}
+
+/** The rig including the blasters an ammo box refills. */
+function ammoRig(blist: Blaster[]) {
+  const r = rig();
+  r.pickups.blasters = blist;
+  return r;
+}
+
+describe("PickupSystem (LVL-02a, the ammo box)", () => {
+  const BOX = new THREE.Vector3(0, A.size / 2, 0);
+
+  it("walks in and adds its count to the reserve of every blaster that takes that type", () => {
+    const a = blaster(10, "standard");
+    const r = ammoRig([a]);
+    let onC = 0;
+    r.pickups.onCollected = () => { onC++; };
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(10 + 24);
+    expect(r.pickups.count("ammo")).toBe(0);
+    expect(onC).toBe(1);
+  });
+
+  it("never takes the reserve past reserveMax: any overage is not in the box", () => {
+    // B01's reserve_max is 40; 30 in the room, the box has 24 -> take only 10.
+    const a = blaster(30, "standard");
+    const r = ammoRig([a]);
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(a.spec.reserveMax);
+    expect(r.pickups.count("ammo")).toBe(0); // the darts stayed fully in
+  });
+
+  it("only takes blasters of the box's dart type", () => {
+    const std = blaster(10, "standard");
+    const slg = blaster(10, "slug");
+    const r = ammoRig([std, slg]);
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(std.reserve).toBe(34);
+    expect(slg.reserve).toBe(10); // the slug blaster does not take standard darts
+    expect(r.pickups.count("ammo")).toBe(0);
+  });
+
+  it("stays put at a high reserve, it doesn't scavenge dart space if no blaster has room", () => {
+    const a = blaster(40, "standard"); // full
+    const r = ammoRig([a]);
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    for (let i = 0; i < 30; i++) tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(40);
+    expect(r.pickups.count("ammo")).toBe(1); // it stays put, not consumed
+  });
+
+  it("a dead player can never pick up the box", () => {
+    const a = blaster(10, "standard");
+    const r = ammoRig([a]);
+    r.health.hp = 0;
+    r.pickups.spawn("ammo", BOX, new THREE.Vector3(), "standard", 24);
+    for (let i = 0; i < 30; i++) tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(10);
+    expect(r.pickups.count("ammo")).toBe(1);
+  });
+});
+
+// LVL-02a: the level loader places the file's ammo boxes.
+describe("PickupSystem.loadLevelBoxes (LVL-02a)", () => {
+  const pit = pitJson as unknown as Level;
+  const ring = ringJson as unknown as Level;
+
+  it("spawns every darts-* entry of the Pit file as an ammo box", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(pit);
+    expect(r.pickups.count("ammo")).toBe(2); // pit-ammo and pit-ammo-far
+    for (const it of r.pickups.list) {
+      expect(it.dartType).toBe("standard");
+      expect(it.dartCount).toBe(4);
+    }
+  });
+
+  it("spawns the Ring's two boxes, one by each pillar", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(ring);
+    expect(r.pickups.count("ammo")).toBe(2);
+    const xs = r.pickups.list.map((it) => Math.round(it.body.translation().x)).sort((a, b) => a - b);
+    // The pillars stand at x -11 and x 11 (data/levels/1-4-ring.json).
+    expect(xs).toEqual([-11, 11]);
+  });
+
+  it("a restart (clear, then loadLevelBoxes) brings the boxes back", () => {
+    const r = rig();
+    const one = blaster(10, "standard");
+    r.pickups.blasters = [one];
+    r.pickups.loadLevelBoxes(pit);
+    // Walk over one of the boxes until a blaster takes it.
+    const t = r.pickups.list[0]!.body.translation();
+    for (let i = 0; i < 240 && r.pickups.count("ammo") > 1; i++) {
+      r.pickups.update(DT, new THREE.Vector3(t.x, 0, t.z));
+      r.world.step();
+    }
+    expect(r.pickups.count("ammo")).toBe(1);
+    expect(one.reserve).toBeGreaterThan(10);
+    // Try again / Play again: the arena clears everything, then the file's
+    // boxes are placed again.
+    r.pickups.clear();
+    r.pickups.loadLevelBoxes(pit);
+    expect(r.pickups.count("ammo")).toBe(2);
+  });
+});
+
+// LVL-02a review (Claude): the cap is per kind, and a box fills every
+// blaster of its dart type with its full count (the card's rule).
+describe("PickupSystem (LVL-02a review)", () => {
+  it("a health spray at its cap never removes a placed ammo box", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(pitJson as unknown as Level);
+    expect(r.pickups.count("ammo")).toBe(2);
+    // Far more blobs than the health cap: the oldest blobs go, not the boxes.
+    for (let i = 0; i < H.max + 6; i++) {
+      r.pickups.spawn("health", new THREE.Vector3(0, 1, 0), new THREE.Vector3());
+    }
+    expect(r.pickups.count("ammo")).toBe(2);
+    expect(r.pickups.count("health")).toBe(H.max);
+  });
+
+  it("adds its full count to every blaster that takes its dart type", () => {
+    const a = blaster(10, "standard");
+    const b = blaster(10, "standard");
+    const r = ammoRig([a, b]);
+    r.pickups.spawn("ammo", new THREE.Vector3(0, A.size / 2, 0), new THREE.Vector3(), "standard", 4);
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(a.reserve).toBe(14);
+    expect(b.reserve).toBe(14);
+    expect(r.pickups.count("ammo")).toBe(0);
   });
 });

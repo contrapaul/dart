@@ -135,6 +135,14 @@ body {
   opacity: 1;
   transition: opacity 140ms ease-out;
 }
+/* LVL-02a: the ammo box collect: a short scale-up of the counter (the
+   heal flash is a green edge glow; a box is not health, so it gets a
+   small flash of its own, in the box's yellow). */
+#ammo.topped {
+  transform: scale(1.12);
+  transition: transform 120ms ease-out;
+  color: #ffd23f;
+}
 #ammo .pips {
   display: flex;
   gap: 0.3rem;

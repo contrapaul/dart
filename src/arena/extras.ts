@@ -43,6 +43,13 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   // g.ui, not a destructured copy: the UI controller is built after this
   // hook returns (src/game/game.ts).
   const { level } = built;
+
+  // LVL-02a: the level file's ammo boxes: they refill the loadout's
+  // blasters in place, and they respawn on every restart (respawnAtEntry)
+  // so a collected box comes back.
+  pickups.blasters = loadout.blasters;
+  pickups.loadLevelBoxes(LEVEL);
+
   const banner = document.querySelector<HTMLDivElement>("#banner")!;
   const bannerText = document.querySelector<HTMLSpanElement>("#bannerText")!;
   const complete = document.querySelector<HTMLDivElement>("#complete")!;
@@ -134,6 +141,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     player.pitch = 0;
     foamers.clear();
     pickups.clear();
+    pickups.loadLevelBoxes(LEVEL); // LVL-02a: the file boxes come back
     hud.clearFlash();
     // Back to the ammo the player had at the start: there are no pickups
     // yet, so a retry with what was left could not win the arena.
@@ -186,6 +194,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
         player.teleport(start);
         foamers.clear();
         pickups.clear();
+        pickups.loadLevelBoxes(LEVEL);
         runner.reset();
         rifts.setAll("dim");
       }
@@ -217,6 +226,8 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       alive: foamers.live - foamers.downed.length,
       doors: Object.fromEntries([...level.doors].map(([id, d]) => [id, d.state])),
       complete: complete.hidden === false,
+      // LVL-02a: the ammo boxes are still on the floor.
+      ammoBoxes: pickups.count("ammo"),
     }),
   };
 
