@@ -383,6 +383,29 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: GAME-09b review, the chunk finish played in the Pit (Claude, overnight)
+
+- DeepSeek's first run looped for 2.5 hours reading files and wrote
+  nothing; restarted with a map of the lines to read and edit, it built
+  stages 1 and 2 in one run. Review found three things. Fixed by Claude:
+  (1) every dart held a reference to the blaster's one reused shot
+  object, so the next trigger pull rewrote the id and muzzle of darts
+  still flying (each dart keeps its own copy now; test 10 fails on the
+  old code); (2) shot ids were counted per blaster, so two blasters could
+  share one (one counter now). Sent back: (3) a weakened Foamer could
+  never be chunked in play, since the first dart of a shot killed it and
+  the rest passed through (test 7 had set its health to 3, not weakened).
+  DeepSeek's fix holds the kill for two steps so the whole shot lands
+  (test 11). Claude added the same skip to the vacuum the finisher got.
+  Main merged in; tsc, 469 tests and the build pass.
+- Played with the watch in the Pit, B03 at 2.5 m on a weakened F01
+  (health 1.6 of 6): 14 and 15 darts landed and it chunked each time: a
+  hole through the body with the cream core showing, lime and purple
+  foam cubes bursting out, and the body thrown back. Foam only.
+- For Paul's playtest: the push is strong (2x), the burst is busy at 40
+  cubes, and `FX-chunk` reuses the pop's chunk sound ID. Not heard.
+  Area blasts (B05, B06, B07) are still open on the PLAN row.
+
 ### 2026-11-06: GAME-09b review fix, a held kill so a whole shot counts (DeepSeek V4.1 Flash via Pi)
 
 - The fault (found by Claude in the browser): a weakened Foamer died to the
