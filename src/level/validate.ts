@@ -110,7 +110,14 @@ function pieceAnchored(piece: Piece, errors: string[]) {
  *  the trigger (README pillar 3) still counts. */
 const ARENA_ZONE_MARGIN = 4;
 
-function arenaBounds(arena: Arena): Bounds {
+/** LVL-02b: the space an arena seals when it locks: the box around its
+ *  trigger, doors and rifts, ungrown. A later arena's trigger inside it
+ *  could never be reached. */
+function lockedSpace(arena: Arena): Bounds {
+  return arenaZone(arena, 0);
+}
+
+function arenaZone(arena: Arena, margin: number): Bounds {
   const boxes = [
     ...arena.doors.map((b) => boxBounds(b.pos, b.size)),
     ...arena.rifts.map((r) => boxBounds(r.pos, [1, 1, 1])),
@@ -120,8 +127,8 @@ function arenaBounds(arena: Arena): Bounds {
   const max: Vec3 = [-Infinity, -Infinity, -Infinity];
   for (const b of boxes) {
     for (let i = 0; i < 3; i++) {
-      min[i] = Math.min(min[i], b.min[i] - ARENA_ZONE_MARGIN);
-      max[i] = Math.max(max[i], b.max[i] + ARENA_ZONE_MARGIN);
+      min[i] = Math.min(min[i], b.min[i] - margin);
+      max[i] = Math.max(max[i], b.max[i] + margin);
     }
   }
   return { min, max };
@@ -169,9 +176,13 @@ export function validateLevel(level: Level): ValidationResult {
     pieceAnchored(piece, errors);
   }
 
-  // Rule 5 and 6, plus the wave size budget (rule 4).
+  // Rule 5 and 6, plus the wave size budget (rule 4), and LVL-02b's arena id
+  // rule. The trigger rules are with rule 9 below, where the shell is known.
   const seenWaves = new Set<string>();
+  const seenArenas = new Set<string>();
   for (const arena of arenas) {
+    if (seenArenas.has(arena.id)) errors.push(`arena id ${arena.id} is used twice`);
+    seenArenas.add(arena.id);
     const rifts = new Set(arena.rifts.map((r) => r.id));
     const doors = new Set(arena.doors.map((d) => d.id));
     for (const id of arena.unlockOnClear) {
@@ -205,7 +216,7 @@ export function validateLevel(level: Level): ValidationResult {
     }
 
     // Rule 3: count the piece volumes that sit in this arena.
-    const bounds = arenaBounds(arena);
+    const bounds = arenaZone(arena, ARENA_ZONE_MARGIN);
     const inArena = pieces.filter((p) =>
       p.volumes.some((v) => v.pos[0] >= bounds.min[0] && v.pos[0] <= bounds.max[0]
         && v.pos[2] >= bounds.min[2] && v.pos[2] <= bounds.max[2]));
@@ -250,6 +261,19 @@ export function validateLevel(level: Level): ValidationResult {
       if (isVec3(door.pos)) checkSpot(`arena ${arena.id} door ${door.id}`, door.pos, true);
       if (door.state !== "open" && door.state !== "locked" && door.state !== "sealed") {
         errors.push(`arena ${arena.id} door ${door.id}: state must be open, locked or sealed`);
+      }
+    }
+    // LVL-02b: the trigger is inside the shell, and the arenas are in an
+    // order the player can walk: a trigger may not sit in the space an
+    // earlier arena seals when it locks, or no one reaches it.
+    if (isVec3(arena.trigger.pos)) {
+      if (outsideShell(arena.trigger.pos)) {
+        errors.push(`arena ${arena.id}: trigger outside the shell`);
+      }
+      for (const earlier of arenas.slice(0, arenas.indexOf(arena))) {
+        if (inside(lockedSpace(earlier), arena.trigger.pos)) {
+          errors.push(`arena ${arena.id}: trigger is inside arena ${earlier.id}, which locks first`);
+        }
       }
     }
   }
