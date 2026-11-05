@@ -186,6 +186,15 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-05: LVL-02a merged (Claude)
+
+- Merged clean; 395 tests and the build pass. `tests/ai/nav-grid.test.ts`'s
+  timing test (bake a 40 x 40 m floor under 150 ms) failed twice today in
+  the full parallel run (303 ms once) and passed alone every time. The
+  two-layer bake made it a little slower, and 57 files run at once. Worth a
+  fix: raise the limit or run that file on its own.
+- Still open for Paul: the ammo box holds 4 darts (see the review entry).
+
 ### 2026-11-05: LVL-02a review, ammo boxes played in the Pit (Claude)
 
 - Merged main in (23 commits); only the docs conflicted.
