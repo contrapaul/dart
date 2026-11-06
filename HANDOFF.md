@@ -501,7 +501,11 @@ github.com/contrapaul/dart (public), MIT licence.
   tool's sheet label drops digits and some letters ("F0", "RAWLER" on
   F07); the tool's pixel font, not this card.
 - Tests: the Crawler, Brawler and Floater tests (31) pass and the build
-  is clean; the full suite on merged main is below.
+  is clean. Merge held for a quiet full run: BUG-11's loaded runs held
+  the load average near 300 for over an hour, and under that load the
+  full suite fails 5 s timeouts on main too (`tower-throw.test.ts`, and
+  `pit-load.test.ts`, whose BUG-10 fix now bakes ten times, so it
+  outgrows the default timeout under heavy load where one bake fit).
 
 ### 2026-11-07 GAME-10g: the F09 Crawler (Qwen 3.8 Flash Next via Pi, branch `game-10g`)
 
