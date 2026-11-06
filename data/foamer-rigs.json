@@ -1759,7 +1759,7 @@
       "movement": "tank",
       "speed": 0.9,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-lime-deep",
       "parts": [
         {
           "id": "body",
@@ -1782,7 +1782,8 @@
               1,
               0
             ]
-          ]
+          ],
+          "nubMaterial": "foam-purple-deep"
         },
         {
           "id": "head",
@@ -1832,7 +1833,7 @@
             0,
             1.571
           ],
-          "material": "greybox-dark"
+          "material": "foam-purple-deep"
         },
         {
           "id": "armL",
@@ -1874,7 +1875,7 @@
             "material": "foam-orange",
             "length": 3
           },
-          "material": "greybox-dark"
+          "material": "foam-orange"
         },
         {
           "id": "armR",
@@ -1916,7 +1917,7 @@
             "material": "foam-orange",
             "length": 3
           },
-          "material": "greybox-dark"
+          "material": "foam-orange"
         },
         {
           "id": "legL",

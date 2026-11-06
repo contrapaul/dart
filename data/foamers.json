@@ -460,6 +460,35 @@
         }
       ]
     },
+    "F08": {
+      "rig": "F08",
+      "_note": "GAME-10h: the Trawler. A heavy slow tank: keep-distance like the Roamer (the F02 brain), holding at preferredDistanceMetres 12 and firing its wall of balls from up to throwRangeMetres. Health 80 and speed 0.9 come from the rig. The two arm launchers are the weak points (weakpoints); with one gone the wall is half a row, with both gone it cannot fire and stomps. Look (CONTENT-PLAN 3.4): deep lime body, purple shields (the shoulder nubs and the drum), orange launchers.",
+      "turnRate": 1.6,
+      "attackRange": 1.6,
+      "throwRangeMetres": 20,
+      "preferredDistanceMetres": 12,
+      "retreatDistanceMetres": 6,
+      "attacks": [
+        {
+          "id": "wall",
+          "damage": 8,
+          "token": "ranged",
+          "_note": "range pins the wall's firing distance a little outside the ring it keeps (the F09 stream's pattern): the brain parks on preferredDistanceMetres, so an unpinned ranged range would sit exactly on it. needs: either launcher fires (a wall needs at least one; the halves and the gap are the wall block and chooseWall).",
+          "range": 19,
+          "needs": [],
+          "windup": 1,
+          "strike": 0.3
+        },
+        {
+          "id": "stomp",
+          "damage": 12,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.6,
+          "strike": 0.2
+        }
+      ]
+    },
     "F06": {
       "rig": "F06",
       "_note": "GAME-10c: the Floater. It has no legs and no head: it floats (see float), so the leg handicaps do not apply and its turn rate is the no-head half of this one. attackRange is the reach of a spit; the blobs fly from there. preferredDistanceMetres is the ring it keeps, retreatDistanceMetres how close the player must get before it backs off.",

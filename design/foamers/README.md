@@ -12,6 +12,7 @@ artwork.
 | F03 Swarmer | Low purple dog body on four deep-purple legs, a lime ridge of rounded spines along the back, and an orange toothless gape under angry cream eyes. Small, fast, reads as a pack member. |
 | F07 Brawler | Broad purple gorilla-stance body with a tiny head sunk in the shoulders, orange shoulder, knee and back pads, and huge lime fists with knuckle nubs ([Paul]: the look column says a foam sword, the greybox row says huge fists; the fists are kept, in the sword's colour). Angry cream eyes under a heavy brow. |
 | F09 Crawler | Deep orange body on eight deep-purple voxel legs (four hips, front and back pairs), with a lime twin-barrel gun mounted on top. Angry cream eyes. The gun is its weak point and its trigger (GAME-10g). |
+| F08 Trawler | Thick deep-lime body and head on two stout lime legs, a deep-purple ammo drum on the back and two deep-purple shoulder nubs (the "shields": the rig's only spike shape is a rounded nub, see HANDOFF), and two orange tube launchers under the arms. Angry cream eyes and a toothless grin. The launchers are its weak points and its wall of balls (GAME-10h). |
 
 Each Foamer has four 512 x 512 views: `front`, `side`, `back` and
 `three-quarter`. Each `sheet.png` places those views side by side at their
@@ -26,6 +27,7 @@ npx tsx tools/render-rig.ts F03
 npx tsx tools/render-rig.ts F05
 npx tsx tools/render-rig.ts F07
 npx tsx tools/render-rig.ts F09
+npx tsx tools/render-rig.ts F08
 ```
 
 The renderer uses the real rig volumes and rest pose, material colours and
