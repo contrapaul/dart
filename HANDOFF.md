@@ -6,6 +6,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+LVL-03b code done 2026-11-07, awaiting review (card `tasks/LVL-03b.md`,
+DeepSeek V4.1 Flash via Pi, branch `lvl-03b`, not merged, not pushed):
+Level 1-3 beats 6 to 9 in `data/levels/1-3.json`: the hall chase (A4,
+18 x 44 m, 12 Swarmers every 4 s, no lock), the 6 m drop that seals 3 s
+after the landing, breather 2 (10 x 8 m, 35 darts, U2 and S3 marks), the
+Ring gauntlet (A2, 30 x 30 m, 10 then 12 Swarmers then 4 Roamers, A5 and
+A6 ammo, block reachable by a mantle chain) and the lit 3 m north exit.
+`ArenaRunner` gained `noLock` and `escape`. Short tests: `tests/level`
+90 pass, `tsc` and `npm run build` clean. Not checked by eye: nothing has
+been walked in a browser.
+
 LVL-03a merged locally 2026-11-06, not pushed (card `tasks/LVL-03a.md`,
 DeepSeek V4.1 Flash via Pi): Level 1-3 beats 1 to 5 in
 `data/levels/1-3.json`, played as `arena.html?level=1-3`: the bay, explore
@@ -450,6 +461,56 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-03b, the hall chase, the drop, breather 2, the Ring and the exit (Pi)
+
+Task: build card `tasks/LVL-03b.md`, beats 6 to 9 of Level 1-3.
+
+Built:
+- `src/level/`: `ArenaRunner` gained `noLock` (the trigger starts the
+  waves, no door is set, no "Clear the arena" banner) and `escape`
+  (`{ box, sealDoors, sealDelaySeconds }`: the arena ends by leaving with
+  its Foamers up, opens no unlockOnClear door, seals the named doors
+  after the delay). `LevelRunner` steps the seal for every arena each
+  frame, because a cleared arena is not stepped again. Tests in
+  `tests/level/level-runner.test.ts`.
+- `data/levels/1-3.json`: the temporary exit is gone. The hall (A4,
+  18 x 44 m, 7 m ceiling, three 3.2 m voxel columns and three 4 m shell
+  ones), the drop (the lane's last 6 m is a hole over breather 2, 6 m
+  down, 3 m ledges either side and `drop-hatch` over it), breather 2
+  (10 x 8 m, 35 darts, U2 and S3 marks as 0.1 m slabs), the Ring (A2,
+  30 x 30 m, a 10 x 8 x 3.5 m shell block with a 1.5 m and a 1.3 m step
+  on its east face, four rifts, four 1.6 x 1.6 x 2.8 m voxel pillars, A5
+  and A6) and the lit 3 m north exit with its pad.
+- `src/arena/extras.ts`: `onEscaped` clears the Foamers, so the hall's
+  Swarmers cannot hold the cap or block the Ring.
+- `tests/level/level-1-3.test.ts`: five arenas in order and their waves;
+  floor under the walk from the start to the drop's lip and from the
+  drop's foot to the exit; the hole under the lane's end; the Ring's ring
+  a loop; the block top walkable through the steps; no nav path back up
+  the drop; the chase and the 3 s seal on the file; the exit still dead
+  until the Ring clears.
+
+Decisions in PLAN.md section 14 (2026-11-07 rows): the escape ends the
+chase at the room, the Roamers are a third wave so no more than 12 are
+alive, the hall columns are three zones plus three shell, the block's
+steps fit the 1.5 m mantle, and the second A3 is `breather2-ammo`.
+
+Checks: `npx tsc --noEmit` clean, `npx vitest run tests/level` 90 pass,
+`npm run build` clean, no em or en dashes in the touched files. Commits
+`9fc45ca` (runner) and `10d16cc` (level and page).
+
+Not checked by eye: no browser here, so nothing was walked through. Not
+verified: that the two block steps and the 0.7 m jump really mantle onto
+the Ring's block top; that the drop reads as a drop and the 3 s seal is
+not too fast or slow; that 12 Swarmers at 4 s gaps are fightable in a
+44 m lane and the hatch reads as shut; that the exit door is visible from
+the Ring's east side; where the U2 and S3 marks sit. Two full-suite tests
+(`tests/ai/nav-grid.test.ts` bake budget and `tests/foamers/rig.test.ts`
+snap loop) failed all session with the machine at load average 242 from
+the other models' runs, so they were not trusted as green or as this
+card's bugs.
+
 
 ### 2026-11-06: GAME-10c review, merged (Claude)
 
