@@ -474,6 +474,47 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: BUG-11, why parts.test.ts test 8 failed once in a full run (Qwen 3.8-27B via Pi, branch `bug-11`)
+
+- Symptom as card: test 8 (both forearms gone, the next attack must be the 0.9 s
+  windup headbutt not the 0.6 s bonk) failed once in a full `npx vitest run` on
+  main, 15 of 15 alone, 11 full runs clean, the failure was made while two other
+  models' test suites ran on the same machine.
+- Cause: the test-only `tick` in `tests/foamers/parts.test.ts` ran
+  `darts.update`, `foamers.update`, `world.step` but not `debris.update`,
+  whereas the game's fixed step (`src/game/game.ts`) ages and dies the foam
+  chunks every step. Breaking both forearms in the test carves the two parts
+  and throws a handful of real chunks (`src/voxel/debris.ts` spawn: 4 s life,
+  0.108 m cubes, random direction and speed out of `Math.random`). Where a
+  chunk lands is random, and under a loaded event loop the pending mesh work
+  in `settleAll` and `breakOff` resolves in a different order, so a chunk can
+  land in the Foamer's walk line. The chunks die after 4 s in the game, but in
+  the test tick they are immortal. A chunk on the line under the autostep
+  (0.2 m, data/ai.json) still holds the character controller's straight walk on
+  some rolls, so the Foamer never closes the approach to the 1.3 m attack range
+  in the 10 s window and the windup never starts.
+- Forced proof: planting one immortal 0.108 m chunk in the walk line made test
+  8's sequence stall in 5 of 10 forced runs (probe `parts-probe8` 8L); the same
+  scene with the game's tick (debris ages out at 4 s) passed 30 of 30 and every
+  forced variant. That is the on-purpose failure the card asks for.
+- Fix: `tick` in `tests/foamers/parts.test.ts` now calls `debris.update(dt)`
+  before `world.step()`, matching the game's fixed step order, so a chunk that
+  throws itself in the walk line dies 4 s later like in the game. Test-only,
+  one line. No assertion was removed or loosened; test 8 still checks the
+  headbutt and its 0.9 s windup.
+- Gates: `npx tsc --noEmit`, `npx vitest run` (554 pass, 2 skip) and
+  `npm run build` all pass; 30 solo test-8 runs and 5 loaded full-suite runs
+  (a second full suite in the background) all green.
+- Not checked by eye in a browser: the change is in the test's tick, nothing
+  visual moves.
+- Search for other non-determinism in the code test 8 runs: `Math.random` in
+  the debris spawn (direction and speed) is the one real source. No
+  `performance.now`, `Date.now`, `setTimeout`, `setInterval` or `crypto` in
+  `src/foamers/`, `src/weapons/darts.ts`, `src/voxel/debris.ts`, the
+  `src/voxel/carve`/`mesher` path, `src/physics/world.ts` or `src/ai/` that
+  touches this test.
+- Separate, untouched: the `tower-throw.test.ts` timeout from BUG-10's notes.
+
 ### 2026-11-07: BUG-10 review, merged (Claude)
 
 - Read the diff: tests and `vitest.config.ts` only. Budgets unchanged

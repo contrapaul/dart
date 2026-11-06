@@ -63,6 +63,11 @@ function rig() {
 function tick(r: ReturnType<typeof rig>, player: THREE.Vector3, dt = DT) {
   r.darts.update(dt);
   r.foamers.update(dt, player);
+  // Game order (src/game/game.ts, the fixed step): the chunks age and die
+  // before the world steps. Without this a chunk that throws itself in the
+  // walk line is immortal and can stop the approach for the whole test
+  // (BUG-11).
+  r.debris.update(dt);
   r.world.step();
 }
 
