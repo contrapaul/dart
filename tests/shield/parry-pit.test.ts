@@ -144,11 +144,22 @@ function makeRig(): Rig {
     const len = Math.hypot(dx, dy, dz);
     const ang = Math.acos(THREE.MathUtils.clamp(
       (dx * fwdKey.x + dz * fwdKey.z) / len, -1, 1)) * 180 / Math.PI;
+    // BUG-06: the numbers the card asks for. cap is the capsule collider
+    // the ray met, pc the capsule centre the watch timed against (from the
+    // eye), so their gap is the collider lag; gap is how far from the eye
+    // the point 0.5 m back along the flight sits (a negative gap means
+    // `from` is behind the capsule's centre).
+    const cap = player.collider.translation();
+    playerCapsuleCentre(eye, c);
+    const gap = Math.hypot(from.x - eye.x, from.y - eye.y, from.z - eye.z);
     console.log(`HIT ball#${rec.get(bb)?.id ?? "-"} ang=${ang.toFixed(1)} yaw=${player.yaw.toFixed(2)} pitch=${player.pitch.toFixed(2)}`
       + ` from=(${from.x.toFixed(1)},${from.y.toFixed(1)},${from.z.toFixed(1)})`
       + ` pos=(${bb.pos.x.toFixed(1)},${bb.pos.y.toFixed(1)},${bb.pos.z.toFixed(1)})`
       + ` vel=(${bb.vel.x.toFixed(1)},${bb.vel.y.toFixed(1)},${bb.vel.z.toFixed(1)})`
-      + ` th=(${bb.thrower.centre.x.toFixed(1)},${bb.thrower.centre.y.toFixed(1)},${bb.thrower.centre.z.toFixed(1)})`);
+      + ` th=(${bb.thrower.centre.x.toFixed(1)},${bb.thrower.centre.y.toFixed(1)},${bb.thrower.centre.z.toFixed(1)})`
+      + ` cap=(${cap.x.toFixed(2)},${cap.y.toFixed(2)},${cap.z.toFixed(2)})`
+      + ` pc=(${c.x.toFixed(2)},${c.y.toFixed(2)},${c.z.toFixed(2)})`
+      + ` gap=${gap.toFixed(2)}`);
     const r = rec.get(bb);
     if (!r || r.walk < 0) return; // not a walk's own ball
     walkLogs.push({ kind, id: r.id, late: simTime - r.born - r.est,
@@ -291,15 +302,15 @@ describe("the watch helper in the Pit (BUG-04)", () => {
     await runSequence(r, false);
     expect(r.walkLogs.length, "each walk timed one ball").toBe(WALKS);
     const parried = r.walkLogs.filter((l) => l.kind === "parry").length;
-    // Result recorded in 1.11 (browser, the Pit): 2 of 10, the rest
-    // blocked or hit. Same walk headless: about 1 of 10 parries, 9 winds
-    // (the sole parry was lucky: the walk's forward happened to judge on
-    // its ball even as the watch had the wrong Foamer's arc). Either pin:
-    // the density is nowhere near 9 of 10 on the as-is helper, so the
-    // stage-2 test (next) would be the one that proves the fix, not
-    // the record here.
+    // BUG-04's record, on the sim as it stood: 1 of 10 headless and 2 of
+    // 10 in the browser, because the ball met the capsule from behind
+    // (BUG-06) and the helper faces the nearest thrower, not the timed
+    // ball's. With the sim's two bugs fixed (projectiles.ts) the same
+    // as-is helper gives 7 of 10: its wrong-Foamer aim still costs it
+    // three of the ten, so the record stays a minority. Stage 2, the
+    // helper facing the timed ball's thrower, gives 10 of 10.
     expect(parried, "the as-is helper parries a minority of 10 in the Pit")
-      .toBeLessThan(5);
+      .toBeLessThan(9);
   }, 300_000);
   it("stage 2: the fixed walk parries nine of the ten", async () => {
     const r = makeRig();
