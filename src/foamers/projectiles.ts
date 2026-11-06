@@ -122,8 +122,10 @@ export class ProjectileSystem {
   }
 
   /** Release a ball from the thrower's ball hand toward the player's eye.
-   *  The cap drops the oldest ball when it is already full. */
-  launch(f: Foamer, playerEye: THREE.Vector3): void {
+   *  The cap drops the oldest ball when it is already full.
+   *  GAME-10e: `spreadDeg` swings the aim to the right of the eye, so a
+   *  caller can fire a volley and spread it. */
+  launch(f: Foamer, playerEye: THREE.Vector3, spreadDeg = 0): void {
     const hand = f.parts.get("ball");
     const at = this._hit;
     if (hand) {
@@ -139,6 +141,13 @@ export class ProjectileSystem {
     if (flat < 1e-3) return; // thrown at its own position: skip the step
     const t = flat / BALL.speed;
     this._dir.normalize();
+    if (spreadDeg !== 0) {
+      const s = Math.sin((spreadDeg * Math.PI) / 180);
+      const c = Math.cos((spreadDeg * Math.PI) / 180);
+      const x = this._dir.x * c - this._dir.z * s;
+      const z = this._dir.x * s + this._dir.z * c;
+      this._dir.set(x, this._dir.y, z);
+    }
     const vy = (playerEye.y - at.y) / t + 0.5 * BALL.gravity * t;
     const vel = new THREE.Vector3(
       this._dir.x * BALL.speed,

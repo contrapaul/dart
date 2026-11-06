@@ -7,7 +7,7 @@
       "tier": "Fodder",
       "behaviour": "Slow, walks at you in groups. Bonks up close. Free finishers.",
       "movement": "shuffle",
-      "speed": 1.0,
+      "speed": 1,
       "voxelSize": 0.05,
       "material": "foam-lime",
       "parts": [
@@ -79,7 +79,7 @@
           ],
           "parent": "body",
           "at": [
-            -1.0,
+            -1,
             0.4,
             0.1
           ],
@@ -123,7 +123,7 @@
           ],
           "parent": "body",
           "at": [
-            1.0,
+            1,
             0.4,
             0.1
           ],
@@ -282,7 +282,7 @@
           "at": [
             0,
             0.2,
-            -1.0
+            -1
           ],
           "pivot": [
             0,
@@ -603,7 +603,7 @@
           "at": [
             0,
             0.9,
-            0.0
+            0
           ],
           "taper": [
             1,
@@ -655,7 +655,7 @@
           "at": [
             0,
             -0.15,
-            1.0
+            1
           ],
           "pivot": [
             0,
@@ -774,22 +774,22 @@
     },
     {
       "id": "F04",
-      "label": "F04",
+      "label": "Blocker",
       "tier": "Fodder",
       "behaviour": "Holds a shield wall and fires over it. Flank it or shield-charge it.",
       "movement": "shieldwalk",
       "speed": 1.3,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-orange",
       "parts": [
         {
           "id": "body",
           "kind": "body",
           "shape": "ellipsoid",
           "size": [
-            14,
+            12,
             15,
-            11
+            9
           ],
           "parent": null
         },
@@ -798,53 +798,65 @@
           "kind": "head",
           "shape": "ellipsoid",
           "size": [
-            10,
-            10,
+            11,
+            11,
             10
           ],
           "parent": "body",
           "at": [
             0,
-            0.85,
-            0.1
+            0.9,
+            0.2
           ],
-          "pivot": [
+          "material": "foam-orange"
+        },
+        {
+          "id": "visor",
+          "kind": "detail",
+          "shape": "box",
+          "size": [
+            8,
+            3,
+            2
+          ],
+          "parent": "head",
+          "at": [
             0,
-            -0.8,
-            0
+            0.5,
+            0.92
           ],
-          "eyes": "slit",
-          "material": "greybox-dark"
+          "material": "foam-lime"
         },
         {
           "id": "armL",
           "kind": "arm",
           "shape": "capsule",
           "size": [
-            5,
-            9,
-            5
+            3,
+            10,
+            3
           ],
           "parent": "body",
           "at": [
             -1.05,
-            0.45,
+            0.5,
             0
           ],
           "rest": [
-            -0.3,
             0,
-            -0.1
-          ]
+            0,
+            -0.25
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "foreArmL",
           "kind": "arm",
           "shape": "capsule",
           "size": [
-            5,
-            9,
-            5
+            3,
+            10,
+            3
           ],
           "parent": "armL",
           "at": [
@@ -853,40 +865,42 @@
             0
           ],
           "rest": [
-            -1.2,
+            -1.55,
             0,
             0
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "armR",
           "kind": "arm",
           "shape": "capsule",
           "size": [
-            5,
-            9,
-            5
+            3,
+            10,
+            3
           ],
           "parent": "body",
           "at": [
-            1.05,
-            0.45,
+            1.25,
+            0.5,
             0
           ],
           "rest": [
-            -0.6,
             0,
-            0.05
-          ]
+            0,
+            0.1
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "foreArmR",
           "kind": "arm",
           "shape": "capsule",
           "size": [
-            5,
-            9,
-            5
+            3,
+            10,
+            3
           ],
           "parent": "armR",
           "at": [
@@ -895,25 +909,26 @@
             0
           ],
           "rest": [
-            -0.9,
+            -0.6,
             0,
             0
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "shield",
           "kind": "ability",
           "shape": "disc",
           "size": [
-            24,
-            26,
+            15,
+            15,
             3
           ],
-          "parent": "foreArmL",
+          "parent": "body",
           "at": [
-            0.4,
-            -0.9,
-            0
+            0,
+            -0.55,
+            1.15
           ],
           "pivot": [
             0,
@@ -921,64 +936,147 @@
             -1
           ],
           "rest": [
-            1.571,
+            0,
             0,
             0
           ],
-          "material": "greybox-dark"
+          "material": "foam-purple-deep"
+        },
+        {
+          "id": "boss",
+          "kind": "detail",
+          "shape": "disc",
+          "size": [
+            4,
+            4,
+            2
+          ],
+          "parent": "shield",
+          "at": [
+            0,
+            0,
+            1
+          ],
+          "material": "foam-lime"
         },
         {
           "id": "blaster",
           "kind": "weapon",
-          "shape": "tube",
+          "shape": "box",
           "size": [
-            5,
-            14,
-            5
+            4,
+            11,
+            4
           ],
-          "parent": "foreArmR",
+          "parent": "body",
           "at": [
-            0,
-            -0.9,
-            0
+            0.55,
+            0.55,
+            0.8
           ],
           "tip": {
-            "material": "foam-orange",
-            "length": 3
+            "material": "foam-lime",
+            "length": 2
           },
-          "material": "greybox-dark"
+          "material": "foam-orange-deep",
+          "rest": [
+            0.15,
+            0.9,
+            -0.55
+          ],
+          "pivot": [
+            0,
+            -1,
+            0
+          ]
         },
         {
           "id": "legL",
           "kind": "leg",
           "shape": "capsule",
           "size": [
-            6,
+            4,
             8,
-            6
+            4
           ],
           "parent": "body",
           "at": [
             -0.45,
             -0.8,
             0
-          ]
+          ],
+          "rest": [
+            -0.25,
+            0,
+            -0.06
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "shinL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "legL",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            0.4,
+            0,
+            0
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "legR",
           "kind": "leg",
           "shape": "capsule",
           "size": [
-            6,
+            4,
             8,
-            6
+            4
           ],
           "parent": "body",
           "at": [
             0.45,
             -0.8,
             0
-          ]
+          ],
+          "rest": [
+            -0.25,
+            0,
+            0.06
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "shinR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "legR",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            0.4,
+            0,
+            0
+          ],
+          "material": "foam-purple"
         }
       ],
       "health": 10
@@ -989,7 +1087,7 @@
       "tier": "Heavy",
       "behaviour": "Charges in a straight line. Armoured front, weak back.",
       "movement": "charge",
-      "speed": 2.0,
+      "speed": 2,
       "voxelSize": 0.05,
       "material": "foam-purple-deep",
       "parts": [
@@ -1900,7 +1998,7 @@
           "rest": [
             -0.4,
             0,
-            -1.0
+            -1
           ]
         },
         {
@@ -1942,7 +2040,7 @@
           "rest": [
             0.4,
             0,
-            -1.0
+            -1
           ]
         },
         {
@@ -1984,7 +2082,7 @@
           "rest": [
             -0.4,
             0,
-            1.0
+            1
           ]
         },
         {
@@ -2026,7 +2124,7 @@
           "rest": [
             0.4,
             0,
-            1.0
+            1
           ]
         },
         {
@@ -2110,7 +2208,7 @@
           "at": [
             -0.45,
             0,
-            -1.0
+            -1
           ],
           "pivot": [
             0,
@@ -2199,7 +2297,7 @@
           "at": [
             0.45,
             0,
-            -1.0
+            -1
           ],
           "pivot": [
             0,
@@ -2912,7 +3010,7 @@
       "tier": "Elite",
       "behaviour": "Hides low, creeps, then pounces from cover.",
       "movement": "pounce",
-      "speed": 3.0,
+      "speed": 3,
       "voxelSize": 0.05,
       "material": "greybox",
       "parts": [
@@ -2988,7 +3086,7 @@
             0
           ],
           "rest": [
-            2.0,
+            2,
             0,
             0
           ],

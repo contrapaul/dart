@@ -1029,7 +1029,11 @@ export class Shield {
       left -= moved;
     }
     // The card's stagger: the existing stagger state, the data's own time.
-    this.foamers.startStagger(f, false, f.spec.stagger.time);
+    // GAME-10e: a Blocker's shield charge staggers it longer, so the player
+    // gets a window on the wall it was hiding behind (data stagger.
+    // shieldChargeTime). The shield itself is down while it is staggered.
+    const st = f.spec.stagger as { time: number; shieldChargeTime?: number };
+    this.foamers.startStagger(f, false, st.shieldChargeTime ?? st.time);
   }
 
   private endCharge(e: ShieldEvents): void {

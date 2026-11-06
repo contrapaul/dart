@@ -410,6 +410,10 @@ function spawnAhead(m: number) {
   // shows the ring the card describes; the others still spawn singly.
   if (foamerType === "F03") {
     for (const p of foamers.spawnPack(_feet, camera.position)) weaken(p);
+  } else if (foamerType === "F04") {
+    // GAME-10e: a Blocker comes as its line, the shield wall the card
+    // describes, so one press shows it (and it can then close up).
+    for (const p of foamers.spawnLine(_feet, camera.position)) weaken(p);
   } else weaken(foamers.spawn(_feet, camera.position, foamerType));
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)

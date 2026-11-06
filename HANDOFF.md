@@ -6,6 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10e done 2026-11-06, awaiting review (`tasks/GAME-10e.md`, DeepSeek
+V4.1 Flash via Pi): the F04 Blocker. Blockers walk to a line of slots
+across the player, 1.2 m apart at 9 m, shields to the front inside a 120
+degree arc; front darts do a twentieth of their damage and carve the plate
+slowly, side and back darts do full damage. With the ranged token one
+fires the type's three ball volley over the shield. The player's shield
+charge staggers a Blocker 1.2 s with its shield down, which is the window
+on the wall. A shot-away shield gives full damage and the Roamer's
+keep-distance brain. Not checked by eye: the wall's look and read, the
+parry fairness of the spread, the sounds, the frame cost of three. Full
+suite 492 pass, 2 skipped; `tsc` and `npm run build` clean.
+
 BUG-03 done 2026-11-06, awaiting review (`tasks/BUG-03.md`, Qwen 3.8-27B
 via Pi): the nav grid bakes the level's solid voxel pieces, so a cell
 inside a destructible block reads as an obstacle from the first frame a
@@ -389,6 +401,131 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: BUG-04 stopped at 2 in 10, a lead (Claude, morning)
+
+- Qwen 27B ran about ten hours in all and was stopped at 07:10 so the
+  machines are idle while Paul is out. Its work is on branch `bug-04`
+  (commit "work in progress"), not merged: the Pit test's stage 2 still
+  gives 2 parries in 10 and fails.
+- On the branch: a headless Pit repro (`tests/shield/parry-pit.test.ts`,
+  stage 1 records the old helper), and a helper that times the earliest
+  ball, faces that ball's thrower and lowers the disc after the ball is
+  done. Facing the right thrower did not change the count, so that was
+  not the cause.
+- Lead from its instrumented run, not confirmed: ball 14 first touches
+  the capsule 0.39 m in front of it, above the top, but the hit is
+  judged with the ball at z -8.6, behind the capsule centre (-8.0), at
+  138 degrees to the view, so the shield reads it as from behind and
+  the player is hurt. If so the cause is where the hit is judged in
+  `src/foamers/projectiles.ts` (the ball moves on past the contact
+  before `onHitPlayer` runs), outside the card's files: a next card
+  should check that first.
+- Nothing checked in the browser.
+
+### 2026-11-06: BUG-05 not merged, the review's test was the cause (Claude, overnight)
+
+- DeepSeek reproduced the stuck Swarmers headless and found why: when
+  the pack was placed, the player was still at the level start in the
+  corridor beyond the open `pit-in` door, so the shortest path to them
+  left the pit; the door then locked them out. That is normal chasing,
+  and the "too fast" trip was over more time than the BUG-03 review
+  thought. In play, arena waves spawn Swarmers at rifts inside the arena
+  after it locks.
+- Its fix leashes a hand placed pack to 11 m from where it was put. Only
+  the range calls `spawnPack`, so the leash changes nothing in a level,
+  but on the range a pack spawned 20 or 30 m out would stop 9 m short of
+  the player. Not merged. The branch `bug-05` also updates
+  `tests/ai/pit-rig.ts` to build the grid with the voxel pieces the way
+  the page does (BUG-03): worth taking on its own later.
+
+### 2026-11-06: LVL-02d parked after stage 1 (Claude, overnight)
+
+- The Spark committed stage 1 on branch `lvl-02d`: `nav.maxLayers` 2 to
+  4 and `nav.topMetres` 8 to 17 (so the bake reaches a 15 m floor), with
+  tests (four floors in one cell, a path up switchback stairs) and the
+  timing test unchanged (bake 36 to 39 ms, path 1.1 ms). Not merged:
+  it only matters with the tower, and `topMetres` 17 also lets the bake
+  see roof and ceiling tops in the other levels (floors still win the
+  four slots, lowest first), which wants a check in the Pit and the Ring.
+- Stage 2, the tower, failed four times: every run (resumed, thinking
+  low, fresh, and with orders to write the level by small scripts) hit
+  the Spark's output limit before saving anything. The Spark also slowed
+  to about 25 s for a one word reply after the third. Parked for Paul:
+  a smaller tower card, another model, or the Spark with a higher output
+  limit.
+
+### 2026-11-06: GAME-10e review, a Blocker wall in the Ring (Claude, overnight)
+
+- DeepSeek finished all three stages in one run (the read-once brief
+  worked). Checked by value: of `data/foamer-rigs.json` only F04 changed
+  (the rest is number formatting), of `data/foamers.json` only the F04
+  type; the F01 brain change is one new move intent; `shield.ts` gets one
+  line, the Blocker's longer charge stagger with a fallback to the old
+  time. Main merged in; tsc, 495 tests and the build pass.
+- Played in the Ring with the watch: three Blockers walked to a line at
+  9.3 to 9.4 m, about 1 to 1.4 m apart, shields up, and fired a three ball
+  volley over the top. A B01 shot into the front: 3 darts, 0.08 damage.
+- Changed in review: F04 `turnRate` 5 to 1.4 rad/s (the Darter's). At 5 a
+  Blocker faced a strafing player within a second, so a side shot met the
+  shield and flanking, the thing it teaches, could not work. At 1.4 it
+  lagged a quick strafe by about 25 degrees. Tune in playtest.
+- Not verified in the browser: a flank shot landing full damage (my
+  scripted strafe and aim missed three times; the unit test for side
+  damage passes), the shield charge stagger, the shield breaking, the
+  look up close, the four sounds.
+
+### 2026-11-06: GAME-10e, the F04 Blocker and its shield wall (DeepSeek V4.1 Flash via Pi)
+
+Task card `tasks/GAME-10e.md`. Three stages, each committed green.
+
+- **The type and the look.** `F04` in `data/foamer-rigs.json` (orange body
+  and head with a wide lime visor bar, no eyes: a faceless blocker; arms
+  and legs purple; a deep purple shield plate with a lime boss held ahead
+  of the body; a blaster box over the right shoulder) and in
+  `data/foamers.json` (`slots` 9 m hold, 1.2 m spacing; `stagger`
+  0.5 s / `shieldChargeTime` 1.2 s; `line` count 3; armour `shield`
+  damage 0.05, carve 0.3, arc 120 degrees; a 3 ball `volley` with a 5
+  degree spread, pinned `range` 16 m, and a `bash`). Turnaround sheet in
+  `design/foamers/F04-sheet.png`. `src/foamers/armour.ts` is the one
+  cover rule: `armourOf` reads the part's table, `plateFaces` answers
+  whether a dart came in inside the arc, and `handleHit` multiplies by
+  `damage` only when the plate covers the hit.
+- **The wall.** `src/ai/f04-brain.ts`: four states as the other brains,
+  but the slot comes from the system, not the brain. `assignSlots` runs
+  before the bids each step, sorts the live Blockers by agent id (no
+  swapping), and puts them on a line across the player at the hold
+  distance. Reaching one needed a new `toSlot` intent, because the nav
+  grid only paths to the player. A token sends it from hold back to
+  approach, where the state machine starts the attack, and the volley
+  fires `atk.shots` balls fanned by `spreadDeg` through the existing
+  `ProjectileSystem.launch`. A broken shield hands the step to the
+  Roamer's keep-distance brain.
+- **The charge.** `knockBack` uses `stagger.shieldChargeTime` (1.2 s);
+  a staggered Foamer is already outside every cover arc, so the shield is
+  down for free. The charge's own branch is untouched.
+- **Sounds and range.** `F04-alert`, `F04-volley`, `F04-shieldhit`,
+  `F04-shieldbreak` are placeholder synth entries in `data/sounds.json`,
+  wired in `src/audio/foamer-sounds.ts` (the shield hit and break are new
+  system sound kinds), and moved into the real table in
+  `design/SOUNDS.md`. The range's F04 choice spawns the line of three
+  (`spawnLine`); the watch lists them from `foamers.list` with no change.
+
+Tests: `tests/ai/f04-brain.test.ts` (8) and
+`tests/foamers/blocker-wall.test.ts` (8), plus the existing armour tests in
+`tests/foamers/blocker.test.ts`. Full suite 492 pass, 2 skipped; `tsc` and
+`npm run build` clean; dash scan clean on every file touched.
+
+**Not checked by eye** (no browser here): how the wall reads as a line at
+9 m, whether the 120 degree plate is wide enough to feel like a shield to
+shoot around rather than a wall to give up on, whether three balls at a 5
+degree spread are fair to parry, whether the shield-break sound lands with
+the plate coming off, and how the Blocker's rig looks walking and firing.
+The frame cost of three Blockers is unmeasured.
+
+**Decisions** are in `PLAN.md` section 14, `PLAN.md`'s GAME-10e row is
+updated, and the card's out of scope items (level 2-1, F06 and later, new
+finished art) are untouched.
 
 ### 2026-11-06: BUG-03 review, the Pit's block seen by the grid (Claude, overnight)
 
