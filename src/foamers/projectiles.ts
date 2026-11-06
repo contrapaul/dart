@@ -96,25 +96,6 @@ export interface BallKind {
   maxLive: number;
 }
 
-/** GAME-10c: one Floater blob's numbers (data/foamers.json, `blob` on the
- *  type). The small blob is lime and bounces; the big one is pink, slower
- *  and parryable like the Roamer's ball. */
-export interface BlobSpec {
-  count: number;
-  spreadDeg: number;
-  everyFourth: number;
-  bounces: number;
-  maxLive: number;
-  /** The small blob. */
-  speed: number;
-  gravity: number;
-  radius: number;
-  lifetime: number;
-  chunks: number;
-  /** The big pink blob. */
-  big: { speed: number; gravity: number; radius: number; lifetime: number; chunks: number };
-}
-
 export type ProjectileSound = "burst" | "parryHit" | "blobBounce";
 
 export class ProjectileSystem {
@@ -378,6 +359,9 @@ export class ProjectileSystem {
         const dot = b.vel.x * n.x + b.vel.y * n.y + b.vel.z * n.z;
         b.vel.set(b.vel.x - 2 * dot * n.x, b.vel.y - 2 * dot * n.y, b.vel.z - 2 * dot * n.z);
         b.vel.multiplyScalar(BLOB_RESTITUTION);
+        // Off the surface by its radius (the mesh scale): left touching it,
+        // the next ray starts inside and spends the next bounce at once.
+        b.pos.addScaledVector(n as THREE.Vector3Like, b.mesh.scale.x);
         b.bounceLeft--;
         this.onSound("blobBounce", b.pos);
         b.mesh.position.copy(b.pos);

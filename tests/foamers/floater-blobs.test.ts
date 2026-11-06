@@ -118,6 +118,28 @@ describe("the Floater's blobs (GAME-10c stage 2)", () => {
     expect(r.projectiles.stats.burst, "it burst at the end").toBe(1);
   });
 
+  // Review fix: the blob was left with its centre on the surface it hit, so
+  // the next frame's ray started inside it (a zero normal) and spent the
+  // second bounce at once: in play it burst on the floor with no bounce.
+  it("2b. a small blob off the floor rises again before its next bounce", () => {
+    const r = rig(false);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 3, 0), PLAYER.clone(), "F06")!;
+    r.projectiles.launch(f, new THREE.Vector3(0, 0, 5), 0, smallBlobKind(BLOB));
+    const ticks: number[] = [];
+    let i = 0;
+    r.projectiles.onSound = (snd) => { if (snd === "blobBounce") ticks.push(i); };
+    let peakAfter = -Infinity;
+    for (; i < 60 * 8 && r.projectiles.list.length; i++) {
+      r.projectiles.update(DT);
+      r.world.step();
+      const b = r.projectiles.list[0];
+      if (b && ticks.length === 1) peakAfter = Math.max(peakAfter, b.pos.y);
+    }
+    expect(ticks.length).toBe(BLOB.bounces);
+    expect(ticks[1]! - ticks[0]!, "frames between the two bounces").toBeGreaterThan(6);
+    expect(peakAfter, "it rose off the floor after the first bounce").toBeGreaterThan(0.2);
+  });
+
   it("3. every fourth attack is the one big pink parryable blob", () => {
     const r = rig();
     const f = r.foamers.spawn(new THREE.Vector3(0, 3, 0), PLAYER.clone(), "F06")!;
