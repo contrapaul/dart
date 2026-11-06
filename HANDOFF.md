@@ -6,6 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-06 done 2026-11-06, awaiting review (`tasks/BUG-06.md`, DeepSeek
+V4.1 Flash via Pi, branch `bug-06`): a thrown foam ball no longer
+overshoots the player's capsule. `ProjectileSystem.update` used Rapier's
+`timeOfImpact` (metres along the unit ray) as seconds and scaled the
+velocity by it, so a ball that met the ray 0.13 m out jumped about 1.3 m
+through the capsule's front and the shield judged the throw from behind;
+the ball's ray now passes foam chunks too, which had been bursting fresh
+balls at the thrower's hand. BUG-04's Pit test: stage 2 gives 10 of 10
+parries (2 of 10 before), stage 1 (the as-is helper) 7 of 10. Not checked
+by eye: the browser Pit, and a parry's chunks flying through a new ball.
+Full suite 497 pass, 2 skipped; `tsc` and `npm run build` clean.
+
 GAME-10e done 2026-11-06, awaiting review (`tasks/GAME-10e.md`, DeepSeek
 V4.1 Flash via Pi): the F04 Blocker. Blockers walk to a line of slots
 across the player, 1.2 m apart at 9 m, shields to the front inside a 120
@@ -401,6 +413,55 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: BUG-06, a ball hit is a distance not a time (DeepSeek V4.1 Flash via Pi)
+
+- Card: `tasks/BUG-06.md`. Branch `bug-06` from `bug-04`; BUG-04's
+  helper fix (face the timed ball's thrower, lower the disc after) is
+  kept as it was and BUG-04's Pit test is now green.
+- Cause 1, the reported one: `ProjectileSystem.update` read Rapier's
+  `castRay` `timeOfImpact` as seconds and stepped the ball by
+  `b.vel * t` (m/s times "seconds"). It is a distance in metres along
+  the unit ray, as `src/weapons/darts.ts` already notes. Ball 0 at
+  `(-0.33, 1.71, -7.76)` hits at 0.132 along a 9.5 m/s ray and landed
+  at `(0.63, 1.31, -8.45)`: 1.27 m of travel instead of 0.132 m, about
+  1.1 m past the capsule's front. `onHitPlayer`'s `from` (0.5 m back
+  along the velocity) then sat at `(0.2, 1.5, -8.2)` against an eye at
+  `(0.0, 1.6, -8.0)`, behind the capsule centre `z -8.0`, so
+  `blocksAttackFrom` read 75 to 143 degrees off the view and the throw
+  hurt. Fix: `b.pos.addScaledVector(b.vel, t / speed)`.
+- Cause 2, found with the same probe and not on the card: a parried
+  ball bursts on its thrower and leaves foam chunks at the ball hand.
+  The next ball's ray stopped on a chunk (collision groups `0x40001`,
+  `DEBRIS_GROUPS`, a dynamic body at the hand) 0.03 to 0.12 s after it
+  left the hand, so it never reached the player and the walk recorded
+  "gone". Fix: the ball's ray filter passes debris, as the darts' does.
+- The card's four candidates, checked with numbers and none of them
+  the cause: the cast starts outside the capsule (0.16 m out, hit at
+  0.13); the capsule collider and the timed centre are the same point
+  (`cap` and `pc` both `(0.00, 0.92, -8.00)` on every hit), so the
+  capsule does not lag; the eye and the capsule agree; nothing lands
+  on the cap.
+- Counts, `npx vitest run tests/shield/parry-pit.test.ts`, ten runs
+  each. Stage 1 (the as-is helper, so its own wrong-Foamer aim still
+  costs it): 1 of 10 before, 7 of 10 after. Stage 2 (the helper's fix):
+  2 of 10 before, 10 of 10 after. Stage 1's pin moved from "fewer
+  than 5" to "fewer than 9", with the reason in the comment: the old
+  pin described the broken sim, not the helper.
+- The HIT log line now also prints the capsule collider, the timed
+  centre and `from`'s distance from the eye, which is what the card
+  asked to instrument; it is always on, cheap, and it is the test's
+  own output.
+- Status: BUG-06 done, awaiting review (Claude Opus 5.5). Full suite
+  497 pass, 2 skipped; `tsc --noEmit` and `npm run build` clean; no em
+  or en dashes in the two files touched.
+- What a player by hand may notice: a ball now meets them where the
+  ray says, so a block or parry from the side judges on the throw's
+  real direction instead of behind the centre. The parry window and
+  the shield's numbers are unchanged.
+- Not checked by eye: the browser Pit (2 in 10 there per BUG-04), the
+  chunk-at-the-hand case in a live game, and whether the foam chunks
+  a parry leaves now read oddly flying through a new ball.
 
 ### 2026-11-06: LVL-02d and BUG-06 started with DeepSeek (Claude)
 
