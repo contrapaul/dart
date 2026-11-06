@@ -423,6 +423,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: BUG-07 review, merged (Claude)
+
+- DeepSeek's fix samples the ball's own launch arc (6 ball-radius shape
+  casts with the ball step's filters, now one shared `ballIgnores`), cached
+  per Foamer for 0.25 s; a Roamer with no clear flight does not start a
+  throw, hands its token back (`noFlight`) and keeps sidling; a release
+  that went blocked during the windup is cancelled. F04's fanned volley
+  is exempt, its tests unchanged. Checked in review: the ball filter
+  refactor is equivalent to the old one, the launch math is unchanged
+  (moved into `launchVelocity`), `chooseAttack` is deterministic so the
+  check judges the attack that is thrown. tsc, 505 tests and the build
+  pass.
+- In the browser (Pit, real wave 2, wave 1 cleared by script, player
+  held at (0, 1.2)): 20 thrown in 30 s, 19 reached the player (BUG-06's
+  review saw 2 in 10). The Roamers walked the ring between throws.
+- Not checked by eye: the tower case (headless only: no bursts above
+  y 3 with the player under the slab, 21 of 22 hits from floor 2); a
+  Roamer that can find no clear spot at all sidles for good rather than
+  pathing elsewhere.
+
 ### 2026-11-06: BUG-07, a Roamer throws only when its ball can arrive (DeepSeek V4.1 Flash via Pi)
 
 - The card saw a Roamer throw into cover: in the Pit's wave 2, 8 of 10
