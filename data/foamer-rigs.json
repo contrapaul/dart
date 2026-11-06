@@ -1439,13 +1439,13 @@
     },
     {
       "id": "F07",
-      "label": "F07",
+      "label": "Brawler",
       "tier": "Heavy",
       "behaviour": "Melee brawler. Leaps and slams down with a shockwave.",
       "movement": "leap",
       "speed": 2.4,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-purple",
       "parts": [
         {
           "id": "body",
@@ -1480,6 +1480,32 @@
           ],
           "eyes": "angry",
           "mouth": "grin"
+        },
+        {
+          "id": "padL",
+          "kind": "detail",
+          "shape": "ellipsoid",
+          "size": [
+            10,
+            6,
+            10
+          ],
+          "parent": "body",
+          "at": [
+            -0.95,
+            0.62,
+            0
+          ],
+          "pivot": [
+            0,
+            -1,
+            0
+          ],
+          "taper": [
+            1,
+            0.5
+          ],
+          "material": "foam-orange"
         },
         {
           "id": "armL",
@@ -1543,7 +1569,7 @@
             0.6,
             0
           ],
-          "material": "greybox-dark",
+          "material": "foam-lime",
           "nubs": [
             [
               0,
@@ -1561,6 +1587,32 @@
               0.6
             ]
           ]
+        },
+        {
+          "id": "padR",
+          "kind": "detail",
+          "shape": "ellipsoid",
+          "size": [
+            10,
+            6,
+            10
+          ],
+          "parent": "body",
+          "at": [
+            0.95,
+            0.62,
+            0
+          ],
+          "pivot": [
+            0,
+            -1,
+            0
+          ],
+          "taper": [
+            1,
+            0.5
+          ],
+          "material": "foam-orange"
         },
         {
           "id": "armR",
@@ -1624,7 +1676,7 @@
             0.6,
             0
           ],
-          "material": "greybox-dark",
+          "material": "foam-lime",
           "nubs": [
             [
               0,
@@ -1676,7 +1728,8 @@
           ]
         }
       ],
-      "health": 45
+      "health": 45,
+      "_note": "GAME-10f: the Brawler look in the factory palette (ART-03 way): purple body, orange armour pads, lime fists. [Paul] CONTENT-PLAN 3 says uses a foam sword, the 3.3 greybox row says huge fists: this card keeps the fists and colours them lime (the sword's colour). Sword or fists: Paul to choose."
     },
     {
       "id": "F08",

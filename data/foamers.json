@@ -374,6 +374,25 @@
         "inboundSteps": 4
       }
     },
+    "F07": {
+      "rig": "F07",
+      "_note": "GAME-10f: the Brawler. A heavy that walks in like the F01 and punches up close (the melee brain), and between leap.minMetres and leap.maxMetres, off cooldown, crouches, leaps an arc and lands a shockwave ring the player jumps or dashes through. Health 45 and speed 2.4 come from the rig. Weak point: none (CONTENT-PLAN 3).",
+      "turnRate": 4,
+      "attackRange": 1.7,
+      "attacks": [
+        {
+          "id": "punch",
+          "damage": 14,
+          "token": "melee",
+          "needs": [
+            "foreArmL",
+            "foreArmR"
+          ],
+          "windup": 0.7,
+          "strike": 0.2
+        }
+      ]
+    },
     "F06": {
       "rig": "F06",
       "_note": "GAME-10c: the Floater. It has no legs and no head: it floats (see float), so the leg handicaps do not apply and its turn rate is the no-head half of this one. attackRange is the reach of a spit; the blobs fly from there. preferredDistanceMetres is the ring it keeps, retreatDistanceMetres how close the player must get before it backs off.",
