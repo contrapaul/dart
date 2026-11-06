@@ -97,8 +97,9 @@ export class NavGrid {
   private hitCount = 0;
   /** The stand-able surfaces of the cell being baked, lowest first. */
   private readonly cand: number[] = [];
-  /** The most layers one cell may hold (data/ai.json nav.maxLayers). */
-  private readonly maxLayers = NAV.maxLayers;
+  /** The most layers one cell may hold (data/ai.json nav.maxLayers). Public
+   *  because a reader indexing layerY needs the stride. */
+  readonly maxLayers = NAV.maxLayers;
   /** The four straight neighbours' nodes of the cell A* is expanding (-1:
    *  none), so a diagonal's corner check reuses them. */
   private readonly straight = new Int32Array(4);
