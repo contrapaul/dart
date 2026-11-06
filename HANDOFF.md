@@ -415,6 +415,28 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: LVL-02d review, merged (Claude)
+
+- DeepSeek built the tower in one run where the Spark failed four times:
+  floors at 0, 5, 10, 15 m, three 22.6 degree ramps in side bands, its
+  own 19 m roof (the level's ceilings cut back to its walls), two
+  lock-free arenas, a cardboard plug that drops as one slab. The
+  connector's north end is now shut, so the route runs through the
+  tower's ground floor and the fights cannot be skipped. The
+  `topMetres` 17 roof check is a test in Level 1-2 and the Pit (0
+  bridged layers). Timing alone: bake 38.8 ms, path 1.16 ms. Existing
+  level tests were updated for six arenas, none loosened. Main merged
+  in; tsc, 502 tests and the build pass.
+- In the browser (`arena.html?watch&level=1-2`): the player stands on
+  all four floors and on the ramps at the right heights (ramp 1: 0.9,
+  2.6, 4.2 m along it). The first fight's two Roamers spawn on floor 2;
+  with the player on the ground floor under the slab they throw into
+  the slab (no hits); from floor 2, 7 throws in 10 s, 7 hits.
+- Not checked: the floor 3 fight, the plug by hand, the climb with real
+  movement keys (positions were set, not walked), the look beyond one
+  greybox view. Roamers throwing with no clear line (here at the slab,
+  in the Pit at cover) is the same open issue BUG-06's review found.
+
 ### 2026-11-06: BUG-06 review, merged (Claude)
 
 - The cause is a real game bug, not only the helper's: `castRay`'s
