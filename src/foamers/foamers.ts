@@ -16,9 +16,10 @@ import { armourOf, plateFaces } from "./armour";
 import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
 import {
-  bandReaches, decideLeap, leapFlight, leapOf, landingPoint, shockwaveOf,
+  bandReaches, leapFlight, leapOf, landingPoint, shockwaveOf,
   startShockwave, stepShockwave, type ShockwaveSpec,
 } from "./leap";
+import { decideLeap } from "../ai/f07-brain";
 import { floatOf } from "./float";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
 import { decideCharge } from "../ai/f05-brain";

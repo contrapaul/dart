@@ -50,26 +50,6 @@ export function shockwaveOf(spec: FoamerSpec): ShockwaveSpec | null {
   return (spec as { shockwave?: ShockwaveSpec }).shockwave ?? null;
 }
 
-/** What one step tells the leap logic (the Foamer side fills it in). */
-export interface LeapInput {
-  /** Metres to the player, ground plane. */
-  distance: number;
-  /** Seconds until it may leap again (the crouch starts it). */
-  cooldownLeft: number;
-  /** It is on its feet: a legless Brawler crawls, it cannot leap. */
-  onFeet: boolean;
-}
-
-/** May it start the crouch that leads to a leap? Only with the cooldown
- *  spent, on its feet, and with the player between the minimum (too close
- *  to be worth a leap) and the maximum (too far to reach). Like the
- *  charger's decideCharge, it is up to the caller to be in a state that may
- *  start one. */
-export function decideLeap(input: LeapInput, spec: LeapSpec): boolean {
-  if (!input.onFeet || input.cooldownLeft > 0) return false;
-  return input.distance >= spec.minMetres && input.distance <= spec.maxMetres;
-}
-
 /** The point the leap lands at: the target pulled back along the way to it
  *  by landShortMetres, so it never lands on the player. */
 export function landingPoint(

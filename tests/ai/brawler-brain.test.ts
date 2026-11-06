@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import foamerData from "../../data/foamers.json";
-import { decideLeap, leapOf, type LeapInput } from "../../src/foamers/leap";
+import { leapOf } from "../../src/foamers/leap";
+import { decideLeap, type LeapInput } from "../../src/ai/f07-brain";
 
 const LEAP = leapOf(foamerData.types.F07 as never)!;
 
