@@ -27,8 +27,13 @@ const FAKE = {
 };
 
 export async function makePitRig(difficulty = "normal") {
+  return makeLevelRig(pit, difficulty);
+}
+
+/** Any level as the arena page builds it, with Foamers on it. */
+export async function makeLevelRig(level: Level, difficulty = "normal") {
   const { rapier, world } = await createPhysics();
-  const built = buildLevel(pit, rapier, world, FAKE);
+  const built = buildLevel(level, rapier, world, FAKE);
   const ai = makeLevelAI(rapier, world, built.navBounds, difficulty);
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   // A dart stopper far outside the level, as both pages make one.
@@ -41,7 +46,7 @@ export async function makePitRig(difficulty = "normal") {
   new DartImpacts(darts, debris, targets);
   foamers.director = ai.director;
   foamers.navGrid = ai.grid;
-  return { rapier, world, grid: ai.grid, darts, foamers };
+  return { rapier, world, grid: ai.grid, darts, debris, foamers };
 }
 
 export type PitRig = Awaited<ReturnType<typeof makePitRig>>;

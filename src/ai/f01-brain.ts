@@ -59,7 +59,7 @@ export interface F01Decision {
 export type F01State = "idle" | "alert" | "approach" | "hold";
 
 /** Why a token is going back: the director treats them differently. */
-export type ReleaseReason = "attackEnd" | "stagger" | "fall" | "down";
+export type ReleaseReason = "attackEnd" | "stagger" | "fall" | "down" | "noFlight";
 
 /**
  * Which way a holding Foamer sidles. From the agent id, so it is a pure

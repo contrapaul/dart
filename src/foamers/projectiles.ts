@@ -78,6 +78,11 @@ export class ProjectileSystem {
   private _hit = new THREE.Vector3();
   private _dir = new THREE.Vector3();
   private readonly _aim = new THREE.Vector3();
+  /** BUG-07: the flight check's ball shape and its two scratch vectors. */
+  private readonly _ballShape: RAPIER.Ball;
+  private readonly _fv = new THREE.Vector3();
+  private _shapePos = { x: 0, y: 0, z: 0 };
+  private _shapeVel = { x: 0, y: 0, z: 0 };
 
   constructor(
     private rapier: Rapier,
@@ -88,6 +93,102 @@ export class ProjectileSystem {
     private foamers: FoamerSystem,
   ) {
     this._ray = new this.rapier.Ray(this._po, this._pd);
+    this._ballShape = new this.rapier.Ball(BALL.radius);
+  }
+
+  /** Where a ball leaves `f`: its ball hand's part centre (the point
+   *  onSound uses for a part too), or a hand up its body when the part is
+   *  gone. The launch and the flight check share this, so the two start at
+   *  the same point. */
+  handAt(f: Foamer, out: THREE.Vector3): THREE.Vector3 {
+    const hand = f.parts.get("ball");
+    if (!hand) return out.copy(f.centre).setY(f.centre.y + f.height * 0.7);
+    const t = hand.body.translation();
+    return out.set(t.x, t.y, t.z);
+  }
+
+  /** The velocity `launch` gives a ball thrown from `from` at `eye`, its
+   *  light loft included. False when there is nothing to throw at (the two
+   *  points coincide), which is also the launch's own guard. */
+  private launchVelocity(
+    from: THREE.Vector3, eye: THREE.Vector3, spreadDeg: number, out: THREE.Vector3,
+  ): boolean {
+    this._dir.copy(eye).sub(from);
+    const flat = Math.hypot(this._dir.x, this._dir.z);
+    if (flat < 1e-3) return false;
+    const t = flat / BALL.speed;
+    this._dir.normalize();
+    if (spreadDeg !== 0) {
+      const s = Math.sin((spreadDeg * Math.PI) / 180);
+      const c = Math.cos((spreadDeg * Math.PI) / 180);
+      const x = this._dir.x * c - this._dir.z * s;
+      const z = this._dir.x * s + this._dir.z * c;
+      this._dir.set(x, this._dir.y, z);
+    }
+    out.set(this._dir.x * BALL.speed,
+      (eye.y - from.y) / t + 0.5 * BALL.gravity * t, this._dir.z * BALL.speed);
+    return true;
+  }
+
+  /** BUG-07: can a ball thrown from `from` at `eye` reach it, or does it
+   *  meet the world on the way? The Foamer's sight ray runs chest to eye,
+   *  but the ball leaves the hand lower and on an arc, so a clear sight
+   *  does not mean a clear throw. This samples the launch's own arc (its
+   *  velocity and BALL.gravity) in `ball.flightSegments` shape casts of the
+   *  ball's radius, with the filters the ball's own step uses: level
+   *  geometry stops it, while capsules, debris and Foamer parts (its own
+   *  hand included) do not. Not free, so callers keep it off the per-step
+   *  path (see FoamerSystem). */
+  flightClear(from: THREE.Vector3, eye: THREE.Vector3): boolean {
+    if (!this.launchVelocity(from, eye, 0, this._fv)) return false;
+    // The flight time launch() aimed with: the flat distance over the flat
+    // speed (the loft is the vertical part and does not shorten it).
+    const span = Math.hypot(eye.x - from.x, eye.z - from.z)
+      / Math.max(1e-6, Math.hypot(this._fv.x, this._fv.z));
+    const n = Math.max(1, Math.round(BALL.flightSegments));
+    const step = span / n;
+    let x = from.x, y = from.y, z = from.z;
+    for (let i = 1; i <= n; i++) {
+      const t = i * step;
+      const nx = from.x + this._fv.x * t;
+      const ny = from.y + this._fv.y * t - 0.5 * BALL.gravity * t * t;
+      const nz = from.z + this._fv.z * t;
+      this._shapePos.x = x;
+      this._shapePos.y = y;
+      this._shapePos.z = z;
+      this._shapeVel.x = nx - x;
+      this._shapeVel.y = ny - y;
+      this._shapeVel.z = nz - z;
+      const hit = this.world.castShape(
+        this._shapePos, { x: 0, y: 0, z: 0, w: 1 }, this._shapeVel, this._ballShape,
+        0, 1, true, 8 /* EXCLUDE_SENSORS */, undefined, undefined, undefined,
+        (c) => c !== this.playerCollider && !this.ballIgnores(c, false),
+      );
+      if (hit) return false;
+      x = nx;
+      y = ny;
+      z = nz;
+    }
+    return true;
+  }
+
+  /** Whether a ball ignores this collider, for the ball's own step and for
+   *  the flight check, so the two agree on what is in the way. A ball from
+   *  the pack flies through foam chunks (BUG-06: a parry bursts on the
+   *  thrower and leaves chunks where the next ball is thrown from), other
+   *  Foamers' movement capsules and every Foamer part, its own ball hand
+   *  included. A bounced ball is the opposite on Foamers (every one stops
+   *  it) and never on the player (a bounced ball cannot hurt the player).
+   *  The player's capsule is named, not found by group: its groups are the
+   *  world's. */
+  private ballIgnores(c: RAPIER.Collider, bounced: boolean): boolean {
+    if (c === this.playerCollider) return bounced;
+    const g = c.collisionGroups();
+    if (g === CAPSULE_GROUPS) return true;
+    if (g === DEBRIS_GROUPS) return true;
+    // A fresh ball passes every Foamer; a parried one is stopped by each.
+    if (g === FOAMER_GROUPS) return !bounced;
+    return false;
   }
 
   /** GAME-04 stage 2: the bounce-back. The game calls it for the ball about to
@@ -126,34 +227,12 @@ export class ProjectileSystem {
    *  GAME-10e: `spreadDeg` swings the aim to the right of the eye, so a
    *  caller can fire a volley and spread it. */
   launch(f: Foamer, playerEye: THREE.Vector3, spreadDeg = 0): void {
-    const hand = f.parts.get("ball");
-    const at = this._hit;
-    if (hand) {
-      // The part's body centre, the point onSound uses for a part too.
-      const t = hand.body.translation();
-      at.set(t.x, t.y, t.z);
-    } else at.copy(f.centre).setY(f.centre.y + f.height * 0.7);
+    const at = this.handAt(f, this._hit);
     // Aim at the eye with just enough loft for the light arc to bring the
     // ball back to it: a flat shot at this speed over this distance would
     // dip a hand's width by the time it arrives.
-    this._dir.copy(playerEye).sub(at);
-    const flat = Math.hypot(this._dir.x, this._dir.z);
-    if (flat < 1e-3) return; // thrown at its own position: skip the step
-    const t = flat / BALL.speed;
-    this._dir.normalize();
-    if (spreadDeg !== 0) {
-      const s = Math.sin((spreadDeg * Math.PI) / 180);
-      const c = Math.cos((spreadDeg * Math.PI) / 180);
-      const x = this._dir.x * c - this._dir.z * s;
-      const z = this._dir.x * s + this._dir.z * c;
-      this._dir.set(x, this._dir.y, z);
-    }
-    const vy = (playerEye.y - at.y) / t + 0.5 * BALL.gravity * t;
-    const vel = new THREE.Vector3(
-      this._dir.x * BALL.speed,
-      vy,
-      this._dir.z * BALL.speed,
-    );
+    const vel = new THREE.Vector3();
+    if (!this.launchVelocity(at, playerEye, spreadDeg, vel)) return; // thrown at its own position: skip the step
     while (this.list.length >= BALL.maxLive) this.remove(this.list[0]!);
     const mesh = new THREE.Mesh(BALL_GEOMETRY, BALL_MATERIAL);
     mesh.scale.setScalar(BALL.radius);
@@ -205,17 +284,7 @@ export class ProjectileSystem {
         // way), the world bursts it, and the player's own capsule never
         // does (a bounced ball cannot hurt the player; the capsule is
         // named here, not by group, because its groups are the world's).
-        (c) => {
-          if (b.bounced && c === this.playerCollider) return false;
-          const g = c.collisionGroups();
-          if (g === CAPSULE_GROUPS) return false;
-          // BUG-06: foam chunks are scenery to a ball, as they are to a
-          // walk. A parried ball bursts on its thrower and leaves chunks
-          // where the next ball is thrown from, and without this a fresh
-          // ball burst in the hand instead of flying.
-          if (g === DEBRIS_GROUPS) return false;
-          return !b.bounced ? g !== FOAMER_GROUPS : true;
-        },
+        (c) => !this.ballIgnores(c, b.bounced),
       );
       if (!hit) {
         b.pos.addScaledVector(b.vel, dt);
