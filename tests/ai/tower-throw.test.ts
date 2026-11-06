@@ -20,6 +20,10 @@ const RIFTS = [new THREE.Vector3(-14, 5, -26), new THREE.Vector3(-4, 5, -32)];
 const DOWN = new THREE.Vector3(-8, 1.6, -29);
 /** The same spot one floor up: feet on floor 2. */
 const UP = new THREE.Vector3(-8, 6.6, -29);
+/** BUG-08: the ground floor well under floor 2's slab, off the stair well.
+ *  `DOWN` sits under a hole in the slab, so a throw can drop through it and
+ *  the ring need not be blocked; this spot cannot be reached from above. */
+const SLAB = new THREE.Vector3(-3, 1.6, -29);
 
 interface TowerRig extends PitRig {
   projectiles: ProjectileSystem;
@@ -79,6 +83,18 @@ describe("the Level 1-2 tower's Roamers (BUG-07)", () => {
     // And they are still fighting: a Roamer with no clear flight from floor
     // 2 does not freeze, and the ones whose arc does reach still throw.
     expect(s.thrown).toBeGreaterThan(0);
+  });
+
+  // BUG-08: the case the card names. The two floor 2 Roamers see the
+  // player under the slab, find no clear flight from anywhere on their
+  // ring, and (before the fix) sidle for good. They must walk down after
+  // them instead. Before the fix: 30 s gave 0 thrown and 0 reached.
+  it.fails("walks down to a player under the slab and reaches it", async () => {
+    const r = await fight(SLAB, 30);
+    const s = r.projectiles.stats;
+    console.log(`BUG-08 tower down: thrown ${s.thrown}, hit ${s.hitPlayer}, `
+      + `burst ${s.burst}`);
+    expect(s.hitPlayer).toBeGreaterThanOrEqual(3);
   });
 
   it("still lands its throws at a player on floor 2", async () => {
