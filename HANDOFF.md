@@ -6,6 +6,29 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+LVL-03b merged locally 2026-11-07 (card `tasks/LVL-03b.md`, DeepSeek V4.1
+Flash via Pi, branch `lvl-03b`), not pushed:
+Level 1-3 beats 6 to 9 in `data/levels/1-3.json`: the hall chase (A4,
+18 x 44 m, 12 Swarmers every 4 s, no lock), the 6 m drop that seals 3 s
+after the landing, breather 2 (10 x 8 m, 35 darts, U2 and S3 marks), the
+Ring gauntlet (A2, 30 x 30 m, 10 then 12 Swarmers then 4 Roamers, A5 and
+A6 ammo, block reachable by a mantle chain) and the lit 3 m north exit.
+`ArenaRunner` gained `noLock` and `escape`. Short tests: `tests/level`
+90 pass, `tsc` and `npm run build` clean. Played by script from the
+hall to "Level complete"; the spaces' look and the mantle chain onto the
+Ring's block were not checked by eye.
+
+GAME-10g merged locally 2026-11-07, not pushed (card `tasks/GAME-10g.md`,
+Qwen 3.8 Flash Next via Pi): the F09 Crawler. Deep orange body, four
+purple legs with shins, a lime twin-barrel gun on top. It keeps about
+14 m on the Roamer's brain, and from 16 m winds up 0.8 s then streams 12
+pellets, one every 0.1 s, at 22 m/s and 2 damage, spread 3 degrees by a
+seeded PRNG. Cover stops every pellet. Its gun is a weak point (2x) and
+its trigger: with the gun or both barrels gone it cannot fire, walks in,
+and stomps for 8 at 1.8 m. Played on the range: bursts of 12 (about 4 of
+12 hit at 14 m), and with the gun broken off it walked in and stomped.
+Not heard: the three placeholder sounds; numbers not play-tuned.
+
 GAME-10f merged locally 2026-11-07, not pushed (card `tasks/GAME-10f.md`,
 Qwen 3.8 Flash Next via Pi, branch `game-10f`): the F07 Brawler. Purple
 body, orange armour pads, lime fists ([Paul]: sword or fists). It walks in
@@ -474,6 +497,20 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: BUG-11 review, merged (Claude)
+
+- Read the commit: one line in `tests/foamers/parts.test.ts`'s `tick`
+  (`debris.update(dt)` before `world.step()`), the same order as the
+  game's fixed step (`src/game/game.ts`). No game code, no assertion
+  changed; test 8 still checks the headbutt and its 0.9 s windup. The
+  four probe files were removed before the commit.
+- Main merged into the branch (one HANDOFF log conflict, both sides
+  kept); `tsc`, the full suite and the build pass on the merge.
+- Noted, not changed: `src/voxel/debris.ts` throws its chunks with
+  `Math.random`, and the chunks collide with Foamers, so they can change
+  a fight. The project rule is a seeded PRNG in simulation code. That is
+  a card of its own if it matters for replays or tests.
+
 ### 2026-11-07: BUG-11, why parts.test.ts test 8 failed once in a full run (Qwen 3.8-27B via Pi, branch `bug-11`)
 
 - Symptom as card: test 8 (both forearms gone, the next attack must be the 0.9 s
@@ -514,6 +551,140 @@ github.com/contrapaul/dart (public), MIT licence.
   `src/voxel/carve`/`mesher` path, `src/physics/world.ts` or `src/ai/` that
   touches this test.
 - Separate, untouched: the `tower-throw.test.ts` timeout from BUG-10's notes.
+
+### 2026-11-07: LVL-03b review (Claude)
+
+- Merged locally at 07:21 on a quiet machine (load 3): main (with
+  GAME-10g) merged in, `tsc` clean, full `npx vitest run` 575 pass and 2
+  skipped, `npm run build` clean. The two load failures noted below did
+  not recur.
+- DeepSeek's first run and a resumed one both died on "Stream ended
+  without finish_reason" (OpenRouter), the first with the runner edits
+  uncommitted. A fresh session (13 MB of old context dropped) finished
+  the card in three commits. Main was merged into the branch first; one
+  HANDOFF conflict, both sides kept.
+- The card allowed `src/level/` only; the model also added `onEscaped` to
+  `src/arena/extras.ts` (clear the Foamers the drop left behind, dim the
+  rifts). That is the page side of the escape the card asked for, so it
+  stays.
+- Played in the browser (`arena.html?watch&level=1-3`, jumped to the
+  hall by setting the runner's arena index, health refilled by script):
+  the hall started on the trigger with no door shut, Swarmers spawned
+  every 4 s behind the player (7 up at 26 s); dropping through the hole
+  at z -152 ended the hall and cleared all 7; `drop-hatch` read sealed
+  about 3 s after the drop. The Ring locked on its trigger; its 10
+  Swarmers all reached the player (every one within 3 m from 2 s on).
+  Waves cleared by script: 10 Swarmers, 12 Swarmers, 4 Roamers, then
+  `ring-out` opened and the exit pad showed "Level complete".
+- Not checked: the look of the hall, the drop, breather 2 and the Ring
+  (the pane was hidden); the mantle chain onto the block; whether a
+  player can outrun the chase; frame time with 12 Swarmers in the lane.
+
+### 2026-11-07: LVL-03b, the hall chase, the drop, breather 2, the Ring and the exit (Pi)
+
+Task: build card `tasks/LVL-03b.md`, beats 6 to 9 of Level 1-3.
+
+Built:
+- `src/level/`: `ArenaRunner` gained `noLock` (the trigger starts the
+  waves, no door is set, no "Clear the arena" banner) and `escape`
+  (`{ box, sealDoors, sealDelaySeconds }`: the arena ends by leaving with
+  its Foamers up, opens no unlockOnClear door, seals the named doors
+  after the delay). `LevelRunner` steps the seal for every arena each
+  frame, because a cleared arena is not stepped again. Tests in
+  `tests/level/level-runner.test.ts`.
+- `data/levels/1-3.json`: the temporary exit is gone. The hall (A4,
+  18 x 44 m, 7 m ceiling, three 3.2 m voxel columns and three 4 m shell
+  ones), the drop (the lane's last 6 m is a hole over breather 2, 6 m
+  down, 3 m ledges either side and `drop-hatch` over it), breather 2
+  (10 x 8 m, 35 darts, U2 and S3 marks as 0.1 m slabs), the Ring (A2,
+  30 x 30 m, a 10 x 8 x 3.5 m shell block with a 1.5 m and a 1.3 m step
+  on its east face, four rifts, four 1.6 x 1.6 x 2.8 m voxel pillars, A5
+  and A6) and the lit 3 m north exit with its pad.
+- `src/arena/extras.ts`: `onEscaped` clears the Foamers, so the hall's
+  Swarmers cannot hold the cap or block the Ring.
+- `tests/level/level-1-3.test.ts`: five arenas in order and their waves;
+  floor under the walk from the start to the drop's lip and from the
+  drop's foot to the exit; the hole under the lane's end; the Ring's ring
+  a loop; the block top walkable through the steps; no nav path back up
+  the drop; the chase and the 3 s seal on the file; the exit still dead
+  until the Ring clears.
+
+Decisions in PLAN.md section 14 (2026-11-07 rows): the escape ends the
+chase at the room, the Roamers are a third wave so no more than 12 are
+alive, the hall columns are three zones plus three shell, the block's
+steps fit the 1.5 m mantle, and the second A3 is `breather2-ammo`.
+
+Checks: `npx tsc --noEmit` clean, `npx vitest run tests/level` 90 pass,
+`npm run build` clean, no em or en dashes in the touched files. Commits
+`9fc45ca` (runner) and `10d16cc` (level and page).
+
+Not checked by eye: no browser here, so nothing was walked through. Not
+verified: that the two block steps and the 0.7 m jump really mantle onto
+the Ring's block top; that the drop reads as a drop and the 3 s seal is
+not too fast or slow; that 12 Swarmers at 4 s gaps are fightable in a
+44 m lane and the hatch reads as shut; that the exit door is visible from
+the Ring's east side; where the U2 and S3 marks sit. Two full-suite tests
+(`tests/ai/nav-grid.test.ts` bake budget and `tests/foamers/rig.test.ts`
+snap loop) failed all session with the machine at load average 242 from
+the other models' runs, so they were not trusted as green or as this
+card's bugs.
+
+### 2026-11-07: GAME-10g review, merged (Claude)
+
+- Merged main into the branch first (it was cut before BUG-09 and
+  BUG-10); one HANDOFF log conflict, both sides kept.
+- Played on the range (`range.html?watch`, F09 spawned 14 m out): it
+  held at 14 m, wound up 0.8 s and fired bursts of 12 pellets over 1.2 s;
+  about 4 or 5 of each 12 hit the player. Broke the gun (`breakPart`): no
+  more pellets, it walked in to 1.8 m and stomped. The turnaround matches
+  the card's palette.
+- No code changes. Noted: the spread's PRNG is `makeRng` from
+  `src/audio/synth.ts`, so Foamer code now imports from the audio
+  module (synth.ts has no imports, so nothing heavy comes with it). A
+  shared `src/core/rng.ts` would be cleaner; left as is. The render
+  tool's sheet label drops digits and some letters ("F0", "RAWLER" on
+  F07); the tool's pixel font, not this card.
+- Tests: the Crawler, Brawler and Floater tests (31) pass and the build
+  is clean. Merge held for a quiet full run: BUG-11's loaded runs held
+  the load average near 300 for over an hour, and under that load the
+  full suite fails 5 s timeouts on main too (`tower-throw.test.ts`, and
+  `pit-load.test.ts`, whose BUG-10 fix now bakes ten times, so it
+  outgrows the default timeout under heavy load where one bake fit).
+
+### 2026-11-07 GAME-10g: the F09 Crawler (Qwen 3.8 Flash Next via Pi, branch `game-10g`)
+
+Task: card `tasks/GAME-10g.md`, three stages. Built: stage 1 the look
+and the type (rig palette deep orange / purple legs / lime gun, the F09
+entry in `data/foamers.json`, sheets in `design/foamers/`,
+`tests/foamers/crawler.test.ts`); stage 2 the stream, the weak point and
+the stomp (`src/foamers/pellet.ts` new: `pelletOf`, `weakpointOf`,
+`canStream`, `pelletKind`; firing in the strike branch of
+`src/foamers/foamers.ts`; barrel spin and stomp motions in
+`src/foamers/rig-states.ts`; `F09-spinup`, `F09-pellet`, `F09-step` in
+`data/sounds.json`, `design/SOUNDS.md` and `src/audio/foamer-sounds.ts`;
+`tests/foamers/crawler-stream.test.ts` 9 tests, `tests/ai/crawler-brain.test.ts`
+2 tests); stage 3 these docs plus the PLAN.md row and three section 14
+entries, and the `design/foamers/README.md` row.
+
+Decided (full text PLAN.md 14): `decideF02` fits the Crawler unmodified,
+its own spec distances do the work; the gunless close (stomp distances =
+`attackRange` in `stepBrain`) is a system read, not a brain state;
+spread seeded per burst and pellet through `makeRng` from
+`src/audio/synth.ts`; a ranged attack that keeps a ring must pin its
+firing `range` outside the ring (the F06's trick; without it the stream
+never fired: floating-point equality against the parking distance).
+
+Unverified: nothing seen by eye (no browser here): the range with an
+F09, the rig's pose and spin, the stomp, the three placeholder sounds,
+and the rendered sheets (generated, not viewed). `tests/ai/nav-grid.test.ts`
+(bake under 150 ms) and `tests/foamers/rig.test.ts` (movement never
+snaps, a 5 s testTimeout) are the two wall-clock timing tests in the
+suite: they failed on every run while this machine's load average sat at
+about 350 (other agents' test runs), and one full-suite run was green
+(569 pass, 2 skipped) when the load dipped. They are not touched by this
+card (the F09's own motions pass the same snap check in
+`tests/foamers/crawler*.test.ts`'s rigs); a rerun on a quiet machine is
+the last thing this card leaves open.
 
 ### 2026-11-07: BUG-10 review, merged (Claude)
 

@@ -2745,6 +2745,75 @@
           }
         ]
       }
+    },
+    "F09-spinup": {
+      "_note": "GAME-10g: the Crawler's barrels spinning up before the stream. Placeholder synth: a rising ratchet (Foley plus Blaster will replace it).",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.5,
+              "attack": 0.05,
+              "decay": 0.4,
+              "lowpass": 2600,
+              "highpass": 700,
+              "lowpassEnd": 4200
+            },
+            "gain": 0.5
+          },
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 180,
+              "f1": 520,
+              "wave": "sawtooth",
+              "attack": 0.05,
+              "decay": 0.4
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "F09-pellet": {
+      "_note": "GAME-10g: one pellet leaving the barrels. Cheap and quick; maxVoices is what keeps a storm of them in check (the card: many voices capped).",
+      "files": [],
+      "volume": 0.35,
+      "jitter": 0.12,
+      "maxVoices": 6,
+      "synth": {
+        "noise": {
+          "dur": 0.05,
+          "attack": 0.002,
+          "decay": 0.04,
+          "lowpass": 5200,
+          "highpass": 1400,
+          "lowpassEnd": 2600
+        },
+        "gain": 0.6
+      }
+    },
+    "F09-step": {
+      "_note": "GAME-10g: the Crawler's heavy foot plant (leg clicks, Foley later). Heavier than FX-step-medium.",
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.09,
+      "maxVoices": 4,
+      "synth": {
+        "noise": {
+          "dur": 0.09,
+          "attack": 0.003,
+          "decay": 0.08,
+          "lowpass": 900,
+          "highpass": 90,
+          "lowpassEnd": 300
+        },
+        "gain": 0.8
+      }
     }
   },
   "blasterCues": {

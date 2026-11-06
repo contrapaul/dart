@@ -22,6 +22,8 @@ import {
 import { decideLeap } from "../ai/f07-brain";
 import { floatOf } from "./float";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
+import { pelletKind, pelletOf, weakpointOf, canStream } from "./pellet";
+import { makeRng } from "../audio/synth";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
 import playerData from "../../data/player.json";
@@ -205,7 +207,10 @@ export type FoamerSoundKind =
   | "shield-hit" | "shield-break"
   // GAME-10f, the Brawler: the crouch before the leap and the landing that
   // lands the shockwave.
-  | "crouch" | "land";
+  | "crouch" | "land"
+  // GAME-10g, the Crawler: each pellet of a stream (a cheap tick; the
+  // voice cap in data/sounds.json bounds a storm of them).
+  | "pellet";
 
 /** GAME-10f: the Brawler's shockwave ring, one material for every ring. */
 const WAVE_MATERIAL = new THREE.MeshStandardMaterial({
@@ -693,6 +698,12 @@ export class FoamerSystem {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
+        // GAME-10g: a stream burst starts its pellet counter here, where
+        // the attack is chosen (the pellets fire in the strike).
+        if (f.attack()?.id === "stream") {
+          f.pelletTurn++;
+          f.pelletFired = 0;
+        }
         sound(this, "attack", f, f.centre);
       } else if (charge && f.legs().length === 0 && this.mayAttack(f, this.headDist(f, player), this.engagementRange(f))) {
         // No legs left: no charge. It bites from the ground like a crawl.
@@ -852,7 +863,12 @@ export class FoamerSystem {
           f.state = f.prone ? "crawl" : "approach";
           f.stateTime = 0;
         } else {
-          if (inReach && atk.token === "ranged") {
+          if (inReach && atk.token === "ranged" && pelletOf(f.spec)) {
+            // GAME-10g: the Crawler's stream fires during the strike, one
+            // pellet every intervalSeconds (see the strike branch), so
+            // nothing leaves the barrels at the transition and the ball's
+            // throw sound is not played.
+          } else if (inReach && atk.token === "ranged") {
             // A throw is not a hit: the ball does the damage when it lands
             // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
             // Without a projectile system (the unit tests, the sandbox) the
@@ -891,6 +907,29 @@ export class FoamerSystem {
         }
       }
     } else if (f.state === "strike") {
+      // GAME-10g: the Crawler's stream. One pellet every intervalSeconds
+      // from the strike's start, each aimed at the eye with a seeded
+      // spread (never Math.random(): the spread of a burst is a function
+      // of the data seed, its burst number and the pellet's place in it).
+      const streamAtk = f.attack();
+      const pellets = pelletOf(f.spec);
+      if (pellets && streamAtk?.id === "stream" && this.projectiles
+        && canStream(f.spec, f)) {
+        const kind = pelletKind(pellets);
+        const want = Math.min(
+          pellets.count,
+          Math.floor(f.stateTime / pellets.intervalSeconds) + 1,
+        );
+        while (f.pelletFired < want) {
+          const r = makeRng(
+            pellets.seed + f.pelletTurn * 1013 + f.pelletFired * 7919,
+          );
+          const spread = (r() * 2 - 1) * pellets.spreadDeg;
+          this.projectiles.launch(f, player, spread, kind);
+          f.pelletFired++;
+          sound(this, "pellet", f, f.centre);
+        }
+      }
       if (f.stateTime >= f.attack()!.strike) {
         f.state = "recover";
         f.stateTime = 0;
@@ -1124,6 +1163,14 @@ export class FoamerSystem {
     input.playerY = player.y - playerData.eyeHeight;
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
+    // GAME-10g: with its turret gone the Crawler fights at melee range.
+    // The keep-distance ring would park it 14 m from a stomp it can never
+    // land, so while it can only stomp the brain closes like a bonker's.
+    if (pelletOf(f.spec) && this.chooseAttack(f) === "stomp") {
+      input.throwRange = input.attackRange;
+      input.preferredDistance = input.attackRange;
+      input.retreatDistance = input.attackRange;
+    }
     input.lineOfSight = this.lineOfSight(f, player);
     input.canThrow = f.throwClear;
     // GAME-10d: the Swarmer's clock since its last nibble, read by its brain
@@ -1465,6 +1512,10 @@ export class FoamerSystem {
       return f.spec.attacks.find((a) => (a as { big?: boolean }).big)!.id;
     }
     for (const a of f.spec.attacks) {
+      // GAME-10g: the stream also needs a barrel (the data needs carry the
+      // gun alone): with the gun or both barrels gone it cannot fire, and
+      // the stomp below is what it fights with.
+      if (a.id === "stream" && pelletOf(f.spec) && !canStream(f.spec, f)) continue;
       if (a.needs.every((id) => f.parts.has(id))) return a.id;
     }
     return f.spec.attacks[f.spec.attacks.length - 1]?.id ?? "headbutt";
@@ -1521,8 +1572,12 @@ export class FoamerSystem {
     const mouth = mouthOf(f.spec);
     const mouthOpen = mouth !== null && part.spec.id === mouth.part &&
       (f.state === "windup" || f.state === "strike");
+    // GAME-10g: the Crawler's gun is its weak point (CONTENT-PLAN 3.1):
+    // a dart on it always takes the multiplier, open or not.
+    const wp = weakpointOf(f.spec);
     const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1) *
-      (mouthOpen ? mouth!.damage : 1);
+      (mouthOpen ? mouth!.damage : 1) *
+      (wp && part.spec.id === wp.part ? wp.damage : 1);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= dmg;
     f.health -= dmg * kind.total;

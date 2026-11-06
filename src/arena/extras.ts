@@ -123,6 +123,14 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       setRifts("dim");
       audio.play("LV-arena-clear");
     },
+    onEscaped() {
+      // LVL-03b: the hall's drop ends the chase. The Swarmers up there
+      // cannot follow, so they are taken off the board here rather than left
+      // to block anything later. No banner: the Rings's own arena start
+      // follows, and this is not a clear.
+      foamers.clear();
+      setRifts("dim");
+    },
     onArenaStart(arena, index) {
       void arena;
       // The arenas after this one keep their file door states (every runner

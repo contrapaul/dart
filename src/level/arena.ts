@@ -31,6 +31,12 @@ export interface ArenaEvents {
   /** Wave `index` (0 based) begins; the page plays its sound and banner. */
   onWaveStart(wave: Wave, index: number, count: number): void;
   onCleared(): void;
+  /** LVL-03b: the player took the arena's one-way way out. The arena is over
+   *  even if Foamers are up: they cannot follow, and the page should take
+   *  them off the board, as it would on a restart (an escape is not a clear,
+   *  so no unlockOnClear door opens). Optional: a page that does not listen
+   *  simply plays on with the Foamers the escape left behind. */
+  onEscaped?(): void;
 }
 
 /** A wave is cleared only this long after its last spawn, so a Foamer that
@@ -68,6 +74,8 @@ export class ArenaRunner {
   private grace = 0;
   /** Seconds left before the next wave, or -1 while the wave is still on. */
   private gap = -1;
+  /** LVL-03b: seconds left before an escaped arena's doors seal, or -1. */
+  private sealIn = -1;
 
   constructor(private readonly arena: Arena, private readonly events: ArenaEvents) {
     this.reset();
@@ -98,13 +106,36 @@ export class ArenaRunner {
     this.spawnTimer = 0;
     this.grace = 0;
     this.gap = -1;
+    this.sealIn = -1;
     this.queue = [];
     for (const door of this.arena.doors) this.events.setDoor(door.id, door.state);
+  }
+
+  /** LVL-03b: an escaped arena's doors seal this many seconds after the
+   *  landing, which is always after the arena is over. The level runner
+   *  steps this for every arena, every frame, because a cleared arena is
+   *  not stepped again. */
+  updateSeal(dt: number): void {
+    if (this.sealIn < 0) return;
+    this.sealIn -= dt;
+    if (this.sealIn > 0) return;
+    this.sealIn = -1;
+    for (const id of this.arena.escape?.sealDoors ?? []) this.events.setDoor(id, "sealed");
   }
 
   update(dt: number, ctx: ArenaContext): void {
     if (this.phase === "cleared") return;
     this.time += dt;
+
+    // LVL-03b: a one-way way out ends the fight, so a chase that the player
+    // may run from needs no clear at all. It is taken from any phase: the
+    // hall's wave is on when the player drops, and the drop is the answer
+    // to the wave, not a way to skip it unseen.
+    const escape = this.escapeBox();
+    if (escape && inside(escape, ctx.playerPos)) {
+      this.escape();
+      return;
+    }
 
     if (this.phase === "waiting") {
       if (!inside(this.arena.trigger, ctx.playerPos)) return;
@@ -154,15 +185,33 @@ export class ArenaRunner {
     if (this.gap <= 0) this.startWave(this.waveIndex + 1);
   }
 
+  /** The box that ends the fight by leaving it, when the arena has one. */
+  private escapeBox(): Box | undefined {
+    return this.arena.escape?.box;
+  }
+
+  /** LVL-03b: leaving, not clearing. No door opens: the way out is one way,
+   *  and its doors seal `sealDelaySeconds` after the landing. */
+  private escape() {
+    this.phase = "cleared";
+    const escape = this.arena.escape;
+    if (escape?.sealDoors?.length) this.sealIn = Math.max(0, escape.sealDelaySeconds ?? 0);
+    this.events.onEscaped?.();
+  }
+
   private lock() {
-    for (const door of this.arena.doors) {
-      // A sealed door never opens and never shuts further.
-      if (door.state === "sealed") continue;
-      this.events.setDoor(door.id, "locked");
+    // LVL-03b: `noLock` still starts the waves (the hall's chase must spawn),
+    // but shuts nothing and says nothing: there is no door to feel shut.
+    if (!this.arena.noLock) {
+      for (const door of this.arena.doors) {
+        // A sealed door never opens and never shuts further.
+        if (door.state === "sealed") continue;
+        this.events.setDoor(door.id, "locked");
+      }
     }
     this.phase = "locked";
     this.time = 0;
-    this.events.onLocked();
+    if (!this.arena.noLock) this.events.onLocked();
   }
 
   private startWave(index: number) {

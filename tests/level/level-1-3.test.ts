@@ -13,14 +13,16 @@ import { linearColorTable } from "../../src/voxel/materials";
 import type { Level } from "../../src/level/format";
 import { chosenLevel } from "../../src/arena/levels";
 
-// LVL-03a: Level 1-3 beats 1 to 5 (the bay, explore 1, Arena 1 the Pit,
-// the catwalk breather, Arena 2 the Yard) with a temporary exit, as the
+// LVL-03a and LVL-03b: Level 1-3 beats 1 to 9 (the bay, explore 1, the
+// Pit, the catwalk breather, the Yard, the hall chase into a 6 m drop that
+// seals, breather 2, the Ring gauntlet and the lit north exit), as the
 // arena page loads it with `?level=1-3`. On top of the load checks the
-// card asks for: the file validates with its arenas in order, there is
-// floor under the whole walk from the start to the exit, the Pit's ramps
-// and the Yard are walkable on the nav grid built the way the page builds
-// it, no wave puts more than 12 Swarmers alive, and the exit pad does
-// nothing until the last arena clears.
+// cards ask for: the file validates with its arenas in order, there is
+// floor under the whole walk from the start to the exit, the Pit's ramps,
+// the Yard and the Ring are walkable on the nav grid built the way the
+// page builds it, the drop cannot be climbed back, the seal closes 3 s
+// after the landing, no wave puts more than 12 Swarmers alive, and the
+// exit pad does nothing until the Ring clears.
 
 const level = levelJson as unknown as Level;
 const FAKE = {
@@ -41,10 +43,11 @@ async function settle(built: ReturnType<typeof buildLevel>) {
   }
 }
 
-/** Cast straight down from 4.5 m: is there floor within 9 m? Deeper than
- *  the other level's 6 m because the Pit floor is 4 m down. */
-function hasFloor(world: World, x: number, z: number) {
-  return world.castRay(new RAPIER.Ray({ x, y: 4.5, z }, { x: 0, y: -1, z: 0 }), 9, true) !== null;
+/** Cast straight down from `from`: is there floor within `depth`? The Pit
+ *  floor is 4 m down and the drop's room 6 m more, so the two walks start
+ *  from different heights. */
+function floorBelow(world: World, x: number, z: number, from = 4.5, depth = 9) {
+  return world.castRay(new RAPIER.Ray({ x, y: from, z }, { x: 0, y: -1, z: 0 }), depth, true) !== null;
 }
 
 /** Every point on the walk, sampled every metre. */
@@ -66,8 +69,10 @@ describe("Level 1-3 loads (LVL-03a)", () => {
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     const arenas = level.arenas!;
-    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "pit", "yard"]);
-    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A1", "A6"]);
+    expect(arenas.map((a) => a.id)).toEqual([
+      "explore-1", "pit", "yard", "hall", "ring",
+    ]);
+    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A1", "A6", "A4", "A2"]);
     // Beat 2: one Slowmer and one Swarmer, apart, in one wave.
     expect(arenas[0]!.waves).toHaveLength(1);
     expect(arenas[0]!.waves[0]!.spawns).toEqual([
@@ -86,6 +91,26 @@ describe("Level 1-3 loads (LVL-03a)", () => {
       [{ foamer: "F03", count: 10 }],
       [{ foamer: "F01", count: 3 }],
     ]);
+    // Beat 6: the hall is a chase, not a lock: 12 Swarmers, no door shut.
+    const hall = arenas[3]!;
+    expect(hall.noLock).toBe(true);
+    expect(hall.waves.flatMap((w) => w.spawns)).toEqual([{ foamer: "F03", count: 12 }]);
+    expect(hall.escape).toBeDefined();
+    expect(hall.escape!.sealDoors).toEqual(["drop-hatch"]);
+    expect(hall.escape!.sealDelaySeconds).toBe(3);
+    // Beat 8: 10 Swarmers, then 12, then the Roamers last.
+    const ring = arenas[4]!;
+    expect(ring.waves.map((w) => w.spawns)).toEqual([
+      [{ foamer: "F03", count: 10 }],
+      [{ foamer: "F03", count: 12 }],
+      [{ foamer: "F02", count: 4 }],
+    ]);
+    expect(ring.unlockOnClear).toEqual(["ring-in", "ring-out"]);
+    // Four rifts, one per side, and four pillars.
+    expect(ring.rifts).toHaveLength(4);
+    expect(level.pieces!.filter((p) => p.id.startsWith("ring-pillar"))).toHaveLength(4);
+    // The exit is behind the Ring's north door.
+    expect(level.exit.pos[2]).toBeLessThan(-188);
   });
 
   it("2. the level choice plays 1-3 by name", () => {
@@ -98,7 +123,9 @@ describe("Level 1-3 loads (LVL-03a)", () => {
     const built = buildLevel(level, rapier, world, FAKE);
     await settle(built);
     world.step();
-    const route = walk(
+    // Beats 1 to 6: start to the drop's lip, down the hall's lane. Cast
+    // from 2 m there, under the hall's 7 m ceiling.
+    const upper = walk(
       [0, -3], // the open bay (beat 1)
       [0, -12], // out of the bay
       [0, -21], // down the first corridor (beat 2)
@@ -106,13 +133,39 @@ describe("Level 1-3 loads (LVL-03a)", () => {
       [0, -41], // down the second corridor (beat 3)
       [0, -50], // across the Pit floor, up the east ramp is not on this line
       [0, -68], // out of the Pit
-      [0, -71], // the breather (beat 4)
+      [0, -71], // the catwalk breather (beat 4)
       [0, -90], // across the Yard (beat 5)
       [0, -108], // the Yard's north gate
-      [0, -113], // the temporary exit
+      [0, -120], // into the hall (beat 6)
+      [0, -146], // down the lane, past the columns
+      [0, -148], // the drop's lip: past here the floor is gone
     );
-    for (const [x, z] of route) {
-      expect(hasFloor(world, x, z), `floor at ${x}, ${z}`).toBe(true);
+    for (const [x, z] of upper) {
+      const from = z < -111 ? 2 : 4.5;
+      expect(floorBelow(world, x, z, from, z < -111 ? 7 : 9), `floor at ${x}, ${z}`).toBe(true);
+    }
+    // Beat 6: the drop is a hole, 6 m of nothing under the lane's end. The
+    // hatch over it starts open.
+    for (const z of [-150, -152, -154]) {
+      expect(floorBelow(world, 0, z, 2, 7.5), `no floor at 0, ${z}`).toBe(false);
+    }
+    // Beats 7 to 9: the drop's foot, breather 2, the Ring's ring, its north
+    // door and the exit pad, sampled from the room's own height.
+    const lower = walk(
+      [0, -152], // landing, bottom of the drop (beat 7)
+      [0, -153], // the room's middle
+      [0, -155], // under its lid
+      [0, -156.5], // through the doorway into the Ring
+      [0, -161], // south of the block (beat 8)
+      [-12, -161], // out to the west side of the ring
+      [-12, -180], // north along it
+      [0, -180], // round the block's north end
+      [6, -182],
+      [6, -186.5], // the north door
+      [6, -190], // the exit pad (beat 9)
+    );
+    for (const [x, z] of lower) {
+      expect(floorBelow(world, x, z, -8.5, 4), `floor at ${x}, ${z} (lower)`).toBe(true);
     }
   });
 
@@ -171,6 +224,64 @@ describe("Level 1-3 loads (LVL-03a)", () => {
     }
   });
 
+  it("4e. the Ring's ring is a loop and its block top is walkable", async () => {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
+    const path = makePath();
+    const F = -10;
+    // The 6 m ring round the 10 x 8 m block: both sides, both ends.
+    expect(g.walkableAt(-12, -172), "west side").toBe(true);
+    expect(g.walkableAt(12, -172), "east side").toBe(true);
+    expect(g.walkableAt(0, -161), "south end").toBe(true);
+    expect(g.walkableAt(0, -183), "north end").toBe(true);
+    // A loop: the east side to the west side, which the block sits between,
+    // so the walk has to go round one end and comes out with waypoints
+    // rather than a straight line across the block.
+    expect(g.findPath({ x: 12, z: -172 }, { x: -12, z: -172 }, path, F, F), "east to west")
+      .toBeGreaterThan(3);
+    expect(g.findPath({ x: -12, z: -172 }, { x: 0, z: -183 }, path, F, F), "west to north")
+      .toBeGreaterThan(1);
+    // The block's top, and the mantle chain up its east face: 1.5 m step,
+    // 1.3 m step, then a 0.7 m jump to 3.5 m, under the player's 1.5 m
+    // mantle. The top is walkable and joins the ring through the chain.
+    const TOP = F + 3.5;
+    expect(g.walkableAt(0, -172, TOP), "block top").toBe(true);
+    expect(g.walkableAt(7.8, -172, F + 1.5), "first step").toBe(true);
+    expect(g.walkableAt(5.8, -172, F + 2.8), "second step").toBe(true);
+    expect(g.findPath({ x: 12, z: -172 }, { x: 0, z: -172 }, path, F, TOP), "ring to block top")
+      .toBeGreaterThan(1);
+  });
+
+  it("4f. the drop cannot be climbed back", async () => {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
+    // No path may end on the hall's floor: the drop's walls are sheer, so a
+    // walk from the room up gets no closer than the room's own top layer,
+    // and its last waypoint stays 6 m below the lane.
+    const lastY = (from: { x: number; z: number }, to: { x: number; z: number }) => {
+      const path = makePath();
+      const n = g.findPath(from, to, path, -10, -4);
+      if (n === 0) return -Infinity;
+      // The path's world heights come from the grid's layers along it; the
+      // simplest read is the ground it stops on, at its last waypoint.
+      return g.groundAt(path.xs[n - 1]!, path.zs[n - 1]!, -4) ?? NaN;
+    };
+    expect(g.walkableAt(0, -153, -10), "the room's floor").toBe(true);
+    expect(g.walkableAt(0, -148, -4), "the hall's floor").toBe(true);
+    for (const [from, to] of [
+      [{ x: 0, z: -153 }, { x: 0, z: -148 }],
+      [{ x: 0, z: -152 }, { x: 0, z: -140 }],
+      [{ x: -3, z: -155 }, { x: 3, z: -146 }],
+    ] as const) {
+      const y = lastY(from, to);
+      expect(y, `from ${from.x},${from.z} to ${to.x},${to.z}`).toBeLessThan(-5);
+    }
+  });
+
   it("4. each arena's trigger is reachable on the nav grid", async () => {
     const { rapier, world } = await createPhysics();
     const built = buildLevel(level, rapier, world, FAKE);
@@ -182,6 +293,59 @@ describe("Level 1-3 loads (LVL-03a)", () => {
     expect(g.walkableAt(0, -27), "the explore trigger").toBe(true);
     const path = makePath();
     expect(g.findPath({ x: 0, z: -3 }, { x: 0, z: -27 }, path), "start to explore").toBeGreaterThan(1);
+  });
+
+  // LVL-03b: the hall chase, on the level file itself. The runner's own
+  // escape and seal are covered in level-runner.test.ts; this proves the file
+  // wires them: 12 Swarmers on entry with no door shut, the drop ends the
+  // arena, and the hatch seals 3 s after the landing.
+  it("4g. the hall chases, ends at the drop, and the hatch seals 3 s later", () => {
+    const doors = new Map<string, string>();
+    let spawned = 0;
+    let locked = 0;
+    let escaped = 0;
+    let cleared = 0;
+    const events: LevelEvents = {
+      setDoor(id, state) { doors.set(id, state); },
+      spawn() { spawned++; return true; },
+      onLocked() { locked++; },
+      onWaveStart() {}, onCleared() { cleared++; },
+      onEscaped() { escaped++; },
+      onArenaStart() {}, onLevelCleared() {},
+    };
+    const runner = new LevelRunner(level.arenas!, events);
+    const DT = 1 / 60;
+    const stand = (pos: [number, number, number], frames: number) => {
+      for (let i = 0; i < frames; i++) runner.update(DT, { playerPos: pos, aliveCount: 3 });
+    };
+    // Get to the hall: every arena before it has to clear first.
+    for (let i = 0; i < 3; i++) {
+      const arena = level.arenas![i]!;
+      stand([arena.trigger.pos[0], arena.trigger.pos[1] - 0.5, arena.trigger.pos[2]], 60);
+      for (let k = 0; k < 200 / DT && runner.state.arenaIndex === i; k++) {
+        runner.update(DT, { playerPos: [arena.trigger.pos[0], arena.trigger.pos[1] - 0.5, arena.trigger.pos[2]], aliveCount: 0 });
+      }
+    }
+    expect(runner.state.arenaId).toBe("hall");
+    // In the hall, with Foamers up the whole time: no door shut, no lock.
+    locked = 0;
+    spawned = 0;
+    cleared = 0;
+    stand([0, -2, -118], 60);
+    expect(spawned).toBeGreaterThan(0);
+    expect(locked).toBe(0);
+    expect(doors.get("drop-hatch")).toBe("open");
+    // The landing: the arena is over with its Foamers still up.
+    stand([0, -9.7, -152], 1);
+    expect(escaped).toBe(1);
+    expect(cleared).toBe(0);
+    expect(runner.state.arenaId).toBe("ring");
+    expect(doors.get("drop-hatch")).toBe("open");
+    // Two seconds on the room's floor: still open. Three: sealed.
+    stand([0, -9.7, -152], Math.round(2.5 / DT));
+    expect(doors.get("drop-hatch")).toBe("open");
+    stand([0, -9.7, -152], Math.round(0.6 / DT));
+    expect(doors.get("drop-hatch")).toBe("sealed");
   });
 
   it("4b. no wave puts more than 12 Swarmers alive at once", () => {

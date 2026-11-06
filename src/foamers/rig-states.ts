@@ -66,6 +66,21 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     // GAME-10c: the jaw drops to spit (the Floater has no arms).
     if (rig.parts.some((p) => p.id === "jaw")) out.rot.set("jaw", [1.0 * e, 0, 0]);
     out.pitch = -0.08 * e;
+  } else if (attack === "stream") {
+    // GAME-10g: the barrels spin up (they pivot about y) and the body
+    // braces as the turret comes to bear. The spin is one whole turn over
+    // the windup: a tube looks the same at 0 and 2pi, so the pose is
+    // continuous when the strike takes over (no snap at the transition).
+    const e2 = Math.min(1, k / 0.6);
+    const spin = Math.PI * 2 * e2 * e2;
+    if (rig.parts.some((p) => p.id === "barrelL")) out.rot.set("barrelL", [0, spin, 0]);
+    if (rig.parts.some((p) => p.id === "barrelR")) out.rot.set("barrelR", [0, -spin, 0]);
+    out.pitch = -0.06 * e;
+  } else if (attack === "stomp") {
+    // GAME-10g: it rears with the gun down over the target.
+    out.pitch = 0.25 * e;
+    out.y = 0.06 * e;
+    if (rig.parts.some((p) => p.id === "gun")) out.rot.set("gun", [0.5 * e, 0, 0]);
   } else if (attack === "throw") {
     // ANIM-01: the loaded ball, from the rig's motions block. Zero when a
     // rig has no block, so the pose never snaps: it just does not wind.

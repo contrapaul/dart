@@ -232,6 +232,9 @@ The other Foamers (IDs given when each is built):
 | F07-land | GAME-10f placeholder ID: the Brawler lands and the shockwave starts | Yes | 3 | Foley: drop something heavy on foam |
 | F08 | Huge tank | Heavy steps, launcher volley, foam wall of balls | Later | Blaster plus Foley |
 | F09 | Spider turret | Leg clicks (loop), turret spin, pellet stream (loop) | Later | Foley plus Blaster |
+| F09-spinup | GAME-10g placeholder ID: the Crawler's barrels spin up before the stream (the telegraph) | Yes | 2 | Foley: a ratchet winding, rising |
+| F09-pellet | GAME-10g placeholder ID: one pellet leaving the barrels (cheap; the cap is what bounds a storm) | Yes | 6 | Blaster: a pellet dry-firing, thinned |
+| F09-step | GAME-10g placeholder ID: the Crawler's heavy foot plant | Yes | 4 | Foley: boot on a foam mat, with a click |
 | F10 | Flyer with jets | Jet loop, homing shot, jets breaking (falls) | Later | Foley plus Code |
 | F11 | Armoured knight | Heavy armoured steps, mace swings, overhead slam, sweep, the slow parry wind-up (must be easy to hear), shield hits | Later | Foley |
 | F12 | Ambusher in foam growths | Rustle in a growth, pounce, landing | Later | Foley |
