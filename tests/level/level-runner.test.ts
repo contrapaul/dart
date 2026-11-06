@@ -172,3 +172,120 @@ describe("the level runner plays arenas in order", () => {
     expect(rec.doors.get("pit-out")).toBe("open");
   });
 });
+
+// LVL-03b: the hall chase. An arena may start its waves on entry without
+// shutting a door (`noLock`), and may end by the player taking a one-way
+// way out (`escape`): the arena is over mid-wave, the escape's doors seal
+// after a delay, and no unlockOnClear door opens, because nothing was
+// cleared.
+describe("an arena that is left rather than cleared", () => {
+  function chaseArena(): Arena {
+    const arena = structuredClone(pitArena);
+    arena.id = "hall";
+    arena.trigger = { pos: [0, 2, -116], size: [10, 4, 6] };
+    arena.checkpointPos = [0, 4, -113];
+    for (const door of arena.doors) {
+      door.id = door.id.replace("pit-", "hall-");
+      door.pos = [door.pos[0], door.pos[1], door.pos[2] - 74];
+    }
+    // The door at the bottom of the drop: it starts open and the escape
+    // seals it. It is not one of this arena's, so noLock cannot shut it.
+    arena.escape = {
+      box: { pos: [0, -9, -119], size: [8, 4, 4] },
+      sealDoors: ["drop-seal"],
+      sealDelaySeconds: 3,
+    };
+    arena.noLock = true;
+    for (const rift of arena.rifts) {
+      rift.id = rift.id.replace("pit-", "hall-");
+      rift.pos = [rift.pos[0], rift.pos[1], rift.pos[2] - 74];
+    }
+    for (const wave of arena.waves) {
+      wave.id = wave.id.replace("pit-", "hall-");
+      wave.rifts = wave.rifts.map((r) => r.replace("pit-", "hall-"));
+    }
+    arena.unlockOnClear = arena.unlockOnClear.map((d) => d.replace("pit-", "hall-"));
+    return arena;
+  }
+  const AT_MOUTH: [number, number, number] = [0, 2, -116];
+  const AT_FOOT: [number, number, number] = [0, -9, -119];
+
+  function chase() {
+    const arena = chaseArena();
+    const rec = {
+      doors: new Map<string, DoorState>([["drop-seal", "open" as DoorState]]),
+      locked: 0,
+      escaped: 0,
+      cleared: 0,
+      spawned: 0,
+    };
+    const events: LevelEvents = {
+      setDoor(id, state) {
+        rec.doors.set(id, state);
+      },
+      spawn() {
+        rec.spawned++;
+        return true;
+      },
+      onLocked() {
+        rec.locked++;
+      },
+      onWaveStart() {},
+      onCleared() {
+        rec.cleared++;
+      },
+      onEscaped() {
+        rec.escaped++;
+      },
+      onArenaStart() {},
+      onLevelCleared() {},
+    };
+    return { runner: new LevelRunner([arena], events), rec };
+  }
+
+  it("noLock starts the waves on entry without shutting or announcing a door", () => {
+    const { runner, rec } = chase();
+    // Alive is held above zero, so the wave stays on and the arena does not
+    // clear: this is the chase, not a fight to the end.
+    for (let i = 0; i < 300; i++) {
+      runner.update(DT, { playerPos: AT_MOUTH, aliveCount: 3 });
+    }
+    expect(runner.state.phase).toBe("wave");
+    expect(rec.spawned).toBe(3);
+    expect(rec.locked).toBe(0);
+    // Every door is still in the file's state: nothing was shut.
+    expect(rec.doors.get("hall-in")).toBe("open");
+    expect(rec.doors.get("hall-out")).toBe("locked");
+  });
+
+  it("the escape ends the arena mid wave, and opens no unlockOnClear door", () => {
+    const { runner, rec } = chase();
+    for (let i = 0; i < 300; i++) {
+      runner.update(DT, { playerPos: AT_MOUTH, aliveCount: 3 });
+    }
+    expect(rec.spawned).toBe(3);
+    // The player drops: the arena is over with its Foamers still up.
+    runner.update(DT, { playerPos: AT_FOOT, aliveCount: 3 });
+    expect(rec.escaped).toBe(1);
+    expect(rec.cleared).toBe(0);
+    expect(runner.state.arenasCleared).toBe(1);
+    // The hall's own doors are untouched: an escape is not a clear, so the
+    // one that starts locked stays locked.
+    expect(rec.doors.get("hall-in")).toBe("open");
+    expect(rec.doors.get("hall-out")).toBe("locked");
+  });
+
+  it("the escape's doors seal 3 s after the landing, and not before", () => {
+    const { runner, rec } = chase();
+    runner.update(DT, { playerPos: AT_MOUTH, aliveCount: 3 });
+    runner.update(DT, { playerPos: AT_FOOT, aliveCount: 3 });
+    expect(rec.doors.get("drop-seal")).toBe("open");
+    // Two seconds in: still open.
+    for (let i = 0; i < 119; i++) runner.update(DT, { playerPos: AT_FOOT, aliveCount: 3 });
+    expect(rec.doors.get("drop-seal")).toBe("open");
+    // Three seconds: sealed, once.
+    for (let i = 0; i < 70; i++) runner.update(DT, { playerPos: AT_FOOT, aliveCount: 3 });
+    expect(rec.doors.get("drop-seal")).toBe("sealed");
+    expect(rec.escaped).toBe(1);
+  });
+});
