@@ -402,6 +402,19 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: LVL-02d and BUG-06 started with DeepSeek (Claude)
+
+- LVL-02d stage 2 (the tower) restarted with DeepSeek V4.1 Flash on
+  branch `lvl-02d` (main merged in), with orders to write the level by
+  short scripts and to check the `topMetres` 17 side effect on the other
+  levels. The walls and ceilings are 9 m, so four floors 5 m apart do
+  not fit the bay: it chooses a taller bay roof or lower storeys and says
+  which in section 14.
+- BUG-06 (new card): find why a ball meets the player's capsule from
+  behind in the Pit (BUG-04's lead) and fix it, so BUG-04's Pit test
+  parries 9 in 10. A second DeepSeek run, branch `bug-06` made from
+  `bug-04` so it keeps Qwen's repro and helper.
+
 ### 2026-11-06: BUG-04 stopped at 2 in 10, a lead (Claude, morning)
 
 - Qwen 27B ran about ten hours in all and was stopped at 07:10 so the
