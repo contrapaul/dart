@@ -411,6 +411,37 @@
         }
       ]
     },
+    "F09": {
+      "rig": "F09",
+      "_note": "GAME-10g: the Crawler. A heavy turret walker: keep-distance like the Roamer (the F02 brain), holding at preferredDistanceMetres. Health 40 and speed 1.8 come from the rig. The gun is the weak point (weakpoint); with the gun gone, or both barrels, it cannot fire and stomps. Look (CONTENT-PLAN 3.4): deep orange body, purple legs, lime gun.",
+      "turnRate": 2.2,
+      "attackRange": 1.8,
+      "throwRangeMetres": 17,
+      "preferredDistanceMetres": 14,
+      "retreatDistanceMetres": 7,
+      "attacks": [
+        {
+          "id": "stream",
+          "damage": 2,
+          "token": "ranged",
+          "needs": [
+            "gun",
+            "barrelL",
+            "barrelR"
+          ],
+          "windup": 0.8,
+          "strike": 1.2
+        },
+        {
+          "id": "stomp",
+          "damage": 8,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.6,
+          "strike": 0.2
+        }
+      ]
+    },
     "F06": {
       "rig": "F06",
       "_note": "GAME-10c: the Floater. It has no legs and no head: it floats (see float), so the leg handicaps do not apply and its turn rate is the no-head half of this one. attackRange is the reach of a spit; the blobs fly from there. preferredDistanceMetres is the ring it keeps, retreatDistanceMetres how close the player must get before it backs off.",
