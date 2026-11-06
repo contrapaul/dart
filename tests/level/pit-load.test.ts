@@ -80,4 +80,36 @@ describe("the Pit loads", () => {
     expect(ai.grid.walkableAt(0, 17)).toBe(true);
     expect(ai.grid.walkableAt(13, 5)).toBe(true);
   });
+
+  // LVL-02d: raising nav.topMetres to 17 lets the bake meet the Pit's roof
+  // and ceiling tops as flat faces. They are layers now, so check that a
+  // Foamer cannot step from the ring or a floor onto one: no cell's high
+  // layer (over 9 m) is within the step height of a layer under 6 m in a
+  // cell beside it, which is what walking out over a roof would need.
+  it("does not let a Foamer walk onto the Pit's roof", async () => {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(pit, rapier, world, FAKE);
+    const grid = makeLevelAI(rapier, world, built.navBounds, "normal").grid;
+    let bridged = 0;
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        const i = r * grid.cols + c;
+        for (let k = 0; k < grid.layers[i]!; k++) {
+          const high = grid.layerY[i * grid.maxLayers + k]!;
+          if (high < 9) continue;
+          for (const [dc, dr] of [[1, 0], [0, 1]] as const) {
+            if (c + dc >= grid.cols || r + dr >= grid.rows) continue;
+            const j = (r + dr) * grid.cols + c + dc;
+            for (let m = 0; m < grid.layers[j]!; m++) {
+              const low = grid.layerY[j * grid.maxLayers + m]!;
+              if (low < 6 && high - low < 0.45) bridged++;
+            }
+          }
+        }
+      }
+    }
+    expect(bridged, "a roof layer within a step of a floor layer").toBe(0);
+    // The ring's own floor is still a layer, and the pit floor under it too.
+    expect(grid.walkableAt(0, 4, grid.groundAt(0, 4))).toBe(true);
+  });
 });

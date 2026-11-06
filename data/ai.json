@@ -29,14 +29,14 @@
   "maxAgents": 64,
   "tokenCooldown": 0.4,
   "nav": {
-    "_note": "Walkable grid baked from the physics world (ENG-08 stage 2), not a navmesh: carves and falling pieces change the level every few seconds, and a grid re-bakes a small rectangle in well under a millisecond. cellMetres: side of one cell. topMetres: the bake casts down from this height to find the ground. maxSlopeDeg: a cell whose ground normal is steeper than this is not walkable. agentRadiusMetres and agentHeightMetres: the shape cast standing on a cell; a cell that hits anything with that shape is not walkable. maxStepMetres: the tallest step an agent walks up between neighbours (and the spacing under which a surface counts as a step, not a second layer). maxLayers: the most walkable surfaces one cell can hold, lowest first: the Pit's ring hangs 3 m over pit floor, and both the floor and the ring top are places an agent can stand (BUG-01 round 2). rebakeMarginMetres: a rectangle re-bake also redoes the cells this far outside it (one agent radius, so a change next to a cell is seen from that cell's shape cast). stringPull: simplify a path to the fewest waypoints when a straight line between two of them clears every cell it crosses.",
+    "_note": "Walkable grid baked from the physics world (ENG-08 stage 2), not a navmesh: carves and falling pieces change the level every few seconds, and a grid re-bakes a small rectangle in well under a millisecond. cellMetres: side of one cell. topMetres: the bake casts down from this height to find the ground (above the Level 1-2 tower's top floor, LVL-02d). maxSlopeDeg: a cell whose ground normal is steeper than this is not walkable. agentRadiusMetres and agentHeightMetres: the shape cast standing on a cell; a cell that hits anything with that shape is not walkable. maxStepMetres: the tallest step an agent walks up between neighbours (and the spacing under which a surface counts as a step, not a second layer). maxLayers: the most walkable surfaces one cell can hold, lowest first: the Pit's ring hangs 3 m over pit floor (BUG-01 round 2) and the Level 1-2 tower stacks four floors over one footprint (LVL-02d), so a cell holds four. rebakeMarginMetres: a rectangle re-bake also redoes the cells this far outside it (one agent radius, so a change next to a cell is seen from that cell's shape cast). stringPull: simplify a path to the fewest waypoints when a straight line between two of them clears every cell it crosses.",
     "cellMetres": 0.25,
-    "topMetres": 8,
+    "topMetres": 17,
     "maxSlopeDeg": 40,
     "agentRadiusMetres": 0.35,
     "agentHeightMetres": 1.6,
     "maxStepMetres": 0.45,
-    "maxLayers": 2,
+    "maxLayers": 4,
     "rebakeMarginMetres": 0.35,
     "stringPull": true,
     "stepAutostepMetres": 0.2
