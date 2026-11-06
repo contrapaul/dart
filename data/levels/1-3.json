@@ -1,0 +1,1058 @@
+{
+  "_note": "Level 1-3 beats 1 to 5 (LVL-03a): the open bay, explore 1, Arena 1 the Pit (A1), the catwalk breather and Arena 2 the Yard (A6), with a temporary exit. The hall chase, the drop, breather 2 and the Ring gauntlet come in a later card. Names, setting and accent are [Paul].",
+  "meta": {
+    "id": "1-3",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 1020,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+  "shell": [
+    {
+      "id": "floor-south",
+      "shape": "box",
+      "pos": [
+        0,
+        -0.5,
+        -21
+      ],
+      "size": [
+        18,
+        1,
+        42
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "bay-wall-s",
+      "shape": "box",
+      "pos": [
+        0,
+        3,
+        0.5
+      ],
+      "size": [
+        19,
+        6,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-wall-w",
+      "shape": "box",
+      "pos": [
+        -9.5,
+        3,
+        -6
+      ],
+      "size": [
+        1,
+        6,
+        12
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-wall-e",
+      "shape": "box",
+      "pos": [
+        9.5,
+        3,
+        -6
+      ],
+      "size": [
+        1,
+        6,
+        12
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-wall-n-w",
+      "shape": "box",
+      "pos": [
+        -5.25,
+        3,
+        -11.5
+      ],
+      "size": [
+        7.5,
+        6,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-wall-n-e",
+      "shape": "box",
+      "pos": [
+        5.25,
+        3,
+        -11.5
+      ],
+      "size": [
+        7.5,
+        6,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-lintel-n",
+      "shape": "box",
+      "pos": [
+        0,
+        4.75,
+        -11.5
+      ],
+      "size": [
+        3,
+        2.5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "bay-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        6.5,
+        -6
+      ],
+      "size": [
+        18,
+        1,
+        12
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corr1-wall-w",
+      "shape": "box",
+      "pos": [
+        -2.5,
+        2.25,
+        -16.5
+      ],
+      "size": [
+        1,
+        4.5,
+        9
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corr1-wall-e",
+      "shape": "box",
+      "pos": [
+        2.5,
+        2.25,
+        -16.5
+      ],
+      "size": [
+        1,
+        4.5,
+        9
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corr1-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        5,
+        -16.5
+      ],
+      "size": [
+        6,
+        1,
+        9
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-s-w",
+      "shape": "box",
+      "pos": [
+        -4,
+        2.5,
+        -21.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-s-e",
+      "shape": "box",
+      "pos": [
+        4,
+        2.5,
+        -21.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-lintel-s",
+      "shape": "box",
+      "pos": [
+        0,
+        4.25,
+        -21.5
+      ],
+      "size": [
+        4,
+        1.5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-w",
+      "shape": "box",
+      "pos": [
+        -6.5,
+        2.5,
+        -27
+      ],
+      "size": [
+        1,
+        5,
+        10
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-e",
+      "shape": "box",
+      "pos": [
+        6.5,
+        2.5,
+        -27
+      ],
+      "size": [
+        1,
+        5,
+        10
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-n-w",
+      "shape": "box",
+      "pos": [
+        -4,
+        2.5,
+        -31.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-n-e",
+      "shape": "box",
+      "pos": [
+        4,
+        2.5,
+        -31.5
+      ],
+      "size": [
+        4,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-lintel-n",
+      "shape": "box",
+      "pos": [
+        0,
+        4.25,
+        -31.5
+      ],
+      "size": [
+        4,
+        1.5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        5.5,
+        -27
+      ],
+      "size": [
+        12,
+        1,
+        10
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corr2-wall-w",
+      "shape": "box",
+      "pos": [
+        -2.5,
+        2.25,
+        -36.5
+      ],
+      "size": [
+        1,
+        4.5,
+        9
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corr2-wall-e",
+      "shape": "box",
+      "pos": [
+        2.5,
+        2.25,
+        -36.5
+      ],
+      "size": [
+        1,
+        4.5,
+        9
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "corr2-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        5,
+        -36.5
+      ],
+      "size": [
+        6,
+        1,
+        9
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-floor",
+      "shape": "box",
+      "pos": [
+        2,
+        -4.5,
+        -57
+      ],
+      "size": [
+        30,
+        1,
+        22
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "pit-ledge-s",
+      "shape": "box",
+      "pos": [
+        0,
+        -2,
+        -44
+      ],
+      "size": [
+        34,
+        4,
+        4
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "pit-ledge-w",
+      "shape": "box",
+      "pos": [
+        -15,
+        -2,
+        -57
+      ],
+      "size": [
+        4,
+        4,
+        22
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "pit-ramp-e",
+      "shape": "ramp",
+      "pos": [
+        14,
+        -2,
+        -50
+      ],
+      "size": [
+        6,
+        4,
+        8
+      ],
+      "material": "greybox-dark",
+      "rise": 4,
+      "rotY": 0
+    },
+    {
+      "id": "pit-ramp-n",
+      "shape": "ramp",
+      "pos": [
+        -10,
+        -2,
+        -53
+      ],
+      "size": [
+        6,
+        4,
+        6
+      ],
+      "material": "greybox-dark",
+      "rotY": -90,
+      "rise": 4
+    },
+    {
+      "id": "pit-wall-s-w",
+      "shape": "box",
+      "pos": [
+        -9.5,
+        4,
+        -41.5
+      ],
+      "size": [
+        15.0,
+        8,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-wall-s-e",
+      "shape": "box",
+      "pos": [
+        9.5,
+        4,
+        -41.5
+      ],
+      "size": [
+        15.0,
+        8,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-lintel-in",
+      "shape": "box",
+      "pos": [
+        0,
+        5.75,
+        -41.5
+      ],
+      "size": [
+        4,
+        4.5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-wall-w",
+      "shape": "box",
+      "pos": [
+        -17.5,
+        2,
+        -55
+      ],
+      "size": [
+        1,
+        12,
+        27
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-wall-e",
+      "shape": "box",
+      "pos": [
+        17.5,
+        2,
+        -55
+      ],
+      "size": [
+        1,
+        12,
+        27
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-wall-n-w",
+      "shape": "box",
+      "pos": [
+        -9.5,
+        2,
+        -68.5
+      ],
+      "size": [
+        15.0,
+        12,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-wall-n-e",
+      "shape": "box",
+      "pos": [
+        9.5,
+        2,
+        -68.5
+      ],
+      "size": [
+        15.0,
+        12,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-lintel-out",
+      "shape": "box",
+      "pos": [
+        0,
+        3.75,
+        -68.5
+      ],
+      "size": [
+        4,
+        8.5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "pit-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        8.5,
+        -55
+      ],
+      "size": [
+        35,
+        1,
+        27
+      ],
+      "material": "greybox"
+    }
+  ],
+  "pieces": [
+    {
+      "id": "bay-dummy-1",
+      "kind": "cover",
+      "volumes": [
+        {
+          "pos": [
+            -5.5,
+            0.9,
+            -7
+          ],
+          "size": [
+            1.0,
+            1.8,
+            0.6
+          ],
+          "material": "foam-white"
+        }
+      ],
+      "anchor": "floor"
+    },
+    {
+      "id": "bay-dummy-2",
+      "kind": "cover",
+      "volumes": [
+        {
+          "pos": [
+            0,
+            0.9,
+            -9
+          ],
+          "size": [
+            1.0,
+            1.8,
+            0.6
+          ],
+          "material": "foam-white"
+        }
+      ],
+      "anchor": "floor"
+    },
+    {
+      "id": "bay-dummy-3",
+      "kind": "cover",
+      "volumes": [
+        {
+          "pos": [
+            6,
+            0.9,
+            -7.5
+          ],
+          "size": [
+            1.0,
+            1.8,
+            0.6
+          ],
+          "material": "foam-white"
+        }
+      ],
+      "anchor": "floor"
+    },
+    {
+      "id": "s1-marking",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            4.9,
+            0.05,
+            -29.9
+          ],
+          "size": [
+            1.0,
+            0.1,
+            1.0
+          ],
+          "material": "foam-yellow"
+        }
+      ]
+    },
+    {
+      "id": "pit-block",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            0.5,
+            -2.4,
+            -54
+          ],
+          "size": [
+            3,
+            3.2,
+            2
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "pos": [
+            0.5,
+            -2.4,
+            -52
+          ],
+          "size": [
+            3,
+            3.2,
+            2
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "pos": [
+            3.5,
+            -2.4,
+            -54
+          ],
+          "size": [
+            3,
+            3.2,
+            2
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "pos": [
+            3.5,
+            -2.4,
+            -52
+          ],
+          "size": [
+            3,
+            3.2,
+            2
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "pit-pillar-w",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -6,
+            -2.6,
+            -53
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "pit-pillar-e",
+      "kind": "cover",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            10,
+            -2.6,
+            -53
+          ],
+          "size": [
+            1.6,
+            2.8,
+            1.6
+          ],
+          "material": "foam-orange"
+        }
+      ]
+    }
+  ],
+  "arenas": [
+    {
+      "id": "explore-1",
+      "archetype": "A4",
+      "trigger": {
+        "pos": [
+          0,
+          2.5,
+          -27
+        ],
+        "size": [
+          10,
+          5,
+          8
+        ]
+      },
+      "doors": [
+        {
+          "id": "explore-in",
+          "pos": [
+            0,
+            2.25,
+            -21.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "explore-out",
+          "pos": [
+            0,
+            2.25,
+            -31.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "locked"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "explore-rw",
+          "pos": [
+            -5.5,
+            0.2,
+            -27
+          ],
+          "facing": [
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "explore-re",
+          "pos": [
+            5.5,
+            0.2,
+            -27
+          ],
+          "facing": [
+            -1,
+            0,
+            0
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "explore-w1",
+          "rifts": [
+            "explore-rw",
+            "explore-re"
+          ],
+          "spawns": [
+            {
+              "foamer": "F01",
+              "count": 1
+            },
+            {
+              "foamer": "F03",
+              "count": 1
+            }
+          ],
+          "delaySeconds": 1.5,
+          "holdSeconds": 3
+        }
+      ],
+      "unlockOnClear": [
+        "explore-in",
+        "explore-out"
+      ],
+      "checkpoint": true,
+      "checkpointPos": [
+        0,
+        0,
+        -24
+      ]
+    },
+    {
+      "id": "pit",
+      "archetype": "A1",
+      "trigger": {
+        "pos": [
+          2,
+          -2,
+          -58
+        ],
+        "size": [
+          12,
+          4,
+          10
+        ]
+      },
+      "doors": [
+        {
+          "id": "pit-in",
+          "pos": [
+            0,
+            1.75,
+            -41.5
+          ],
+          "size": [
+            4,
+            3.5,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "pit-out",
+          "pos": [
+            0,
+            -2,
+            -68.5
+          ],
+          "size": [
+            4,
+            4,
+            0.4
+          ],
+          "state": "locked"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "pit-rift-n1",
+          "pos": [
+            -12,
+            -3.8,
+            -51
+          ],
+          "facing": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "pit-rift-n2",
+          "pos": [
+            -8.5,
+            -3.8,
+            -51
+          ],
+          "facing": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "pit-rift-e",
+          "pos": [
+            12,
+            -3.8,
+            -58
+          ],
+          "facing": [
+            -1,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "pit-rift-floor",
+          "pos": [
+            2,
+            -3.8,
+            -63
+          ],
+          "facing": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "pit-w1",
+          "rifts": [
+            "pit-rift-n1",
+            "pit-rift-n2",
+            "pit-rift-e"
+          ],
+          "spawns": [
+            {
+              "foamer": "F03",
+              "count": 6
+            }
+          ],
+          "delaySeconds": 2,
+          "holdSeconds": 2
+        },
+        {
+          "id": "pit-w2",
+          "rifts": [
+            "pit-rift-n1",
+            "pit-rift-n2",
+            "pit-rift-e",
+            "pit-rift-floor"
+          ],
+          "spawns": [
+            {
+              "foamer": "F03",
+              "count": 8
+            }
+          ],
+          "delaySeconds": 6,
+          "holdSeconds": 1.5
+        },
+        {
+          "id": "pit-w3",
+          "rifts": [
+            "pit-rift-floor"
+          ],
+          "spawns": [
+            {
+              "foamer": "F01",
+              "count": 2
+            }
+          ],
+          "delaySeconds": 10
+        }
+      ],
+      "unlockOnClear": [
+        "pit-in",
+        "pit-out"
+      ]
+    }
+  ],
+  "pickups": [
+    {
+      "id": "bay-ammo",
+      "type": "darts-standard",
+      "count": 40,
+      "pos": [
+        7.5,
+        0.4,
+        -10.5
+      ]
+    },
+    {
+      "id": "pit-ammo",
+      "type": "darts-standard",
+      "count": 30,
+      "pos": [
+        0,
+        0.4,
+        -44
+      ]
+    }
+  ],
+  "playerStart": {
+    "pos": [
+      0,
+      0,
+      -3
+    ],
+    "yaw": 0
+  },
+  "exit": {
+    "pos": [
+      0,
+      0,
+      -40
+    ],
+    "size": [
+      3.4,
+      4,
+      3
+    ]
+  },
+  "_notes": [
+    "bay: the card asks for three foam dummies to warm up the trigger on. No dummy is a placeable thing in the blockout format (only waves spawn Foamers, and a wave would lock the bay), so the three dummies are small voxel foam-white pieces at x -5.5, 0 and 6, z -7 to -9: they carve like any cover, go down in a few darts and cannot shoot back.",
+    "explore-1: the S1 vent is [Paul] and not built; the foam-yellow marking at [5, -30] in the room's south-west corner marks its empty spot."
+  ]
+}

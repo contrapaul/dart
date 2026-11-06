@@ -89,7 +89,7 @@ describe("the Ring loads (GAME-10b)", () => {
   });
 
   it("5. the level choice plays the Ring by name and the Pit otherwise", () => {
-    expect(Object.keys(ARENA_LEVELS).sort()).toEqual(["1-1-pit", "1-2", "1-4-ring"]);
+    expect(Object.keys(ARENA_LEVELS).sort()).toEqual(["1-1-pit", "1-2", "1-3", "1-4-ring"]);
     expect(chosenLevel("?level=1-4-ring").level.meta.id).toBe("1-4");
     expect(chosenLevel("").level.meta.id).toBe("1-1");
     expect(chosenLevel("?level=9-9-nope").level.meta.id).toBe("1-1");
