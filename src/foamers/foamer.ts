@@ -88,6 +88,15 @@ export class Foamer {
   justAlerted = false;
   /** It took a dart hit since the last AI step, so being shot wakes it. */
   damageSinceStep = false;
+  /** BUG-07: its ball's flight to the player was clear at its last throw's
+   *  start or release. Filled by the system (a shape cast, so not every
+   *  step) and read by its brain, which will not start a throw while it is
+   *  false. True without a projectile system, the pre-check behaviour. */
+  throwClear = true;
+  /** BUG-07: seconds until its next flight check while it waits for a clear
+   *  one. A shape cast is not a per-step cost, so the check has its own
+   *  clock (data/ai.json brain.flightCheckSeconds). */
+  throwCheckIn = 0;
   /** GAME-10d: seconds since its last nibble landed, Infinity until it has
    *  bitten once. Only a Swarmer's brain reads it (the ring wait after a
    *  nibble); the system restarts it when the windup lands. */

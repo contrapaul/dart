@@ -14,7 +14,8 @@
     "tokenWaitPerSecond": 0.5,
     "circleRampMetres": 0.5,
     "circleStrafeShare": 0.6,
-    "circleDeadbandMetres": 0.15
+    "circleDeadbandMetres": 0.15,
+    "flightCheckSeconds": 0.25
   },
   "pack": {
     "_note": "GAME-10d: the Swarmer pack. maxAlive is the hard cap on live Swarmers: a pack spawn past it is skipped, never made by removing the oldest, so a swarm never outruns the frame budget. ringMetres is the ring a Swarmer backs out to after a nibble and waits on, nibbleGapSeconds how long it must wait there before it may nibble again, and spreadMetres how far round the ring the members are placed. inboundStepMetres and inboundSteps: a member whose ring spot a nav grid says cannot be stood on (BUG-02, the Pit's central block) is tested a few steps in at the same angle; with nothing walkable it is skipped (not spawned, not counted). The range and tests without a grid place as before.",

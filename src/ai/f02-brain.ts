@@ -29,6 +29,11 @@ export interface F02Input extends F01Input {
   preferredDistance: number;
   /** Closer than this (metres), it backs away instead of holding. */
   retreatDistance: number;
+  /** BUG-07: its ball's flight to the player was clear at its last throw's
+   *  start or release. While it is false the brain still wants a token
+   *  (there is no point in two blockers) but does not ask for one, and it
+   *  moves rather than holding still with nothing to throw at. */
+  flightClear: boolean;
 }
 
 /**
@@ -71,12 +76,22 @@ export function decideF02(
       } else if (dist <= input.throwRange) {
         out.state = "hold";
         out.move = ringMove(dist, input, agentId);
-        out.wantsToken = true;
+        // BUG-07: a token for a throw that cannot reach the player is a
+        // wasted token. It keeps sidling either way; only the ask waits.
+        out.wantsToken = input.flightClear;
       }
       return out;
     }
     case "hold": {
       out.wantsToken = true;
+      // BUG-07: nothing to throw at from here. Give the token back (the
+      // director's own cooldown spaces the retry) and keep moving round the
+      // ring, which is what finds it a spot with a clear flight.
+      if (!input.flightClear) {
+        out.wantsToken = false;
+        out.move = ringMove(dist, input, agentId);
+        return out;
+      }
       // A token, or the player walking a margin past the throw range, sends
       // it back to approach: with a token it throws from approach (that is
       // where the state machine starts attacks), and too far out it must
@@ -153,6 +168,7 @@ export function makeF02Context(agentId: number): F02Context {
       throwRange: 0,
       preferredDistance: 0,
       retreatDistance: 0,
+      flightClear: true,
       sinceNibble: Infinity,
     },
     decision: { state: "idle", move: "stand", wantsToken: false },

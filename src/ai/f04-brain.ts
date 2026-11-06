@@ -157,6 +157,7 @@ export function makeF04Context(agentId: number): F04Context {
       throwRange: 0,
       preferredDistance: 0,
       retreatDistance: 0,
+      flightClear: true,
       sinceNibble: Infinity,
       slotX: 0,
       slotZ: 0,

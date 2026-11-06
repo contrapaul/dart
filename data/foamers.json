@@ -18,6 +18,7 @@
       "speed": 9,
       "gravity": 5,
       "radius": 0.09,
+      "flightSegments": 6,
       "chunks": 4,
       "maxLive": 8,
       "lifetime": 4

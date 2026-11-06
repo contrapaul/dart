@@ -72,6 +72,13 @@ function rigFor(spec: FoamerSpec): GameRig {
   return RIGS.find((r) => r.id === spec.rig) ?? RIGS[0]!;
 }
 
+/** BUG-07: a throw of one ball, the case the flight check can judge. A
+ *  volley fans several arcs across `spreadDeg`, so its centre arc is not
+ *  what it fires (F04's three-shot volley keeps its own behaviour). */
+function singleBall(atk: object): boolean {
+  return Math.max(1, (atk as { shots?: number }).shots ?? 1) === 1;
+}
+
 /** How far an attack's reach is measured to: its own `range` when it has
  *  one, else, for a ranged token, the distance the type keeps (a throw is
  *  thrown from its ring), else the spec's `attackRange` (a bonk). */
@@ -154,6 +161,8 @@ const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
 const _losFrom = new THREE.Vector3();
 const _losTo = new THREE.Vector3();
 const _losDir = new THREE.Vector3();
+/** BUG-07: the ball hand's point, for the flight check. */
+const _throwFrom = new THREE.Vector3();
 /** GAME-10d: one pack member's feet, written before its spawn. */
 const _packFeet = new THREE.Vector3();
 /** GAME-11: a prone Foamer turns at this share of its turn rate. */
@@ -597,6 +606,9 @@ export class FoamerSystem {
       f.yaw += THREE.MathUtils.clamp(dyaw, -tr * dt, tr * dt);
     }
 
+    // BUG-07: the flight check's own clock, so a blocked thrower re-checks a
+    // few times a second instead of on every step.
+    if (f.throwCheckIn > 0) f.throwCheckIn = Math.max(0, f.throwCheckIn - dt);
     const dist = Math.hypot(player.x - f.centre.x, player.z - f.centre.z);
     // ENG-08 stage 3b: with an agent the brain owns idle, alert, approach and
     // hold; the attack and damage states stay here. The brain hands over to
@@ -626,7 +638,8 @@ export class FoamerSystem {
         f.chargeHit = false;
         sound(this, "scrape", f, f.centre);
         this.onScrape(f, f.centre);
-      } else if (!charge && this.mayAttack(f, dist, this.engagementRange(f))) {
+      } else if (!charge && this.mayAttack(f, dist, this.engagementRange(f))
+        && this.canStartThrow(f, player)) {
         f.state = "windup";
         f.stateTime = 0;
         f.setAttack(this.chooseAttack(f));
@@ -715,8 +728,21 @@ export class FoamerSystem {
         const dy = Math.abs(player.y - f.centre.y);
         // GAME-11: a prone Foamer strikes from its head, ahead of the feet.
         const reach = f.prone ? this.headDist(f, player) : dist;
-        if (reach <= attackRange(f.spec, atk) + 0.3 && dy < 2) {
-          if (atk.token === "ranged") {
+        const inReach = reach <= attackRange(f.spec, atk) + 0.3 && dy < 2;
+        // BUG-07: the check at the start of a throw is the cheap one, this
+        // is the backstop. The windup is 0.6 s, in which the Foamer walks
+        // or sidles and the player can move several metres, so a flight
+        // that was clear when the windup began can meet cover by the
+        // release. A blocked release is not a throw: no ball, no sound, the
+        // token goes back and the brain picks the fight up again. A
+        // multi-shot volley is left alone (see canStartThrow).
+        if (inReach && atk.token === "ranged" && singleBall(atk)
+          && !this.flightClear(f, player, true)) {
+          f.agent?.release("noFlight");
+          f.state = f.prone ? "crawl" : "approach";
+          f.stateTime = 0;
+        } else {
+          if (inReach && atk.token === "ranged") {
             // A throw is not a hit: the ball does the damage when it lands
             // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
             // Without a projectile system (the unit tests, the sandbox) the
@@ -729,14 +755,14 @@ export class FoamerSystem {
             for (let s = 0; s < shots; s++)
               this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
             sound(this, "throw", f, f.centre);
-          } else {
+          } else if (inReach) {
             f.bonk(atk.id);
           }
           // GAME-10d: a landed nibble restarts the Swarmer's ring wait.
-          if (tokenKindOf(f.spec) === "swarm") f.sinceNibble = 0;
+          if (inReach && tokenKindOf(f.spec) === "swarm") f.sinceNibble = 0;
+          f.state = "strike";
+          f.stateTime = 0;
         }
-        f.state = "strike";
-        f.stateTime = 0;
       }
     } else if (f.state === "strike") {
       if (f.stateTime >= f.attack()!.strike) {
@@ -900,6 +926,7 @@ export class FoamerSystem {
    * and copies the brain's state onto the Foamer's when the Foamer is in one
    * of the brain's own states. Attack states are left alone. */
   private stepBrain(f: Foamer, dt: number, player: THREE.Vector3) {
+    this.refreshFlightCheck(f, player);
     const a = f.agent!;
     const input = f.agentInput!;
     input.x = f.centre.x;
@@ -912,6 +939,7 @@ export class FoamerSystem {
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
+    input.canThrow = f.throwClear;
     // GAME-10d: the Swarmer's clock since its last nibble, read by its brain
     // to decide whether it may run back in or must keep the ring.
     f.sinceNibble = f.sinceNibble === Infinity ? Infinity : f.sinceNibble + dt;
@@ -942,8 +970,22 @@ export class FoamerSystem {
     if (f.justAlerted && tokenKindOf(f.spec) === "swarm") sound(this, "alert", f, f.centre);
   }
 
+  /** BUG-07: keep a ranged Foamer's cached flight check fresh. A shape cast
+   *  is too much per step, so a thrower that wants to throw re-checks on
+   *  brain.flightCheckSeconds (four times a second), which is how a sidle
+   *  finds a spot with a clear flight without the whole wave casting every
+   *  frame. Anything else is checked only when it starts or releases a
+   *  throw. */
+  private refreshFlightCheck(f: Foamer, player: THREE.Vector3): void {
+    if (!this.projectiles || f.throwCheckIn > 0) return;
+    if (tokenKindOf(f.spec) !== "ranged") return;
+    if (f.state !== "hold" && f.state !== "approach" && f.state !== "idle") return;
+    this.flightClear(f, player);
+  }
+
   /** A step of the bid: what the agent's token request and distance read. */
   private bidAgent(f: Foamer, player: THREE.Vector3) {
+    this.refreshFlightCheck(f, player);
     const input = f.agentInput!;
     input.x = f.centre.x;
     input.y = f.centre.y;
@@ -953,6 +995,7 @@ export class FoamerSystem {
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
     input.lineOfSight = this.lineOfSight(f, player);
+    input.canThrow = f.throwClear;
     f.agent!.bid(input);
   }
 
@@ -1126,6 +1169,45 @@ export class FoamerSystem {
       this.losRay, reach, true, 8 /* EXCLUDE_SENSORS */, SIGHT_QUERY_GROUPS, f.capsule,
     );
     return !hit;
+  }
+
+  /** BUG-07: can this Foamer's ball actually arrive? Its sight ray runs
+   *  chest to eye, but the ball leaves the ball hand lower down and on an
+   *  arc, so a clear sight can still be a throw into cover (the Pit's
+   *  wave 2: 8 of 10 balls burst 1.7 m from the hand). The projectile
+   *  system samples the launch's own arc; without one (the unit tests, the
+   *  sandbox) there is nothing to check and the old behaviour stands.
+   *
+   *  A shape cast is not per-step work: the answer is cached on the Foamer
+   *  and reused for brain.flightCheckSeconds, so a clear thrower casts once
+   *  when it starts its windup and once at the release, and a blocked one
+   *  re-checks a few times a second while its brain sidles. */
+  private flightClear(f: Foamer, player: THREE.Vector3, fresh = false): boolean {
+    if (!this.projectiles) return true;
+    if (!fresh && f.throwCheckIn > 0) return f.throwClear;
+    const from = this.projectiles.handAt(f, _throwFrom);
+    f.throwClear = this.projectiles.flightClear(from, player);
+    f.throwCheckIn = BRAIN.flightCheckSeconds;
+    return f.throwClear;
+  }
+
+  /** BUG-07: may this Foamer start the attack it would choose now? A
+   *  thrower whose ball cannot reach the player does not start a throw: it
+   *  gives the token back (another Foamer in line may use it) and leaves
+   *  the moving to its brain, which sidles or closes in while the flight is
+   *  blocked. Bonks, charges and every Foamer without a projectile system
+   *  start as before, and so does F04's volley over its own shield wall
+   *  (Foamer parts do not stop a ball). */
+  private canStartThrow(f: Foamer, player: THREE.Vector3): boolean {
+    const atk = f.spec.attacks.find((a) => a.id === this.chooseAttack(f));
+    if (!atk || atk.token !== "ranged") return true;
+    // BUG-07 and F04's volley: a fanned volley is several arcs, so the one
+    // centre arc this check samples is not the shot. Left as the type's own
+    // data and tests have it (it fires over its shield wall from its slot).
+    if (!singleBall(atk)) return true;
+    if (this.flightClear(f, player)) return true;
+    f.agent?.release("noFlight");
+    return false;
   }
 
   /** A Foamer inside alertRadius went alert since the last step, so an idle

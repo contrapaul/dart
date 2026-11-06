@@ -67,6 +67,10 @@ export interface AgentInput {
   /** It is in an attack (windup, strike, recover): keep the token it has,
    *  even though the brain no longer wants a new one. */
   keepToken: boolean;
+  /** BUG-07: its ball can reach the player from where it stands (the flight
+   *  check, not only the line of sight). Absent means true, which is the
+   *  pre-check behaviour of a rig with no projectiles. */
+  canThrow?: boolean;
   /** GAME-10a, the F02 brain only: the distance at which it stops walking in
    *  (its throw range). For a bonker this is `attackRange` itself. */
   throwRange: number;
@@ -171,6 +175,7 @@ export class FoamerAgent {
     i.throwRange = input.throwRange;
     i.preferredDistance = input.preferredDistance;
     i.retreatDistance = input.retreatDistance;
+    i.flightClear = input.canThrow ?? true;
     this.ask(input);
   }
 
@@ -185,6 +190,7 @@ export class FoamerAgent {
     i.throwRange = input.throwRange;
     i.preferredDistance = input.preferredDistance;
     i.retreatDistance = input.retreatDistance;
+    i.flightClear = input.canThrow ?? true;
     // GAME-10e: the F04 brain's own fields. Other brains never read them,
     // and the system leaves them undefined for anything but a Blocker.
     if (input.slotX !== undefined) {

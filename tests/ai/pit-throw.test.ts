@@ -10,6 +10,9 @@ import { ProjectileSystem } from "../../src/foamers/projectiles";
 // Roamer's sight ray runs chest to eye, but the ball leaves its hand on an
 // arc and meets the cover in front of it. This rig is the Pit as the arena
 // page builds it, plus a still player capsule and the projectile system.
+//
+// Before the clear-flight check the same 30 s run threw 18 balls, none of
+// which reached the capsule, and 17 burst away from it.
 
 /** The player's eye, which is what the Foamer system is handed each step. */
 const EYE = new THREE.Vector3(0, 1.6, 1.2);
@@ -74,11 +77,11 @@ beforeAll(async () => {
 });
 
 describe("a Roamer at the Pit's cover (BUG-07)", () => {
-  // BUG-07 stage 1: the repro, expected to fail until the fix. It prints the
-  // before counts (thrown, reached, still flying) on every run.
-  it.fails("does not throw into the cover at (-6.5, 5.8)", async () => {
+  it("does not throw into the cover at (-6.5, 5.8)", async () => {
     const { counts } = await run(30);
-    console.log(`BUG-07 before: thrown ${counts.thrown}, reached ${counts.reached}, `
+    // The card's after counts: of the balls thrown, most reach the capsule
+    // (8 of 10), and the Roamer is still throwing (6 or more in 30 s).
+    console.log(`BUG-07 after: thrown ${counts.thrown}, reached ${counts.reached}, `
       + `live ${counts.live}, burst ${counts.burst}`);
     expect(counts.thrown).toBeGreaterThanOrEqual(6);
     expect(counts.reached).toBeGreaterThanOrEqual(Math.ceil(counts.thrown * 0.8));
