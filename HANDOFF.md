@@ -6,6 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10f code done 2026-11-07, awaiting review (card `tasks/GAME-10f.md`,
+Qwen 3.8 Flash Next via Pi, branch `game-10f`): the F07 Brawler. Purple
+body, orange armour pads, lime fists ([Paul]: sword or fists). It walks in
+and punches like the Roamer (45 health, punch 10), and between 5 and 12 m,
+on a 6 s cooldown, it crouches 0.6 s and leaps an arc to 1.5 m short of
+where the player was, landing a shockwave ring that grows at 9 m/s out to
+8 m: a grounded player in its band is hurt 15 once, one in the air or
+dashing is not. Both legs gone ends the leap. Full suite 553 pass, 2
+skipped; `tsc` and `npm run build` clean. Not seen by eye in the game: the
+poses in motion, the ring's look, the three sounds; not tried in play: the
+jump and the dash through the band.
+
 LVL-03a merged locally 2026-11-06, not pushed (card `tasks/LVL-03a.md`,
 DeepSeek V4.1 Flash via Pi): Level 1-3 beats 1 to 5 in
 `data/levels/1-3.json`, played as `arena.html?level=1-3`: the bay, explore
@@ -450,6 +462,65 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10f, the F07 Brawler, code done (Qwen 3.8 Flash Next via Pi)
+
+- Card `tasks/GAME-10f.md`, branch `game-10f`, two commits: `4541c47` the
+  look and the type, `e2277c0` the leap and the ring. Not merged, not pushed.
+- Asked for: the F07 Brawler (CONTENT-PLAN F07) in the factory palette, a
+  walk-in melee type with a punch, and a leap slam that lands a shockwave
+  ring the player jumps or dashes through. Losing both legs ends the leap.
+- Built: the rig's palette (purple body, orange armour pads, lime fists,
+  angry eyes like the others) in `data/foamer-rigs.json`, turnaround
+  rendered to `design/foamers/F07-*.png` with `tools/render-rig.ts`, and
+  the crouch and leap poses to `design/foamers/poses/F07-{crouch,leaping}-
+  t1-*.png` (rendered through the same encoder with `crouchMotion`/
+  `leapMotion` at k 1); an
+  `F07` type in `data/foamers.json` (health 45, a `punch` at 10, a `leap`
+  block: min 5 m, max 12 m, cooldown 6 s, crouch 0.6 s, speed 7 m/s, arc
+  1.4 m, land 1.5 m short; and a `shockwave` block: 9 m/s out to 8 m,
+  0.6 m band, 15 damage); the leap and ring maths in a pure module
+  `src/foamers/leap.ts`; the one decision in `src/ai/f07-brain.ts`
+  (`decideLeap`, the sibling of `decideCharge`); two new `FoamerState`
+  states (`crouch`, `leaping`) run by the Foamer system's machine, and
+  their poses in `rig-states.ts` (`crouchMotion`, `leapMotion`, driven by
+  data in the rig's `motions`); the ring as one torus per Brawler scaled
+  as it grows; `F07-crouch`, `F07-punch` and `F07-land` placeholder synth
+  sounds in `data/sounds.json` and `design/SOUNDS.md`; and the shockwave's
+  hit on the player on both pages (`src/game/game.ts`, `src/range/main.ts`)
+  behind `playerVulnerable` (`player.grounded && !player.dashing`).
+- Decided: no new brain (the Roamer's does the walk-in and the punch, its
+  token is `melee`), the F05's shape for the leap (PLAN 14, four entries).
+  The arc's `vy` is read from the state clock, not integrated, because the
+  character controller zeroes a vy on the frames after the launch and the
+  Brawler hung at its apex (seen in the test's flight log). The flight's
+  horizontal step goes through `_wish` at `leap.speed`, not `moveTowards`,
+  which caps at the walk's 2.4 m/s. A leap blocked short by a wall still
+  lands its ring at the end of the time. The one hit of a ring is marked
+  inside `bandReaches`, so no caller can forget it. Sword or fists stays
+  Paul's: the fists are kept, coloured lime, `[Paul]` notes in the rig and
+  in PLAN 14.
+- Tests: `tests/foamers/leap.test.ts` (8: the flight maths, the ring
+  growing, the band hitting once, missing one the band has passed,
+  missing one that spent it in the hole), `tests/foamers/brawler.test.ts`
+  (8, in a physics rig: it crouches then leaps inside its distances and
+  not outside them, the cooldown starts at the crouch, the flight is an
+  arc that comes back down, the landing sends the ring out once and the
+  ring is drawn, a grounded player is hurt once, one in the air is not,
+  no leap with both legs gone and a leap with an arm gone), and
+  `tests/ai/brawler-brain.test.ts` (3: `decideLeap` at the min, the max,
+  inside the cooldown, without legs, and that only F07 has leap numbers).
+  Full suite 553 pass, 2 skipped; `tsc` and `npm run build` clean.
+- Not checked by eye: no browser here, and this model cannot open the
+  rendered PNGs either. The turnaround and the pose sheets were rendered
+  and their pose extents measured numerically (the crouch dips the body to
+  1.81 m from 2.02 and the leap raises it to 3.04 with the arms up), but
+  the Brawler in the game, the crouch and leap poses in motion, and the
+  ring's look as it grows were not seen. The three
+  placeholder sounds were not heard. The jump-over-the-band and the
+  dash-through are unit tested (`playerVulnerable` false) but not tried in
+  play, and the ring's own read at speed (can a player tell where it will
+  land in the 0.6 s crouch) is a playtest question, not a code one.
 
 ### 2026-11-06: GAME-10c review, merged (Claude)
 

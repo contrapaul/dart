@@ -132,6 +132,11 @@ export class FoamerSounds {
           break;
         }
         const token = f.attack()?.token;
+        if (f.spec.rig === "F07") {
+          // GAME-10f: the Brawler's swing is a two-fist punch, its own sound.
+          this.sink.play("F07-punch", p);
+          break;
+        }
         this.sink.play(
           token === "ranged" ? "F02-windup" : token === "swarm" ? "F03-nibble" : "F01-swing",
           p,
@@ -192,6 +197,14 @@ export class FoamerSounds {
       // sends this for a swarm member, so no other Foamer picks it up).
       case "alert":
         this.sink.play("F03-yip", p);
+        break;
+      // GAME-10f, the Brawler: the fold before the leap and the landing
+      // that sends the ring out (placeholder IDs, design/SOUNDS.md).
+      case "crouch":
+        this.sink.play("F07-crouch", p);
+        break;
+      case "land":
+        this.sink.play("F07-land", p);
         break;
     }
   }

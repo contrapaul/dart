@@ -19,6 +19,7 @@ import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
 import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
+import { shockwaveOf } from "../foamers/leap";
 import { makeLevelAI } from "../ai/level";
 import { SettingsStore, DIFFICULTIES } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
@@ -182,6 +183,19 @@ foamers.onBonk = (_f, attack) => {
   }
   hud.onHit();
 };
+// GAME-10f: the Brawler's shockwave on the range too. A ring the player is
+// outside of when it passes costs the shockwave's own damage once; in the
+// air (a jump) or in a dash they are not on the floor for it.
+foamers.playerVulnerable = () => player.grounded && !player.dashing;
+foamers.onShockwaveHit = (f) => {
+  if (switches.godMode || paused) return;
+  const sw = shockwaveOf(f.spec);
+  if (!sw) return;
+  const lost = health.damage(sw.damage, "shockwave");
+  if (lost <= 0) return;
+  hud.onHit();
+};
+
 // GAME-10a: a foam ball that reaches the player costs health like a bonk,
 // the disc blocking its direction of travel (the point it came from).
 const _fromBall = new THREE.Vector3();

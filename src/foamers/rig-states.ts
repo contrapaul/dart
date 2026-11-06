@@ -214,6 +214,42 @@ export function chargeMotion(rig: RigSpec, phase: number, out: RigMotion) {
     if (rig.parts.some((p) => p.id === id)) out.rot.set(id, [(id.endsWith("L") ? 1 : -1) * stride * s, 0, 0]);
 }
 
+/** GAME-10f: the Brawler's crouch, k 0..1 of the crouch (the leap's
+ *  telegraph). It folds: body down, arms back, head low, knees bent. A rig
+ *  with no crouch block stays at rest (only the Brawler has one). */
+export function crouchMotion(rig: RigSpec, k: number, out: RigMotion) {
+  restInto(out);
+  const m = poseNums(rig, "crouch");
+  const e = ease(clamp01(k));
+  out.pitch = (m["pitch"] ?? 0) * DEG * e;
+  out.y = -(m["dip"] ?? 0) * e;
+  if (rig.parts.some((p) => p.id === "armL")) out.rot.set("armL", [(m["armBack"] ?? 0) * DEG * e, 0, 0]);
+  if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [(m["armBack"] ?? 0) * DEG * e, 0, 0]);
+  if (rig.parts.some((p) => p.id === "foreArmL")) out.rot.set("foreArmL", [(m["foreArm"] ?? 0) * DEG * e, 0, 0]);
+  if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [(m["foreArm"] ?? 0) * DEG * e, 0, 0]);
+  if (rig.parts.some((p) => p.id === "legL")) out.rot.set("legL", [-(m["knees"] ?? 0) * DEG * e, 0, 0]);
+  if (rig.parts.some((p) => p.id === "legR")) out.rot.set("legR", [-(m["knees"] ?? 0) * DEG * e, 0, 0]);
+  if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [(m["headLow"] ?? 0) * DEG * e, 0, 0]);
+}
+
+/** GAME-10f: the Brawler in the air, k 0..1 of the flight. Arms up and
+ *  wide to come down on them, legs tucked under. A rig with no leap block
+ *  stays at rest. */
+export function leapMotion(rig: RigSpec, k: number, out: RigMotion) {
+  restInto(out);
+  const m = poseNums(rig, "leap");
+  const up = ease(clamp01(k * 2)); // the pose is set by the launch, held down
+  out.pitch = (m["pitch"] ?? 0) * DEG * up;
+  out.y = (m["lift"] ?? 0) * up; // the whole body hangs a little tall in the air
+  if (rig.parts.some((p) => p.id === "armL")) out.rot.set("armL", [-(m["armUp"] ?? 0) * DEG * up, 0, (m["armOut"] ?? 0) * DEG * up]);
+  if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [-(m["armUp"] ?? 0) * DEG * up, 0, -(m["armOut"] ?? 0) * DEG * up]);
+  if (rig.parts.some((p) => p.id === "foreArmL")) out.rot.set("foreArmL", [-(m["foreArm"] ?? 0) * DEG * up, 0, 0]);
+  if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-(m["foreArm"] ?? 0) * DEG * up, 0, 0]);
+  if (rig.parts.some((p) => p.id === "legL")) out.rot.set("legL", [(m["tuck"] ?? 0) * DEG * up, 0, 0]);
+  if (rig.parts.some((p) => p.id === "legR")) out.rot.set("legR", [(m["tuck"] ?? 0) * DEG * up, 0, 0]);
+  if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [(m["headBack"] ?? 0) * DEG * up, 0, 0]);
+}
+
 /** ANIM-01: the wall stun, t seconds since the hit, dur the whole stun.
  *  The body rocks back with a wobble in roll; on a rig whose body is its
  *  head (F05) the head shake is a fast pitch judder, on one with a head

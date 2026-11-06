@@ -227,6 +227,9 @@ The other Foamers (IDs given when each is built):
 | F06-spit | Floater: the jaw snapping shut to spit a fan of blobs or the big one | Yes | 3 | Foley: a wet toy squeeze |
 | F06-blobBounce | Floater: a small blob off a wall, a short foam tick | Yes | 4 | Foley: a foam ball off wood |
 | F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |
+| F07-crouch | GAME-10f placeholder ID: the Brawler folds before its leap (the telegraph) | Yes | 3 | Foley: a foam cushion compressing, with a creak |
+| F07-punch | GAME-10f placeholder ID: the Brawler's two-fist punch | Yes | 3 | Foley: a heavy whoosh into a foam board |
+| F07-land | GAME-10f placeholder ID: the Brawler lands and the shockwave starts | Yes | 3 | Foley: drop something heavy on foam |
 | F08 | Huge tank | Heavy steps, launcher volley, foam wall of balls | Later | Blaster plus Foley |
 | F09 | Spider turret | Leg clicks (loop), turret spin, pellet stream (loop) | Later | Foley plus Blaster |
 | F10 | Flyer with jets | Jet loop, homing shot, jets breaking (falls) | Later | Foley plus Code |
