@@ -460,6 +460,12 @@ github.com/contrapaul/dart (public), MIT licence.
 - Not checked: the look of each space by eye (the pane was hidden; only
   the bay was seen: the dummies stand clear of the north door), the
   pacing with real shooting, the frame time with 10 Swarmers.
+- Flaky test, open: after the merge one full run on main failed
+  `tests/foamers/finisher.test.ts` test 1 (`f.finishWeakened` still
+  false after 120 ticks); it passed alone and on the next full run. It
+  counts ticks, not milliseconds, so load alone should not change it:
+  something in it is not deterministic. Possibly the same unexplained
+  vitest exit 1 seen before a push earlier on 2026-11-06. Not looked into.
 
 ### 2026-11-06: LVL-03a Level 1-3 beats 1 to 5 (DeepSeek V4.1 Flash via Pi)
 
