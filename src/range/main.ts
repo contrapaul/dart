@@ -145,6 +145,8 @@ projectiles.onSound = (kind, at) => {
   if (!engine) return;
   if (kind === "burst") engine.play("FB-burst", { position: at });
   else if (kind === "parryHit") engine.play("SH-parry-hit", { position: at });
+  // GAME-10c: a small blob off the wall (placeholder ID, design/SOUNDS.md).
+  else if (kind === "blobBounce") engine.play("F06-blobBounce", { position: at });
 };
 // GAME-04 stage 1: the shield on the range too, so its panel and watch
 // can drive it. Same class and data as the game pages; the wiring here is
@@ -204,7 +206,9 @@ projectiles.onHitPlayer = (b) => {
     if (engine) engine.play("SH-parry");
     return;
   }
-  const lost = health.damage(damageOf("throw") * (blocked ? shield.damageShare : 1), "throw");
+  // GAME-10c: a Floater's blob costs what its own attack says (spit 3,
+  // big blob 10); a Roamer's ball keeps the throw damage.
+  const lost = health.damage(damageOf(b.attack, b.thrower.spec) * (blocked ? shield.damageShare : 1), "throw");
   if (lost <= 0) return;
   if (blocked) {
     shield.noteBlocked();

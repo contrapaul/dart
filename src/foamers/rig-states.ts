@@ -62,6 +62,10 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     out.pitch = -0.45 * e;
     out.y = -0.05 * e;
     if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [-0.25 * e, 0, 0]);
+  } else if (attack === "spit" || attack === "bigBlob") {
+    // GAME-10c: the jaw drops to spit (the Floater has no arms).
+    if (rig.parts.some((p) => p.id === "jaw")) out.rot.set("jaw", [1.0 * e, 0, 0]);
+    out.pitch = -0.08 * e;
   } else if (attack === "throw") {
     // ANIM-01: the loaded ball, from the rig's motions block. Zero when a
     // rig has no block, so the pose never snaps: it just does not wind.
@@ -91,6 +95,10 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
   } else if (attack === "headbutt") {
     out.pitch = -0.45 + 0.85 * e;
     if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [-0.25 + 0.55 * e, 0, 0]);
+  } else if (attack === "spit" || attack === "bigBlob") {
+    // GAME-10c: the jaw comes back up after the spit.
+    if (rig.parts.some((p) => p.id === "jaw")) out.rot.set("jaw", [1.0 * (1 - e), 0, 0]);
+    out.pitch = -0.08 * (1 - e);
   } else if (attack === "throw") {
     const w = poseNums(rig, "throw", "wind");
     const s = poseNums(rig, "throw", "strike");

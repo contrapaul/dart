@@ -441,7 +441,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       return;
     }
     const share = blocked ? shield.damageShare : 1;
-    const lost = health.damage(damageOf("throw") * share, "throw");
+    // GAME-10c: a Floater's blob costs what its own attack says (spit 3,
+    // big blob 10); a Roamer's ball keeps the throw damage.
+    const lost = health.damage(damageOf(b.attack, b.thrower.spec) * share, "throw");
     if (lost <= 0) return;
     if (blocked) {
       shield.noteBlocked();
@@ -461,6 +463,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   projectiles.onSound = (kind, at) => {
     if (kind === "burst") audio.play("FB-burst", { position: at });
     else if (kind === "parryHit") audio.play("SH-parry-hit", { position: at });
+    // GAME-10c: a small blob off the wall (placeholder ID, design/SOUNDS.md).
+    else if (kind === "blobBounce") audio.play("F06-blobBounce", { position: at });
   };
 
   let pausedClock = renderJson.pausedFrame;

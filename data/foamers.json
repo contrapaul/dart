@@ -399,8 +399,6 @@
           "needs": [],
           "windup": 0.8,
           "strike": 0.3,
-          "shots": 3,
-          "spreadDeg": 12,
           "range": 14
         },
         {
@@ -410,9 +408,35 @@
           "needs": [],
           "windup": 1.1,
           "strike": 0.35,
-          "range": 14
+          "range": 14,
+          "big": true
         }
-      ]
+      ],
+      "blob": {
+        "_note": "GAME-10c: the blobs. A spit fires count small blobs fanned across spreadDeg degrees; they bounce off geometry bounces times before bursting, and there are never more than maxLive of any blob live. everyFourth: every fourth attack (counting the spits it actually fires) is the big pink blob instead: slower and bigger, and parryable like the Roamer's ball. speed m/s, gravity m/s2, radius and lifetime the ball's own, chunks at the burst.",
+        "count": 3,
+        "spreadDeg": 12,
+        "everyFourth": 4,
+        "bounces": 2,
+        "maxLive": 12,
+        "speed": 7,
+        "gravity": 5,
+        "radius": 0.12,
+        "lifetime": 4,
+        "chunks": 3,
+        "big": {
+          "speed": 5,
+          "gravity": 5,
+          "radius": 0.22,
+          "lifetime": 5,
+          "chunks": 5
+        }
+      },
+      "mouth": {
+        "_note": "GAME-10c: the weak point. The jaw drops to spit; while it is open (the windup and the strike) a dart on the jaw takes damage times the usual. Shut, it is an ordinary part.",
+        "part": "jaw",
+        "damage": 2.5
+      }
     }
   },
   "spawner": {

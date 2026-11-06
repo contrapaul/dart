@@ -191,6 +191,9 @@ export class Foamer {
   private readonly rapier: Rapier;
   /** The attack chosen for the current windup/strike cycle, or null. */
   private attackId: string | null = null;
+  /** GAME-10c: attacks this Floater has fired (the big blob's every-Nth
+   *  counter). Turns at the release, where the attack really happens. */
+  blobTurn = 0;
   attack() {
     return this.attackId ? this.spec.attacks.find((a) => a.id === this.attackId) ?? null : null;
   }

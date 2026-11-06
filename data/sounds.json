@@ -2546,6 +2546,106 @@
           }
         ]
       }
+    },
+    "F06-hum": {
+      "_note": "GAME-10c: the Floater's float, a soft wobbling drone under it while its fins hold it up. Placeholder synth: two low triangles with a slow wobble (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0,
+      "maxVoices": 2,
+      "synth": {
+        "loop": true,
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.6,
+              "f0": 110,
+              "f1": 98,
+              "wave": "triangle",
+              "attack": 0.05,
+              "decay": 0
+            },
+            "gain": 0.4
+          },
+          {
+            "tone": {
+              "dur": 0.6,
+              "f0": 165,
+              "f1": 165,
+              "wave": "triangle",
+              "attack": 0.08,
+              "decay": 0
+            },
+            "gain": 0.12
+          }
+        ]
+      }
+    },
+    "F06-spit": {
+      "_note": "GAME-10c: the jaw snapping shut to spit a fan of blobs (or the one big blob). Placeholder synth: a wetter, lower cousin of F02-throw.",
+      "files": [],
+      "volume": 0.75,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.18,
+              "attack": 0.004,
+              "decay": 0.14,
+              "lowpass": 1200,
+              "highpass": 200,
+              "lowpassEnd": 3800
+            },
+            "gain": 0.7
+          },
+          {
+            "tone": {
+              "dur": 0.1,
+              "f0": 380,
+              "f1": 120,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.08
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "F06-blobBounce": {
+      "_note": "GAME-10c: a small blob off a wall, a short foam tick before its last bounce. Placeholder synth: a quick filtered blip.",
+      "files": [],
+      "volume": 0.45,
+      "jitter": 0.12,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.06,
+              "attack": 0.002,
+              "decay": 0.05,
+              "lowpass": 2400,
+              "highpass": 800,
+              "lowpassEnd": 1200
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.05,
+              "f0": 700,
+              "f1": 500,
+              "wave": "sine",
+              "attack": 0.001,
+              "decay": 0.04
+            },
+            "gain": 0.3
+          }
+        ]
+      }
     }
   },
   "blasterCues": {

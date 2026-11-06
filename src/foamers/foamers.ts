@@ -16,6 +16,7 @@ import { armourOf, plateFaces } from "./armour";
 import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
 import { floatOf } from "./float";
+import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
 import playerData from "../../data/player.json";
@@ -77,6 +78,10 @@ function rigFor(spec: FoamerSpec): GameRig {
  *  volley fans several arcs across `spreadDeg`, so its centre arc is not
  *  what it fires (F04's three-shot volley keeps its own behaviour). */
 function singleBall(atk: object): boolean {
+  // GAME-10c: a Floater's big blob is its one ball (big: true); its small
+  // fan (big: false) is the volley case the flight check leaves alone.
+  const big = (atk as { big?: boolean }).big;
+  if (big !== undefined) return big;
   return Math.max(1, (atk as { shots?: number }).shots ?? 1) === 1;
 }
 
@@ -750,11 +755,27 @@ export class FoamerSystem {
             // windup and the throw pose still play, and nothing flies.
             // GAME-10e: a volley fires `shots` balls fanned across
             // `spreadDeg`, so the player can parry some and eat some.
-            const volley = atk as { shots?: number; spreadDeg?: number };
-            const shots = Math.max(1, volley.shots ?? 1);
-            const spread = volley.spreadDeg ?? 0;
-            for (let s = 0; s < shots; s++)
-              this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
+            // GAME-10c: a Floater spits blobs instead of balls: a fan of
+            // small bouncing blobs, or on every blob.everyFourth attack
+            // one big pink parryable blob. The attack counter turns here,
+            // where the attack actually fires.
+            const blob = blobOf(f.spec);
+            if (blob) {
+              f.blobTurn++;
+              if ((atk as { big?: boolean }).big) {
+                this.projectiles?.launch(f, player, 0, bigBlobKind(blob));
+              } else {
+                for (let s = 0; s < blob.count; s++)
+                  this.projectiles?.launch(f, player,
+                    (s - (blob.count - 1) / 2) * blob.spreadDeg, smallBlobKind(blob));
+              }
+            } else {
+              const volley = atk as { shots?: number; spreadDeg?: number };
+              const shots = Math.max(1, volley.shots ?? 1);
+              const spread = volley.spreadDeg ?? 0;
+              for (let s = 0; s < shots; s++)
+                this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
+            }
             sound(this, "throw", f, f.centre);
           } else if (inReach) {
             f.bonk(atk.id);
@@ -1299,6 +1320,13 @@ export class FoamerSystem {
   /** The first spec attack whose needs are met (at least one of each id
    *  still attached; needs [] always). */
   private chooseAttack(f: Foamer): string {
+    // GAME-10c: a Floater's big blob comes every blob.everyFourth attack,
+    // counting the attacks it has fired (the counter turns at the release).
+    const blob = blobOf(f.spec);
+    if (blob && (f.blobTurn + 1) % blob.everyFourth === 0 &&
+      f.spec.attacks.some((a) => (a as { big?: boolean }).big)) {
+      return f.spec.attacks.find((a) => (a as { big?: boolean }).big)!.id;
+    }
     for (const a of f.spec.attacks) {
       if (a.needs.every((id) => f.parts.has(id))) return a.id;
     }
@@ -1350,7 +1378,14 @@ export class FoamerSystem {
         Math.sin(f.yaw), Math.cos(f.yaw),
         -hit.direction.x, -hit.direction.z, // back toward the shooter
         f.state === "stagger");
-    const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1);
+    // GAME-10c: the Floater's open mouth. The jaw drops to spit; while the
+    // attack runs (windup and strike) a dart on the mouth part takes the
+    // weak-point share. Shut, it is an ordinary part.
+    const mouth = mouthOf(f.spec);
+    const mouthOpen = mouth !== null && part.spec.id === mouth.part &&
+      (f.state === "windup" || f.state === "strike");
+    const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1) *
+      (mouthOpen ? mouth!.damage : 1);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= dmg;
     f.health -= dmg * kind.total;

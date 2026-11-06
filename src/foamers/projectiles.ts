@@ -40,6 +40,16 @@ export const BALL_MATERIAL = new THREE.MeshStandardMaterial({
 
 const BALL_GEOMETRY = new THREE.SphereGeometry(1, 12, 9);
 
+/** GAME-10c: the small blob's material. Deliberately not BALL_MATERIAL:
+ *  the pages parry by material identity, and a small blob is not
+ *  parryable. */
+export const BLOB_MATERIAL = new THREE.MeshStandardMaterial({
+  color: new THREE.Color().fromArray(linearColorTable(), materialId("foam-lime") * 3),
+  roughness: 0.6,
+});
+/** GAME-10c: the share of its speed a small blob keeps off each bounce. */
+const BLOB_RESTITUTION = 0.75;
+
 export interface LiveBall {
   pos: THREE.Vector3;
   vel: THREE.Vector3;
@@ -53,9 +63,59 @@ export interface LiveBall {
   flatSpeed: number;
   /** Seconds of steering left; 0 flies straight. */
   steerLeft: number;
+  /** GAME-10c: the attack that made it, for the page's damage lookup
+   *  (damageOf(attack, thrower.spec)). "throw" for a Roamer's ball. */
+  attack: string;
+  /** GAME-10c: bounces left off geometry for a Floater's small blob; 0 for
+   *  every ball that bursts on the first touch. */
+  bounceLeft: number;
+  /** GAME-10c: this ball's own gravity (a blob's, not the shared ball's). */
+  gravity: number;
+  /** GAME-10c: chunks at the burst, this attack's number. */
+  chunks: number;
+  /** GAME-10c: the burst's material id (the small blob is lime foam). */
+  material: number;
+  /** GAME-10c: seconds it lives (a blob's own lifetime). */
+  lifetime: number;
 }
 
-export type ProjectileSound = "burst" | "parryHit";
+/** GAME-10c: what one launch makes. A Roamer's ball is the default (the
+ *  shared pink material, the shared `ball` numbers, parryable by material
+ *  identity); a Floater's blob brings its own speed, gravity, size, life,
+ *  burst chunks, colour and bounce count. */
+export interface BallKind {
+  attack: string;
+  speed: number;
+  gravity: number;
+  radius: number;
+  lifetime: number;
+  chunks: number;
+  material: number;
+  mesh: THREE.MeshStandardMaterial;
+  bounces: number;
+  maxLive: number;
+}
+
+/** GAME-10c: one Floater blob's numbers (data/foamers.json, `blob` on the
+ *  type). The small blob is lime and bounces; the big one is pink, slower
+ *  and parryable like the Roamer's ball. */
+export interface BlobSpec {
+  count: number;
+  spreadDeg: number;
+  everyFourth: number;
+  bounces: number;
+  maxLive: number;
+  /** The small blob. */
+  speed: number;
+  gravity: number;
+  radius: number;
+  lifetime: number;
+  chunks: number;
+  /** The big pink blob. */
+  big: { speed: number; gravity: number; radius: number; lifetime: number; chunks: number };
+}
+
+export type ProjectileSound = "burst" | "parryHit" | "blobBounce";
 
 export class ProjectileSystem {
   /** Live balls, oldest first. Capped at ball.maxLive. */
@@ -112,11 +172,12 @@ export class ProjectileSystem {
    *  points coincide), which is also the launch's own guard. */
   private launchVelocity(
     from: THREE.Vector3, eye: THREE.Vector3, spreadDeg: number, out: THREE.Vector3,
+    speed = BALL.speed, gravity = BALL.gravity,
   ): boolean {
     this._dir.copy(eye).sub(from);
     const flat = Math.hypot(this._dir.x, this._dir.z);
     if (flat < 1e-3) return false;
-    const t = flat / BALL.speed;
+    const t = flat / speed;
     this._dir.normalize();
     if (spreadDeg !== 0) {
       const s = Math.sin((spreadDeg * Math.PI) / 180);
@@ -125,8 +186,8 @@ export class ProjectileSystem {
       const z = this._dir.x * s + this._dir.z * c;
       this._dir.set(x, this._dir.y, z);
     }
-    out.set(this._dir.x * BALL.speed,
-      (eye.y - from.y) / t + 0.5 * BALL.gravity * t, this._dir.z * BALL.speed);
+    out.set(this._dir.x * speed,
+      (eye.y - from.y) / t + 0.5 * gravity * t, this._dir.z * speed);
     return true;
   }
 
@@ -225,20 +286,31 @@ export class ProjectileSystem {
   /** Release a ball from the thrower's ball hand toward the player's eye.
    *  The cap drops the oldest ball when it is already full.
    *  GAME-10e: `spreadDeg` swings the aim to the right of the eye, so a
-   *  caller can fire a volley and spread it. */
-  launch(f: Foamer, playerEye: THREE.Vector3, spreadDeg = 0): void {
+   *  caller can fire a volley and spread it.
+   *  GAME-10c: `kind` makes a Floater's blob instead of a Roamer's ball
+   *  (its own speed, gravity, size, life, colour and bounce count). */
+  launch(f: Foamer, playerEye: THREE.Vector3, spreadDeg = 0, kind?: BallKind): void {
     const at = this.handAt(f, this._hit);
     // Aim at the eye with just enough loft for the light arc to bring the
     // ball back to it: a flat shot at this speed over this distance would
     // dip a hand's width by the time it arrives.
     const vel = new THREE.Vector3();
-    if (!this.launchVelocity(at, playerEye, spreadDeg, vel)) return; // thrown at its own position: skip the step
-    while (this.list.length >= BALL.maxLive) this.remove(this.list[0]!);
-    const mesh = new THREE.Mesh(BALL_GEOMETRY, BALL_MATERIAL);
-    mesh.scale.setScalar(BALL.radius);
+    if (!this.launchVelocity(at, playerEye, spreadDeg, vel, kind?.speed, kind?.gravity)) return; // thrown at its own position: skip the step
+    const cap = kind?.maxLive ?? BALL.maxLive;
+    while (this.list.length >= cap) this.remove(this.list[0]!);
+    const mesh = new THREE.Mesh(BALL_GEOMETRY, kind?.mesh ?? BALL_MATERIAL);
+    mesh.scale.setScalar(kind?.radius ?? BALL.radius);
     mesh.position.copy(at);
     this.group.add(mesh);
-    this.list.push({ pos: at.clone(), vel, age: 0, mesh, thrower: f, bounced: false, flatSpeed: 0, steerLeft: 0 });
+    this.list.push({
+      pos: at.clone(), vel, age: 0, mesh, thrower: f, bounced: false, flatSpeed: 0, steerLeft: 0,
+      attack: kind?.attack ?? "throw",
+      bounceLeft: kind?.bounces ?? 0,
+      gravity: kind?.gravity ?? BALL.gravity,
+      chunks: kind?.chunks ?? BALL.chunks,
+      material: kind?.material ?? materialId("foam-pink"),
+      lifetime: kind?.lifetime ?? BALL.lifetime,
+    });
     this.stats.thrown++;
   }
 
@@ -248,8 +320,8 @@ export class ProjectileSystem {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const b = this.list[i]!;
       b.age += dt;
-      if (b.age >= BALL.lifetime) {
-        this.burstAt(b.pos);
+      if (b.age >= b.lifetime) {
+        this.burstAt(b.pos, b.chunks, b.material);
         this.remove(b);
         continue;
       }
@@ -259,7 +331,7 @@ export class ProjectileSystem {
         b.steerLeft = Math.max(0, b.steerLeft - dt);
         this.steerBounce(b);
       }
-      b.vel.y -= BALL.gravity * dt;
+      b.vel.y -= b.gravity * dt;
       const speed = b.vel.length();
       const maxDist = speed * dt;
       this._po.x = b.pos.x;
@@ -268,7 +340,7 @@ export class ProjectileSystem {
       this._pd.x = b.vel.x / speed;
       this._pd.y = b.vel.y / speed;
       this._pd.z = b.vel.z / speed;
-      const hit = this.world.castRay(
+      const hit = this.world.castRayAndGetNormal(
         this._ray,
         maxDist,
         true,
@@ -297,6 +369,20 @@ export class ProjectileSystem {
       // front, so onHitPlayer judged the throw as coming from behind.
       const t = Math.min(maxDist, hit.timeOfImpact);
       b.pos.addScaledVector(b.vel, t / speed);
+      if (!b.bounced && b.bounceLeft > 0 && hit.collider !== this.playerCollider) {
+        // GAME-10c: a Floater's small blob off the wall. It bounces
+        // `blob.bounces` times, losing speed each time, and bursts on the
+        // last touch. The player is not a wall: a blob that meets them is
+        // hit and bursts like any other ball (handled below).
+        const n = hit.normal;
+        const dot = b.vel.x * n.x + b.vel.y * n.y + b.vel.z * n.z;
+        b.vel.set(b.vel.x - 2 * dot * n.x, b.vel.y - 2 * dot * n.y, b.vel.z - 2 * dot * n.z);
+        b.vel.multiplyScalar(BLOB_RESTITUTION);
+        b.bounceLeft--;
+        this.onSound("blobBounce", b.pos);
+        b.mesh.position.copy(b.pos);
+        continue;
+      }
       if (b.bounced) {
         // GAME-04 stage 2: it meets a Foamer: damage and a short stagger (the
         // dart path's death rules, no pop, and no parry back), then the
@@ -320,16 +406,16 @@ export class ProjectileSystem {
               victim, false, PARRY.stagger > 0 ? PARRY.stagger : victim.spec.stagger.time,
             );
         }
-        this.burstAt(b.pos);
+        this.burstAt(b.pos, b.chunks, b.material);
         this.remove(b);
       } else if (hit.collider === this.playerCollider) {
         this.stats.hitPlayer++;
         this.onHitPlayer(b);
         if (b.bounced) continue; // the game parried it: it flies back
-        this.burstAt(b.pos);
+        this.burstAt(b.pos, b.chunks, b.material);
         this.remove(b);
       } else {
-        this.burstAt(b.pos);
+        this.burstAt(b.pos, b.chunks, b.material);
         this.remove(b);
       }
     }
@@ -340,12 +426,12 @@ export class ProjectileSystem {
     while (this.list.length) this.remove(this.list[0]!);
   }
 
-  private burstAt(at: THREE.Vector3): void {
+  private burstAt(at: THREE.Vector3, chunks = BALL.chunks, material = materialId("foam-pink")): void {
     this.stats.burst++;
     this.onSound("burst", at);
     // A few chunks out of the burst point: the debris system owns their
     // physics and their fade.
-    this.debris.burst(at, BALL.chunks, BALL.radius * 1.6, materialId("foam-pink"));
+    this.debris.burst(at, chunks, BALL.radius * 1.6, material);
   }
 
   private remove(b: LiveBall): void {
