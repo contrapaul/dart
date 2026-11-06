@@ -6,6 +6,14 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-07 done 2026-11-06, awaiting review (card `tasks/BUG-07.md`, DeepSeek
+V4.1 Flash via Pi, branch `bug-07`): a Roamer no longer throws when its
+ball's arc cannot reach the player. In the Pit's wave 2 case the same 30 s
+run went from 18 thrown, 0 reached, 17 burst to 13 thrown, 13 reached, and
+the Roamer still throws 6 or more times in 30 s. Not checked by eye; the
+browser was not opened. Not merged, not pushed. Full suite 505 pass, 2
+skipped; `tsc` and `npm run build` clean.
+
 LVL-02d stage 2 done 2026-11-06 on branch `lvl-02d`, awaiting review
 (`tasks/LVL-02d.md`, DeepSeek V4.1 Flash via Pi): the nav grid holds four
 walkable layers per cell (stage 1, committed) and the beat 5 tower (A5)
@@ -414,6 +422,45 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: BUG-07, a Roamer throws only when its ball can arrive (DeepSeek V4.1 Flash via Pi)
+
+- The card saw a Roamer throw into cover: in the Pit's wave 2, 8 of 10
+  balls burst on the level trimesh 1.7 m from the hand, and in Level
+  1-2's tower two Roamers on floor 2 kept throwing with the player under
+  the slab. Cause: `FoamerSystem.lineOfSight` is one ray from the chest
+  to the player's eye, while `ProjectileSystem.launch` throws from the
+  ball hand, lower, on a lofted arc. A clear sight is not a clear throw.
+- Headless repro first (`tests/ai/pit-throw.test.ts`): the Pit as the
+  arena page builds it, one F02 at (-6.5, 0, 5.8), a still player
+  capsule at (0, 0, 1.2), counting thrown, reached and burst. Before:
+  18 thrown, 0 reached, 17 burst (one still flying).
+- The fix is `ProjectileSystem.flightClear(from, eye)`: it rebuilds the
+  launch's own velocity (`launchVelocity`, now shared with `launch`) and
+  walks `ball.flightSegments` (6) shape casts of the ball's radius along
+  the arc, with `ballIgnores`, the ball step's own filter. Level geometry
+  stops the check; the player's capsule, foam chunks and Foamer parts
+  (its own hand included) do not. `handAt` is shared too.
+- `FoamerSystem` caches the answer on the Foamer (`throwClear`,
+  `throwCheckIn`) and reads it at three points: the F02 brain will not
+  ask for a ranged token while the flight is blocked and keeps sidling
+  instead of holding; `canStartThrow` refuses a blocked throw and gives
+  the token back with the new `noFlight` reason; the release re-checks as
+  a backstop, since the 0.6 s windup lets the player step behind cover.
+  A blocked Foamer never freezes: it always keeps a move.
+- Cost: at most four shape casts a second for a thrower that wants to
+  throw, on the `brain.flightCheckSeconds` timer (`data/ai.json`, 0.25),
+  and none for a Foamer that is not a ranged thrower, or that is in an
+  attack state. A blocked thrower that is sidling re-checks; a clear one
+  casts once at the windup's start and once at the release.
+- F04's volley is exempt (multi-shot attacks are skipped by
+  `singleBall`); its tests pass unchanged.
+- After: Pit 13 thrown, 13 reached, and every one of the 13 bursts is on
+  the capsule; tower under the slab 5 thrown and nothing bursting above
+  y 3; tower on floor 2, 22 thrown, 21 hits.
+- Not checked: anything by eye. No browser here, so the throw's look
+  (does a sidling Roamer read as searching?), the sound of a withheld
+  throw, and the fight pacing at the Pit are unverified.
 
 ### 2026-11-06: LVL-02d review, merged (Claude)
 
