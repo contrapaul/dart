@@ -373,6 +373,46 @@
         "count": 3,
         "inboundSteps": 4
       }
+    },
+    "F06": {
+      "rig": "F06",
+      "_note": "GAME-10c: the Floater. It has no legs and no head: it floats (see float), so the leg handicaps do not apply and its turn rate is the no-head half of this one. attackRange is the reach of a spit; the blobs fly from there. preferredDistanceMetres is the ring it keeps, retreatDistanceMetres how close the player must get before it backs off.",
+      "turnRate": 3,
+      "preferredDistanceMetres": 12,
+      "retreatDistanceMetres": 8,
+      "float": {
+        "_note": "GAME-10c: the float. hoverMetres: feet metres over the floor under it. bobMetres: the visual bob on top. damagedHoverMetres and damagedSpeedShare: the height and the speed share once a fin is lost; with no fins left it sits on the floor. fins: the parts that hold it up (the tendrils are decoration).",
+        "hoverMetres": 3,
+        "bobMetres": 0.12,
+        "damagedHoverMetres": 1.2,
+        "damagedSpeedShare": 0.6,
+        "fins": [
+          "finL",
+          "finR"
+        ]
+      },
+      "attacks": [
+        {
+          "id": "spit",
+          "damage": 3,
+          "token": "ranged",
+          "needs": [],
+          "windup": 0.8,
+          "strike": 0.3,
+          "shots": 3,
+          "spreadDeg": 12,
+          "range": 14
+        },
+        {
+          "id": "bigBlob",
+          "damage": 10,
+          "token": "ranged",
+          "needs": [],
+          "windup": 1.1,
+          "strike": 0.35,
+          "range": 14
+        }
+      ]
     }
   },
   "spawner": {

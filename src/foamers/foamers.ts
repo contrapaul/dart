@@ -15,6 +15,7 @@ import type { FoamerPart } from "./foamer-part";
 import { armourOf, plateFaces } from "./armour";
 import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
+import { floatOf } from "./float";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
 import playerData from "../../data/player.json";
@@ -796,10 +797,20 @@ export class FoamerSystem {
       f.stateTime = 0;
     }
 
+    // GAME-10c: a Floater with a fin left floats at its hover height over
+    // the floor under it: no gravity, and its height is set below after
+    // the step. Losing every fin puts it on the floor (the floor fit in
+    // poseParts takes over then).
+    const fl = floatOf(f.spec);
+    const finsLeft = fl ? fl.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0) : 0;
+    const flying = fl !== null && finsLeft > 0 &&
+      f.state !== "fall" && f.state !== "down" && f.state !== "finish";
+
     // Gravity: vertical speed, reset by the ground. Without legs it never
     // falls: the floor fit below holds it on the ground. A crawl keeps
     // pulling itself along, so it is not grounded-limited like a walk.
     f.vy = Math.max(f.vy - f.spec.gravity * dt, -50);
+    if (flying) f.vy = 0;
     const crawling = f.state === "crawl";
     // Prone, it closes until its head (the part that reaches) is in range.
     const reach = crawling ? this.headDist(f, player) : dist;
@@ -820,12 +831,21 @@ export class FoamerSystem {
     }
     this._wish.set(0, 0, 0);
     if (moving) {
-      const speed = crawling ? f.crawlSpeed() : f.speed();
+      // GAME-10c: a Floater with a fin lost moves at its damaged speed
+      // share. With no legs, f.speed() would be the no-legs crawl share,
+      // which is not what a Floater moves at: it uses the rig's own speed
+      // (the leg handicaps are for walkers).
+      const share = flying && finsLeft < fl!.fins.length ? fl!.damagedSpeedShare : 1;
+      const speed = flying
+        ? f.rig.speed * share
+        : crawling ? f.crawlSpeed() : f.speed();
       if (f.agent) {
         // ENG-08 stage 3b: a path from the nav grid, steered with
         // separation, instead of straight at the player. A hold strides
         // sideways either way around the player.
-        this.steerAgent(f, dt, speed, player);
+        // GAME-10c: a flying Floater paths from the floor under it.
+        this.steerAgent(f, dt, speed, player,
+          flying ? this.navGrid?.groundAt(f.centre.x, f.centre.z, f.centre.y) : undefined);
       } else {
         this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
       }
@@ -865,8 +885,16 @@ export class FoamerSystem {
       stepDist = Math.hypot(moved.x, moved.y, moved.z);
     }
     if (stepDist > 1e-4) f.gait += stepDist * 4 / (2 * Math.PI);
+    if (flying) {
+      // Hold the hover: feet hoverMetres (damaged: damagedHoverMetres)
+      // over the floor under it. No grid (the range, unit tests): stay at
+      // the height the step left rather than guess a floor.
+      const g = this.navGrid?.groundAt(f.centre.x, f.centre.z, f.centre.y) ?? NaN;
+      const hover = finsLeft < fl!.fins.length ? fl!.damagedHoverMetres : fl!.hoverMetres;
+      if (!Number.isNaN(g)) f.centre.y = g + hover;
+    }
     f.applyPose();
-    f.poseParts(dt, moving);
+    f.poseParts(dt, moving, flying);
   }
 
   /**
@@ -1052,7 +1080,7 @@ export class FoamerSystem {
    * sidle the card asks for; it keeps the distance it has, so a holding
    * Foamer does not creep in or out.
    */
-  private steerAgent(f: Foamer, dt: number, speed: number, player: THREE.Vector3) {
+  private steerAgent(f: Foamer, dt: number, speed: number, player: THREE.Vector3, feetY?: number) {
     const a = f.agent!;
     this.neighbours.length = 0;
     for (const o of this.list) {
@@ -1089,7 +1117,14 @@ export class FoamerSystem {
     if (move === "followPath" || move === "stand") {
       // A crawl follows the same path at its crawl speed: navigate() does
       // not care which, the caller scales the speed it steers at.
-      const path = a.navigate(dt, this.navGrid, f.agentInput!);
+      // GAME-10c: a Floater paths from the floor under its hover, not from
+      // its feet 3 m in the air: findPath starts from the walkable layer
+      // within a step of the given height, and there is none up there.
+      const inp = f.agentInput!;
+      const savedY = inp.y;
+      if (feetY !== undefined) inp.y = feetY;
+      const path = a.navigate(dt, this.navGrid, inp);
+      inp.y = savedY;
       this.agentAgent.x = f.centre.x;
       this.agentAgent.z = f.centre.z;
       this.agentAgent.speed = speed;

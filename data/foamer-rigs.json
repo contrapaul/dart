@@ -1250,13 +1250,13 @@
     },
     {
       "id": "F06",
-      "label": "F06",
+      "label": "Floater",
       "tier": "Heavy",
       "behaviour": "Floats slowly and spits bouncing blobs. Stagger it with a big hit.",
       "movement": "float",
       "speed": 1.2,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-lime",
       "parts": [
         {
           "id": "body",
@@ -1301,7 +1301,9 @@
               0.5,
               -1
             ]
-          ]
+          ],
+          "nubMaterial": "foam-lime-deep",
+          "mouthMaterial": "foam-orange"
         },
         {
           "id": "jaw",
@@ -1323,7 +1325,7 @@
             0.6,
             -0.6
           ],
-          "material": "greybox-dark"
+          "material": "foam-orange"
         },
         {
           "id": "finL",
@@ -1344,7 +1346,8 @@
             1,
             0,
             0
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "tendrilL",
@@ -1364,7 +1367,8 @@
           "taper": [
             0.4,
             1
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "finR",
@@ -1385,7 +1389,8 @@
             -1,
             0,
             0
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "tendrilR",
@@ -1405,7 +1410,8 @@
           "taper": [
             0.4,
             1
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "tendrilM",
@@ -1425,10 +1431,10 @@
           "taper": [
             0.4,
             1
-          ]
+          ],
+          "material": "foam-purple"
         }
       ],
-      "hover": 1.2,
       "health": 35
     },
     {

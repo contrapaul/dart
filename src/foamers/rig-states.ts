@@ -111,6 +111,23 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
   }
 }
 
+/** The float (GAME-10c): a slow bob and sway with flapping fins and
+ *  trailing tendrils, the pose the sandbox's float style makes, driven
+ *  from stateTime and gait instead of a loop clock. It adds to out. */
+export function floatMotion(rig: RigSpec, t: number, gait: number, out: RigMotion, bob: number) {
+  restInto(out);
+  out.y = Math.sin(t * 1.6) * bob;
+  out.pitch = Math.sin(t * 0.8) * 0.06;
+  out.roll = Math.sin(t * 1.1) * 0.05;
+  const ids = new Set(rig.parts.map((p) => p.id));
+  const flap = Math.sin(gait * 5) * 0.5;
+  if (ids.has("finL")) out.rot.set("finL", [0, 0, flap]);
+  if (ids.has("finR")) out.rot.set("finR", [0, 0, -flap]);
+  // Tendrils trail and sway, each a little out of step.
+  for (const [i, id] of ["tendrilL", "tendrilR", "tendrilM"].entries())
+    if (ids.has(id)) out.rot.set(id, [0.25 + Math.sin(t * 2.2 + i * 2) * 0.25, 0, Math.sin(t * 1.7 + i) * 0.2]);
+}
+
 /** Prone crawl (GAME-11): the body lies at proneTilt (proneMotion's job) and
  *  pulls itself along with its arms, which reach forward in turn, while the
  *  leg it has left drags. gait advances with distance crawled, as the walk's

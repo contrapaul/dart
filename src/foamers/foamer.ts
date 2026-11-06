@@ -6,10 +6,11 @@ import foamerData from "../../data/foamers.json";
 import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "./rig";
 import {
   restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion, finishMotion,
-  scrapeMotion, chargeMotion, wallStunMotion,
+  scrapeMotion, chargeMotion, wallStunMotion, floatMotion,
 } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
+import { floatOf } from "./float";
 import type { ShotDamage } from "./chunk";
 import type { DartHit } from "../weapons/darts";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
@@ -378,8 +379,10 @@ export class Foamer {
 
   /** Once per step, after movement: build the target motion for the state,
    *  ease the motion toward it, solve the pose and re-pose every attached
-   *  part. moving: whether it walked this step. */
-  poseParts(dt: number, moving: boolean) {
+   *  part. moving: whether it walked this step. flying (GAME-10c): a
+   *  Floater with a fin left, which bobs instead of walking and must not
+   *  be pulled to the floor. */
+  poseParts(dt: number, moving: boolean, flying = false) {
     const t = _target;
     if (this.state === "telegraph") scrapeMotion(this.rig, this.stateTime / (this.spec as { charge?: { telegraphSeconds: number } }).charge!.telegraphSeconds, t);
     else if (this.state === "charge") chargeMotion(this.rig, this.gait * 2, t);
@@ -404,6 +407,8 @@ export class Foamer {
         for (const [id, r] of u.rot) t.rot.set(id, r);
       }
     }
+    else if (flying) floatMotion(this.rig, this.stateTime, this.gait, t,
+      floatOf(this.spec)?.bobMetres ?? 0.12);
     else if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
     else restInto(t);
     const k = 1 - Math.exp(-dt / this.poseBlend);
@@ -423,11 +428,12 @@ export class Foamer {
     }
     for (const id of [...m.rot.keys()]) if (!t.rot.has(id)) m.rot.delete(id);
     solvePose(this.rig, this.centre, this.yaw, m, _poses);
-    // All legs gone, down, or on the ground in a fall or crawl: the
-    // attached parts' lowest corner (box corners move with the roll) must
-    // sit on the floor (a downed body shifted down by its sinkDrop): bring
-    // the whole rig to the ground.
-    if (this.legs().length === 0 || this.state === "down" || this.prone) {
+    // All legs gone (or a Floater on the floor with none left), down, or on
+    // the ground in a fall or crawl: the attached parts' lowest corner (box
+    // corners move with the roll) must sit on the floor (a downed body
+    // shifted down by its sinkDrop): bring the whole rig to the ground. A
+    // Floater that is flying is held at its hover by the system instead.
+    if ((this.legs().length === 0 && !flying) || this.state === "down" || this.prone) {
       let low = Infinity;
       for (const [pid, pm] of _poses) {
         if (!this.parts.has(pid)) continue;
