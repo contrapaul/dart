@@ -16,6 +16,7 @@ import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
 import { chargeOf } from "../foamers/charge";
+import { shockwaveOf } from "../foamers/leap";
 import { materialId } from "../voxel/materials";
 import { ProjectileSystem, BALL_MATERIAL, type LiveBall } from "../foamers/projectiles";
 import { timeToImpact, playerCapsuleCentre } from "../foamers/ball-time";
@@ -412,6 +413,23 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   foamers.onWallHit = (_f, point) => {
     if (ui.paused) return;
     audio.play("F05-impact", { position: point });
+  };
+
+  // GAME-10f: the Brawler's shockwave. A ring the player is outside of when
+  // it passes costs the shockwave's own damage once; a player in the air (a
+  // jump) or in a dash is not on the floor for it and takes nothing.
+  foamers.playerVulnerable = () => player.grounded && !player.dashing;
+  foamers.onShockwaveHit = (f) => {
+    if (ui.paused) return;
+    const sw = shockwaveOf(f.spec);
+    if (!sw) return;
+    const lost = health.damage(sw.damage, "shockwave");
+    if (lost <= 0) return;
+    // The landing's own boom came through the Foamer sounds ("land"); this
+    // is the player's hurt line, the same one a bonk plays.
+    audio.play("PL-hurt");
+    hud.onHit();
+    if (health.dead) ui.pop();
   };
 
   // GAME-10a: a foam ball that reaches the player costs health like a bonk,

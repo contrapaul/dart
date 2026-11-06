@@ -28,10 +28,14 @@ function fakeMesher(): Mesher {
 }
 
 /** Let a part's mesh settle so its trimesh collider exists (the darts can
- *  only carve what has a collider). */
-async function settle(mesh: { update(): void }, world: RAPIER.World) {
-  mesh.update();
-  await new Promise((r) => setTimeout(r, 0));
+ *  only carve what has a collider). Wait until the remesh work is done,
+ *  not on one macrotask: a slow event loop can take several. */
+async function settle(mesh: { update(): void; busy: boolean }, world: RAPIER.World) {
+  while (true) {
+    mesh.update();
+    if (!mesh.busy) break;
+    await new Promise((r) => setTimeout(r, 0));
+  }
   world.step();
 }
 
@@ -96,8 +100,12 @@ describe("GAME-07: the weakened stagger and the finisher", () => {
     bodyShot(r, f);
     for (let i = 0; i < 30; i++) tick(r);
     expect(f.finishWeakened).toBe(false);
-    // The crossing hit: the long, finishable stagger.
-    f.health = FIN.weakenShare * f.maxHealth + 2;
+    // The crossing hit: the long, finishable stagger. The health sits in
+    // the band + 1 dart's damage, so the crossing is decided by the dart
+    // alone: its bounce off the fresh wound can re-hit or not, and neither
+    // reading changes the outcome. Band + 2 would wait on that bounce
+    // (BUG-09: it can land on nothing, the wound's remesh is a promise).
+    f.health = FIN.weakenShare * f.maxHealth + 0.5;
     bodyShot(r, f);
     for (let i = 0; i < 120 && !f.finishWeakened; i++) tick(r);
     expect(f.finishWeakened).toBe(true);

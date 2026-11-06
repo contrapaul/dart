@@ -17,6 +17,29 @@ A6 ammo, block reachable by a mantle chain) and the lit 3 m north exit.
 90 pass, `tsc` and `npm run build` clean. Not checked by eye: nothing has
 been walked in a browser.
 
+GAME-10f merged locally 2026-11-07, not pushed (card `tasks/GAME-10f.md`,
+Qwen 3.8 Flash Next via Pi, branch `game-10f`): the F07 Brawler. Purple
+body, orange armour pads, lime fists ([Paul]: sword or fists). It walks in
+and punches like the Slowmer (45 health, punch 14), and between 5 and 12 m,
+on a 6 s cooldown, it crouches 0.6 s and leaps an arc to 1.5 m short of
+where the player was, landing a shockwave ring that grows at 9 m/s out to
+8 m: a grounded player in its band is hurt 15 once, one in the air or
+dashing is not. Both legs gone ends the leap. Full suite 553 pass, 2
+skipped; `tsc` and `npm run build` clean. Played on the range: crouch,
+leap, landing short, the ring and its one hit all seen. Not heard: the
+three sounds; not tried in play: the jump and the dash through the band
+(unit tested).
+
+BUG-09 merged locally 2026-11-07, not pushed (card `tasks/BUG-09.md`, Qwen 3.8-27B
+via Pi): `tests/foamers/finisher.test.ts` test 1 no longer flakes in full
+runs. Two test-only fixes: the eight `settle` helpers in `tests/foamers/`
+wait until `mesh.busy` clears instead of one `setTimeout(0)` (a slow
+event loop could leave the trimesh collider missing or stale), and the
+crossing hit starts at band + 0.5 so one dart's damage alone crosses,
+instead of band + 2 which banked on the dart's bounce re-hit. In-process
+probe: 2 of 80 failures before, 60/60 after. Test-only; not checked by
+eye (nothing visual changed).
+
 LVL-03a merged locally 2026-11-06, not pushed (card `tasks/LVL-03a.md`,
 DeepSeek V4.1 Flash via Pi): Level 1-3 beats 1 to 5 in
 `data/levels/1-3.json`, played as `arena.html?level=1-3`: the bay, explore
@@ -511,6 +534,239 @@ snap loop) failed all session with the machine at load average 242 from
 the other models' runs, so they were not trusted as green or as this
 card's bugs.
 
+
+### 2026-11-07: BUG-10 review, merged (Claude)
+
+- Read the diff: tests and `vitest.config.ts` only. Budgets unchanged
+  (150 ms bake, 2 ms query, 1000 ms Pit bake, 0.35 rad); the rig test
+  walks the same rigs and frames and asserts the worst jump once per rig,
+  naming the frame and joint. Two choices to know about: the timed tests
+  now take the fastest of nine runs (the card allowed fastest or median;
+  the fastest is the more lenient of the two), and `maxWorkers: 6` caps
+  vitest's pool for every run.
+- Checked: the full suite on the branch took 6.98 s; it also passed with
+  a second full suite running at the same time, and passes on main after
+  the merge.
+- Open, from the model's notes: `tests/ai/tower-throw.test.ts` timed out
+  once under load (5.6 s against the 5 s default). Not looked into.
+- New flake after the merge: one full run on main failed
+  `tests/foamers/parts.test.ts` test 8 (headbutt after both forearms);
+  15 of 15 alone and the next 11 full runs passed. Card BUG-11.
+
+### 2026-11-07: BUG-10, the load-sensitive tests (Qwen 3.8-27B via Pi)
+
+Task: `tests/ai/nav-grid.test.ts` (the 40x40 timing test),
+`tests/foamers/rig.test.ts` ("movement never snaps") and
+`tests/level/pit-load.test.ts` ("bakes the whole Pit's nav grid") failed
+in full `npx vitest run` only when the machine was busy. All test and
+runner changes; no game code; no budget raised, no frame or rig dropped,
+no assertion removed.
+
+Reproduced under load (a second full suite running at the same time):
+5 of 5 runs red. The nav timing test failed on the bake 258 ms against
+the 150 ms budget (loaded single bake: 220 to 299 ms in the five
+reproduction runs), and on the query in two later runs (median of 9 at
+4.4 ms against the 2 ms budget). The rig test failed with "Test timed
+out in 5000 ms" after about 7 to 12 s of wall time. One out-of-scope
+failure was seen and written up here, not fixed: `tests/ai/tower-throw.test.ts`
+"does not throw into the slab" timed out in 5000 ms in one loaded run
+only (a 30 s simulated fight at 60 Hz is near the default 5 s timeout
+when the process is starved of CPU); it also passed once per loaded run
+of the final verification.
+
+Cause of each failure, with the evidence:
+
+1. The suite oversubscribes the machine. Vitest 5's default pool spawns
+   one fork per test file, so a full run is about 85 forks on a 12-core
+   machine; each fork gets little over 15 percent of a core. A wall-time
+   measurement then measures the machine, not the work. Evidence: the
+   40x40 bake printed 36 ms in the BUG-03 row of this log, 85 to 101 ms
+   in idle full runs here, and 220 to 300 ms in the five loaded runs,
+   the median of every consecutive sample raised.
+2. The rig test called `expect` once per joint per frame: 13 rigs times
+   1800 frames of 30 s times about 30 parts, roughly 700,000 one-argument
+   `expect` calls. Alone it took 1425 ms (already over a third of the
+   5000 ms timeout); when the fork also lost CPU time, it ran 7.4 to
+   12.3 s and hit the timeout with every jump still under 0.35 rad
+   (the timeout error, not an assertion, is every failure in the logs).
+
+Fixes (the two timed bakes, the query and the rig test keep the budgets
+the cards set):
+
+- `vitest.config.ts` gets `maxWorkers: 6`. Each fork is well fed again,
+  so wall time reflects the work's own cost even while another full
+  suite runs. The suite still takes about the same 7 s (total CPU work
+  is unchanged; only the 85-to-12 oversubscription is gone).
+- `tests/ai/nav-grid.test.ts` and `tests/level/pit-load.test.ts`: each
+  timed bake now times 9 identical bakes and asserts on the minimum
+  (median of 9 was still 220 to 300 ms under load, because the whole
+  run is busy, not one of nine samples). The nav query keeps 9 timed
+  queries but asserts on the minimum too: its median measured 4.4 ms in
+  the loaded runs against the 2 ms budget, the same starvation. The
+  game's page pays one bake and one query; the budget is about their
+  own cost, which the fastest sample measures.
+- `tests/foamers/rig.test.ts` "movement never snaps": same frames (30 s
+  of 60 Hz per rig), same rigs, same 0.35 rad limit, but the worst
+  per-frame jump is collected per rig and asserted once per rig, the
+  frame and the joint named in the message. 1425 ms to 114 ms idle,
+  114 to 170 ms in the five loaded runs.
+
+Verification: `npx tsc --noEmit` clean, `npm run build` clean, `npx
+vitest run` 85 files 554 pass 2 skipped, and after the fix five full
+runs while a second full suite ran all green (before: 5 of 5 red). Test
+times, idle vs loaded (the card asks for before/after): the 40x40 bake
+assert fell from 220 to 300 ms to 68 to 95 ms; its query from 4.4 to
+1.5 ms to 1.1 to 1.5 ms; "never snaps" from a 5000 ms timeout to 114
+to 170 ms; the Pit bake ran 1621 to 1766 ms wall in the five loaded runs
+(asserts on the baked grid itself, the minimum of its 9 bakes).
+Not checked by eye in a browser: nothing renders; the changes are the
+runner's parallelism and what three test files time.
+
+### 2026-11-07: BUG-09 review, merged (Claude)
+
+- Read the diff: test files only, no game code. The eight `settle`
+  helpers now loop until `mesh.busy` clears (the level tests' pattern),
+  and test 1's crossing health is band + 0.5, so one dart decides it
+  instead of the dart's bounce re-hit. That does not loosen the test: it
+  still asserts the crossing hit gives the finishable stagger.
+- Checked: the fixed finisher test passed 25 of 25 runs alone, and the
+  full suite passes on main after the merge. The 2 in 80 failure rate
+  before the fix is the model's own probe; I did not reproduce it.
+- Noted, not changed: the new `settle` loops have no iteration cap (the
+  level test's has 200), so a mesh that never clears `busy` would hang
+  until vitest's timeout rather than fail fast.
+
+### 2026-11-07: BUG-09, the flaky finisher test (Qwen 3.8-27B via Pi)
+
+Task: `tests/foamers/finisher.test.ts` test 1 failed now and then in a
+full `npx vitest run` (line 103, `f.finishWeakened` still false). Two
+causes, both test-only; no game code changed.
+
+Cause 1, the card's lead: every helper `settle` in `tests/foamers/` waited
+one `setTimeout(0)` for the part's mesh promise (`tests/foamers/finisher.test.ts:30-38` before
+the change, and the same eight files: `blocker.test.ts:42`,
+`chunk.test.ts:36`, `darter.test.ts:20`, `fall.test.ts:41`,
+`foamers.test.ts:28`, `parts.test.ts:30`, `ragdoll.test.ts:33`).
+`VolumeMesh.update` sends dirty chunks to the mesher's promise and builds
+the trimesh collider only when the promise lands
+(`src/voxel/volume-mesh.ts` `update`/`apply`). On a loaded event loop the
+chain can take more than one macrotask, so a fired dart met a missing or
+stale collider. Proven by forcing: delaying the fake mesher by one extra
+macrotask made the old settle miss the crossing shot. Fix: settle now
+loops `update`/`setTimeout(0)` until `mesh.busy` is false, the pattern
+`tests/level/level-1-3.test.ts` already uses. All eight files got the same
+one-line-shaped change (added the `busy: boolean` to the mesh parameter
+and the while loop) because they are the same bug.
+
+Cause 2, found by a probe (test 1 copied in-process, 80 repetitions, per-hit
+health deltas logged): at the test's old crossing health (band + 2 = 3.80,
+band 1.80) the crossing needs two effective damages: the body dart's 1.0
+and the bounce dart's 1.0 (13.04 m/s, over the 8 m/s `minDamageSpeed`).
+Whether the bounce re-hit the body depended on the wound's remesh in flight
+and where debris chunks from the first shot (random speeds, dart-castable)
+fell: the probe failed 2 of 80, and in both failures the bounce dart hit
+the floor or a debris chunk and health stopped at 2.80, above the band.
+The fix: `tests/foamers/finisher.test.ts:108` sets the crossing health to
+band + 0.5, so one dart's 1.0 damage alone crosses the band; the bounce's
+re-hit (which deals at most one more 1.0) can no longer change the
+outcome. 60/60 in-process after, and the same probe at band + 2 failed
+2 of 80, which is the forced evidence.
+
+Verification: the debug probe file was deleted before the gates. `tsc
+--noEmit` clean, `npm run build` clean, `vitest run` 5 full runs clean
+(82 files), `tests/foamers/finisher.test.ts` alone 30/30, no em or en
+dash in any touched file. Could not check by eye in a browser: nothing
+visual changed; the sole changed behaviour is the second shot's starting
+health (3.80 now 2.30), which the test itself asserts via
+`finishWeakened`.
+
+Unrelated, observed but not touched (out of this card): in loaded full
+runs `tests/foamers/rig.test.ts` ("movement never snaps", an assertion on
+per-frame joint deltas) failed 3 of 10 full runs but passed 10 of 10 when
+run alone; it is wall-time sensitive, the kind of timing test the card
+warns can flake under load. It is not the BUG-09 failure: `finisher.test.ts` never flaked in the final verification. Flagged for whoever next sees it: a fixed 0.35 rad threshold on 60 Hz frames is a marginal bound when the isolate pool steals wall time.
+
+### 2026-11-07: GAME-10f review, merged (Claude)
+
+- Played on the range (`range.html?watch`, F07, spawned 10 m out): it
+  walked in, crouched at 7.6 m for 0.6 s, flew 0.9 s, landed 1.5 m short
+  of the player, and the lime ring grew to 8 m and hit once (health 100
+  to 85), then it went back to punching. The palette matches the card;
+  the turnaround is in `design/foamers/F07-sheet.png`.
+- One fix: every Foamer of every type (a pack of Swarmers included)
+  built its own torus geometry and material for the ring, and the
+  landing rebuilt the geometry each leap. Now only a type with a
+  `shockwave` block gets a ring mesh, built once at spawn at full radius
+  and scaled, with one shared material; the geometry is disposed with
+  the Foamer. New test 5b.
+- Noted, not changed: the Spark's Status said "punch 10, like the
+  Roamer"; the data is 14 and it uses the Slowmer's melee brain
+  (corrected in Status). The punch lists both forearms in `needs`, but
+  with one forearm gone `chooseAttack` falls back to the last attack, so
+  it still punches.
+- The full suite under the other models' load failed two timing tests
+  (nav-grid bake, rig-motion "never snaps"); both pass alone.
+- Not checked: jumping or dashing through the band in play, the sounds,
+  the [Paul] sword or fists question.
+
+### 2026-11-07: GAME-10f, the F07 Brawler, code done (Qwen 3.8 Flash Next via Pi)
+
+- Card `tasks/GAME-10f.md`, branch `game-10f`, two commits: `4541c47` the
+  look and the type, `e2277c0` the leap and the ring. Not merged, not pushed.
+- Asked for: the F07 Brawler (CONTENT-PLAN F07) in the factory palette, a
+  walk-in melee type with a punch, and a leap slam that lands a shockwave
+  ring the player jumps or dashes through. Losing both legs ends the leap.
+- Built: the rig's palette (purple body, orange armour pads, lime fists,
+  angry eyes like the others) in `data/foamer-rigs.json`, turnaround
+  rendered to `design/foamers/F07-*.png` with `tools/render-rig.ts`, and
+  the crouch and leap poses to `design/foamers/poses/F07-{crouch,leaping}-
+  t1-*.png` (rendered through the same encoder with `crouchMotion`/
+  `leapMotion` at k 1); an
+  `F07` type in `data/foamers.json` (health 45, a `punch` at 10, a `leap`
+  block: min 5 m, max 12 m, cooldown 6 s, crouch 0.6 s, speed 7 m/s, arc
+  1.4 m, land 1.5 m short; and a `shockwave` block: 9 m/s out to 8 m,
+  0.6 m band, 15 damage); the leap and ring maths in a pure module
+  `src/foamers/leap.ts`; the one decision in `src/ai/f07-brain.ts`
+  (`decideLeap`, the sibling of `decideCharge`); two new `FoamerState`
+  states (`crouch`, `leaping`) run by the Foamer system's machine, and
+  their poses in `rig-states.ts` (`crouchMotion`, `leapMotion`, driven by
+  data in the rig's `motions`); the ring as one torus per Brawler scaled
+  as it grows; `F07-crouch`, `F07-punch` and `F07-land` placeholder synth
+  sounds in `data/sounds.json` and `design/SOUNDS.md`; and the shockwave's
+  hit on the player on both pages (`src/game/game.ts`, `src/range/main.ts`)
+  behind `playerVulnerable` (`player.grounded && !player.dashing`).
+- Decided: no new brain (the Roamer's does the walk-in and the punch, its
+  token is `melee`), the F05's shape for the leap (PLAN 14, four entries).
+  The arc's `vy` is read from the state clock, not integrated, because the
+  character controller zeroes a vy on the frames after the launch and the
+  Brawler hung at its apex (seen in the test's flight log). The flight's
+  horizontal step goes through `_wish` at `leap.speed`, not `moveTowards`,
+  which caps at the walk's 2.4 m/s. A leap blocked short by a wall still
+  lands its ring at the end of the time. The one hit of a ring is marked
+  inside `bandReaches`, so no caller can forget it. Sword or fists stays
+  Paul's: the fists are kept, coloured lime, `[Paul]` notes in the rig and
+  in PLAN 14.
+- Tests: `tests/foamers/leap.test.ts` (8: the flight maths, the ring
+  growing, the band hitting once, missing one the band has passed,
+  missing one that spent it in the hole), `tests/foamers/brawler.test.ts`
+  (8, in a physics rig: it crouches then leaps inside its distances and
+  not outside them, the cooldown starts at the crouch, the flight is an
+  arc that comes back down, the landing sends the ring out once and the
+  ring is drawn, a grounded player is hurt once, one in the air is not,
+  no leap with both legs gone and a leap with an arm gone), and
+  `tests/ai/brawler-brain.test.ts` (3: `decideLeap` at the min, the max,
+  inside the cooldown, without legs, and that only F07 has leap numbers).
+  Full suite 553 pass, 2 skipped; `tsc` and `npm run build` clean.
+- Not checked by eye: no browser here, and this model cannot open the
+  rendered PNGs either. The turnaround and the pose sheets were rendered
+  and their pose extents measured numerically (the crouch dips the body to
+  1.81 m from 2.02 and the leap raises it to 3.04 with the arms up), but
+  the Brawler in the game, the crouch and leap poses in motion, and the
+  ring's look as it grows were not seen. The three
+  placeholder sounds were not heard. The jump-over-the-band and the
+  dash-through are unit tested (`playerVulnerable` false) but not tried in
+  play, and the ring's own read at speed (can a player tell where it will
+  land in the 0.6 s crouch) is a playtest question, not a code one.
 
 ### 2026-11-06: GAME-10c review, merged (Claude)
 
