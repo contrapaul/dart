@@ -14,6 +14,18 @@ review moved two Pit rifts out from under the north ramp (a Swarmer stuck
 under it). Played to "Level complete" with the waves cleared by script.
 Full suite 520 pass, 2 skipped; `tsc` and `npm run build` clean.
 
+GAME-10c merged locally 2026-11-06, not pushed (card `tasks/GAME-10c.md`, Qwen
+3.8 Flash Next via Pi, branch `game-10c`): the F06 Floater. Lime floating
+ball with purple fins and tendrils and an orange mouth, hovering 3 m over
+the nav grid's ground with a slow bob, on the Roamer's brain at a 12 m
+ring. It spits a fan of three small lime blobs that bounce twice off
+geometry, and every fourth attack one big pink blob, parryable like the
+Roamer's; the jaw drops to spit and takes 2.5 times damage while open.
+A lost fin drops it to 1.2 m at 0.6 speed, both fins put it on the floor.
+The review fixed blobs that burst on the floor with no bounce. Not
+checked by ear: the three placeholder sounds. The parry of the big blob
+is unit tested, not tried in play.
+
 BUG-08 merged locally 2026-11-06, not pushed (card `tasks/BUG-08.md`,
 DeepSeek V4.1 Flash via Pi): a Roamer that has gone
 `brain.blockedRepathSeconds` (3 s) with no clear flight stops sidling its
@@ -438,6 +450,75 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: GAME-10c review, merged (Claude)
+
+- One bug found in play on the range (`range.html?watch`, F06): the
+  small blobs never bounced. After a bounce the blob's centre was left
+  on the surface it hit, so the next frame's ray started inside it, hit
+  with a zero normal and spent the second bounce at once; the blob burst
+  within three frames. The Spark's wall test still counted two bounces,
+  so it passed. Fix: lift the blob off the surface by its radius. New
+  test 2b: a blob off the floor rises above 0.2 m and its two bounces are
+  more than 6 frames apart (it failed at 1 frame before the fix). After:
+  on the range a blob bounces off the floor, flies about 1.5 s, bounces
+  off the far wall and bursts.
+- Removed a second, unused `BlobSpec` interface the Spark left in
+  `projectiles.ts` (the used one is in `blob.ts`).
+- Seen in play: it hovers 3.00 m over the ground and spits fans of three
+  lime blobs; the fourth attack was the big pink blob; one fin broken
+  (`breakPart`) dropped it to 1.20 m, both to the floor (0.02 m), where
+  it keeps spitting.
+- For Paul to judge (the look is his): the spikes render as a jagged
+  pixel crown rather than soft rounded nubs, and from the side the jaw
+  sticks out as a separate orange lump and the fins are flat slabs. Both
+  come from the greybox rig's shapes; only the colours changed here.
+- Not checked: the three placeholder sounds by ear, the big blob's parry
+  in play (unit tested), the mouth multiplier in play (unit tested), the
+  hover over uneven ground in a level.
+
+### 2026-11-06: GAME-10c, the F06 Floater (Qwen 3.8 Flash Next via Pi)
+
+- Asked (card `tasks/GAME-10c.md`): Paul's F06, a Heavy that floats slowly
+  and spits blobs: bouncing blobs and one big parryable one, the mouth a
+  weak point only while open, fins lost making it sink and float slower.
+- Built, in three commits on `game-10c`. Stage 1: the F06 rig's palette
+  (lime body and nubs, purple fins and tendrils, orange jaw and mouth),
+  the type entry in `data/foamers.json`, and the float in the Foamer
+  system (hover from the type's `float` block over
+  `navGrid.groundAt(x, z, y)`, no gravity, the same `steerAgent` path a
+  walker takes, damaged hover and speed with fins lost, floor with none).
+  Renders in `design/foamers/F06-*.png`. Stage 2: blobs. The
+  `ProjectileSystem` takes a per-ball `BallKind` (speed, gravity, size,
+  life, colour, bounces, cap, attack) from the type's `blob` block; a
+  small blob reflects off the ray hit's normal (`castRayAndGetNormal`)
+  until its bounce count runs out; the big pink one carries the Roamer's
+  own material so both pages parry it unchanged. `handleHit` multiplies
+  the jaw's damage by the type's `mouth.damage` while the state is
+  windup or strike. Sounds: F06-hum (loop while flying, owned by
+  `FoamerSounds`), F06-spit (the `throw` cue), F06-blobBounce (the
+  projectile cue), all placeholder synths in `data/sounds.json` with
+  rows in `design/SOUNDS.md`. Stage 3: this entry, the PLAN row and four
+  `§14` decisions.
+- Decided: reuse `decideF02` (no `f06-brain.ts`); the float is data plus
+  the nav grid's ground, and the rig keeps no `hover` field (`rig.test.ts`
+  pins the rig's lowest point to it, and it is a drawing height, not a
+  physics one); a blob is a ball of a kind, not a second system; the
+  open-mouth rule keys on the attack's own states, not a new timer; the
+  Floater's speed is `rig.speed`, not `f.speed()` (the no-legs handicap
+  would hand it 0.25 times). PLAN `§14` has the detail.
+- Tests: `tests/foamers/floater.test.ts` (5: spec and health, hover over
+  the floor after 5 s, one fin lost, both fins, killed goes down),
+  `tests/foamers/floater-blobs.test.ts` (6: the fan and its material and
+  bounces, bounce off a wall then burst, every fourth big blob and its
+  material/size/speed, the live cap, the open mouth only, the data read),
+  `tests/ai/floater-brain.test.ts` (2: ranged distances, keeps its ring).
+  Full suite 524 pass, 2 skipped; `tsc` and `npm run build` clean.
+- Not checked by eye (no browser here): the Floater's look and palette,
+  the float and bob in motion, the blobs bouncing off real geometry,
+  the big blob's parry in play, and all three sounds.
+- Untouched as the card asks: level 2-2, the Floater in any level file,
+  vacuum entries, flying over gaps the grid cannot path, tendril attacks.
 
 ### 2026-11-06: LVL-03a review, merged (Claude)
 

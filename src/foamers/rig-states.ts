@@ -62,6 +62,10 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     out.pitch = -0.45 * e;
     out.y = -0.05 * e;
     if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [-0.25 * e, 0, 0]);
+  } else if (attack === "spit" || attack === "bigBlob") {
+    // GAME-10c: the jaw drops to spit (the Floater has no arms).
+    if (rig.parts.some((p) => p.id === "jaw")) out.rot.set("jaw", [1.0 * e, 0, 0]);
+    out.pitch = -0.08 * e;
   } else if (attack === "throw") {
     // ANIM-01: the loaded ball, from the rig's motions block. Zero when a
     // rig has no block, so the pose never snaps: it just does not wind.
@@ -91,6 +95,10 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
   } else if (attack === "headbutt") {
     out.pitch = -0.45 + 0.85 * e;
     if (rig.parts.some((p) => p.id === "head")) out.rot.set("head", [-0.25 + 0.55 * e, 0, 0]);
+  } else if (attack === "spit" || attack === "bigBlob") {
+    // GAME-10c: the jaw comes back up after the spit.
+    if (rig.parts.some((p) => p.id === "jaw")) out.rot.set("jaw", [1.0 * (1 - e), 0, 0]);
+    out.pitch = -0.08 * (1 - e);
   } else if (attack === "throw") {
     const w = poseNums(rig, "throw", "wind");
     const s = poseNums(rig, "throw", "strike");
@@ -109,6 +117,23 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     out.turn = ((w["turn"] ?? 0) + ((s["turn"] ?? 0) - (w["turn"] ?? 0)) * wp) * DEG; // turns through the throw
     out.y = 0.03 * Math.sin(k * Math.PI);
   }
+}
+
+/** The float (GAME-10c): a slow bob and sway with flapping fins and
+ *  trailing tendrils, the pose the sandbox's float style makes, driven
+ *  from stateTime and gait instead of a loop clock. It adds to out. */
+export function floatMotion(rig: RigSpec, t: number, gait: number, out: RigMotion, bob: number) {
+  restInto(out);
+  out.y = Math.sin(t * 1.6) * bob;
+  out.pitch = Math.sin(t * 0.8) * 0.06;
+  out.roll = Math.sin(t * 1.1) * 0.05;
+  const ids = new Set(rig.parts.map((p) => p.id));
+  const flap = Math.sin(gait * 5) * 0.5;
+  if (ids.has("finL")) out.rot.set("finL", [0, 0, flap]);
+  if (ids.has("finR")) out.rot.set("finR", [0, 0, -flap]);
+  // Tendrils trail and sway, each a little out of step.
+  for (const [i, id] of ["tendrilL", "tendrilR", "tendrilM"].entries())
+    if (ids.has(id)) out.rot.set(id, [0.25 + Math.sin(t * 2.2 + i * 2) * 0.25, 0, Math.sin(t * 1.7 + i) * 0.2]);
 }
 
 /** Prone crawl (GAME-11): the body lies at proneTilt (proneMotion's job) and

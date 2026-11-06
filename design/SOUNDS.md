@@ -222,7 +222,10 @@ The other Foamers (IDs given when each is built):
 
 | ID | Foamer | Sounds | Slice | Suggested source |
 |---|---|---|---|---|
-| F06 | Floating ball | Float hum (loop), jaw open, blob spit, blob bounce, big blob | Later | Foley plus Code |
+| F06 | Floater | GAME-10c placeholder IDs: F06-hum (float loop), F06-spit (jaw, fan or big blob), F06-blobBounce (a small blob off a wall) | Later | Foley plus Code |
+| F06-hum | Floater: the float hum under it while its fins hold it up (loop) | Yes | 2 | Foley plus Code |
+| F06-spit | Floater: the jaw snapping shut to spit a fan of blobs or the big one | Yes | 3 | Foley: a wet toy squeeze |
+| F06-blobBounce | Floater: a small blob off a wall, a short foam tick | Yes | 4 | Foley: a foam ball off wood |
 | F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |
 | F08 | Huge tank | Heavy steps, launcher volley, foam wall of balls | Later | Blaster plus Foley |
 | F09 | Spider turret | Leg clicks (loop), turret spin, pellet stream (loop) | Later | Foley plus Blaster |

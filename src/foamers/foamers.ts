@@ -15,6 +15,8 @@ import type { FoamerPart } from "./foamer-part";
 import { armourOf, plateFaces } from "./armour";
 import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
+import { floatOf } from "./float";
+import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
 import playerData from "../../data/player.json";
@@ -76,6 +78,10 @@ function rigFor(spec: FoamerSpec): GameRig {
  *  volley fans several arcs across `spreadDeg`, so its centre arc is not
  *  what it fires (F04's three-shot volley keeps its own behaviour). */
 function singleBall(atk: object): boolean {
+  // GAME-10c: a Floater's big blob is its one ball (big: true); its small
+  // fan (big: false) is the volley case the flight check leaves alone.
+  const big = (atk as { big?: boolean }).big;
+  if (big !== undefined) return big;
   return Math.max(1, (atk as { shots?: number }).shots ?? 1) === 1;
 }
 
@@ -749,11 +755,27 @@ export class FoamerSystem {
             // windup and the throw pose still play, and nothing flies.
             // GAME-10e: a volley fires `shots` balls fanned across
             // `spreadDeg`, so the player can parry some and eat some.
-            const volley = atk as { shots?: number; spreadDeg?: number };
-            const shots = Math.max(1, volley.shots ?? 1);
-            const spread = volley.spreadDeg ?? 0;
-            for (let s = 0; s < shots; s++)
-              this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
+            // GAME-10c: a Floater spits blobs instead of balls: a fan of
+            // small bouncing blobs, or on every blob.everyFourth attack
+            // one big pink parryable blob. The attack counter turns here,
+            // where the attack actually fires.
+            const blob = blobOf(f.spec);
+            if (blob) {
+              f.blobTurn++;
+              if ((atk as { big?: boolean }).big) {
+                this.projectiles?.launch(f, player, 0, bigBlobKind(blob));
+              } else {
+                for (let s = 0; s < blob.count; s++)
+                  this.projectiles?.launch(f, player,
+                    (s - (blob.count - 1) / 2) * blob.spreadDeg, smallBlobKind(blob));
+              }
+            } else {
+              const volley = atk as { shots?: number; spreadDeg?: number };
+              const shots = Math.max(1, volley.shots ?? 1);
+              const spread = volley.spreadDeg ?? 0;
+              for (let s = 0; s < shots; s++)
+                this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
+            }
             sound(this, "throw", f, f.centre);
           } else if (inReach) {
             f.bonk(atk.id);
@@ -796,10 +818,20 @@ export class FoamerSystem {
       f.stateTime = 0;
     }
 
+    // GAME-10c: a Floater with a fin left floats at its hover height over
+    // the floor under it: no gravity, and its height is set below after
+    // the step. Losing every fin puts it on the floor (the floor fit in
+    // poseParts takes over then).
+    const fl = floatOf(f.spec);
+    const finsLeft = fl ? fl.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0) : 0;
+    const flying = fl !== null && finsLeft > 0 &&
+      f.state !== "fall" && f.state !== "down" && f.state !== "finish";
+
     // Gravity: vertical speed, reset by the ground. Without legs it never
     // falls: the floor fit below holds it on the ground. A crawl keeps
     // pulling itself along, so it is not grounded-limited like a walk.
     f.vy = Math.max(f.vy - f.spec.gravity * dt, -50);
+    if (flying) f.vy = 0;
     const crawling = f.state === "crawl";
     // Prone, it closes until its head (the part that reaches) is in range.
     const reach = crawling ? this.headDist(f, player) : dist;
@@ -820,12 +852,21 @@ export class FoamerSystem {
     }
     this._wish.set(0, 0, 0);
     if (moving) {
-      const speed = crawling ? f.crawlSpeed() : f.speed();
+      // GAME-10c: a Floater with a fin lost moves at its damaged speed
+      // share. With no legs, f.speed() would be the no-legs crawl share,
+      // which is not what a Floater moves at: it uses the rig's own speed
+      // (the leg handicaps are for walkers).
+      const share = flying && finsLeft < fl!.fins.length ? fl!.damagedSpeedShare : 1;
+      const speed = flying
+        ? f.rig.speed * share
+        : crawling ? f.crawlSpeed() : f.speed();
       if (f.agent) {
         // ENG-08 stage 3b: a path from the nav grid, steered with
         // separation, instead of straight at the player. A hold strides
         // sideways either way around the player.
-        this.steerAgent(f, dt, speed, player);
+        // GAME-10c: a flying Floater paths from the floor under it.
+        this.steerAgent(f, dt, speed, player,
+          flying ? this.navGrid?.groundAt(f.centre.x, f.centre.z, f.centre.y) : undefined);
       } else {
         this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
       }
@@ -865,8 +906,16 @@ export class FoamerSystem {
       stepDist = Math.hypot(moved.x, moved.y, moved.z);
     }
     if (stepDist > 1e-4) f.gait += stepDist * 4 / (2 * Math.PI);
+    if (flying) {
+      // Hold the hover: feet hoverMetres (damaged: damagedHoverMetres)
+      // over the floor under it. No grid (the range, unit tests): stay at
+      // the height the step left rather than guess a floor.
+      const g = this.navGrid?.groundAt(f.centre.x, f.centre.z, f.centre.y) ?? NaN;
+      const hover = finsLeft < fl!.fins.length ? fl!.damagedHoverMetres : fl!.hoverMetres;
+      if (!Number.isNaN(g)) f.centre.y = g + hover;
+    }
     f.applyPose();
-    f.poseParts(dt, moving);
+    f.poseParts(dt, moving, flying);
   }
 
   /**
@@ -1052,7 +1101,7 @@ export class FoamerSystem {
    * sidle the card asks for; it keeps the distance it has, so a holding
    * Foamer does not creep in or out.
    */
-  private steerAgent(f: Foamer, dt: number, speed: number, player: THREE.Vector3) {
+  private steerAgent(f: Foamer, dt: number, speed: number, player: THREE.Vector3, feetY?: number) {
     const a = f.agent!;
     this.neighbours.length = 0;
     for (const o of this.list) {
@@ -1089,7 +1138,14 @@ export class FoamerSystem {
     if (move === "followPath" || move === "stand") {
       // A crawl follows the same path at its crawl speed: navigate() does
       // not care which, the caller scales the speed it steers at.
-      const path = a.navigate(dt, this.navGrid, f.agentInput!);
+      // GAME-10c: a Floater paths from the floor under its hover, not from
+      // its feet 3 m in the air: findPath starts from the walkable layer
+      // within a step of the given height, and there is none up there.
+      const inp = f.agentInput!;
+      const savedY = inp.y;
+      if (feetY !== undefined) inp.y = feetY;
+      const path = a.navigate(dt, this.navGrid, inp);
+      inp.y = savedY;
       this.agentAgent.x = f.centre.x;
       this.agentAgent.z = f.centre.z;
       this.agentAgent.speed = speed;
@@ -1264,6 +1320,13 @@ export class FoamerSystem {
   /** The first spec attack whose needs are met (at least one of each id
    *  still attached; needs [] always). */
   private chooseAttack(f: Foamer): string {
+    // GAME-10c: a Floater's big blob comes every blob.everyFourth attack,
+    // counting the attacks it has fired (the counter turns at the release).
+    const blob = blobOf(f.spec);
+    if (blob && (f.blobTurn + 1) % blob.everyFourth === 0 &&
+      f.spec.attacks.some((a) => (a as { big?: boolean }).big)) {
+      return f.spec.attacks.find((a) => (a as { big?: boolean }).big)!.id;
+    }
     for (const a of f.spec.attacks) {
       if (a.needs.every((id) => f.parts.has(id))) return a.id;
     }
@@ -1315,7 +1378,14 @@ export class FoamerSystem {
         Math.sin(f.yaw), Math.cos(f.yaw),
         -hit.direction.x, -hit.direction.z, // back toward the shooter
         f.state === "stagger");
-    const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1);
+    // GAME-10c: the Floater's open mouth. The jaw drops to spit; while the
+    // attack runs (windup and strike) a dart on the mouth part takes the
+    // weak-point share. Shut, it is an ordinary part.
+    const mouth = mouthOf(f.spec);
+    const mouthOpen = mouth !== null && part.spec.id === mouth.part &&
+      (f.state === "windup" || f.state === "strike");
+    const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1) *
+      (mouthOpen ? mouth!.damage : 1);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= dmg;
     f.health -= dmg * kind.total;

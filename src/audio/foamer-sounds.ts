@@ -6,6 +6,8 @@ import type * as THREE from "three";
 import type { AudioSink } from "./sink";
 import type { FoamerSystem, FoamerSoundKind } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
+import { floatOf } from "../foamers/float";
+import type { LoopHandle } from "./sink";
 
 // FX-topple is heard at go-down; FX-fizz-out lands this much later.
 const FIZZ_DELAY = 0.3;
@@ -29,6 +31,8 @@ export class FoamerSounds {
   private fizz: Fizz[] = [];
   /** The last foot-plant integer seen per living Foamer. */
   private plantSeen = new WeakMap<Foamer, number>();
+  /** GAME-10c: the float hum per flying Floater, stopped when it lands. */
+  private hums = new Map<Foamer, LoopHandle>();
 
   constructor(sink: AudioSink, system: FoamerSystem | null) {
     this.sink = sink;
@@ -82,6 +86,26 @@ export class FoamerSounds {
         this.sink.play("FX-fizz-out", { position: el.f.centre });
       }
     }
+    // GAME-10c: a Floater whose fins still hold it up hums; the hum stops
+    // when the last fin goes or it goes down.
+    for (const f of sys.list) {
+      const fl = floatOf(f.spec);
+      if (!fl) continue;
+      const finsLeft = fl.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0);
+      const flying = finsLeft > 0 && f.state !== "fall" && f.state !== "down" && f.state !== "finish";
+      const hum = this.hums.get(f);
+      if (flying && !hum) this.hums.set(f, this.sink.loop("F06-hum", { position: f.centre }));
+      else if (!flying && hum) {
+        hum.stop();
+        this.hums.delete(f);
+      } else if (hum) hum.setPosition(f.centre);
+    }
+    for (const [f, hum] of this.hums) {
+      if (!sys.list.includes(f)) {
+        hum.stop();
+        this.hums.delete(f);
+      }
+    }
   }
 
   /** A Foamer event at the part's or Foamer's position. */
@@ -115,7 +139,11 @@ export class FoamerSounds {
         break;
       }
       case "throw":
-        this.sink.play(f.spec.rig === "F04" ? "F04-volley" : "F02-throw", p);
+        // GAME-10c: the Floater's jaw snaps shut to spit.
+        this.sink.play(
+          f.spec.rig === "F04" ? "F04-volley" : f.spec.rig === "F06" ? "F06-spit" : "F02-throw",
+          p,
+        );
         break;
       case "fall":
         // GAME-11: it toppled, but it is not down, so no fizz-out.
