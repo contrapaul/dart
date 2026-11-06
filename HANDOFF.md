@@ -6,20 +6,16 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-GAME-10g built 2026-11-07, branch `game-10g`, not merged (card
-`tasks/GAME-10g.md`, Qwen 3.8 Flash Next via Pi): the F09 Crawler. Deep
-orange body, eight deep-purple legs, a lime twin-barrel gun on top (the
-sheets in `design/foamers/` are generated, not viewed: no browser here).
-It keeps about 14 m on the Roamer's brain, and from 16 m winds up 0.8 s
-then streams 12 pellets, one every 0.1 s, at 22 m/s and 2 damage, spread
-3 degrees by a seeded PRNG. Cover stops every pellet, and the BUG-07
-flight check keeps it from opening a stream into a wall. Its gun is a
-weak point (2x) and its trigger: with the gun or both barrels gone it
-cannot fire, walks in, and stomps for 8 at 1.8 m. Full suite 569 pass,
-2 skipped; `tsc` and `npm run build` clean. Not checked by eye: the
-browser at all (no browser here: range, rig pose, spin, stomp and the
-three placeholder sounds); `pellets.seed` 7, spread 3 and the timings
-are unit-set, not play-tuned.
+GAME-10g merged locally 2026-11-07, not pushed (card `tasks/GAME-10g.md`,
+Qwen 3.8 Flash Next via Pi): the F09 Crawler. Deep orange body, four
+purple legs with shins, a lime twin-barrel gun on top. It keeps about
+14 m on the Roamer's brain, and from 16 m winds up 0.8 s then streams 12
+pellets, one every 0.1 s, at 22 m/s and 2 damage, spread 3 degrees by a
+seeded PRNG. Cover stops every pellet. Its gun is a weak point (2x) and
+its trigger: with the gun or both barrels gone it cannot fire, walks in,
+and stomps for 8 at 1.8 m. Played on the range: bursts of 12 (about 4 of
+12 hit at 14 m), and with the gun broken off it walked in and stomped.
+Not heard: the three placeholder sounds; numbers not play-tuned.
 
 GAME-10f merged locally 2026-11-07, not pushed (card `tasks/GAME-10f.md`,
 Qwen 3.8 Flash Next via Pi, branch `game-10f`): the F07 Brawler. Purple
@@ -488,6 +484,24 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10g review, merged (Claude)
+
+- Merged main into the branch first (it was cut before BUG-09 and
+  BUG-10); one HANDOFF log conflict, both sides kept.
+- Played on the range (`range.html?watch`, F09 spawned 14 m out): it
+  held at 14 m, wound up 0.8 s and fired bursts of 12 pellets over 1.2 s;
+  about 4 or 5 of each 12 hit the player. Broke the gun (`breakPart`): no
+  more pellets, it walked in to 1.8 m and stomped. The turnaround matches
+  the card's palette.
+- No code changes. Noted: the spread's PRNG is `makeRng` from
+  `src/audio/synth.ts`, so Foamer code now imports from the audio
+  module (synth.ts has no imports, so nothing heavy comes with it). A
+  shared `src/core/rng.ts` would be cleaner; left as is. The render
+  tool's sheet label drops digits and some letters ("F0", "RAWLER" on
+  F07); the tool's pixel font, not this card.
+- Tests: the Crawler, Brawler and Floater tests (31) pass and the build
+  is clean; the full suite on merged main is below.
 
 ### 2026-11-07 GAME-10g: the F09 Crawler (Qwen 3.8 Flash Next via Pi, branch `game-10g`)
 
