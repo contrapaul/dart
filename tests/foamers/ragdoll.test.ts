@@ -30,9 +30,12 @@ function fakeMesher(): Mesher {
   return { mesh: (padded) => Promise.resolve(greedyMesh(padded, colors)) };
 }
 /** Let a pending remesh resolve, then step once more. */
-async function settle(mesh: { update(): void }, world: RAPIER.World) {
-  mesh.update();
-  await new Promise((r) => setTimeout(r, 0));
+async function settle(mesh: { update(): void; busy: boolean }, world: RAPIER.World) {
+  while (true) {
+    mesh.update();
+    if (!mesh.busy) break;
+    await new Promise((r) => setTimeout(r, 0));
+  }
   world.step();
 }
 /** Mesh every part once, so a dart can find (and carve) each part. */
