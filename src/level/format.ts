@@ -93,6 +93,20 @@ export interface Door extends Box {
   state: DoorState;
 }
 
+/** LVL-03b: a chase that ends by leaving, not by clearing. Entering `box`
+ *  (the bottom of a drop, say) ends the arena with Foamers still up; the page
+ *  is asked to clear them out, since they cannot follow, and the doors named
+ *  here are sealed after `sealDelaySeconds`, so the way back is shut. */
+export interface ArenaEscape {
+  /** Player feet inside this box: the arena is over. */
+  box: Box;
+  /** Door IDs to seal. They may belong to another arena: this arena has no
+   *  lock, so a door of its own would be shut the moment it starts. */
+  sealDoors?: string[];
+  /** Seconds after entering before the seal, so a drop reads as one way. */
+  sealDelaySeconds?: number;
+}
+
 export interface Arena {
   id: string;
   /** KIT.md code, for the tool and for humans. */
@@ -108,6 +122,13 @@ export interface Arena {
   checkpoint?: boolean;
   /** Feet position of that restart, on the arena's entry side. */
   checkpointPos?: Vec3;
+  /** A one-way way out: the arena clears on entering this box, Foamers and
+   *  all. See `ArenaEscape`. */
+  escape?: ArenaEscape;
+  /** Start the waves on entry but shut no door and say nothing: a chase
+   *  that runs down an open lane, where a door would shut behind the player
+   *  before they reached the way out. */
+  noLock?: boolean;
 }
 
 export type PickupType =

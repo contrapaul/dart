@@ -72,6 +72,9 @@ export class LevelRunner {
   }
 
   update(dt: number, ctx: ArenaContext): void {
+    // LVL-03b: an escaped arena's seal is timed after the arena is over, so
+    // it is stepped here for every arena, not only the one being played.
+    for (const runner of this.runners) runner.updateSeal(dt);
     if (this.current >= this.arenas.length) return;
     const runner = this.runners[this.current]!;
     runner.update(dt, ctx);
