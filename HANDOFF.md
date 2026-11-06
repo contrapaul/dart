@@ -6,15 +6,13 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-BUG-08 done 2026-11-06, awaiting review (card `tasks/BUG-08.md`, DeepSeek
-V4.1 Flash via Pi, branch `bug-08`): a Roamer that has held for
+BUG-08 merged locally 2026-11-06, not pushed (card `tasks/BUG-08.md`,
+DeepSeek V4.1 Flash via Pi): a Roamer that has gone
 `brain.blockedRepathSeconds` (3 s) with no clear flight stops sidling its
-ring and walks its path to the player, and in the tower case (two floor 2
-Roamers, the player on the ground floor under the slab at (-3, -29)) that
-took the same 30 s run from 0 thrown and 0 reached to 10 thrown and 10
-reached. The Pit case keeps 12 thrown and 11 reached. Not checked by eye;
-the browser was not opened. Not merged, not pushed. Full suite 511 pass,
-2 skipped; `tsc` and `npm run build` clean.
+ring and walks its path to the player. In the tower (player under the
+slab) the Roamers now walk down and throw: 10 thrown, 10 hit in 30 s, in
+the browser and headless. Full suite 511 pass, 2 skipped; `tsc` and
+`npm run build` clean.
 
 BUG-07 done 2026-11-06, awaiting review (card `tasks/BUG-07.md`, DeepSeek
 V4.1 Flash via Pi, branch `bug-07`): a Roamer no longer throws when its
@@ -433,25 +431,22 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-06: BUG-07 review, merged (Claude)
+### 2026-11-06: BUG-08 review, merged (Claude)
 
-- DeepSeek's fix samples the ball's own launch arc (6 ball-radius shape
-  casts with the ball step's filters, now one shared `ballIgnores`), cached
-  per Foamer for 0.25 s; a Roamer with no clear flight does not start a
-  throw, hands its token back (`noFlight`) and keeps sidling; a release
-  that went blocked during the windup is cancelled. F04's fanned volley
-  is exempt, its tests unchanged. Checked in review: the ball filter
-  refactor is equivalent to the old one, the launch math is unchanged
-  (moved into `launchVelocity`), `chooseAttack` is deterministic so the
-  check judges the attack that is thrown. tsc, 505 tests and the build
-  pass.
-- In the browser (Pit, real wave 2, wave 1 cleared by script, player
-  held at (0, 1.2)): 20 thrown in 30 s, 19 reached the player (BUG-06's
-  review saw 2 in 10). The Roamers walked the ring between throws.
-- Not checked by eye: the tower case (headless only: no bursts above
-  y 3 with the player under the slab, 21 of 22 hits from floor 2); a
-  Roamer that can find no clear spot at all sidles for good rather than
-  pathing elsewhere.
+- The fix is small and stays in the existing states: `blockedSeconds` on
+  the Foamer, filled in `stepBrain`, read by the F02 brain's hold case.
+  One difference from the card: the timer counts whenever the flight is
+  blocked and the player is outside the retreat distance, not only while
+  it holds, so a Roamer that arrives at its ring already blocked walks on
+  at once instead of sidling 3 s first. Harmless, left as is. tsc, 511
+  tests and the build pass (one full run lost the nav grid timing test
+  to the Spark's parallel run; it passes alone and on the rerun).
+- In the browser (`arena.html?watch&level=1-2`, parry corridor and Ring
+  cleared by script, player held at (-3, -29) under the slab): both floor
+  2 Roamers sidled until about 12 s, walked down the ramp (y 5, 3.3, then
+  0 by 15 s) and threw from the ground floor: 10 thrown, 10 hit in 30 s.
+- Not checked: how the walk out of the ring reads in the Pit by eye, the
+  Pit's live wave (headless 12 thrown, 11 reached).
 
 ### 2026-11-06: BUG-08, a Roamer blocked too long walks to the player (DeepSeek V4.1 Flash via Pi)
 
@@ -484,6 +479,26 @@ github.com/contrapaul/dart (public), MIT licence.
   browser, how the walk down and the return to the ring read in the Pit,
   and whether 3 s of sidling before it commits looks patient or slow to a
   player. The rigs are headless only.
+
+### 2026-11-06: BUG-07 review, merged (Claude)
+
+- DeepSeek's fix samples the ball's own launch arc (6 ball-radius shape
+  casts with the ball step's filters, now one shared `ballIgnores`), cached
+  per Foamer for 0.25 s; a Roamer with no clear flight does not start a
+  throw, hands its token back (`noFlight`) and keeps sidling; a release
+  that went blocked during the windup is cancelled. F04's fanned volley
+  is exempt, its tests unchanged. Checked in review: the ball filter
+  refactor is equivalent to the old one, the launch math is unchanged
+  (moved into `launchVelocity`), `chooseAttack` is deterministic so the
+  check judges the attack that is thrown. tsc, 505 tests and the build
+  pass.
+- In the browser (Pit, real wave 2, wave 1 cleared by script, player
+  held at (0, 1.2)): 20 thrown in 30 s, 19 reached the player (BUG-06's
+  review saw 2 in 10). The Roamers walked the ring between throws.
+- Not checked by eye: the tower case (headless only: no bursts above
+  y 3 with the player under the slab, 21 of 22 hits from floor 2); a
+  Roamer that can find no clear spot at all sidles for good rather than
+  pathing elsewhere.
 
 ### 2026-11-06: BUG-07, a Roamer throws only when its ball can arrive (DeepSeek V4.1 Flash via Pi)
 
