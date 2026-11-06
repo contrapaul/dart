@@ -419,15 +419,33 @@
       "throwRangeMetres": 17,
       "preferredDistanceMetres": 14,
       "retreatDistanceMetres": 7,
+      "pellets": {
+        "_note": "GAME-10g stage 2: one burst. count pellets, one every intervalSeconds, each aimed at the eye with a random turn of plus/minus spreadDeg from a seeded PRNG (seed), never Math.random().",
+        "count": 12,
+        "intervalSeconds": 0.1,
+        "spreadDeg": 3,
+        "speed": 22,
+        "gravity": 1,
+        "radius": 0.05,
+        "lifetime": 2,
+        "chunks": 2,
+        "maxLive": 24,
+        "seed": 7
+      },
+      "weakpoint": {
+        "_note": "CONTENT-PLAN 3.1: the gun is the weak point. A dart on it takes damage x damage; with the gun or both barrels gone it cannot fire (see src/foamers/pellet.ts).",
+        "part": "gun",
+        "damage": 2
+      },
       "attacks": [
         {
           "id": "stream",
           "damage": 2,
           "token": "ranged",
+          "_note": "range is the distance it fires from, a little outside the ring it keeps (the F06's pattern): the brain parks on preferredDistanceMetres, so an unpinned ranged range would sit exactly on it. needs the gun; a barrel too (canStream in src/foamers/pellet.ts).",
+          "range": 16,
           "needs": [
-            "gun",
-            "barrelL",
-            "barrelR"
+            "gun"
           ],
           "windup": 0.8,
           "strike": 1.2

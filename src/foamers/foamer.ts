@@ -219,6 +219,11 @@ export class Foamer {
   /** GAME-10c: attacks this Floater has fired (the big blob's every-Nth
    *  counter). Turns at the release, where the attack really happens. */
   blobTurn = 0;
+  /** GAME-10g: bursts this Crawler has fired (the pellet spread's PRNG
+   *  mixes in the burst number), and pellets fired in the burst running
+   *  now. Both turn where the attack really happens. */
+  pelletTurn = 0;
+  pelletFired = 0;
   attack() {
     return this.attackId ? this.spec.attacks.find((a) => a.id === this.attackId) ?? null : null;
   }
