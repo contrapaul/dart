@@ -414,6 +414,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-06: BUG-06 review, merged (Claude)
+
+- The cause is a real game bug, not only the helper's: `castRay`'s
+  `timeOfImpact` is metres along a unit ray, and the ball moved by
+  velocity times it, so on any hit it jumped speed times too far (about
+  1 m past the capsule's front). A player's block or parry by hand was
+  judged from behind as often as not, and wall bursts showed past the
+  wall. DeepSeek's fix (`t / speed`) and the debris pass-through for
+  balls are right. Headless Pit test 2 to 10 of 10; 497 tests and the
+  build pass. Two garbled comments in the range helper (from BUG-04)
+  reworded.
+- In the browser (Pit wave 2, real fight, wave 1 cleared by script):
+  hand-placed F02s gave 6 parries in 10; in the live wave, of the balls
+  that reached the player both were parried, but 8 in 10 never arrived:
+  a Roamer at (-6.5, 5.8) throws into the level trimesh 1.7 m from its
+  hand (bursts at y 2.6). That is the Roamer throwing without a clear
+  line, a separate issue (next card), not the parry.
+- By hand: blocks and parries should now feel right from the front for
+  the first time; worth a playtest.
+
 ### 2026-11-06: BUG-06, a ball hit is a distance not a time (DeepSeek V4.1 Flash via Pi)
 
 - Card: `tasks/BUG-06.md`. Branch `bug-06` from `bug-04`; BUG-04's
