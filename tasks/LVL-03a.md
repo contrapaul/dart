@@ -11,7 +11,7 @@ ID:          LVL-03a
 Title:       Level 1-3 beats 1 to 5: the loading bay, the explore corridors,
              Arena 1 the Pit (A1), the catwalk breather and Arena 2 the Yard
              (A6), with a temporary exit after the Yard
-Owner:       Pi (Qwen 3.8 Flash Next, dgx-spark, thinking medium)
+Owner:       Pi (DeepSeek V4.1 Flash, openrouter, thinking high; the Spark run hit its output limit with nothing written)
 Reviewer:    Claude Opus 5.5
 Depends on:  LVL-02b, LVL-02c (done), GAME-10d (the F03 Swarmer, done)
 Branch:      lvl-03a, in its own worktree
