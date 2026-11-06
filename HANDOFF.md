@@ -6,6 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10c done 2026-11-06, awaiting review (card `tasks/GAME-10c.md`, Qwen
+3.8 Flash Next via Pi, branch `game-10c`): the F06 Floater. Lime floating
+ball with purple fins and tendrils and an orange mouth, hovering 3 m over
+the nav grid's ground with a slow bob, on the Roamer's brain at a 12 m
+ring. It spits a fan of three small lime blobs that bounce twice off
+geometry, and every fourth attack one big pink blob, parryable like the
+Roamer's; the jaw drops to spit and takes 2.5 times damage while open.
+A lost fin drops it to 1.2 m at 0.6 speed, both fins put it on the floor.
+Not checked by eye: the look, the float and bob, the blob bounces, the
+three placeholder sounds. Full suite 524 pass, 2 skipped; `tsc` and
+`npm run build` clean. Not merged, not pushed.
+
 BUG-08 merged locally 2026-11-06, not pushed (card `tasks/BUG-08.md`,
 DeepSeek V4.1 Flash via Pi): a Roamer that has gone
 `brain.blockedRepathSeconds` (3 s) with no clear flight stops sidling its
@@ -430,6 +442,49 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: GAME-10c, the F06 Floater (Qwen 3.8 Flash Next via Pi)
+
+- Asked (card `tasks/GAME-10c.md`): Paul's F06, a Heavy that floats slowly
+  and spits blobs: bouncing blobs and one big parryable one, the mouth a
+  weak point only while open, fins lost making it sink and float slower.
+- Built, in three commits on `game-10c`. Stage 1: the F06 rig's palette
+  (lime body and nubs, purple fins and tendrils, orange jaw and mouth),
+  the type entry in `data/foamers.json`, and the float in the Foamer
+  system (hover from the type's `float` block over
+  `navGrid.groundAt(x, z, y)`, no gravity, the same `steerAgent` path a
+  walker takes, damaged hover and speed with fins lost, floor with none).
+  Renders in `design/foamers/F06-*.png`. Stage 2: blobs. The
+  `ProjectileSystem` takes a per-ball `BallKind` (speed, gravity, size,
+  life, colour, bounces, cap, attack) from the type's `blob` block; a
+  small blob reflects off the ray hit's normal (`castRayAndGetNormal`)
+  until its bounce count runs out; the big pink one carries the Roamer's
+  own material so both pages parry it unchanged. `handleHit` multiplies
+  the jaw's damage by the type's `mouth.damage` while the state is
+  windup or strike. Sounds: F06-hum (loop while flying, owned by
+  `FoamerSounds`), F06-spit (the `throw` cue), F06-blobBounce (the
+  projectile cue), all placeholder synths in `data/sounds.json` with
+  rows in `design/SOUNDS.md`. Stage 3: this entry, the PLAN row and four
+  `§14` decisions.
+- Decided: reuse `decideF02` (no `f06-brain.ts`); the float is data plus
+  the nav grid's ground, and the rig keeps no `hover` field (`rig.test.ts`
+  pins the rig's lowest point to it, and it is a drawing height, not a
+  physics one); a blob is a ball of a kind, not a second system; the
+  open-mouth rule keys on the attack's own states, not a new timer; the
+  Floater's speed is `rig.speed`, not `f.speed()` (the no-legs handicap
+  would hand it 0.25 times). PLAN `§14` has the detail.
+- Tests: `tests/foamers/floater.test.ts` (5: spec and health, hover over
+  the floor after 5 s, one fin lost, both fins, killed goes down),
+  `tests/foamers/floater-blobs.test.ts` (6: the fan and its material and
+  bounces, bounce off a wall then burst, every fourth big blob and its
+  material/size/speed, the live cap, the open mouth only, the data read),
+  `tests/ai/floater-brain.test.ts` (2: ranged distances, keeps its ring).
+  Full suite 524 pass, 2 skipped; `tsc` and `npm run build` clean.
+- Not checked by eye (no browser here): the Floater's look and palette,
+  the float and bob in motion, the blobs bouncing off real geometry,
+  the big blob's parry in play, and all three sounds.
+- Untouched as the card asks: level 2-2, the Floater in any level file,
+  vacuum entries, flying over gaps the grid cannot path, tendril attacks.
 
 ### 2026-11-06: BUG-08 review, merged (Claude)
 
