@@ -6,6 +6,16 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-08 done 2026-11-06, awaiting review (card `tasks/BUG-08.md`, DeepSeek
+V4.1 Flash via Pi, branch `bug-08`): a Roamer that has held for
+`brain.blockedRepathSeconds` (3 s) with no clear flight stops sidling its
+ring and walks its path to the player, and in the tower case (two floor 2
+Roamers, the player on the ground floor under the slab at (-3, -29)) that
+took the same 30 s run from 0 thrown and 0 reached to 10 thrown and 10
+reached. The Pit case keeps 12 thrown and 11 reached. Not checked by eye;
+the browser was not opened. Not merged, not pushed. Full suite 511 pass,
+2 skipped; `tsc` and `npm run build` clean.
+
 BUG-07 done 2026-11-06, awaiting review (card `tasks/BUG-07.md`, DeepSeek
 V4.1 Flash via Pi, branch `bug-07`): a Roamer no longer throws when its
 ball's arc cannot reach the player. In the Pit's wave 2 case the same 30 s
@@ -442,6 +452,38 @@ github.com/contrapaul/dart (public), MIT licence.
   y 3 with the player under the slab, 21 of 22 hits from floor 2); a
   Roamer that can find no clear spot at all sidles for good rather than
   pathing elsewhere.
+
+### 2026-11-06: BUG-08, a Roamer blocked too long walks to the player (DeepSeek V4.1 Flash via Pi)
+
+- Asked: a Roamer that finds no clear throw anywhere on its ring sidles
+  for good. Level 1-2's tower shows it: two Roamers on floor 2 over a
+  player on the ground floor under the slab never reach them.
+- Built: the Foamer keeps `blockedSeconds` (reset by a clear flight and by
+  arriving inside its retreat distance), the system fills
+  `AgentInput.blockedSeconds`, and `decideF02`'s hold case past
+  `brain.blockedRepathSeconds` (3, `data/ai.json`) asks for `followPath`
+  instead of `ringMove`, or `backOff` inside the retreat distance. No new
+  state; the reason is in PLAN section 14.
+- Repro and counts: a new `tests/ai/tower-throw.test.ts` case, the two
+  floor 2 rifts and the player at (-3, 1.6, -29), 30 s. That spot is off
+  the stair well, so no arc can drop through the floor's opening: before
+  the fix 0 thrown, 0 reached; after 10 thrown, 10 reached. The earlier
+  `DOWN` spot at (-8, -29) sits under the opening and already reached (5
+  thrown, 4 hit) without the fix, so it is not the repro and its test is
+  left as it was.
+- Also: the Pit case holds at 12 thrown and 11 reached (BUG-07's was 13
+  and 13; no ball is lost, one fewer is thrown), the tower's floor 2 case
+  is unchanged at 22 thrown and 21 hits, and F04, F01, F03 and F05 are
+  untouched apart from the new input field.
+- Tests: five brain cases in `tests/ai/f02-brain.test.ts` (sidles under
+  the time, walks past it, backs off inside the retreat distance, back on
+  the ring the step the flight clears, and approach unaffected).
+- Decided 3 s by measuring 3, 4, 5 and 6 on both rigs; the numbers and the
+  trade-off are in PLAN section 14.
+- Not checked by eye: the Roamer walking down the tower's ramps in the
+  browser, how the walk down and the return to the ring read in the Pit,
+  and whether 3 s of sidling before it commits looks patient or slow to a
+  player. The rigs are headless only.
 
 ### 2026-11-06: BUG-07, a Roamer throws only when its ball can arrive (DeepSeek V4.1 Flash via Pi)
 
