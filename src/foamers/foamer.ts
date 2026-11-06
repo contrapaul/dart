@@ -13,7 +13,6 @@ import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
 import { floatOf } from "./float";
 import { makeShockwave } from "./leap";
-import { materialId, linearColorTable } from "../voxel/materials";
 import type { ShotDamage } from "./chunk";
 import type { DartHit } from "../weapons/darts";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
@@ -180,17 +179,11 @@ export class Foamer {
   /** GAME-10f: the shockwave this Brawler last landed (leap.ts). One ring
    *  at a time, reused per leap. */
   readonly wave = makeShockwave();
-  /** GAME-10f: the ring's mesh: one torus lying flat on the floor (a
-   *  closed, capped solid), rebuilt when a wave starts (once per leap),
-   *  parked invisible when there is no ring. Owned by the FoamerSystem's
-   *  group, like the glow group. */
-  readonly waveMesh = new THREE.Mesh(
-    new THREE.TorusGeometry(1, 0.1, 8, 48).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({
-      color: new THREE.Color().fromArray(linearColorTable(), materialId("foam-lime") * 3),
-      roughness: 0.6, transparent: true, opacity: 0.85, depthWrite: false,
-    }),
-  );
+  /** GAME-10f: the ring's mesh: one flat torus at the shockwave's full
+   *  radius, scaled as it grows, parked invisible when there is no ring.
+   *  Only a type that lands a shockwave has one (made at spawn); owned by
+   *  the FoamerSystem's group, like the glow group. */
+  waveMesh: THREE.Mesh | null = null;
   /** The body's centre height over the ground at rest: the pendulum's pivot
    *  length, filled once at spawn (GAME-11). */
   pivotHeight = 0;
@@ -609,7 +602,8 @@ export class Foamer {
     for (const p of this.parts.values()) p.dispose(world);
     this.group.removeFromParent();
     this.glowGroup.removeFromParent();
-    this.waveMesh.removeFromParent();
+    this.waveMesh?.removeFromParent();
+    this.waveMesh?.geometry.dispose();
     world.removeRigidBody(this.root);
   }
 }

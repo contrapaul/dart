@@ -7,7 +7,7 @@ import type { DebrisSystem } from "../voxel/debris";
 import type { DartSystem, DartHit } from "../weapons/darts";
 import type { VoxelTarget } from "../weapons/impacts";
 import dartTuning from "../../data/darts.json";
-import { materialId, EMPTY } from "../voxel/materials";
+import { materialId, EMPTY, linearColorTable } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
 import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
@@ -206,6 +206,12 @@ export type FoamerSoundKind =
   // GAME-10f, the Brawler: the crouch before the leap and the landing that
   // lands the shockwave.
   | "crouch" | "land";
+
+/** GAME-10f: the Brawler's shockwave ring, one material for every ring. */
+const WAVE_MATERIAL = new THREE.MeshStandardMaterial({
+  color: new THREE.Color().fromArray(linearColorTable(), materialId("foam-lime") * 3),
+  roughness: 0.6, transparent: true, opacity: 0.85, depthWrite: false,
+});
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -423,8 +429,15 @@ export class FoamerSystem {
     f.glowGroup.position.set(0, -1000, 0);
     this.group.add(f.glowGroup);
     // GAME-10f: the shockwave ring, parked out of sight until a landing.
-    f.waveMesh.visible = false;
-    this.group.add(f.waveMesh);
+    const sw = shockwaveOf(f.spec);
+    if (sw) {
+      f.waveMesh = new THREE.Mesh(
+        new THREE.TorusGeometry(sw.radius, sw.tubeMetres, 8, 48).rotateX(-Math.PI / 2),
+        WAVE_MATERIAL,
+      );
+      f.waveMesh.visible = false;
+      this.group.add(f.waveMesh);
+    }
     this.list.push(f);
     // Every part is a voxel target of its own, so darts carve the part
     // they actually hit.
@@ -741,11 +754,10 @@ export class FoamerSystem {
         f.vy = 0;
         f.leapLeft = 0;
         startShockwave(f.wave, sw, f.centre.x, f.centre.z);
-        f.waveMesh.geometry.dispose();
-        f.waveMesh.geometry = new THREE.TorusGeometry(sw.radius, sw.tubeMetres, 8, 48)
-          .rotateX(-Math.PI / 2);
-        f.waveMesh.position.set(f.centre.x, f.centre.y + sw.tubeMetres * 0.5, f.centre.z);
-        f.waveMesh.visible = true;
+        const ring = f.waveMesh!;
+        ring.scale.set(0, 1, 0);
+        ring.position.set(f.centre.x, f.centre.y + sw.tubeMetres * 0.5, f.centre.z);
+        ring.visible = true;
         sound(this, "land", f, f.centre);
         this.onLand(f, f.centre, sw);
       }
@@ -1018,16 +1030,16 @@ export class FoamerSystem {
     // jump timing the card teaches.
     const swSpec = shockwaveOf(f.spec);
     if (f.wave.active && swSpec) {
-      if (!stepShockwave(f.wave, dt, swSpec)) f.waveMesh.visible = false;
+      if (!stepShockwave(f.wave, dt, swSpec)) f.waveMesh!.visible = false;
       else {
         // The ring stays where it landed (its position was set at the
         // landing); it only grows. The Foamer moves on under it.
         const s = f.wave.radius / swSpec.radius;
-        f.waveMesh.scale.set(s, 1, s);
+        f.waveMesh!.scale.set(s, 1, s);
         if (!f.wave.hit && this.playerVulnerable()) {
           const pd = Math.hypot(player.x - f.wave.x, player.z - f.wave.z);
           // bandReaches marks the ring's own hit flag when it says true.
-          if (bandReaches(f.wave, pd, swSpec)) this.onShockwaveHit(f, f.waveMesh.position);
+          if (bandReaches(f.wave, pd, swSpec)) this.onShockwaveHit(f, f.waveMesh!.position);
         }
       }
     }

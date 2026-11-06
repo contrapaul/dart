@@ -139,17 +139,26 @@ describe("the F07 leap slam (GAME-10f stage 2)", () => {
     expect(f.centre.y, "and landed").toBeLessThan(0.3);
   });
 
+  // Review: only a type that lands a shockwave carries a ring mesh, so a
+  // pack of Swarmers does not allocate one each.
+  it("5b. only a shockwave type has a ring mesh", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    expect(brawler(r, 8, player).waveMesh).not.toBeNull();
+    expect(r.foamers.spawn(new THREE.Vector3(4, 0, 4), player, "F01")!.waveMesh).toBeNull();
+  });
+
   it("5. the landing sends the ring out, once, and the ring is drawn", () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 0);
     const f = brawler(r, 8, player);
     run(r, player, () => f.wave.active, 60 * 20);
     expect(f.wave.active, "the ring started").toBe(true);
-    expect(f.waveMesh.visible, "and is drawn").toBe(true);
+    expect(f.waveMesh!.visible, "and is drawn").toBe(true);
     expect(r.sounds).toContain("land");
     expect(r.sounds).toContain("crouch");
-    expect(f.waveMesh.position.x, "the ring sits where it landed").toBeCloseTo(f.wave.x, 5);
-    expect(f.waveMesh.position.z).toBeCloseTo(f.wave.z, 5);
+    expect(f.waveMesh!.position.x, "the ring sits where it landed").toBeCloseTo(f.wave.x, 5);
+    expect(f.waveMesh!.position.z).toBeCloseTo(f.wave.z, 5);
     const before = f.wave.radius;
     run(r, player, () => f.wave.radius >= WAVE.radius - 1e-3, 60 * 3);
     expect(f.wave.radius, "it grew").toBeGreaterThan(before);
