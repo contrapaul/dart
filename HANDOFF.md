@@ -443,8 +443,9 @@ github.com/contrapaul/dart (public), MIT licence.
   to the Spark's parallel run; it passes alone and on the rerun).
 - In the browser (`arena.html?watch&level=1-2`, parry corridor and Ring
   cleared by script, player held at (-3, -29) under the slab): both floor
-  2 Roamers sidled until about 12 s, walked down the ramp (y 5, 3.3, then
-  0 by 15 s) and threw from the ground floor: 10 thrown, 10 hit in 30 s.
+  2 Roamers left their ring once blocked for 3 s, walked across floor 2
+  to the ramp and down it (y 5 until 9 s, 3.3 at 12 s, 0 by 15 s) and
+  threw from the ground floor: 10 thrown, 10 hit in 30 s.
 - Not checked: how the walk out of the ring reads in the Pit by eye, the
   Pit's live wave (headless 12 thrown, 11 reached).
 
