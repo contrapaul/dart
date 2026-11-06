@@ -6,17 +6,18 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-GAME-10f code done 2026-11-07, awaiting review (card `tasks/GAME-10f.md`,
+GAME-10f merged locally 2026-11-07, not pushed (card `tasks/GAME-10f.md`,
 Qwen 3.8 Flash Next via Pi, branch `game-10f`): the F07 Brawler. Purple
 body, orange armour pads, lime fists ([Paul]: sword or fists). It walks in
-and punches like the Roamer (45 health, punch 10), and between 5 and 12 m,
+and punches like the Slowmer (45 health, punch 14), and between 5 and 12 m,
 on a 6 s cooldown, it crouches 0.6 s and leaps an arc to 1.5 m short of
 where the player was, landing a shockwave ring that grows at 9 m/s out to
 8 m: a grounded player in its band is hurt 15 once, one in the air or
 dashing is not. Both legs gone ends the leap. Full suite 553 pass, 2
-skipped; `tsc` and `npm run build` clean. Not seen by eye in the game: the
-poses in motion, the ring's look, the three sounds; not tried in play: the
-jump and the dash through the band.
+skipped; `tsc` and `npm run build` clean. Played on the range: crouch,
+leap, landing short, the ring and its one hit all seen. Not heard: the
+three sounds; not tried in play: the jump and the dash through the band
+(unit tested).
 
 LVL-03a merged locally 2026-11-06, not pushed (card `tasks/LVL-03a.md`,
 DeepSeek V4.1 Flash via Pi): Level 1-3 beats 1 to 5 in
@@ -462,6 +463,29 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10f review, merged (Claude)
+
+- Played on the range (`range.html?watch`, F07, spawned 10 m out): it
+  walked in, crouched at 7.6 m for 0.6 s, flew 0.9 s, landed 1.5 m short
+  of the player, and the lime ring grew to 8 m and hit once (health 100
+  to 85), then it went back to punching. The palette matches the card;
+  the turnaround is in `design/foamers/F07-sheet.png`.
+- One fix: every Foamer of every type (a pack of Swarmers included)
+  built its own torus geometry and material for the ring, and the
+  landing rebuilt the geometry each leap. Now only a type with a
+  `shockwave` block gets a ring mesh, built once at spawn at full radius
+  and scaled, with one shared material; the geometry is disposed with
+  the Foamer. New test 5b.
+- Noted, not changed: the Spark's Status said "punch 10, like the
+  Roamer"; the data is 14 and it uses the Slowmer's melee brain
+  (corrected in Status). The punch lists both forearms in `needs`, but
+  with one forearm gone `chooseAttack` falls back to the last attack, so
+  it still punches.
+- The full suite under the other models' load failed two timing tests
+  (nav-grid bake, rig-motion "never snaps"); both pass alone.
+- Not checked: jumping or dashing through the band in play, the sounds,
+  the [Paul] sword or fists question.
 
 ### 2026-11-07: GAME-10f, the F07 Brawler, code done (Qwen 3.8 Flash Next via Pi)
 
