@@ -944,6 +944,14 @@ export class FoamerSystem {
     // to decide whether it may run back in or must keep the ring.
     f.sinceNibble = f.sinceNibble === Infinity ? Infinity : f.sinceNibble + dt;
     input.sinceNibble = f.sinceNibble;
+    // BUG-08: a thrower holding with no clear flight counts the seconds,
+    // and its brain leaves the ring once there are too many. A clear flight
+    // ends the count, and so does arriving inside the retreat distance:
+    // there is nothing closer to walk to, so the ring takes over again.
+    const gap = Math.hypot(player.x - f.centre.x, player.z - f.centre.z);
+    f.blockedSeconds = f.throwClear || gap <= input.retreatDistance
+      ? 0 : f.blockedSeconds + dt;
+    input.blockedSeconds = f.blockedSeconds;
     input.tookDamage = f.damageSinceStep;
     input.nearbyAlert = this.nearbyAlert(f);
     // A crawl is not one of the brain's states, so the brain never asks for

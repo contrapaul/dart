@@ -34,6 +34,12 @@ export interface F02Input extends F01Input {
    *  (there is no point in two blockers) but does not ask for one, and it
    *  moves rather than holding still with nothing to throw at. */
   flightClear: boolean;
+  /** BUG-08: seconds it has held without a clear flight (starts at zero
+   *  when the flight is clear or while it is not holding). Past
+   *  `brain.blockedRepathSeconds` it stops sidling its ring and walks its
+   *  path to the player: a ring with no clear spot at all is a ring it has
+   *  to leave. */
+  blockedSeconds: number;
 }
 
 /**
@@ -89,7 +95,15 @@ export function decideF02(
       // ring, which is what finds it a spot with a clear flight.
       if (!input.flightClear) {
         out.wantsToken = false;
-        out.move = ringMove(dist, input, agentId);
+        // BUG-08: a ring with no clear spot anywhere is a ring it must
+        // leave. Blocked for brain.blockedRepathSeconds, it stops sidling
+        // and walks its path to the player, which is what finds it a throw
+        // from another floor or the other side of the cover. Inside its
+        // retreat distance there is nothing to walk to, so it backs off as
+        // before and the timer runs on.
+        out.move = input.blockedSeconds >= BRAIN.blockedRepathSeconds
+          ? (dist < input.retreatDistance ? "backOff" : "followPath")
+          : ringMove(dist, input, agentId);
         return out;
       }
       // A token, or the player walking a margin past the throw range, sends
@@ -169,6 +183,7 @@ export function makeF02Context(agentId: number): F02Context {
       preferredDistance: 0,
       retreatDistance: 0,
       flightClear: true,
+      blockedSeconds: 0,
       sinceNibble: Infinity,
     },
     decision: { state: "idle", move: "stand", wantsToken: false },

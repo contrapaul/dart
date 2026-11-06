@@ -88,8 +88,8 @@ describe("the Level 1-2 tower's Roamers (BUG-07)", () => {
   // BUG-08: the case the card names. The two floor 2 Roamers see the
   // player under the slab, find no clear flight from anywhere on their
   // ring, and (before the fix) sidle for good. They must walk down after
-  // them instead. Before the fix: 30 s gave 0 thrown and 0 reached.
-  it.fails("walks down to a player under the slab and reaches it", async () => {
+  // them instead. Before the fix: 30 s gave 0 thrown, 0 reached.
+  it("walks down to a player under the slab and reaches it", async () => {
     const r = await fight(SLAB, 30);
     const s = r.projectiles.stats;
     console.log(`BUG-08 tower down: thrown ${s.thrown}, hit ${s.hitPlayer}, `
