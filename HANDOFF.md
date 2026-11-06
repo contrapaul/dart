@@ -474,6 +474,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: BUG-10 review, merged (Claude)
+
+- Read the diff: tests and `vitest.config.ts` only. Budgets unchanged
+  (150 ms bake, 2 ms query, 1000 ms Pit bake, 0.35 rad); the rig test
+  walks the same rigs and frames and asserts the worst jump once per rig,
+  naming the frame and joint. Two choices to know about: the timed tests
+  now take the fastest of nine runs (the card allowed fastest or median;
+  the fastest is the more lenient of the two), and `maxWorkers: 6` caps
+  vitest's pool for every run.
+- Checked: the full suite on the branch took 6.98 s; it also passed with
+  a second full suite running at the same time, and passes on main after
+  the merge.
+- Open, from the model's notes: `tests/ai/tower-throw.test.ts` timed out
+  once under load (5.6 s against the 5 s default). Not looked into.
+
 ### 2026-11-07: BUG-10, the load-sensitive tests (Qwen 3.8-27B via Pi)
 
 Task: `tests/ai/nav-grid.test.ts` (the 40x40 timing test),
