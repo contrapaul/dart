@@ -71,7 +71,9 @@ export class FoamerSounds {
             ? "F05-run-loop"
             : f.spec.rig === "F03"
               ? "F03-scurry"
-              : "FX-step-medium",
+              : f.spec.rig === "F09"
+                ? "F09-step"
+                : "FX-step-medium",
           { position: f.centre },
         );
       } else if (seen === undefined) {
@@ -137,6 +139,12 @@ export class FoamerSounds {
           this.sink.play("F07-punch", p);
           break;
         }
+        if (f.spec.rig === "F09" && token === "ranged") {
+          // GAME-10g: the barrels spin up before the stream. The stomp
+          // (the gunless Crawler) keeps the plain swing below.
+          this.sink.play("F09-spinup", p);
+          break;
+        }
         this.sink.play(
           token === "ranged" ? "F02-windup" : token === "swarm" ? "F03-nibble" : "F01-swing",
           p,
@@ -149,6 +157,11 @@ export class FoamerSounds {
           f.spec.rig === "F04" ? "F04-volley" : f.spec.rig === "F06" ? "F06-spit" : "F02-throw",
           p,
         );
+        break;
+      case "pellet":
+        // GAME-10g: one pellet leaving the barrels. Cheap, and the voice
+        // cap in data/sounds.json is what keeps a storm of them in check.
+        this.sink.play("F09-pellet", p);
         break;
       case "fall":
         // GAME-11: it toppled, but it is not down, so no fizz-out.
