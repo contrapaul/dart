@@ -230,18 +230,31 @@ describe("Foamer rigs", () => {
   it("movement never snaps: no joint or lean jumps more than 0.35 rad between 60 Hz frames", () => {
     const dt = 1 / 60;
     for (const rig of RIGS) {
+      // The same frames and limit for every joint, but the worst jump is
+      // collected and asserted once per rig. An expect call per joint per
+      // frame is about 700k calls over all rigs; under a busy machine the
+      // call overhead, not the motion maths, ran the test past its timeout
+      // without a single jump being out of bound.
+      let worst = 0;
+      let at = "";
       let prev = rigMotion(rig, 0).motion;
       for (let t = dt; t < 30; t += dt) {
         const m = rigMotion(rig, t).motion;
-        const where = `${rig.id} t=${t.toFixed(2)}`;
-        expect(Math.abs(m.pitch - prev.pitch), `${where} pitch`).toBeLessThan(0.35);
-        expect(Math.abs(m.roll - prev.roll), `${where} roll`).toBeLessThan(0.35);
+        const frame = `${rig.id} t=${t.toFixed(2)}`;
+        let d = Math.abs(m.pitch - prev.pitch);
+        if (d > worst) { worst = d; at = `${frame} pitch`; }
+        d = Math.abs(m.roll - prev.roll);
+        if (d > worst) { worst = d; at = `${frame} roll`; }
         for (const p of rig.parts) {
           const a = m.rot.get(p.id) ?? [0, 0, 0], b = prev.rot.get(p.id) ?? [0, 0, 0];
-          for (let i = 0; i < 3; i++) expect(Math.abs(a[i] - b[i]), `${where} ${p.id}[${i}]`).toBeLessThan(0.35);
+          for (let i = 0; i < 3; i++) {
+            d = Math.abs(a[i] - b[i]);
+            if (d > worst) { worst = d; at = `${frame} ${p.id}[${i}]`; }
+          }
         }
         prev = m;
       }
+      expect(worst, `${rig.id}: worst per-frame jump was ${worst.toFixed(4)} rad at ${at}`).toBeLessThan(0.35);
     }
   });
 });
