@@ -41,7 +41,7 @@ export async function makePitRig(difficulty = "normal") {
   new DartImpacts(darts, debris, targets);
   foamers.director = ai.director;
   foamers.navGrid = ai.grid;
-  return { rapier, world, grid: ai.grid, darts, foamers };
+  return { rapier, world, grid: ai.grid, darts, debris, foamers };
 }
 
 export type PitRig = Awaited<ReturnType<typeof makePitRig>>;
