@@ -81,6 +81,10 @@ export interface AgentInput {
   /** The distance the circle stride keeps (metres): the bonker's hold ring,
    *  or the thrower's preferred distance. Filled by the system. */
   holdRange: number;
+  /** BUG-08, the F02 brain only: seconds it has held without a clear
+   *  flight. Absent means none, so a rig with no projectiles walks the old
+   *  way. */
+  blockedSeconds?: number;
   /** GAME-10d, the F03 brain only: seconds since its last nibble landed
    *  (Infinity before the first). Low means it is on the ring, waiting. */
   sinceNibble: number;
@@ -176,6 +180,7 @@ export class FoamerAgent {
     i.preferredDistance = input.preferredDistance;
     i.retreatDistance = input.retreatDistance;
     i.flightClear = input.canThrow ?? true;
+    i.blockedSeconds = input.blockedSeconds ?? 0;
     this.ask(input);
   }
 
@@ -191,6 +196,7 @@ export class FoamerAgent {
     i.preferredDistance = input.preferredDistance;
     i.retreatDistance = input.retreatDistance;
     i.flightClear = input.canThrow ?? true;
+    i.blockedSeconds = input.blockedSeconds ?? 0;
     // GAME-10e: the F04 brain's own fields. Other brains never read them,
     // and the system leaves them undefined for anything but a Blocker.
     if (input.slotX !== undefined) {

@@ -158,6 +158,9 @@ export function makeF04Context(agentId: number): F04Context {
       preferredDistance: 0,
       retreatDistance: 0,
       flightClear: true,
+      // BUG-08: the system fills this each step; only a broken Blocker
+      // (handed to decideF02) reads it.
+      blockedSeconds: 0,
       sinceNibble: Infinity,
       slotX: 0,
       slotZ: 0,

@@ -97,6 +97,10 @@ export class Foamer {
    *  one. A shape cast is not a per-step cost, so the check has its own
    *  clock (data/ai.json brain.flightCheckSeconds). */
   throwCheckIn = 0;
+  /** BUG-08: seconds it has gone without a clear flight while it holds, so
+   *  its brain can walk out of a ring that has no clear spot at all. Reset
+   *  to zero the moment a check comes back clear. */
+  blockedSeconds = 0;
   /** GAME-10d: seconds since its last nibble landed, Infinity until it has
    *  bitten once. Only a Swarmer's brain reads it (the ring wait after a
    *  nibble); the system restarts it when the windup lands. */

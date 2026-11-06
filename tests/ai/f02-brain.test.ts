@@ -136,3 +136,64 @@ describe("F02 brain on a director", () => {
     expect(brain.state).toBe("idle");
   });
 });
+
+describe("F02 brain: a blocked ring (BUG-08)", () => {
+  /** A holding context with no clear flight, blocked for `seconds`. */
+  function blocked(distance: number, seconds: number): F02Context {
+    const ctx = ctxFor(0);
+    ctx.input.distance = distance;
+    ctx.input.lineOfSight = true;
+    ctx.input.flightClear = false;
+    ctx.input.blockedSeconds = seconds;
+    return ctx;
+  }
+
+  it("sidles its ring while it has been blocked less than the repath time", () => {
+    const ctx = blocked(PREFERRED, aiData.brain.blockedRepathSeconds - 0.1);
+    const d = decideF02("hold", 1, ctx.input, 0, ctx.decision);
+    expect(d.state).toBe("hold");
+    expect(d.move).toBe("circleLeft");
+    // It keeps asking for nothing: a blocked thrower gives the token back.
+    expect(d.wantsToken).toBe(false);
+  });
+
+  it("walks its path to the player once it has been blocked past it", () => {
+    const ctx = blocked(PREFERRED, aiData.brain.blockedRepathSeconds);
+    const d = decideF02("hold", 1, ctx.input, 0, ctx.decision);
+    // No new state: it is still holding the ring, but walking its path.
+    expect(d.state).toBe("hold");
+    expect(d.move).toBe("followPath");
+    expect(d.wantsToken).toBe(false);
+  });
+
+  it("backs off instead of walking in inside its retreat distance", () => {
+    const ctx = blocked(RETREAT - 0.5, aiData.brain.blockedRepathSeconds + 1);
+    const d = decideF02("hold", 1, ctx.input, 0, ctx.decision);
+    expect(d.move).toBe("backOff");
+  });
+
+  it("is back on the ring the step a clear flight resets the timer", () => {
+    const ctx = blocked(PREFERRED, aiData.brain.blockedRepathSeconds + 1);
+    expect(decideF02("hold", 1, ctx.input, 0, ctx.decision).move).toBe("followPath");
+    ctx.input.flightClear = true;
+    const d = decideF02("hold", 1, ctx.input, 0, ctx.decision);
+    expect(d.move).toBe("circleLeft");
+    expect(d.wantsToken).toBe(true);
+  });
+
+  it("leaves approach alone: it reads the timer from the step it holds", () => {
+    // The timer is read in hold, which is the state that sidles for good.
+    // Approach still walks in and settles on the ring; the next step's hold
+    // is what leaves it.
+    const ctx = ctxFor(0);
+    ctx.input.distance = PREFERRED;
+    ctx.input.lineOfSight = true;
+    ctx.input.flightClear = false;
+    ctx.input.blockedSeconds = aiData.brain.blockedRepathSeconds + 1;
+    const d = decideF02("approach", 1, ctx.input, 0, ctx.decision);
+    expect(d.state).toBe("hold");
+    expect(d.move).toBe("circleLeft");
+    const next = decideF02("hold", 0, ctx.input, 0, ctx.decision);
+    expect(next.move).toBe("followPath");
+  });
+});
