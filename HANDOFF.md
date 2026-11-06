@@ -6,6 +6,16 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+BUG-09 done 2026-11-07 on branch `bug-09`, awaiting review (card `tasks/BUG-09.md`, Qwen 3.8-27B
+via Pi): `tests/foamers/finisher.test.ts` test 1 no longer flakes in full
+runs. Two test-only fixes: the eight `settle` helpers in `tests/foamers/`
+wait until `mesh.busy` clears instead of one `setTimeout(0)` (a slow
+event loop could leave the trimesh collider missing or stale), and the
+crossing hit starts at band + 0.5 so one dart's damage alone crosses,
+instead of band + 2 which banked on the dart's bounce re-hit. In-process
+probe: 2 of 80 failures before, 60/60 after. Test-only; not checked by
+eye (nothing visual changed).
+
 LVL-03a merged locally 2026-11-06, not pushed (card `tasks/LVL-03a.md`,
 DeepSeek V4.1 Flash via Pi): Level 1-3 beats 1 to 5 in
 `data/levels/1-3.json`, played as `arena.html?level=1-3`: the bay, explore
@@ -450,6 +460,56 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: BUG-09, the flaky finisher test (Qwen 3.8-27B via Pi, branch `bug-09`, pending review)
+
+Task: `tests/foamers/finisher.test.ts` test 1 failed now and then in a
+full `npx vitest run` (line 103, `f.finishWeakened` still false). Two
+causes, both test-only; no game code changed.
+
+Cause 1, the card's lead: every helper `settle` in `tests/foamers/` waited
+one `setTimeout(0)` for the part's mesh promise (`tests/foamers/finisher.test.ts:30-38` before
+the change, and the same eight files: `blocker.test.ts:42`,
+`chunk.test.ts:36`, `darter.test.ts:20`, `fall.test.ts:41`,
+`foamers.test.ts:28`, `parts.test.ts:30`, `ragdoll.test.ts:33`).
+`VolumeMesh.update` sends dirty chunks to the mesher's promise and builds
+the trimesh collider only when the promise lands
+(`src/voxel/volume-mesh.ts` `update`/`apply`). On a loaded event loop the
+chain can take more than one macrotask, so a fired dart met a missing or
+stale collider. Proven by forcing: delaying the fake mesher by one extra
+macrotask made the old settle miss the crossing shot. Fix: settle now
+loops `update`/`setTimeout(0)` until `mesh.busy` is false, the pattern
+`tests/level/level-1-3.test.ts` already uses. All eight files got the same
+one-line-shaped change (added the `busy: boolean` to the mesh parameter
+and the while loop) because they are the same bug.
+
+Cause 2, found by a probe (test 1 copied in-process, 80 repetitions, per-hit
+health deltas logged): at the test's old crossing health (band + 2 = 3.80,
+band 1.80) the crossing needs two effective damages: the body dart's 1.0
+and the bounce dart's 1.0 (13.04 m/s, over the 8 m/s `minDamageSpeed`).
+Whether the bounce re-hit the body depended on the wound's remesh in flight
+and where debris chunks from the first shot (random speeds, dart-castable)
+fell: the probe failed 2 of 80, and in both failures the bounce dart hit
+the floor or a debris chunk and health stopped at 2.80, above the band.
+The fix: `tests/foamers/finisher.test.ts:108` sets the crossing health to
+band + 0.5, so one dart's 1.0 damage alone crosses the band; the bounce's
+re-hit (which deals at most one more 1.0) can no longer change the
+outcome. 60/60 in-process after, and the same probe at band + 2 failed
+2 of 80, which is the forced evidence.
+
+Verification: the debug probe file was deleted before the gates. `tsc
+--noEmit` clean, `npm run build` clean, `vitest run` 5 full runs clean
+(82 files), `tests/foamers/finisher.test.ts` alone 30/30, no em or en
+dash in any touched file. Could not check by eye in a browser: nothing
+visual changed; the sole changed behaviour is the second shot's starting
+health (3.80 now 2.30), which the test itself asserts via
+`finishWeakened`.
+
+Unrelated, observed but not touched (out of this card): in loaded full
+runs `tests/foamers/rig.test.ts` ("movement never snaps", an assertion on
+per-frame joint deltas) failed 3 of 10 full runs but passed 10 of 10 when
+run alone; it is wall-time sensitive, the kind of timing test the card
+warns can flake under load. It is not the BUG-09 failure: `finisher.test.ts` never flaked in the final verification. Flagged for whoever next sees it: a fixed 0.35 rad threshold on 60 Hz frames is a marginal bound when the isolate pool steals wall time.
 
 ### 2026-11-06: GAME-10c review, merged (Claude)
 
