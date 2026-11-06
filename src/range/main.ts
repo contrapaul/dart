@@ -857,10 +857,9 @@ if (watch) {
       shieldState: () => shield.state,
       /** GAME-04 stage 2 (BUG-02), fixed by BUG-04: raise the disc with
        *  its hands-on lead, timed by the ball's real flight (ball-time.ts,
-       *  the game page's helper's math). Before the wait it faces the face
-       *  of the face's thrower (in the range, multiple throwers can throw
-       *  in the face: the disc's face should judge the face of the face),
-       *  and once the timed ball has been parried, blocked or hit the loop
+       *  the game page's helper's math). Before the wait it faces the timed
+       *  ball's thrower (several Foamers can throw at once, and the disc's
+       *  arc is judged on the view), and once the timed ball has been parried, blocked or hit the loop
        *  lowers the disc again (the caller does not have to). true when a
        *  ball was found to aim at. */
       parryNext: () => {
@@ -868,8 +867,8 @@ if (watch) {
         const { t, ball } = parryNextWait(STEP);
         if (ball === null) return false;
         parryBall = ball;
-        // The face the disc's face judges (the page's own looking at the
-        // thrower, like watch's look).
+        // Face the timed ball's thrower: the disc's arc is judged on the
+        // view (as the watch's look turns it).
         const at = ball.thrower.centre;
         const e = player.eye(1, _eye);
         const dx = at.x - e.x, dy = at.y + 1.2 - e.y, dz = at.z - e.z;
