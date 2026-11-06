@@ -474,6 +474,75 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: BUG-10, the load-sensitive tests (Qwen 3.8-27B via Pi)
+
+Task: `tests/ai/nav-grid.test.ts` (the 40x40 timing test),
+`tests/foamers/rig.test.ts` ("movement never snaps") and
+`tests/level/pit-load.test.ts` ("bakes the whole Pit's nav grid") failed
+in full `npx vitest run` only when the machine was busy. All test and
+runner changes; no game code; no budget raised, no frame or rig dropped,
+no assertion removed.
+
+Reproduced under load (a second full suite running at the same time):
+5 of 5 runs red. The nav timing test failed on the bake 258 ms against
+the 150 ms budget (loaded single bake: 220 to 299 ms in the five
+reproduction runs), and on the query in two later runs (median of 9 at
+4.4 ms against the 2 ms budget). The rig test failed with "Test timed
+out in 5000 ms" after about 7 to 12 s of wall time. One out-of-scope
+failure was seen and written up here, not fixed: `tests/ai/tower-throw.test.ts`
+"does not throw into the slab" timed out in 5000 ms in one loaded run
+only (a 30 s simulated fight at 60 Hz is near the default 5 s timeout
+when the process is starved of CPU); it also passed once per loaded run
+of the final verification.
+
+Cause of each failure, with the evidence:
+
+1. The suite oversubscribes the machine. Vitest 5's default pool spawns
+   one fork per test file, so a full run is about 85 forks on a 12-core
+   machine; each fork gets little over 15 percent of a core. A wall-time
+   measurement then measures the machine, not the work. Evidence: the
+   40x40 bake printed 36 ms in the BUG-03 row of this log, 85 to 101 ms
+   in idle full runs here, and 220 to 300 ms in the five loaded runs,
+   the median of every consecutive sample raised.
+2. The rig test called `expect` once per joint per frame: 13 rigs times
+   1800 frames of 30 s times about 30 parts, roughly 700,000 one-argument
+   `expect` calls. Alone it took 1425 ms (already over a third of the
+   5000 ms timeout); when the fork also lost CPU time, it ran 7.4 to
+   12.3 s and hit the timeout with every jump still under 0.35 rad
+   (the timeout error, not an assertion, is every failure in the logs).
+
+Fixes (the two timed bakes, the query and the rig test keep the budgets
+the cards set):
+
+- `vitest.config.ts` gets `maxWorkers: 6`. Each fork is well fed again,
+  so wall time reflects the work's own cost even while another full
+  suite runs. The suite still takes about the same 7 s (total CPU work
+  is unchanged; only the 85-to-12 oversubscription is gone).
+- `tests/ai/nav-grid.test.ts` and `tests/level/pit-load.test.ts`: each
+  timed bake now times 9 identical bakes and asserts on the minimum
+  (median of 9 was still 220 to 300 ms under load, because the whole
+  run is busy, not one of nine samples). The nav query keeps 9 timed
+  queries but asserts on the minimum too: its median measured 4.4 ms in
+  the loaded runs against the 2 ms budget, the same starvation. The
+  game's page pays one bake and one query; the budget is about their
+  own cost, which the fastest sample measures.
+- `tests/foamers/rig.test.ts` "movement never snaps": same frames (30 s
+  of 60 Hz per rig), same rigs, same 0.35 rad limit, but the worst
+  per-frame jump is collected per rig and asserted once per rig, the
+  frame and the joint named in the message. 1425 ms to 114 ms idle,
+  114 to 170 ms in the five loaded runs.
+
+Verification: `npx tsc --noEmit` clean, `npm run build` clean, `npx
+vitest run` 85 files 554 pass 2 skipped, and after the fix five full
+runs while a second full suite ran all green (before: 5 of 5 red). Test
+times, idle vs loaded (the card asks for before/after): the 40x40 bake
+assert fell from 220 to 300 ms to 68 to 95 ms; its query from 4.4 to
+1.5 ms to 1.1 to 1.5 ms; "never snaps" from a 5000 ms timeout to 114
+to 170 ms; the Pit bake ran 1621 to 1766 ms wall in the five loaded runs
+(asserts on the baked grid itself, the minimum of its 9 bakes).
+Not checked by eye in a browser: nothing renders; the changes are the
+runner's parallelism and what three test files time.
+
 ### 2026-11-07: BUG-09 review, merged (Claude)
 
 - Read the diff: test files only, no game code. The eight `settle`
