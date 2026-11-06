@@ -6,6 +6,16 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+LVL-02d stage 2 done 2026-11-06 on branch `lvl-02d`, awaiting review
+(`tasks/LVL-02d.md`, DeepSeek V4.1 Flash via Pi): the nav grid holds four
+walkable layers per cell (stage 1, committed) and the beat 5 tower (A5)
+fills the bay beside the connecting corridor, four floors at 0, 5, 10 and
+15 m up three ramps a player and a Foamer can both walk, with two lock-free
+fights (2 Roamers, then 2 Roamers and a Slowmer) and a cardboard ceiling
+plug that drops as one slab. Not checked by eye: the tower's look, the
+climb in the browser, the plug's drop, the fight pacing. Not merged, not
+pushed. Full suite 500 pass, 2 skipped; `tsc` and `npm run build` clean.
+
 GAME-10e done 2026-11-06, awaiting review (`tasks/GAME-10e.md`, DeepSeek
 V4.1 Flash via Pi): the F04 Blocker. Blockers walk to a line of slots
 across the player, 1.2 m apart at 9 m, shields to the front inside a 120
@@ -438,6 +448,73 @@ github.com/contrapaul/dart (public), MIT licence.
   the player. Not merged. The branch `bug-05` also updates
   `tests/ai/pit-rig.ts` to build the grid with the voxel pieces the way
   the page does (BUG-03): worth taking on its own later.
+
+### 2026-11-06: LVL-02d stage 2, the tower in the bay (DeepSeek V4.1 Flash via Pi)
+
+- `data/levels/1-2.json`: the beat 5 tower (A5) now fills the bay off the
+  connecting corridor, interior x -19..1, z -36..-22. Four floors at 0, 5,
+  10 and 15 m; three side-by-side ramps in 3 m bands (5 m of rise over a
+  12 m run, 22.6 degrees) that the player (slope limit 46 degrees) and a
+  Foamer (nav autostep 0.2 m per 0.25 m cell) can both walk, which is why
+  the design's 1.5 m ledges are not the route. Each upper slab is a ring
+  with a 3 m hole over the ramp under it, so no flight is stacked on
+  another and every floor has 5 m of headroom. Path from the bottom floor
+  to the top is 9 waypoints on the nav grid.
+- Roof decision (also PLAN section 14): the tower carries its own roof at
+  19 m and the level's ceilings stay at 9.5 m, cut back to the tower's
+  walls (`north-ceiling` now z -112..-42, plus `ceil-spur`, `ceil-conn`,
+  `neck-lintel`). The alternative was floors closer together, and 5 m
+  apart with 5 m of headroom needs 19 m. Nothing goes over `nav.topMetres`
+  17 except the roof itself, which the bake sees as a flat face and which
+  no agent can step onto (checked, see below).
+- Route: the connector's north end is shut (`conn-n-end`), so the way on
+  to the spur and the Crossroads is through the tower's ground floor: in
+  at the 4 m doorway from the connector (x 2, z -31..-27) and out through
+  the north neck (x -12..-8, z -37). Both tower arenas are therefore
+  always on the route and cannot be skipped; a detour would have let a
+  player reach the exit pad with arenas uncleared, and it would never open.
+- Fights, no lock-in: `tower-low` (trigger the ground floor, 2 Roamers,
+  rifts on floor 2) and `tower-high` (trigger floor 3, 2 Roamers plus a
+  Slowmer). Both arenas have no doors at all, so `ArenaRunner.lock()` has
+  nothing to shut: the player may walk out and back at any time, which is
+  what the design asks for. `tower-low` is a checkpoint.
+- Ceiling plug: `tower-plug`, cardboard, 3.0 x 0.6 x 3.0 m under floor
+  3's slab at [-6, 9.2, -29], ceiling anchored. A ceiling anchor gets no
+  bedrock row, so one dart's island search takes the whole slab (5400
+  voxels: under `destruction.maxSearchVoxels` 6000) and it falls onto
+  floor 2 as one piece, 0 damage. It is 3.0 m in plan, not the design's
+  3.2, because 3.2 x 0.6 x 3.2 is 6144 voxels: over the island search's
+  budget, the search would have treated the slab as anchored and left it
+  hanging. New test 9 in `tests/level/level-1-2.test.ts` proves the one
+  island and the falling piece.
+- The topMetres side effect: new test 8 in `tests/level/level-1-2.test.ts`
+  and a new test in `tests/level/pit-load.test.ts` scan every cell pair
+  and assert no layer above 9 m sits within `maxStepMetres` 0.45 of a
+  layer under 6 m in a neighbouring cell, in Level 1-2 and in the Pit.
+  Both report 0, so no Foamer can step from a floor onto a roof or a
+  ceiling top. The ceilings and the roof do become layers (the bake meets
+  them), but nothing walks to them and the floors keep their slots (lowest
+  first). The 40x40 budget test, run alone on an idle machine: bake 38.8 ms
+  (was 37.6 ms with `maxLayers` 2 and `topMetres` 8, stage 1 recorded 36 to
+  39 ms), median path query 1.160 ms (was 1.158 ms). The difference is
+  noise, and the budget (150 ms, 2 ms) is untouched.
+- Tests: `tests/level/level-1-2.test.ts` now expects six arenas in order
+  (parry-corridor, ring, tower-low, tower-high, crossroads, gauntlet) and
+  archetypes A6, A2, A5, A5, A7, A3; its walk from start to exit goes
+  through the tower's ground floor and back out at the neck; the
+  rift/pickup floor test casts from just above each spot so the tower's
+  floor 2 and 3 rifts check their own slab; the exit pad test stands on the
+  ground floor and on floor 3 for the tower's two arenas. `NavGrid.maxLayers`
+  is public now (a test indexes `layerY` and needs the stride).
+- Not checked by eye (no browser here): the tower's look and read from
+  inside, whether the three ramps are easy to find from the ground floor,
+  the plug's drop on screen, the fights' pacing on floors 2 and 3, and the
+  frame cost of four floors of shell boxes.
+- Not covered: `src/level/validate.ts` rule 9 does not know about the
+  tower's two arenas overlapping in plan (their triggers are 10 m apart in
+  height, so the reachable-order rule passes), and no test walks a Foamer
+  up the ramps in the physics world: the nav path and the geometry are
+  checked, the actual climb is not.
 
 ### 2026-11-06: LVL-02d parked after stage 1 (Claude, overnight)
 
