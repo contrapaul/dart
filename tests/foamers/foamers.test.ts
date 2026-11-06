@@ -25,9 +25,12 @@ function fakeMesher(): Mesher {
 
 /** Let pending remesh promises resolve, then step once more so the
  *  colliders built from them exist in the world. */
-async function settle(mesh: { update(): void }, world: RAPIER.World) {
-  mesh.update();
-  await new Promise((r) => setTimeout(r, 0));
+async function settle(mesh: { update(): void; busy: boolean }, world: RAPIER.World) {
+  while (true) {
+    mesh.update();
+    if (!mesh.busy) break;
+    await new Promise((r) => setTimeout(r, 0));
+  }
   world.step();
 }
 
