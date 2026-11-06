@@ -543,12 +543,12 @@
       "shape": "box",
       "pos": [
         0,
-        3.75,
+        4,
         -68.5
       ],
       "size": [
         4,
-        8.5,
+        8,
         1
       ],
       "material": "greybox"
@@ -567,6 +567,483 @@
         27
       ],
       "material": "greybox"
+    },
+    {
+      "id": "yard-floor",
+      "shape": "box",
+      "pos": [
+        0,
+        -4.5,
+        -92
+      ],
+      "size": [
+        44,
+        1,
+        36
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "yard-wall-s-w",
+      "shape": "box",
+      "pos": [
+        -13,
+        4,
+        -73.5
+      ],
+      "size": [
+        18,
+        16,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-s-e",
+      "shape": "box",
+      "pos": [
+        13,
+        4,
+        -73.5
+      ],
+      "size": [
+        18,
+        16,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-lintel-s",
+      "shape": "box",
+      "pos": [
+        0,
+        7,
+        -73.5
+      ],
+      "size": [
+        8,
+        10,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-n-w",
+      "shape": "box",
+      "pos": [
+        -13,
+        4,
+        -110.5
+      ],
+      "size": [
+        18,
+        16,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-n-e",
+      "shape": "box",
+      "pos": [
+        13,
+        4,
+        -110.5
+      ],
+      "size": [
+        18,
+        16,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-lintel-n",
+      "shape": "box",
+      "pos": [
+        0,
+        7,
+        -110.5
+      ],
+      "size": [
+        8,
+        10,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-e-s",
+      "shape": "box",
+      "pos": [
+        22.5,
+        4,
+        -81
+      ],
+      "size": [
+        1,
+        16,
+        14
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-e-n",
+      "shape": "box",
+      "pos": [
+        22.5,
+        4,
+        -103
+      ],
+      "size": [
+        1,
+        16,
+        14
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-lintel-e",
+      "shape": "box",
+      "pos": [
+        22.5,
+        6,
+        -92
+      ],
+      "size": [
+        1,
+        12,
+        8
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-w-s",
+      "shape": "box",
+      "pos": [
+        -22.5,
+        4,
+        -81
+      ],
+      "size": [
+        1,
+        16,
+        14
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-wall-w-n",
+      "shape": "box",
+      "pos": [
+        -22.5,
+        4,
+        -103
+      ],
+      "size": [
+        1,
+        16,
+        14
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-lintel-w",
+      "shape": "box",
+      "pos": [
+        -22.5,
+        6,
+        -92
+      ],
+      "size": [
+        1,
+        12,
+        8
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        12.5,
+        -92
+      ],
+      "size": [
+        46,
+        1,
+        36
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "breather-floor",
+      "shape": "box",
+      "pos": [
+        0,
+        -4.5,
+        -71
+      ],
+      "size": [
+        8,
+        1,
+        6
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "breather-wall-w",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        -0.5,
+        -71
+      ],
+      "size": [
+        1,
+        7,
+        4
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "breather-wall-e",
+      "shape": "box",
+      "pos": [
+        4.5,
+        -0.5,
+        -71
+      ],
+      "size": [
+        1,
+        7,
+        4
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "breather-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        3.5,
+        -71
+      ],
+      "size": [
+        8,
+        1,
+        4
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "exit-floor",
+      "shape": "box",
+      "pos": [
+        0,
+        -4.5,
+        -113
+      ],
+      "size": [
+        8,
+        1,
+        6
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "exit-wall-w",
+      "shape": "box",
+      "pos": [
+        -4.5,
+        -0.5,
+        -113.5
+      ],
+      "size": [
+        1,
+        7,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "exit-wall-e",
+      "shape": "box",
+      "pos": [
+        4.5,
+        -0.5,
+        -113.5
+      ],
+      "size": [
+        1,
+        7,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "exit-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        3.5,
+        -113.5
+      ],
+      "size": [
+        8,
+        1,
+        5
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "exit-wall-n",
+      "shape": "box",
+      "pos": [
+        0,
+        -0.5,
+        -116.5
+      ],
+      "size": [
+        9,
+        7,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "yard-ramp--15--82",
+      "shape": "ramp",
+      "pos": [
+        -10.9,
+        -3.8,
+        -82
+      ],
+      "size": [
+        3,
+        0.4,
+        5
+      ],
+      "rise": 2.5,
+      "material": "foam-blue",
+      "rotY": -90
+    },
+    {
+      "id": "yard-ramp-15--82",
+      "shape": "ramp",
+      "pos": [
+        10.9,
+        -3.8,
+        -82
+      ],
+      "size": [
+        3,
+        0.4,
+        5
+      ],
+      "rise": 2.5,
+      "material": "foam-blue",
+      "rotY": 90
+    },
+    {
+      "id": "yard-ramp--15--91",
+      "shape": "ramp",
+      "pos": [
+        -10.9,
+        -3.8,
+        -91
+      ],
+      "size": [
+        3,
+        0.4,
+        5
+      ],
+      "rise": 2.5,
+      "material": "foam-blue",
+      "rotY": -90
+    },
+    {
+      "id": "yard-ramp-15--91",
+      "shape": "ramp",
+      "pos": [
+        10.9,
+        -3.8,
+        -91
+      ],
+      "size": [
+        3,
+        0.4,
+        5
+      ],
+      "rise": 2.5,
+      "material": "foam-blue",
+      "rotY": 90
+    },
+    {
+      "id": "yard-ramp--15--100",
+      "shape": "ramp",
+      "pos": [
+        -10.9,
+        -3.8,
+        -100
+      ],
+      "size": [
+        3,
+        0.4,
+        5
+      ],
+      "rise": 2.5,
+      "material": "foam-blue",
+      "rotY": -90
+    },
+    {
+      "id": "yard-ramp-15--100",
+      "shape": "ramp",
+      "pos": [
+        10.9,
+        -3.8,
+        -100
+      ],
+      "size": [
+        3,
+        0.4,
+        5
+      ],
+      "rise": 2.5,
+      "material": "foam-blue",
+      "rotY": 90
+    },
+    {
+      "id": "u1-marking",
+      "shape": "box",
+      "pos": [
+        3,
+        -3.95,
+        -71
+      ],
+      "size": [
+        1,
+        0.1,
+        1
+      ],
+      "material": "foam-yellow"
+    },
+    {
+      "id": "s2-marking",
+      "shape": "box",
+      "pos": [
+        20,
+        -3.95,
+        -100
+      ],
+      "size": [
+        1.6,
+        0.1,
+        1.6
+      ],
+      "material": "foam-lime-light"
     }
   ],
   "pieces": [
@@ -746,6 +1223,126 @@
             1.6
           ],
           "material": "foam-orange"
+        }
+      ]
+    },
+    {
+      "id": "yard-island-w1",
+      "kind": "island",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -15,
+            -2.75,
+            -82
+          ],
+          "size": [
+            3.2,
+            2.5,
+            3.2
+          ],
+          "material": "foam-blue"
+        }
+      ]
+    },
+    {
+      "id": "yard-island-e2",
+      "kind": "island",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            15,
+            -2.75,
+            -82
+          ],
+          "size": [
+            3.2,
+            2.5,
+            3.2
+          ],
+          "material": "foam-blue"
+        }
+      ]
+    },
+    {
+      "id": "yard-island-w3",
+      "kind": "island",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -15,
+            -2.75,
+            -91
+          ],
+          "size": [
+            3.2,
+            2.5,
+            3.2
+          ],
+          "material": "foam-blue"
+        }
+      ]
+    },
+    {
+      "id": "yard-island-e4",
+      "kind": "island",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            15,
+            -2.75,
+            -91
+          ],
+          "size": [
+            3.2,
+            2.5,
+            3.2
+          ],
+          "material": "foam-blue"
+        }
+      ]
+    },
+    {
+      "id": "yard-island-w5",
+      "kind": "island",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            -15,
+            -2.75,
+            -100
+          ],
+          "size": [
+            3.2,
+            2.5,
+            3.2
+          ],
+          "material": "foam-blue"
+        }
+      ]
+    },
+    {
+      "id": "yard-island-e6",
+      "kind": "island",
+      "anchor": "floor",
+      "volumes": [
+        {
+          "pos": [
+            15,
+            -2.75,
+            -100
+          ],
+          "size": [
+            3.2,
+            2.5,
+            3.2
+          ],
+          "material": "foam-blue"
         }
       ]
     }
@@ -1007,6 +1604,171 @@
         "pit-in",
         "pit-out"
       ]
+    },
+    {
+      "id": "yard",
+      "archetype": "A6",
+      "trigger": {
+        "pos": [
+          0,
+          -2,
+          -92
+        ],
+        "size": [
+          14,
+          4,
+          10
+        ]
+      },
+      "doors": [
+        {
+          "id": "yard-in",
+          "pos": [
+            0,
+            -1,
+            -73.5
+          ],
+          "size": [
+            8,
+            6,
+            0.4
+          ],
+          "state": "open"
+        },
+        {
+          "id": "yard-out",
+          "pos": [
+            0,
+            -1,
+            -110.5
+          ],
+          "size": [
+            8,
+            6,
+            0.4
+          ],
+          "state": "locked"
+        },
+        {
+          "id": "yard-east",
+          "pos": [
+            22.5,
+            -2.0,
+            -92
+          ],
+          "size": [
+            0.4,
+            4,
+            8
+          ],
+          "state": "sealed"
+        },
+        {
+          "id": "yard-west",
+          "pos": [
+            -22.5,
+            -2.0,
+            -92
+          ],
+          "size": [
+            0.4,
+            4,
+            8
+          ],
+          "state": "sealed"
+        }
+      ],
+      "rifts": [
+        {
+          "id": "yard-rift-s",
+          "pos": [
+            0,
+            -3.8,
+            -75.5
+          ],
+          "facing": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "yard-rift-n",
+          "pos": [
+            0,
+            -3.8,
+            -108.5
+          ],
+          "facing": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "yard-rift-wall",
+          "pos": [
+            -6,
+            -3.8,
+            -109
+          ],
+          "facing": [
+            0,
+            0,
+            -1
+          ]
+        }
+      ],
+      "waves": [
+        {
+          "id": "yard-w1",
+          "rifts": [
+            "yard-rift-s",
+            "yard-rift-n"
+          ],
+          "spawns": [
+            {
+              "foamer": "F03",
+              "count": 8
+            }
+          ],
+          "delaySeconds": 2,
+          "holdSeconds": 2.5
+        },
+        {
+          "id": "yard-w2",
+          "rifts": [
+            "yard-rift-s",
+            "yard-rift-n",
+            "yard-rift-wall"
+          ],
+          "spawns": [
+            {
+              "foamer": "F03",
+              "count": 10
+            }
+          ],
+          "delaySeconds": 8,
+          "holdSeconds": 2
+        },
+        {
+          "id": "yard-w3",
+          "rifts": [
+            "yard-rift-wall"
+          ],
+          "spawns": [
+            {
+              "foamer": "F01",
+              "count": 3
+            }
+          ],
+          "delaySeconds": 10
+        }
+      ],
+      "unlockOnClear": [
+        "yard-in",
+        "yard-out"
+      ]
     }
   ],
   "pickups": [
@@ -1029,6 +1791,26 @@
         0.4,
         -44
       ]
+    },
+    {
+      "id": "yard-ammo-w",
+      "type": "darts-standard",
+      "count": 35,
+      "pos": [
+        -20,
+        -3.6,
+        -84
+      ]
+    },
+    {
+      "id": "yard-ammo-e",
+      "type": "darts-standard",
+      "count": 35,
+      "pos": [
+        20,
+        -3.6,
+        -100
+      ]
     }
   ],
   "playerStart": {
@@ -1042,8 +1824,8 @@
   "exit": {
     "pos": [
       0,
-      0,
-      -40
+      -2,
+      -113
     ],
     "size": [
       3.4,
@@ -1053,6 +1835,11 @@
   },
   "_notes": [
     "bay: the card asks for three foam dummies to warm up the trigger on. No dummy is a placeable thing in the blockout format (only waves spawn Foamers, and a wave would lock the bay), so the three dummies are small voxel foam-white pieces at x -5.5, 0 and 6, z -7 to -9: they carve like any cover, go down in a few darts and cannot shoot back.",
-    "explore-1: the S1 vent is [Paul] and not built; the foam-yellow marking at [5, -30] in the room's south-west corner marks its empty spot."
+    "explore-1: the S1 vent is [Paul] and not built; the foam-yellow marking at [5, -30] in the room's south-west corner marks its empty spot.",
+    "pit: the pit floor is 4 m down and its south and west ledges are at bay level. The two ramps are 8 m and 6 m runs at about 27 and 34 degrees, both inside the nav grid's 40 degree slope, so a Swarmer can chase the player up and down them. The centre block (6 x 3.2 x 4 m in four 3.2 m zones) and the two pillars are voxel pieces; the block is a little lower than the concept's 3.5 m because a voxel zone may not exceed 3.2 m on any axis.",
+    "yard: six islands, one 3.2 x 2.5 x 3.2 m voxel zone each (tops at -1.5 m, 2.5 m over the floor) with a 2.5 m ramp up the inner face. The ramp is inside the nav grid's 40 degree slope, and the nav test walks up and back down every one, so no Foamer is stranded. The east and west gates are sealed: the concept opens them in a later beat.",
+    "breather: the U1 station is [Paul] and not built; the foam-yellow floor marking at [3, -71] marks its empty spot. No health pickup here, as the card says.",
+    "exit: temporary. A plain pad past the Yard's north gate, armed only once the last arena clears. The hall, the drop and the Ring come in a later card.",
+    "waves: every wave is under 12 Swarmers alive (six, eight and ten), and the nearest Swarmer to the spawn cap is the Pit's second wave at eight."
   ]
 }

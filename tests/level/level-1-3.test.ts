@@ -33,9 +33,18 @@ beforeAll(async () => {
   await RAPIER.init();
 });
 
-/** Cast straight down from 4.5 m: is there floor within 6 m? */
+/** Voxel colliders arrive from the mesher as promises; wait for them before
+ *  ray casts or the nav bake, or the pieces are missing from the world. */
+async function settle(built: ReturnType<typeof buildLevel>) {
+  for (let i = 0; i < 200 && built.voxelMesh.busy; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+/** Cast straight down from 4.5 m: is there floor within 9 m? Deeper than
+ *  the other level's 6 m because the Pit floor is 4 m down. */
 function hasFloor(world: World, x: number, z: number) {
-  return world.castRay(new RAPIER.Ray({ x, y: 4.5, z }, { x: 0, y: -1, z: 0 }), 6, true) !== null;
+  return world.castRay(new RAPIER.Ray({ x, y: 4.5, z }, { x: 0, y: -1, z: 0 }), 9, true) !== null;
 }
 
 /** Every point on the walk, sampled every metre. */
@@ -57,8 +66,8 @@ describe("Level 1-3 loads (LVL-03a)", () => {
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     const arenas = level.arenas!;
-    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "pit"]);
-    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A1"]);
+    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "pit", "yard"]);
+    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A1", "A6"]);
     // Beat 2: one Slowmer and one Swarmer, apart, in one wave.
     expect(arenas[0]!.waves).toHaveLength(1);
     expect(arenas[0]!.waves[0]!.spawns).toEqual([
@@ -70,6 +79,13 @@ describe("Level 1-3 loads (LVL-03a)", () => {
       [{ foamer: "F03", count: 8 }],
       [{ foamer: "F01", count: 2 }],
     ]);
+    // Beat 5: eight Swarmers from the two ends, then ten plus three
+    // Slowmers from the north wall.
+    expect(arenas[2]!.waves.map((w) => w.spawns)).toEqual([
+      [{ foamer: "F03", count: 8 }],
+      [{ foamer: "F03", count: 10 }],
+      [{ foamer: "F01", count: 3 }],
+    ]);
   });
 
   it("2. the level choice plays 1-3 by name", () => {
@@ -79,14 +95,21 @@ describe("Level 1-3 loads (LVL-03a)", () => {
 
   it("3. has floor under the walk from the start to the exit", async () => {
     const { rapier, world } = await createPhysics();
-    buildLevel(level, rapier, world, FAKE);
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
     world.step();
     const route = walk(
       [0, -3], // the open bay (beat 1)
       [0, -12], // out of the bay
       [0, -21], // down the first corridor (beat 2)
       [0, -27], // across the explore room
-      [0, -41], // down the second corridor
+      [0, -41], // down the second corridor (beat 3)
+      [0, -50], // across the Pit floor, up the east ramp is not on this line
+      [0, -68], // out of the Pit
+      [0, -71], // the breather (beat 4)
+      [0, -90], // across the Yard (beat 5)
+      [0, -108], // the Yard's north gate
+      [0, -113], // the temporary exit
     );
     for (const [x, z] of route) {
       expect(hasFloor(world, x, z), `floor at ${x}, ${z}`).toBe(true);
@@ -96,7 +119,8 @@ describe("Level 1-3 loads (LVL-03a)", () => {
   it("4a. the Pit's ramps join its floor to its ledges on the nav grid", async () => {
     const { rapier, world } = await createPhysics();
     const built = buildLevel(level, rapier, world, FAKE);
-    const g = makeLevelAI(rapier, world, built.navBounds, "normal").grid;
+    await settle(built);
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
     // Floor, both ramp feet, both ramp heads and both ledges: the path a
     // Swarmer takes up to the player is one continuous walkable surface.
     expect(g.walkableAt(14, -54, -4), "east ramp foot").toBe(true);
@@ -112,10 +136,34 @@ describe("Level 1-3 loads (LVL-03a)", () => {
       .toBeGreaterThan(1);
   });
 
+  it("4c. the Yard's islands are reachable and trap nobody", async () => {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
+    const path = makePath();
+    const TOP = -1.5;
+    expect(g.walkableAt(0, -92, -4), "the Yard floor").toBe(true);
+    for (const z of [-82, -91, -100]) {
+      for (const x of [-15, 15]) {
+        expect(g.walkableAt(x, z, TOP), `island top at ${x}, ${z}`).toBe(true);
+        // Up, and back down: every island ramp joins floor to island, so a
+        // Swarmer that chases the player up can always come back down.
+        expect(g.findPath({ x: 0, z }, { x, z }, path, -4, TOP), `up to ${x}, ${z}`)
+          .toBeGreaterThan(1);
+        expect(g.findPath({ x, z }, { x: 0, z }, path, TOP, -4), `down from ${x}, ${z}`)
+          .toBeGreaterThan(1);
+      }
+    }
+  });
+
   it("4. each arena's trigger is reachable on the nav grid", async () => {
     const { rapier, world } = await createPhysics();
     const built = buildLevel(level, rapier, world, FAKE);
-    const ai = makeLevelAI(rapier, world, built.navBounds, "normal");
+    await settle(built);
+    const ai = makeLevelAI(
+      rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position,
+    );
     const g = ai.grid;
     expect(g.walkableAt(0, -27), "the explore trigger").toBe(true);
     const path = makePath();
