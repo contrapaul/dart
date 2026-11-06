@@ -6,16 +6,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-LVL-03b code done 2026-11-07, awaiting review (card `tasks/LVL-03b.md`,
-DeepSeek V4.1 Flash via Pi, branch `lvl-03b`, not merged, not pushed):
+LVL-03b reviewed 2026-11-07 (card `tasks/LVL-03b.md`, DeepSeek V4.1
+Flash via Pi, branch `lvl-03b`), not pushed:
 Level 1-3 beats 6 to 9 in `data/levels/1-3.json`: the hall chase (A4,
 18 x 44 m, 12 Swarmers every 4 s, no lock), the 6 m drop that seals 3 s
 after the landing, breather 2 (10 x 8 m, 35 darts, U2 and S3 marks), the
 Ring gauntlet (A2, 30 x 30 m, 10 then 12 Swarmers then 4 Roamers, A5 and
 A6 ammo, block reachable by a mantle chain) and the lit 3 m north exit.
 `ArenaRunner` gained `noLock` and `escape`. Short tests: `tests/level`
-90 pass, `tsc` and `npm run build` clean. Not checked by eye: nothing has
-been walked in a browser.
+90 pass, `tsc` and `npm run build` clean. Played by script from the
+hall to "Level complete"; the spaces' look and the mantle chain onto the
+Ring's block were not checked by eye.
 
 GAME-10f merged locally 2026-11-07, not pushed (card `tasks/GAME-10f.md`,
 Qwen 3.8 Flash Next via Pi, branch `game-10f`): the F07 Brawler. Purple
@@ -484,6 +485,30 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-03b review (Claude)
+
+- DeepSeek's first run and a resumed one both died on "Stream ended
+  without finish_reason" (OpenRouter), the first with the runner edits
+  uncommitted. A fresh session (13 MB of old context dropped) finished
+  the card in three commits. Main was merged into the branch first; one
+  HANDOFF conflict, both sides kept.
+- The card allowed `src/level/` only; the model also added `onEscaped` to
+  `src/arena/extras.ts` (clear the Foamers the drop left behind, dim the
+  rifts). That is the page side of the escape the card asked for, so it
+  stays.
+- Played in the browser (`arena.html?watch&level=1-3`, jumped to the
+  hall by setting the runner's arena index, health refilled by script):
+  the hall started on the trigger with no door shut, Swarmers spawned
+  every 4 s behind the player (7 up at 26 s); dropping through the hole
+  at z -152 ended the hall and cleared all 7; `drop-hatch` read sealed
+  about 3 s after the drop. The Ring locked on its trigger; its 10
+  Swarmers all reached the player (every one within 3 m from 2 s on).
+  Waves cleared by script: 10 Swarmers, 12 Swarmers, 4 Roamers, then
+  `ring-out` opened and the exit pad showed "Level complete".
+- Not checked: the look of the hall, the drop, breather 2 and the Ring
+  (the pane was hidden); the mantle chain onto the block; whether a
+  player can outrun the chase; frame time with 12 Swarmers in the lane.
 
 ### 2026-11-07: LVL-03b, the hall chase, the drop, breather 2, the Ring and the exit (Pi)
 
