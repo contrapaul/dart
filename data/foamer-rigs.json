@@ -1728,6 +1728,26 @@
           ]
         }
       ],
+      "motions": {
+        "_note": "GAME-10f: the Brawler poses (crouchMotion / leapMotion in rig-states.ts). Angles in degrees, distances in metres; the crouch is eased over its whole seconds and the leap pose is set by the launch, so both start and end at rest.",
+        "crouch": {
+          "pitch": 14,
+          "dip": 0.16,
+          "armBack": 60,
+          "foreArm": -70,
+          "knees": 30,
+          "headLow": 12
+        },
+        "leap": {
+          "pitch": -10,
+          "lift": 0.05,
+          "armUp": 130,
+          "armOut": 20,
+          "foreArm": -30,
+          "tuck": -60,
+          "headBack": -14
+        }
+      },
       "health": 45,
       "_note": "GAME-10f: the Brawler look in the factory palette (ART-03 way): purple body, orange armour pads, lime fists. [Paul] CONTENT-PLAN 3 says uses a foam sword, the 3.3 greybox row says huge fists: this card keeps the fists and colours them lime (the sword's colour). Sword or fists: Paul to choose."
     },

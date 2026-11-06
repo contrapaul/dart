@@ -379,6 +379,24 @@
       "_note": "GAME-10f: the Brawler. A heavy that walks in like the F01 and punches up close (the melee brain), and between leap.minMetres and leap.maxMetres, off cooldown, crouches, leaps an arc and lands a shockwave ring the player jumps or dashes through. Health 45 and speed 2.4 come from the rig. Weak point: none (CONTENT-PLAN 3).",
       "turnRate": 4,
       "attackRange": 1.7,
+      "leap": {
+        "_note": "GAME-10f: the leap slam. It crouches (crouchSeconds, the telegraph) when the player is between minMetres and maxMetres and the cooldown is up, then flies an arc (arcMetres high at speed m/s) to a point landShortMetres short of where the player was, and lands a shockwave. cooldownSeconds runs from the start of the crouch. Both legs gone: no leap, it crawls as the F01 does; an arm gone does not stop it.",
+        "minMetres": 5,
+        "maxMetres": 12,
+        "cooldownSeconds": 6,
+        "crouchSeconds": 0.6,
+        "speed": 7,
+        "arcMetres": 1.4,
+        "landShortMetres": 1.5
+      },
+      "shockwave": {
+        "_note": "GAME-10f: the ring the landing sends out. It grows from the landing point at speed m/s out to radius metres; the band is thickness metres wide (a player the outer edge reaches while the inner edge has not passed them). A grounded player in the band as it passes loses damage once; one in the air (a jump) or dashing takes none. tubeMetres is the drawn torus's tube radius.",
+        "speed": 9,
+        "radius": 8,
+        "thickness": 0.6,
+        "damage": 15,
+        "tubeMetres": 0.14
+      },
       "attacks": [
         {
           "id": "punch",

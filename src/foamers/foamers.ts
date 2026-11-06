@@ -15,6 +15,10 @@ import type { FoamerPart } from "./foamer-part";
 import { armourOf, plateFaces } from "./armour";
 import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
+import {
+  bandReaches, decideLeap, leapFlight, leapOf, landingPoint, shockwaveOf,
+  startShockwave, stepShockwave, type ShockwaveSpec,
+} from "./leap";
 import { floatOf } from "./float";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
 import { decideCharge } from "../ai/f05-brain";
@@ -197,7 +201,10 @@ export type FoamerSoundKind =
   // sound for it, so the others stay quiet rather than borrow one.
   | "alert"
   // GAME-10e, the Blocker: a dart into the shield, the shield coming off.
-  | "shield-hit" | "shield-break";
+  | "shield-hit" | "shield-break"
+  // GAME-10f, the Brawler: the crouch before the leap and the landing that
+  // lands the shockwave.
+  | "crouch" | "land";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -315,6 +322,19 @@ export class FoamerSystem {
   onWallHit: (f: Foamer, point: THREE.Vector3) => void = () => {};
   /** GAME-10b: the scrape dust at the telegraph, at the Darter's feet. */
   onScrape: (f: Foamer, point: THREE.Vector3) => void = () => {};
+  /** GAME-10f: may the player be hurt by a shockwave right now? A page says
+   *  no while the player is in the air (a jump) or dashing, which is the
+   *  card's teaching point: jump it or dash it. Default true (the unit
+   *  tests, the sandbox): a grounded player. */
+  playerVulnerable: () => boolean = () => true;
+  /** GAME-10f: the ring's band passed over a vulnerable player once. The
+   *  page costs the shockwave's own damage; the system only reports it, so
+   *  no health system is needed to test the ring. */
+  onShockwaveHit: (f: Foamer, point: THREE.Vector3) => void = () => {};
+  /** GAME-10f: the leap landed (the ring has started at this point). A page
+   *  can throw dust or play a per-page sound here; the system itself plays
+   *  the "land" event. */
+  onLand: (f: Foamer, point: THREE.Vector3, wave: ShockwaveSpec) => void = () => {};
 
   constructor(
     private rapier: Rapier,
@@ -401,6 +421,9 @@ export class FoamerSystem {
     f.glowGroup.add(f.glow);
     f.glowGroup.position.set(0, -1000, 0);
     this.group.add(f.glowGroup);
+    // GAME-10f: the shockwave ring, parked out of sight until a landing.
+    f.waveMesh.visible = false;
+    this.group.add(f.waveMesh);
     this.list.push(f);
     // Every part is a voxel target of its own, so darts carve the part
     // they actually hit.
@@ -592,6 +615,9 @@ export class FoamerSystem {
     f.prevCentre.copy(f.centre);
     f.prevYaw = f.yaw;
     f.stateTime += dt;
+    // GAME-10f: the leap cooldown runs from the start of the crouch (set
+    // there), whether or not the leap happens again soon.
+    if (f.leapCooldown > 0) f.leapCooldown = Math.max(0, f.leapCooldown - dt);
     // Face the player (+z is forward, so the wanted yaw is atan2(dx, dz)),
     // at the turn rate with the no-head handicap. Not while staggering: a
     // stagger is stillness and wobble only. Not while falling either (the
@@ -601,7 +627,11 @@ export class FoamerSystem {
     // is a recovery it does not turn out of quickly (the long turn comes
     // after, while it gets its feet back).
     const charging = f.state === "charge";
-    if (f.state !== "stagger" && f.state !== "fall" && f.state !== "finish" && !charging) {
+    // GAME-10f: the crouch and the flight hold their line too (the leap is
+    // aimed at the end of the crouch, like the charge at the end of the
+    // scrape).
+    const leaping = f.state === "crouch" || f.state === "leaping";
+    if (f.state !== "stagger" && f.state !== "fall" && f.state !== "finish" && !charging && !leaping) {
       const dx = player.x - f.centre.x;
       const dz = player.z - f.centre.z;
       const wanted = Math.atan2(dx, dz);
@@ -656,6 +686,67 @@ export class FoamerSystem {
         f.stateTime = 0;
         f.setAttack("bite");
         sound(this, "attack", f, f.centre);
+      } else if (leapOf(f.spec) && decideLeap(
+        { distance: dist, cooldownLeft: f.leapCooldown, onFeet: f.legs().length > 0 },
+        leapOf(f.spec)!,
+      )) {
+        // GAME-10f: the Brawler's crouch, the player's window to get clear
+        // of where it will land. It stops and folds; the line is locked when
+        // the crouch ends.
+        f.state = "crouch";
+        f.stateTime = 0;
+        f.leapCooldown = leapOf(f.spec)!.cooldownSeconds;
+        sound(this, "crouch", f, f.centre);
+      }
+    } else if (f.state === "crouch") {
+      // The telegraph: still, then the leap. The landing point is a spot
+      // landShortMetres short of where the player was when the crouch ended
+      // (leap.landingPoint), so the flight itself never lands on them.
+      const leap = leapOf(f.spec)!;
+      f.stateTime = Math.min(f.stateTime, leap.crouchSeconds);
+      if (f.stateTime >= leap.crouchSeconds) {
+        const land = landingPoint(f.centre.x, f.centre.z, player.x, player.z, leap.landShortMetres);
+        const dx = land.x - f.centre.x;
+        const dz = land.z - f.centre.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 1e-4) {
+          f.leapDirX = dx / d;
+          f.leapDirZ = dz / d;
+        } else {
+          f.leapDirX = Math.sin(f.yaw);
+          f.leapDirZ = Math.cos(f.yaw);
+        }
+        f.leapLeft = d;
+        const flight = leapFlight(d, leap.speed, leap.arcMetres, f.spec.gravity);
+        f.leapSeconds = flight.seconds;
+        f.leapVy = flight.vy;
+        f.vy = flight.vy;
+        f.stateTime = 0;
+        f.state = "leaping";
+      }
+    } else if (f.state === "leaping") {
+      // The arc. The system steps it (the standard movement below carries
+      // the wish it sets and the vy the clock gives it); this branch only
+      // watches for the landing. Blocked short of the point (a wall, a
+      // body) still lands at the end of the flight: the ring is what matters.
+      const sw = shockwaveOf(f.spec)!;
+      // The arc's vertical speed is read from the clock, not integrated: the
+      // controller reports the Foamer grounded on the frames just after the
+      // launch and would zero a vy it had accumulated.
+      f.vy = f.leapVy - f.spec.gravity * f.stateTime;
+      if (f.stateTime >= f.leapSeconds) {
+        f.state = "recover";
+        f.stateTime = 0;
+        f.vy = 0;
+        f.leapLeft = 0;
+        startShockwave(f.wave, sw, f.centre.x, f.centre.z);
+        f.waveMesh.geometry.dispose();
+        f.waveMesh.geometry = new THREE.TorusGeometry(sw.radius, sw.tubeMetres, 8, 48)
+          .rotateX(-Math.PI / 2);
+        f.waveMesh.position.set(f.centre.x, f.centre.y + sw.tubeMetres * 0.5, f.centre.z);
+        f.waveMesh.visible = true;
+        sound(this, "land", f, f.centre);
+        this.onLand(f, f.centre, sw);
       }
     } else if (f.state === "telegraph") {
       // The scrape: it stops, head down, and locks its line at the player's
@@ -830,14 +921,19 @@ export class FoamerSystem {
     // Gravity: vertical speed, reset by the ground. Without legs it never
     // falls: the floor fit below holds it on the ground. A crawl keeps
     // pulling itself along, so it is not grounded-limited like a walk.
-    f.vy = Math.max(f.vy - f.spec.gravity * dt, -50);
+    // GAME-10f: except in the leap's flight, where the arc's vy is read
+    // from the clock in the state machine (double counting would halve it).
+    if (f.state !== "leaping") f.vy = Math.max(f.vy - f.spec.gravity * dt, -50);
     if (flying) f.vy = 0;
     const crawling = f.state === "crawl";
     // Prone, it closes until its head (the part that reaches) is in range.
     const reach = crawling ? this.headDist(f, player) : dist;
     // GAME-10b: the scrapes and the run move themselves (the run through
     // the movement controller, above); the brain does not walk it then.
-    const still = f.state === "telegraph" || f.state === "charge" || f.state === "wallStun";
+    const still = f.state === "telegraph" || f.state === "charge" || f.state === "wallStun"
+      // GAME-10f: the crouch is stillness (the telegraph); the flight moves
+      // on its own line, set below, not on the brain's path.
+      || leaping;
     const moving = f.agent
       // GAME-07: while being finished the view turns and time runs out;
       // the finisher owns the Foamer, it cannot keep stalking.
@@ -870,6 +966,15 @@ export class FoamerSystem {
       } else {
         this._wish.set(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar(speed * dt);
       }
+    }
+    // GAME-10f: the flight moves on its locked line at the leap's own speed
+    // (the brain does not steer it, the way it does not steer a charge);
+    // vy, from the clock above, carries the arc under the controller below.
+    if (f.state === "leaping") {
+      const leap = leapOf(f.spec)!;
+      const stepMetres = Math.min(leap.speed * dt, f.leapLeft);
+      f.leapLeft -= stepMetres;
+      this._wish.set(f.leapDirX * stepMetres, 0, f.leapDirZ * stepMetres);
     }
     let stepDist = 0;
     if (f.legs().length === 0) {
@@ -906,6 +1011,25 @@ export class FoamerSystem {
       stepDist = Math.hypot(moved.x, moved.y, moved.z);
     }
     if (stepDist > 1e-4) f.gait += stepDist * 4 / (2 * Math.PI);
+    // GAME-10f: the ring grows, and a grounded player the band passes over
+    // is reported once. In the air or dashing (the page's playerVulnerable)
+    // the band goes under them and the moment is gone: that is the dash and
+    // jump timing the card teaches.
+    const swSpec = shockwaveOf(f.spec);
+    if (f.wave.active && swSpec) {
+      if (!stepShockwave(f.wave, dt, swSpec)) f.waveMesh.visible = false;
+      else {
+        // The ring stays where it landed (its position was set at the
+        // landing); it only grows. The Foamer moves on under it.
+        const s = f.wave.radius / swSpec.radius;
+        f.waveMesh.scale.set(s, 1, s);
+        if (!f.wave.hit && this.playerVulnerable()) {
+          const pd = Math.hypot(player.x - f.wave.x, player.z - f.wave.z);
+          // bandReaches marks the ring's own hit flag when it says true.
+          if (bandReaches(f.wave, pd, swSpec)) this.onShockwaveHit(f, f.waveMesh.position);
+        }
+      }
+    }
     if (flying) {
       // Hold the hover: feet hoverMetres (damaged: damagedHoverMetres)
       // over the floor under it. No grid (the range, unit tests): stay at

@@ -7,10 +7,13 @@ import { restMotion, rigHeight, solvePose, type RigMotion, type RigSpec } from "
 import {
   restInto, walkMotion, windupMotion, strikeMotion, staggerMotion, crawlMotion, finishMotion,
   scrapeMotion, chargeMotion, wallStunMotion, floatMotion,
+  crouchMotion, leapMotion,
 } from "./rig-states";
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
 import { floatOf } from "./float";
+import { makeShockwave } from "./leap";
+import { materialId, linearColorTable } from "../voxel/materials";
 import type { ShotDamage } from "./chunk";
 import type { DartHit } from "../weapons/darts";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
@@ -26,7 +29,11 @@ export type FoamerState =
   | "windup" | "strike" | "recover" | "stagger" | "fall" | "crawl" | "down" | "finish"
   // GAME-10b, the charger: the scrape before a charge, the straight run, and
   // the long stagger after it hits a wall (its back open).
-  | "telegraph" | "charge" | "wallStun";
+  | "telegraph" | "charge" | "wallStun"
+  // GAME-10f, the Brawler: the crouch before the leap (the telegraph) and
+  // the arc through the air. The landing itself goes to "recover", where
+  // the shockwave grows.
+  | "crouch" | "leaping";
 export type FoamerSpec = typeof foamerData.test;
 /** Rigs in the data file carry `health`; the base rig type does not. */
 export type GameRig = RigSpec & { health: number };
@@ -159,6 +166,31 @@ export class Foamer {
   /** GAME-10b: it has already hit the player on this charge, so one run
    *  hits once. */
   chargeHit = false;
+  /** GAME-10f: seconds until it may leap again, counted down every step
+   *  (the cooldown runs from the start of the crouch). */
+  leapCooldown = 0;
+  /** GAME-10f: the leap line locked at the end of the crouch (unit, ground
+   *  plane), the metres along it to the landing point, and the flight's
+   *  length and initial vertical speed, from leapFlight. */
+  leapDirX = 0;
+  leapDirZ = 1;
+  leapLeft = 0;
+  leapSeconds = 0;
+  leapVy = 0;
+  /** GAME-10f: the shockwave this Brawler last landed (leap.ts). One ring
+   *  at a time, reused per leap. */
+  readonly wave = makeShockwave();
+  /** GAME-10f: the ring's mesh: one torus lying flat on the floor (a
+   *  closed, capped solid), rebuilt when a wave starts (once per leap),
+   *  parked invisible when there is no ring. Owned by the FoamerSystem's
+   *  group, like the glow group. */
+  readonly waveMesh = new THREE.Mesh(
+    new THREE.TorusGeometry(1, 0.1, 8, 48).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({
+      color: new THREE.Color().fromArray(linearColorTable(), materialId("foam-lime") * 3),
+      roughness: 0.6, transparent: true, opacity: 0.85, depthWrite: false,
+    }),
+  );
   /** The body's centre height over the ground at rest: the pendulum's pivot
    *  length, filled once at spawn (GAME-11). */
   pivotHeight = 0;
@@ -390,6 +422,9 @@ export class Foamer {
     if (this.state === "telegraph") scrapeMotion(this.rig, this.stateTime / (this.spec as { charge?: { telegraphSeconds: number } }).charge!.telegraphSeconds, t);
     else if (this.state === "charge") chargeMotion(this.rig, this.gait * 2, t);
     else if (this.state === "wallStun") wallStunMotion(this.rig, this.stateTime, (this.spec as { charge?: { wallStunSeconds: number } }).charge!.wallStunSeconds, t);
+    // GAME-10f: the fold before the leap, and the pose in the air.
+    else if (this.state === "crouch") crouchMotion(this.rig, this.stateTime / (this.spec as { leap?: { crouchSeconds: number } }).leap!.crouchSeconds, t);
+    else if (this.state === "leaping") leapMotion(this.rig, this.stateTime / Math.max(0.001, this.leapSeconds), t);
     else if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
     else if (this.state === "stagger") staggerMotion(this.stateTime, this.staggerDuration(), t);
@@ -574,6 +609,7 @@ export class Foamer {
     for (const p of this.parts.values()) p.dispose(world);
     this.group.removeFromParent();
     this.glowGroup.removeFromParent();
+    this.waveMesh.removeFromParent();
     world.removeRigidBody(this.root);
   }
 }

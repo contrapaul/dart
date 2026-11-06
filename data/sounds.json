@@ -2646,6 +2646,105 @@
           }
         ]
       }
+    },
+    "F07-crouch": {
+      "_note": "GAME-10f: the Brawler folds before its leap, the telegraph. Placeholder synth: a low foam creak going down, then a small compressive thump as the legs load.",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.45,
+              "f0": 180,
+              "f1": 90,
+              "wave": "triangle",
+              "attack": 0.05,
+              "decay": 0.35
+            },
+            "gain": 0.7
+          },
+          {
+            "noise": {
+              "dur": 0.3,
+              "attack": 0.02,
+              "decay": 0.26,
+              "lowpass": 700,
+              "highpass": 90,
+              "lowpassEnd": 240
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "F07-punch": {
+      "_note": "GAME-10f: the Brawler's two-fist punch. Placeholder synth: a heavy whoosh into a flat foam smack.",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.18,
+              "attack": 0.003,
+              "decay": 0.15,
+              "lowpass": 1600,
+              "highpass": 120,
+              "lowpassEnd": 300
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.12,
+              "f0": 140,
+              "f1": 70,
+              "wave": "square",
+              "attack": 0.002,
+              "decay": 0.1
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "F07-land": {
+      "_note": "GAME-10f: the Brawler lands and the shockwave starts. Placeholder synth: a heavy drop on foam, a low boom with a long tail.",
+      "files": [],
+      "volume": 1,
+      "jitter": 0.05,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.6,
+              "f0": 90,
+              "f1": 38,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.55
+            },
+            "gain": 1
+          },
+          {
+            "noise": {
+              "dur": 0.35,
+              "attack": 0.002,
+              "decay": 0.3,
+              "lowpass": 1100,
+              "highpass": 60,
+              "lowpassEnd": 150
+            },
+            "gain": 0.7
+          }
+        ]
+      }
     }
   },
   "blasterCues": {
