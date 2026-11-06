@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
-import { FOAMER_GROUPS, CAPSULE_GROUPS } from "../physics/world";
+import { FOAMER_GROUPS, CAPSULE_GROUPS, DEBRIS_GROUPS } from "../physics/world";
 import { materialId, linearColorTable } from "../voxel/materials";
 import type { DebrisSystem } from "../voxel/debris";
 import type { Foamer } from "./foamer";
@@ -209,6 +209,11 @@ export class ProjectileSystem {
           if (b.bounced && c === this.playerCollider) return false;
           const g = c.collisionGroups();
           if (g === CAPSULE_GROUPS) return false;
+          // BUG-06: foam chunks are scenery to a ball, as they are to a
+          // walk. A parried ball bursts on its thrower and leaves chunks
+          // where the next ball is thrown from, and without this a fresh
+          // ball burst in the hand instead of flying.
+          if (g === DEBRIS_GROUPS) return false;
           return !b.bounced ? g !== FOAMER_GROUPS : true;
         },
       );
@@ -217,8 +222,12 @@ export class ProjectileSystem {
         b.mesh.position.copy(b.pos);
         continue;
       }
+      // BUG-06: timeOfImpact is a distance in metres along the unit ray
+      // (as the dart system's is), not seconds. Scaling the velocity by
+      // it flew the ball a speed times too far, through the capsule's
+      // front, so onHitPlayer judged the throw as coming from behind.
       const t = Math.min(maxDist, hit.timeOfImpact);
-      b.pos.addScaledVector(b.vel, t);
+      b.pos.addScaledVector(b.vel, t / speed);
       if (b.bounced) {
         // GAME-04 stage 2: it meets a Foamer: damage and a short stagger (the
         // dart path's death rules, no pop, and no parry back), then the
