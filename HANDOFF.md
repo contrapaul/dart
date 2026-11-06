@@ -488,6 +488,9 @@ github.com/contrapaul/dart (public), MIT licence.
   the merge.
 - Open, from the model's notes: `tests/ai/tower-throw.test.ts` timed out
   once under load (5.6 s against the 5 s default). Not looked into.
+- New flake after the merge: one full run on main failed
+  `tests/foamers/parts.test.ts` test 8 (headbutt after both forearms);
+  15 of 15 alone and the next 11 full runs passed. Card BUG-11.
 
 ### 2026-11-07: BUG-10, the load-sensitive tests (Qwen 3.8-27B via Pi)
 
