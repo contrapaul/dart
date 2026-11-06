@@ -141,7 +141,9 @@ export class Vacuum {
    *  up-close the head reads as aimed even off the chest). out must not
    *  be eye or forward. A type without an entry is never a target. */
   attempt(f: Foamer, eye: THREE.Vector3, forward: THREE.Vector3, out: THREE.Vector3) {
-    if (f.state !== "stagger" || !f.finishWeakened) return false;
+    // GAME-09b review: a dying Foamer (its kill held for the rest of a
+    // shot) is already decided, as the finisher skips it.
+    if (f.state !== "stagger" || !f.finishWeakened || f.dyingHit) return false;
     if (!this.canVacuum(f)) return false;
     const d = out.set(f.centre.x, f.centre.y + f.height * 0.6, f.centre.z).distanceTo(eye);
     if (d > V.reach) return false;

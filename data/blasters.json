@@ -11,7 +11,8 @@
     "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.04, "tiltDeg": 5, "return": 12, "triggerDeg": 15, "pumpTravel": 0.06, "magDrop": 0.15 },
     "mods": {
-      "slug": { "dartType": "slug", "dartsPerShot": 1, "spreadDeg": 0 },
+      "slug": { "dartType": "slug", "dartsPerShot": 1, "spreadDeg": 0,
+        "chunk": { "_note": "GAME-09b: the slug is one heavy dart, so it reaches further than the Leviathan's close blast, with a smaller hole.", "rangeMetres": 8, "carveRadius": 0.3, "push": 1.6 } },
       "double": { "dartsPerShot": 6, "magSize": 12, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4", "muzzle_5", "muzzle_6"], "show": ["mod_double"] }
     }
   },
@@ -37,6 +38,7 @@
     "muzzles": ["muzzle_1", "muzzle_2"],
     "viewmodel": { "position": [0.2, -0.24, -0.38], "rotationDeg": [2, 5, 0], "scale": 0.75 },
     "motion": { "kick": 0.06, "tiltDeg": 8, "return": 8, "triggerDeg": 15, "breachOpenDeg": -40, "latchDeg": 30 },
+    "chunk": { "_note": "GAME-09b: eight darts at once, close in. rangeMetres from the muzzle to the hit. carveRadius is the hole's radius in metres, the biggest carve in the game. push multiplies the ragdoll's kill push.", "rangeMetres": 5, "carveRadius": 0.35, "push": 2.0 },
     "mods": {
       "both": { "bothBarrels": true },
       "quad": { "magSize": 4, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4"], "show": ["mod_quad"], "hide": ["fore-end"] }

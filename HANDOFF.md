@@ -6,6 +6,88 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10e done 2026-11-06, awaiting review (`tasks/GAME-10e.md`, DeepSeek
+V4.1 Flash via Pi): the F04 Blocker. Blockers walk to a line of slots
+across the player, 1.2 m apart at 9 m, shields to the front inside a 120
+degree arc; front darts do a twentieth of their damage and carve the plate
+slowly, side and back darts do full damage. With the ranged token one
+fires the type's three ball volley over the shield. The player's shield
+charge staggers a Blocker 1.2 s with its shield down, which is the window
+on the wall. A shot-away shield gives full damage and the Roamer's
+keep-distance brain. Not checked by eye: the wall's look and read, the
+parry fairness of the spread, the sounds, the frame cost of three. Full
+suite 492 pass, 2 skipped; `tsc` and `npm run build` clean.
+
+BUG-03 done 2026-11-06, awaiting review (`tasks/BUG-03.md`, Qwen 3.8-27B
+via Pi): the nav grid bakes the level's solid voxel pieces, so a cell
+inside a destructible block reads as an obstacle from the first frame a
+Foamer can path and a cell's interior is never a stand-able floor. Not
+checked by eye: Foamers walking round the Pit's central block in the
+browser (the reviewer's).
+
+GAME-09b stage 1 and 2 done 2026-11-06, awaiting review
+(`tasks/GAME-09b.md`, DeepSeek V4.1 Flash via Pi): the chunk finish. A shot's
+darts now carry a shot id, the muzzle and their blaster's `chunk` block
+(B03, B01's slug mod; the others null). A killing dart hit that passes the
+rule in `src/foamers/chunk.ts` becomes a chunk instead of a plain go down:
+a sphere at that shot's mean hit point is carved through every part it
+reaches, debris is thrown inside `chunk.debrisMax`, and the ragdoll goes
+down with its push scaled by `chunk.push`. The rule needs the rig's tier in
+`chunk.tiers` (Heavy, Elite, Boss) or the Foamer already finishable before
+the shot began, and that shot's own damage inside `catastrophic.window` of
+at least `chunk.minShare` of max health, hit within the blaster's
+`rangeMetres` of the muzzle. The range page has a "Spawn weakened" row.
+Not checked by eye: the hole's look, the burst density and spread, the push,
+and the `FX-chunk` replay at the chunk (no browser here). Stage 3's range
+switch is in; the area blast half of the card (B05 and B06 mods, B07) is
+still open.
+
+BUG-02 done 2026-11-06, awaiting review (`tasks/BUG-02.md`, Qwen 3.8-27B
+via Pi): the watch helper lands parries against a lobbed ball, and packs
+spawn on floor the grid says an agent can stand on. The parry's own unit
+tests pass and the shield is untouched: the fault was the helper's
+estimate. `parryNext()` asked straight-line distance over speed for a
+ball on a gravity loft, so the raise landed out of the parry window
+and the ball burst on the disc as a block (the six-try, zero-parry
+from the GAME-06 and GAME-04b reviews). Now it asks `timeToImpact`, a
+new shared pure function in `src/foamers/ball-time.ts` that steps a
+copy of the ball with the projectile's own gravity and the page's step
+and returns the step at which the flight segment reaches the player's
+capsule spine (the shape the projectile's own raycast meets; read from
+the eye minus `eyeHeight`, the page's own read). The helper waits that
+time minus the shield's `parryLead` and then holds: on the game page
+through `fixedStep`, on the range through the loop's own step (`parryWaitSec`),
+which the helper cannot call. No parry rule or number changed.
+`spawnPack()` now asks the grid before it places a member: a ring spot
+is used only if an agent of the grid's size can stand on it (a new
+canStandAt on the nav grid: the layer the feet sit near, autostep up,
+full step down; a block's top face is walkable and reads as a top, not
+a floor), and a blocked spot is stepped a few in along the angle
+(data `pack.inboundStepMetres` 0.5, `inboundSteps` 4) before the member
+is skipped (neither spawned nor counted, so a skipped member is
+neither a pack slot nor a ghost the next pack must budget against).
+Without a grid the placement is unchanged. The earlier `walkableAt`
+was not the right ask: it read the lowest layer without a height, so
+the Pit's central block called the column's top face a walkable floor.
+Tests: `tests/foamers/ball-time.test.ts` (the straight ball and the
+loft, read against the real `update` loop, within two steps; the old
+line estimate off by more than a step), `tests/shield/parry-next.test.ts`
+(the helper's own wait, raise, and a parry, not a block, plus the
+card's demonstration: the old distance-over-speed wait on a 20 m loft
+is out of the window by more than a window, so the old helper blocked),
+and `tests/foamers/pack-walkable.test.ts` (a block whole under a pack:
+nobody spawns and the skipped members simply are not there; a block
+off to a side: the full pack still arrives, stepped in past it, nothing
+standing on it) fails on the old placement. npx tsc --noEmit, npx
+vitest run, npm run build all pass; every touched file is free of em
+and en dashes.
+Not checked by eye: that `parryNext()` actually lands parries in the
+browser against a live Roamer, and what a skipped or stepped-in member
+looks like in the Pit (there is no browser here; the reviewer will
+check both against a page). The old-estimate line is demonstrated in
+the test: the old wait on a 20 m loft is out of the window by more
+than a window.
+
 LVL-02c done 2026-11-06, awaiting review (`tasks/LVL-02c.md`, Qwen 3.8
 Flash Next via Pi): Level 1-2 beats 6 to 9 are in `data/levels/1-2.json`,
 so `arena.html?level=1-2` now plays four arenas in order. From the store
@@ -319,6 +401,352 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: BUG-04 stopped at 2 in 10, a lead (Claude, morning)
+
+- Qwen 27B ran about ten hours in all and was stopped at 07:10 so the
+  machines are idle while Paul is out. Its work is on branch `bug-04`
+  (commit "work in progress"), not merged: the Pit test's stage 2 still
+  gives 2 parries in 10 and fails.
+- On the branch: a headless Pit repro (`tests/shield/parry-pit.test.ts`,
+  stage 1 records the old helper), and a helper that times the earliest
+  ball, faces that ball's thrower and lowers the disc after the ball is
+  done. Facing the right thrower did not change the count, so that was
+  not the cause.
+- Lead from its instrumented run, not confirmed: ball 14 first touches
+  the capsule 0.39 m in front of it, above the top, but the hit is
+  judged with the ball at z -8.6, behind the capsule centre (-8.0), at
+  138 degrees to the view, so the shield reads it as from behind and
+  the player is hurt. If so the cause is where the hit is judged in
+  `src/foamers/projectiles.ts` (the ball moves on past the contact
+  before `onHitPlayer` runs), outside the card's files: a next card
+  should check that first.
+- Nothing checked in the browser.
+
+### 2026-11-06: BUG-05 not merged, the review's test was the cause (Claude, overnight)
+
+- DeepSeek reproduced the stuck Swarmers headless and found why: when
+  the pack was placed, the player was still at the level start in the
+  corridor beyond the open `pit-in` door, so the shortest path to them
+  left the pit; the door then locked them out. That is normal chasing,
+  and the "too fast" trip was over more time than the BUG-03 review
+  thought. In play, arena waves spawn Swarmers at rifts inside the arena
+  after it locks.
+- Its fix leashes a hand placed pack to 11 m from where it was put. Only
+  the range calls `spawnPack`, so the leash changes nothing in a level,
+  but on the range a pack spawned 20 or 30 m out would stop 9 m short of
+  the player. Not merged. The branch `bug-05` also updates
+  `tests/ai/pit-rig.ts` to build the grid with the voxel pieces the way
+  the page does (BUG-03): worth taking on its own later.
+
+### 2026-11-06: LVL-02d parked after stage 1 (Claude, overnight)
+
+- The Spark committed stage 1 on branch `lvl-02d`: `nav.maxLayers` 2 to
+  4 and `nav.topMetres` 8 to 17 (so the bake reaches a 15 m floor), with
+  tests (four floors in one cell, a path up switchback stairs) and the
+  timing test unchanged (bake 36 to 39 ms, path 1.1 ms). Not merged:
+  it only matters with the tower, and `topMetres` 17 also lets the bake
+  see roof and ceiling tops in the other levels (floors still win the
+  four slots, lowest first), which wants a check in the Pit and the Ring.
+- Stage 2, the tower, failed four times: every run (resumed, thinking
+  low, fresh, and with orders to write the level by small scripts) hit
+  the Spark's output limit before saving anything. The Spark also slowed
+  to about 25 s for a one word reply after the third. Parked for Paul:
+  a smaller tower card, another model, or the Spark with a higher output
+  limit.
+
+### 2026-11-06: GAME-10e review, a Blocker wall in the Ring (Claude, overnight)
+
+- DeepSeek finished all three stages in one run (the read-once brief
+  worked). Checked by value: of `data/foamer-rigs.json` only F04 changed
+  (the rest is number formatting), of `data/foamers.json` only the F04
+  type; the F01 brain change is one new move intent; `shield.ts` gets one
+  line, the Blocker's longer charge stagger with a fallback to the old
+  time. Main merged in; tsc, 495 tests and the build pass.
+- Played in the Ring with the watch: three Blockers walked to a line at
+  9.3 to 9.4 m, about 1 to 1.4 m apart, shields up, and fired a three ball
+  volley over the top. A B01 shot into the front: 3 darts, 0.08 damage.
+- Changed in review: F04 `turnRate` 5 to 1.4 rad/s (the Darter's). At 5 a
+  Blocker faced a strafing player within a second, so a side shot met the
+  shield and flanking, the thing it teaches, could not work. At 1.4 it
+  lagged a quick strafe by about 25 degrees. Tune in playtest.
+- Not verified in the browser: a flank shot landing full damage (my
+  scripted strafe and aim missed three times; the unit test for side
+  damage passes), the shield charge stagger, the shield breaking, the
+  look up close, the four sounds.
+
+### 2026-11-06: GAME-10e, the F04 Blocker and its shield wall (DeepSeek V4.1 Flash via Pi)
+
+Task card `tasks/GAME-10e.md`. Three stages, each committed green.
+
+- **The type and the look.** `F04` in `data/foamer-rigs.json` (orange body
+  and head with a wide lime visor bar, no eyes: a faceless blocker; arms
+  and legs purple; a deep purple shield plate with a lime boss held ahead
+  of the body; a blaster box over the right shoulder) and in
+  `data/foamers.json` (`slots` 9 m hold, 1.2 m spacing; `stagger`
+  0.5 s / `shieldChargeTime` 1.2 s; `line` count 3; armour `shield`
+  damage 0.05, carve 0.3, arc 120 degrees; a 3 ball `volley` with a 5
+  degree spread, pinned `range` 16 m, and a `bash`). Turnaround sheet in
+  `design/foamers/F04-sheet.png`. `src/foamers/armour.ts` is the one
+  cover rule: `armourOf` reads the part's table, `plateFaces` answers
+  whether a dart came in inside the arc, and `handleHit` multiplies by
+  `damage` only when the plate covers the hit.
+- **The wall.** `src/ai/f04-brain.ts`: four states as the other brains,
+  but the slot comes from the system, not the brain. `assignSlots` runs
+  before the bids each step, sorts the live Blockers by agent id (no
+  swapping), and puts them on a line across the player at the hold
+  distance. Reaching one needed a new `toSlot` intent, because the nav
+  grid only paths to the player. A token sends it from hold back to
+  approach, where the state machine starts the attack, and the volley
+  fires `atk.shots` balls fanned by `spreadDeg` through the existing
+  `ProjectileSystem.launch`. A broken shield hands the step to the
+  Roamer's keep-distance brain.
+- **The charge.** `knockBack` uses `stagger.shieldChargeTime` (1.2 s);
+  a staggered Foamer is already outside every cover arc, so the shield is
+  down for free. The charge's own branch is untouched.
+- **Sounds and range.** `F04-alert`, `F04-volley`, `F04-shieldhit`,
+  `F04-shieldbreak` are placeholder synth entries in `data/sounds.json`,
+  wired in `src/audio/foamer-sounds.ts` (the shield hit and break are new
+  system sound kinds), and moved into the real table in
+  `design/SOUNDS.md`. The range's F04 choice spawns the line of three
+  (`spawnLine`); the watch lists them from `foamers.list` with no change.
+
+Tests: `tests/ai/f04-brain.test.ts` (8) and
+`tests/foamers/blocker-wall.test.ts` (8), plus the existing armour tests in
+`tests/foamers/blocker.test.ts`. Full suite 492 pass, 2 skipped; `tsc` and
+`npm run build` clean; dash scan clean on every file touched.
+
+**Not checked by eye** (no browser here): how the wall reads as a line at
+9 m, whether the 120 degree plate is wide enough to feel like a shield to
+shoot around rather than a wall to give up on, whether three balls at a 5
+degree spread are fair to parry, whether the shield-break sound lands with
+the plate coming off, and how the Blocker's rig looks walking and firing.
+The frame cost of three Blockers is unmeasured.
+
+**Decisions** are in `PLAN.md` section 14, `PLAN.md`'s GAME-10e row is
+updated, and the card's out of scope items (level 2-1, F06 and later, new
+finished art) are untouched.
+
+### 2026-11-06: BUG-03 review, the Pit's block seen by the grid (Claude, overnight)
+
+- Qwen 27B finished all three stages in one run, tests shown failing on
+  the old code first (it used `git stash` for that; the shared stash list
+  was checked afterwards and is empty). Main merged in (HANDOFF kept both
+  sides); tsc, 472 tests and the build pass.
+- On a fresh Pit page: the floor inside `pit-block` is no longer
+  standable (`canStandAt` false at (0, 4), (-3.2, 4), (3.2, 4)) and the
+  block's top is found at 3.2 m; a Swarmer pack centred on the block
+  spawns nobody (every ring spot is inside it), one beside it lands all
+  outside. Wave 1's Slowmers walked round the block from z 7 to a player
+  at z 1.2. Paths from the ring top down the ramps still exist with the
+  solid probe on (checked against a rebake with it off).
+- Seen, not BUG-03: four Swarmers stood on the ring level at z -13.9,
+  just outside the locked `pit-in` door, in `approach` with an empty path
+  for 10 s. How they got there is not clear (they came from a pack placed
+  by hand); worth a look with the Swarmer brain later.
+- A pack centred on a solid block skips every member rather than moving
+  out: fine for a hand placed spawn, but a level's pack spawn should not
+  sit on a block. The validator does not check that yet.
+
+### 2026-11-06: BUG-03, the nav grid sees the level's solid voxel pieces (Qwen 3.8-27B via Pi, qwen-machine)
+
+`tasks/BUG-03.md`. Two faults from the BUG-02 review: the load-time bake
+ran before the level's voxel pieces had their colliders (they mesh off
+the main thread, a few frames later; feet and colliders arrive
+separately) so on a fresh page the bake met only the shell, and a cell
+inside a solid block read as floor because the pieces collide as hollow
+trimeshes and the bake's shape cast meets only surfaces. In the Pit a
+Swarmer pack round the centre block could stand in it.
+
+- The grid takes a new private hook `solidAt(x,y,z)`, set by a public
+  `setSolidAt` (default null, it doesn't change the grid's own tests or
+  pages without pieces). `bakeCell` rejects a stand-able surface when
+  a probe finds the agent's body inside the solid volume: samples at
+  heights of 1/8, 9/20 and 7/8 of the agent's height above the surface,
+  so a flat floor reads clear and a body pressed inside the block does
+  not. A tunnel that cuts through a block passes the probes again on the
+  carve's own rebake. `nav-grid.ts`'s bake did not touch the layer
+  search, `nodeNear` or the A* (the card's limit, LVL-02d).
+- `makeLevelAI` takes the level's voxel volume and the voxel mesh's
+  world origin, and wires the hook to read the volume in world space
+  (`src/ai/level.ts`); the origin is the mesh's because it carries the
+  snap, and the range (no pieces) builds it without one. `levelAI
+  .piecesReady()` re-bakes the level's bounds. The shared game frame
+  (`src/game/game.ts`) notices the level mesher's first time it stops
+  being busy (that backlog is dirty, then pending jobs; both a piece
+  needs and live chunks; an empty level is not busy from load) and
+  calls it once, so the first Foamer to path already sees every block.
+- Bake timings on the Pit's bounds (once per load, the page pays them
+  once):
+  - full bake, no solid hook (old): 55.8 ms;
+  - `piecesReady` rebake with the hook on (the page's second bake):
+    45.4 ms;
+  - the 40x40 budget test (bake + a query): bake 36.4 ms, query 1.158
+    ms; the budget is 150 ms and 2 ms.
+  The hook is nearly free: about one `volume.get` per stand-able
+  candidate, and the volume is an in-memory array that the game mutates
+  every frame already.
+- Tests (all fail on the old code, pass on the new):
+  - `tests/level/voxel-block.test.ts` builds a level with a 3 m solid
+    block on a floor the way the page builds it (FAKE mesher, the
+    microtasks, `piecesReady`), then the real Pit the same way. In the
+    test level: the cell inside the block is "not" floor-height (read
+    as floor on the old code), the block's top "is" stand-able, the
+    floor round it is, and a carve tunnel through the block (and its
+    piece's rebake) makes the floor under the hole walkable again. In
+    the real Pit: for the centre of `pit-block`, `groundAt(0,4)` is
+    3.2 (was 0), `canStandAt(0,4,0)` is false (was true: that is the
+    read `spawnPack` used), floor under the ring and the exit room are
+    untouched. The timing scratch is not committed; the numbers are
+    here.
+
+### 2026-11-06: GAME-09b review, the chunk finish played in the Pit (Claude, overnight)
+
+- DeepSeek's first run looped for 2.5 hours reading files and wrote
+  nothing; restarted with a map of the lines to read and edit, it built
+  stages 1 and 2 in one run. Review found three things. Fixed by Claude:
+  (1) every dart held a reference to the blaster's one reused shot
+  object, so the next trigger pull rewrote the id and muzzle of darts
+  still flying (each dart keeps its own copy now; test 10 fails on the
+  old code); (2) shot ids were counted per blaster, so two blasters could
+  share one (one counter now). Sent back: (3) a weakened Foamer could
+  never be chunked in play, since the first dart of a shot killed it and
+  the rest passed through (test 7 had set its health to 3, not weakened).
+  DeepSeek's fix holds the kill for two steps so the whole shot lands
+  (test 11). Claude added the same skip to the vacuum the finisher got.
+  Main merged in; tsc, 469 tests and the build pass.
+- Played with the watch in the Pit, B03 at 2.5 m on a weakened F01
+  (health 1.6 of 6): 14 and 15 darts landed and it chunked each time: a
+  hole through the body with the cream core showing, lime and purple
+  foam cubes bursting out, and the body thrown back. Foam only.
+- For Paul's playtest: the push is strong (2x), the burst is busy at 40
+  cubes, and `FX-chunk` reuses the pop's chunk sound ID. Not heard.
+  Area blasts (B05, B06, B07) are still open on the PLAN row.
+
+### 2026-11-06: GAME-09b review fix, a held kill so a whole shot counts (DeepSeek V4.1 Flash via Pi)
+
+- The fault (found by Claude in the browser): a weakened Foamer died to the
+  first dart of a B03 shot, the kill was judged on that one dart's ~1
+  damage against `minShare` x 6 = 1.5, it went down, its colliders dropped
+  and the rest of the shot flew through. A B03 shot at 2.5 m on a weakened
+  F01 gave 1 hit and 0 chunks.
+- Fix: when a dart that carries a shot with a chunk block brings a Foamer to
+  0 health and the chunk could still apply (`chunkPossible`: tier or
+  `finishWeakened`, inside `rangeMetres`; the health share is not checked
+  yet), the kill is held. `Foamer.dyingHit` keeps the killing hit and
+  `dyingStep` the update count, so the Foamer keeps its colliders and its
+  pose and does nothing else: no walk, no attack, no part wear, no finisher
+  (`finisher.has` and the melee loop both skip it). The hold is settled by
+  `resolveKill` (pop, then chunk, then go down, as before) at the start of
+  the update two steps later, so the shot's darts of that step and the next
+  all land, or at once when a dart from another shot hits it. Darts with no
+  shot, and kills the chunk cannot apply to, resolve at once as before.
+- Tests: test 7's weakened case now uses `finisher.weakenShare` x max
+  (1.8) instead of 3, which was not weakened in play. New test 11: a full
+  B03 shot at 2.5 m on an F01 at half `weakenShare` (0.9, the range page's
+  spawn) counts more than one hit and more than `minShare` x max of the
+  shot's own damage, and is a chunk. Confirmed test 11 fails on the old
+  code ("expected 1 to be greater than 1") and passes now. Pop and go down
+  tests unchanged.
+- Verified: tsc clean, 459 tests (68 files, 2 skipped), build passes, no
+  em or en dashes. Not checked by eye: the hole and burst on the range page.
+
+### 2026-11-06: GAME-09b stage 1 and 2, the chunk finish (DeepSeek V4.1 Flash via Pi)
+
+- `DartHit` carries `shot: DartShot | null` (`id`, `muzzle`, `chunk`), and
+  `darts.fire` takes it as an optional fourth argument. `blaster.ts` gives
+  each trigger pull one id in `beginShot()` (so B03's two barrels are one
+  shot) and copies the muzzle in `fireDart`, so a shot is judged by what it
+  did, not by what the player did earlier.
+- The rule lives in `src/foamers/chunk.ts` as data-reading pure functions
+  (`judgeChunk`, `shotSummary`, `addShotDamage`, `chunkRadius`), so a test
+  can try the cases without a world. `handleHit` keeps a capped per-Foamer
+  list of dart damage tagged with its shot, then at the kill checks pop,
+  then chunk, then go down.
+- "Already finishable" means before the shot began: the first dart's
+  `preWeakened` flag is carried by the rest of the shot. A volley that
+  weakens a Fodder and then kills it is a plain go down, as the card says
+  full health F01s are; a Fodder is otherwise never a chunk.
+- `goDown` and `buildRagdoll` take a push scale, default 1. A chunk sound
+  (`FoamerSoundKind` `"chunk"`) plays `FX-chunk`, the placeholder the card
+  names. `stats.chunks` counts chunk finishes.
+- Numbers: B03 `chunk` range 5 m, carve 0.35 m, push 2.0; B01 slug 8 m,
+  0.3 m, 1.6; Foamer base `catastrophic.chunk` minShare 0.25, tiers Heavy,
+  Elite, Boss, carve 0.35, debrisMax 40, push 1. The carve radius is the
+  larger of the Foamer's and the blaster's, so a blaster never carves less
+  than the base.
+- Range page: a "Spawn weakened" yes/no row puts a fresh Foamer into the
+  finishable band (health at half `finisher.weakenShare`, flag set, no
+  stagger) so B03 can be tried on an F01.
+- Tests `tests/foamers/chunk.test.ts` (9): data, the rule's cases, the shot
+  window, radius; live: F05 chunk at 3 m, plain go down at 8 m, F01 full
+  health go down and a weakened F01 chunk, slug yes and B01 no, the centre
+  of the hole empty and the back of the body intact, debris inside the cap.
+- Not checked by eye: the hole shape, how the burst reads, the push, the
+  sound. Verified: tsc clean, 457 tests (68 files, 2 skipped), build passes,
+  no em or en dashes in the touched files.
+
+### 2026-11-06: BUG-02 review, parries and packs tried in the Pit (Claude, overnight)
+
+- Qwen 27B's first run hit its output limit mid stage 1; resumed with
+  short replies it finished all three stages. Main merged in (HANDOFF
+  kept both sides); tsc, 458 tests and the build pass. The code is sound:
+  `timeToImpact` steps the ball's own arc and tests the swept segment
+  against the capsule; `canStandAt` is layer aware.
+- `parryNext()` in the Pit against wave 2's Roamers, facing the thrower,
+  the disc lowered between tries: 2 parries in 10 (6 blocks, 2 hits),
+  where the old helper gave 0. Better, not reliable. Likely cause: the
+  ball meets the disc, which is in front of the capsule, before it meets
+  the capsule the new timing aims at. Also: the helper leaves
+  `forcedHold` on, so a caller must `block(false)` between tries (I did
+  not at first, and every later try then read as a block). Paul's hands
+  are still the real test of the parry window.
+- `spawnPack()` round the Pit's central block still put Swarmers inside
+  it, and BUG-02 is not why: the nav grid is wrong there. (1) The first
+  bake runs before the voxel pieces build their colliders, so a fresh
+  page's grid has no block at all (a rebake of the area found the block
+  top at 3.2 m). (2) Even after a rebake the floor inside the block reads
+  walkable: voxel pieces collide as hollow trimeshes, and the bake's
+  agent shape test only meets surfaces, so a cell in the middle of a
+  solid block passes. That is BUG-03 (`tasks/BUG-03.md`). The pack fix
+  is right given a right grid, which is what its tests build.
+
+### 2026-11-06: BUG-02, the parry watch's timing and the pack's floor
+
+- The watch helper timed a loft by a line (Qwen 3.8-27B via Pi,
+  `tasks/BUG-02.md`, branch `bug-02`): `parryNext()` asked straight-line
+  distance over speed, the raise landed out of the parry window, and
+  the ball burst on the disc as a block. The fix is `timeToImpact` in
+  `src/foamers/ball-time.ts`, a shared pure function that steps a copy
+  of the ball with the projectile's own gravity and the page's step and
+  returns the step at which the flight segment reaches the player's
+  capsule spine (the shape the projectile's own raycast meets, read
+  from the eye minus `eyeHeight`). The helper waits that time minus the
+  shield's `parryLead` and then holds: through `fixedStep` on the game
+  page, through the loop's own step (`parryWaitSec`) on the range. No
+  parry rule or number changed.
+- The card's demonstration, shown in the test: the old
+  distance-over-speed wait on a 20 m loft misses the window by more
+  than a window, so the old helper would have blocked, not parried.
+- `spawnPack` asked the grid before it placed: a new `canStandAt` on
+  the nav grid (the layer the feet sit near, autostep up, full step
+  down; a bare `walkableAt` reads the top face of a block a floor, so
+  the Pit's central block is why a standability ask was needed), a
+  ring spot that fails is stepped a few in along the angle
+  (`pack.inboundStepMetres` 0.5, `pack.inboundSteps` 4 in `data/ai.json`), and
+  a member the steps cannot place is skipped: neither spawned nor
+  counted, and a skipped one is not a slot a later pack must budget
+  against. Without a grid the placement is unchanged.
+- New tests: `tests/foamers/ball-time.test.ts`,
+  `tests/shield/parry-next.test.ts`, `tests/foamers/pack-walkable.test.ts`
+  (the two pack rows fail on the old placement; verified).
+  Existing shield, projectile and pack tests unchanged and passing.
+- Not checked by eye: that the helper lands parries in the browser
+  (no browser on this machine; the reviewer will check against the
+  page), and the Pit's own pack near its central block. The helper's
+  walk itself is what the test walks: the range's rig, the page's
+  own flight, the page's own shield read, the helper's wait and its
+  hold, end to end at 60 Hz.
 
 ### 2026-11-06: LVL-02c review, Level 1-2 played start to exit (Claude, overnight)
 
@@ -1898,7 +2326,6 @@ that line. Worth a bug card.
 - Verified: 25 runs of the file alone and several full-suite runs under
   extra load, all green; `npx tsc --noEmit` and `npm test` pass.
 
-
 ### 2026-11-03: QA-watch, range watch mode for the in-app browser (Qwen3.8-27B via Pi)
 
 `range.html?watch` starts the range unpaused without pointer lock, which
@@ -2130,7 +2557,6 @@ with its voxel wall and towers is not measured; the 27.8 ms above is a
 plain floor in the test runner. The rebake cost per carve is not measured
 either, only reasoned about. Grid resolution 0.25 m is from the card and
 has not been tuned against a 0.35 m agent walking through the course.
-
 
 ### 2026-11-02: ENG-08 stage 1 (DeepSeek V4.1 Flash)
 
@@ -3089,8 +3515,6 @@ Review (Claude), in the browser on the range:
 
 Plain level, frame-time graph and the panel: `range.html` next to the
 game and the sandbox. Stage 1 built the parts behind it:
-
-
 
 - `data/range.json` exactly as the card gives it.
 - `src/core/loop.ts`: an optional `stats` hook called after render with one reused `FrameStats` (`raw`, `dt`, `steps`, `work`, `updateWork`; `raw` is the unsnapped rAF interval in ms, 0 on the first frame), `createFrameClock` takes a snap option and exposes the raw last interval, and `startLoop` returns `{ setSnap }`. The existing loop tests pass unchanged.

@@ -15,6 +15,7 @@ import {
 } from "./f01-brain";
 import { makeF02Brain, type F02Context } from "./f02-brain";
 import { makeF03Brain } from "./f03-brain";
+import { makeF04Brain } from "./f04-brain";
 import { makeChargerBrain } from "./f05-brain";
 import { makePath, NavGrid, type PathPoints, type Point2 } from "./nav-grid";
 
@@ -34,8 +35,9 @@ export interface AgentSetup {
   /** GAME-10a: the ranged brain for a thrower, the F01 one otherwise.
    *  GAME-10b: "f05" is the charger (the F01 four states plus telegraph,
    *  charge and wallStun, which the Foamer system drives). GAME-10d: "f03"
-   *  is the Swarmer, a hit and run biter on the swarm token pool. */
-  brain?: "f01" | "f02" | "f03" | "f05";
+   *  is the Swarmer, a hit and run biter on the swarm token pool.
+   *  GAME-10e: "f04" is the Blocker, holding a slot in the shield wall. */
+  brain?: "f01" | "f02" | "f03" | "f04" | "f05";
 }
 
 /** What the Foamer tells its agent each step. */
@@ -78,6 +80,15 @@ export interface AgentInput {
   /** GAME-10d, the F03 brain only: seconds since its last nibble landed
    *  (Infinity before the first). Low means it is on the ring, waiting. */
   sinceNibble: number;
+  /** GAME-10e, the F04 brain only: the slot it holds in the shield wall,
+   *  in the ground plane, and how far it is from it. The system works the
+   *  slot out (it can see the other Blockers) and fills these in. */
+  slotX?: number;
+  slotZ?: number;
+  slotDistance?: number;
+  /** GAME-10e, the F04 brain only: its shield part has been shot away, so
+   *  there is no wall and it keeps its distance instead. */
+  shieldBroken?: boolean;
 }
 
 export class FoamerAgent {
@@ -114,10 +125,13 @@ export class FoamerAgent {
     this.director = director;
     this.tokenKind = setup.tokenKind;
     this.agentId = agentId;
-    this.brain = setup.brain === "f02" ? makeF02Brain(setup.initial, 32)
-      : setup.brain === "f03" ? makeF03Brain(setup.initial, 32)
-        : setup.brain === "f05" ? makeChargerBrain(setup.initial, 32)
-          : makeF01Brain(setup.initial, 32);
+    // GAME-10e: the F04 context is an F02 one plus slot fields the system
+    // fills only for a Blocker, so one field still holds every brain.
+    this.brain = (setup.brain === "f02" ? makeF02Brain(setup.initial, 32)
+      : setup.brain === "f04" ? makeF04Brain(setup.initial, 32)
+        : setup.brain === "f03" ? makeF03Brain(setup.initial, 32)
+          : setup.brain === "f05" ? makeChargerBrain(setup.initial, 32)
+            : makeF01Brain(setup.initial, 32)) as Brain<ChargerState, F02Context>;
     this.ctx = makeF01Context(agentId) as F02Context;
   }
 
@@ -171,6 +185,17 @@ export class FoamerAgent {
     i.throwRange = input.throwRange;
     i.preferredDistance = input.preferredDistance;
     i.retreatDistance = input.retreatDistance;
+    // GAME-10e: the F04 brain's own fields. Other brains never read them,
+    // and the system leaves them undefined for anything but a Blocker.
+    if (input.slotX !== undefined) {
+      const i4 = i as typeof i & {
+        slotX?: number; slotZ?: number; slotDistance?: number; shieldBroken?: boolean;
+      };
+      i4.slotX = input.slotX;
+      i4.slotZ = input.slotZ;
+      i4.slotDistance = input.slotDistance;
+      i4.shieldBroken = input.shieldBroken;
+    }
     this.brain.update(dt, this.ctx);
     this.ask(input);
     if (this.wants && !i.hasToken) this.waited += dt;

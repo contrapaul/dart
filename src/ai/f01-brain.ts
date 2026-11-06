@@ -35,8 +35,16 @@ export interface F01Input {
   sinceNibble: number;
 }
 
-/** What the brain wants done this step. */
-export type MoveIntent = "stand" | "followPath" | "circleLeft" | "circleRight" | "backOff";
+/** What the brain wants done this step. GAME-10e adds `toSlot`: walk
+ *  straight to a point the brain names, which is how a Blocker reaches its
+ *  place in the shield wall (the nav grid only ever paths to the player). */
+export type MoveIntent =
+  | "stand"
+  | "followPath"
+  | "circleLeft"
+  | "circleRight"
+  | "backOff"
+  | "toSlot";
 
 /** The decision, written in place so a step allocates nothing. */
 export interface F01Decision {

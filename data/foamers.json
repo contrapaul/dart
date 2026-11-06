@@ -11,16 +11,16 @@
     "turnRate": 6,
     "gravity": 22,
     "attackRange": 1.3,
-    "throwRangeMetres": 12.0,
-    "preferredDistanceMetres": 8.0,
-    "retreatDistanceMetres": 5.0,
+    "throwRangeMetres": 12,
+    "preferredDistanceMetres": 8,
+    "retreatDistanceMetres": 5,
     "ball": {
-      "speed": 9.0,
-      "gravity": 5.0,
+      "speed": 9,
+      "gravity": 5,
       "radius": 0.09,
       "chunks": 4,
       "maxLive": 8,
-      "lifetime": 4.0
+      "lifetime": 4
     },
     "recover": 0.8,
     "popChunkScale": 2.5,
@@ -78,10 +78,22 @@
       "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.",
       "share": 0.4,
       "window": 0.1,
-      "popTypes": []
+      "popTypes": [],
+      "chunk": {
+        "_note": "GAME-09b: the chunk finish. A blaster or mod with a chunk block, a hit inside its rangeMetres, qualifies when the killing shot's own damage on this Foamer inside the window above is at least minShare of max health, and the rig's tier is in tiers or the Foamer is already finishable (finishWeakened). Then carveRadius is carved as a sphere at the shot's mean hit point, up to debrisMax foam chunks burst out of the hole, and it goes down with the hole in it, pushed chunk.push times the ragdoll's kill push. Pops are unchanged.",
+        "minShare": 0.25,
+        "tiers": [
+          "Heavy",
+          "Elite",
+          "Boss"
+        ],
+        "carveRadius": 0.35,
+        "debrisMax": 40,
+        "push": 1
+      }
     },
     "wound": {
-      "coreShell": 1.0,
+      "coreShell": 1,
       "stumpRadius": 0.12
     },
     "stagger": {
@@ -293,7 +305,7 @@
       "_note": "GAME-10d: the Swarmer. Weak point: none. Health 2 comes from its rig (it pops in one or two hits). nibble is its whole attack: a short windup, hit and run. pack is how many a pack spawn makes; the swarm ring and gaps are in data/ai.json pack. The type reads its own speed and health from the rig.",
       "turnRate": 9,
       "attackRange": 1.4,
-      "holdRangeMetres": 3.0,
+      "holdRangeMetres": 3,
       "pack": 5,
       "attacks": [
         {
@@ -305,6 +317,61 @@
           "strike": 0.15
         }
       ]
+    },
+    "F04": {
+      "rig": "F04",
+      "_note": "GAME-10e: the Blocker. Holds a shield wall: slots side by side at slots.holdMetres, a volley over the shield with the ranged token. The shield is armour on the shield part, but only across its arcDeg front: a side or back dart takes full damage, and a staggered Blocker has the shield down. shieldChargeTime is the stagger the player shield charge leaves it in (a longer one than the base). turnRate 1.4 rad/s, the Darter's (review: at 5 it faced a strafing player within a second, so flanking could not work).",
+      "turnRate": 1.4,
+      "attackRange": 1.4,
+      "throwRangeMetres": 16,
+      "preferredDistanceMetres": 9,
+      "retreatDistanceMetres": 6,
+      "stagger": {
+        "time": 0.5,
+        "shieldChargeTime": 1.2
+      },
+      "slots": {
+        "holdMetres": 9,
+        "_note": "GAME-10e: the shield wall. Blockers walk to a line across the player at holdMetres, one slot each spacingMetres apart; an index past the ends of the line spreads the wall.",
+        "spacingMetres": 1.2
+      },
+      "armour": {
+        "shield": {
+          "damage": 0.05,
+          "carve": 0.3,
+          "arcDeg": 120
+        },
+        "_doc": "GAME-10e: the shield. A front dart chips it slowly and does almost nothing; arcDeg is how much of the front it covers. Out of the arc, or with the shield down (stagger), full damage."
+      },
+      "attacks": [
+        {
+          "id": "volley",
+          "_note": "GAME-10e: range pins the volley's reach, so a Blocker on its slot (the hold distance) is inside it and fires over the shield.",
+          "range": 16,
+          "damage": 3,
+          "token": "ranged",
+          "needs": [
+            "blaster"
+          ],
+          "windup": 0.5,
+          "strike": 0.25,
+          "shots": 3,
+          "spreadDeg": 5
+        },
+        {
+          "id": "bash",
+          "damage": 5,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.5,
+          "strike": 0.2
+        }
+      ],
+      "line": {
+        "_note": "GAME-10e: the line the range spawns for the F04 type choice, so one press shows the wall. inboundSteps: a blocked slot slides outward this many slots before the member is skipped.",
+        "count": 3,
+        "inboundSteps": 4
+      }
     }
   },
   "spawner": {

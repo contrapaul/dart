@@ -9,9 +9,11 @@ import type { VoxelTarget } from "../weapons/impacts";
 import dartTuning from "../../data/darts.json";
 import { materialId, EMPTY } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
+import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
-import { armourOf } from "./armour";
+import { armourOf, plateFaces } from "./armour";
+import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
 import { chargeOf, type ChargeSpec } from "./charge";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
@@ -21,7 +23,7 @@ import aiData from "../../data/ai.json";
 import { Director, type TokenKind } from "../ai/director";
 import { FoamerAgent } from "../ai/agent";
 import { steer, type Neighbour, type Velocity } from "../ai/steer";
-import type { NavGrid } from "../ai/nav-grid";
+import { makePath, type NavGrid } from "../ai/nav-grid";
 import type { ProjectileSystem } from "./projectiles";
 import { SIGHT_QUERY_GROUPS } from "../physics/world";
 
@@ -89,6 +91,14 @@ function holdRangeOf(spec: FoamerSpec): number {
   return (spec as { holdRangeMetres?: number }).holdRangeMetres ?? BRAIN.holdRangeMetres;
 }
 
+/** GAME-10e: the shield wall slots of a Blocker, from its type (data/
+ *  foamers.json `slots`). A type without them is not a Blocker. */
+function slotsOf(
+  spec: FoamerSpec,
+): { holdMetres: number; spacingMetres: number } | undefined {
+  return (spec as { slots?: { holdMetres: number; spacingMetres: number } }).slots;
+}
+
 /** GAME-10d: how many make a pack, from the type (the rig's `pack` is the
  *  same number). */
 function packSizeOf(spec: FoamerSpec): number {
@@ -130,6 +140,7 @@ const _pm = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 const _p = new THREE.Vector3();
 const _v = new THREE.Vector3();
+const _chunkC = new THREE.Vector3(); // GAME-09b: the carve centre scratch
 const _cv = new THREE.Vector3();
 const _topP = new THREE.Vector3();
 const _topQ = new THREE.Quaternion();
@@ -162,12 +173,16 @@ const NAV = aiData.nav;
 export type FoamerSoundKind =
   | "spawn" | "wound" | "part-off" | "attack" | "fall" | "down" | "sink" | "pop"
   | "stagger" | "throw"
+  // GAME-09b: the burst out of a chunk finish's hole.
+  | "chunk"
   // GAME-10b, the charger: the scrape before a charge, the run starting,
   // and the wall or player it hits.
   | "scrape" | "charge" | "impact"
   // GAME-10d, the Swarmer: the yip when a pack wakes. Only the F03 has a
   // sound for it, so the others stay quiet rather than borrow one.
-  | "alert";
+  | "alert"
+  // GAME-10e, the Blocker: a dart into the shield, the shield coming off.
+  | "shield-hit" | "shield-break";
 
 /** One event to onSound, at the Foamer's or part's position. */
 function sound(sys: FoamerSystem, kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) {
@@ -197,13 +212,16 @@ export class FoamerSystem {
   /** Called once per Foamer sound event, at the part's or the Foamer's own
    *  position (AUD-01 stage 3b). Foamer sounds are owned by GameSounds. */
   onSound: (kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) => void = () => {};
-  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0 };
+  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0, chunks: 0 };
   /** Fallen pieces, oldest first. Capped at brokenParts.max. */
   readonly broken: BrokenPiece[] = [];
   /** Downed Foamers, in the order they went down (oldest first). */
   readonly downed: Foamer[] = [];
   /** System clock in seconds; stamps the damage window. */
   time = 0;
+  /** GAME-09b: the update count. A held kill resolves on the step after the
+   *  one it was held on, not later in the same step's darts. */
+  private step = 0;
   /** How many Foamers the spawner keeps alive. Default is the data file's
    *  count; the range page sets its own (0 until the panel adds them). */
   spawnCount = SPAWNER.count;
@@ -252,6 +270,8 @@ export class FoamerSystem {
   private _wish = new THREE.Vector3();
   private _vel = new THREE.Vector3();
   private _velXZ: Velocity = { x: 0, z: 0 };
+  /** GAME-10e: a one-point path to a Blocker's slot, reused each step. */
+  private _slotPath = makePath(1);
   /** Neighbour scratch for steering, reused every step. */
   private readonly neighbours: Neighbour[] = [];
   private readonly agentAgent: { x: number; z: number; speed: number } = { x: 0, z: 0, speed: 0 };
@@ -332,9 +352,12 @@ export class FoamerSystem {
           // GAME-10b: a charger runs its own (telegraph, charge, wallStun).
           // GAME-10d: a type that nibbles on the swarm pool runs the Swarmer
           // brain (hit and run on a ring).
-          brain: chargeOf(spec) ? "f05"
-            : tokenKindOf(spec) === "ranged" ? "f02"
-              : tokenKindOf(spec) === "swarm" ? "f03" : "f01",
+          // GAME-10e: a type with slots is a Blocker and runs its own
+          // brain, which holds a place in the shield wall.
+          brain: slotsOf(spec) ? "f04"
+            : chargeOf(spec) ? "f05"
+              : tokenKindOf(spec) === "ranged" ? "f02"
+                : tokenKindOf(spec) === "swarm" ? "f03" : "f01",
         },
         agentId,
       );
@@ -349,7 +372,9 @@ export class FoamerSystem {
         retreatDistance: spec.retreatDistanceMetres,
         // A thrower sidles on the ring at the distance it keeps, a charger
         // on its own ring out at charge range; a bonker on the shared ring.
-        holdRange: chargeOf(spec)?.holdMetres
+        // A Blocker walks to its slot, so its ring is the slot line.
+        holdRange: slotsOf(spec)?.holdMetres
+          ?? chargeOf(spec)?.holdMetres
           ?? (tokenKindOf(spec) === "ranged" ? spec.preferredDistanceMetres : holdRangeOf(spec)),
         sinceNibble: Infinity,
       };
@@ -374,8 +399,12 @@ export class FoamerSystem {
    *  pack centre a little further round the circle, so a pack arrives as a
    *  spread ring rather than one stacked body. `count` defaults to the
    *  type's own `pack`. Past `pack.maxAlive` live Swarmers the rest are
-   *  skipped: the oldest are never removed to make room. Returns the ones
-   *  that were made. */
+   *  skipped: the oldest are never removed to make room.
+   *  BUG-02: with a nav grid, a ring spot the grid says cannot be stood on
+   *  (the Pit's central block) is not used: the same angle is tested a few
+   *  steps in, and with nothing walkable the member is skipped, neither
+   *  spawned nor counted. Without a grid (the range, tests without one)
+   *  placement is as before. Returns the ones that were made. */
   spawnPack(
     feet: THREE.Vector3, facing?: THREE.Vector3, count?: number, type = "F03",
   ): Foamer[] {
@@ -385,12 +414,24 @@ export class FoamerSystem {
     for (const f of this.list) {
       if (f.state !== "down" && tokenKindOf(f.spec) === "swarm") live++;
     }
+    const grid = this.navGrid;
+    const stepIn = PACK.inboundStepMetres;
+    const tries = PACK.inboundSteps;
     for (let i = 0; i < n && live < PACK.maxAlive; i++) {
       // Round the ring, one even step per member; the last member sits
       // `spreadMetres` out, the first a little nearer the centre.
       const a = (i / n) * Math.PI * 2;
       const r = PACK.spreadMetres * (0.55 + 0.45 * (i / Math.max(1, n - 1)));
       _packFeet.set(feet.x + Math.sin(a) * r, feet.y, feet.z + Math.cos(a) * r);
+      let placed = !grid || grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      // A blocked ring spot is not used: step the same angle in, a few
+      // times, until the grid says the spot can be stood on.
+      for (let k = 0; !placed && grid && k < tries; k++) {
+        _packFeet.x -= Math.sin(a) * stepIn;
+        _packFeet.z -= Math.cos(a) * stepIn;
+        placed = grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      }
+      if (!placed) continue; // the member is skipped, not spawned
       const f = this.spawn(_packFeet, facing ?? feet, type);
       if (!f) break; // the system-wide Foamer cap
       out.push(f);
@@ -399,15 +440,68 @@ export class FoamerSystem {
     return out;
   }
 
+  /**
+   * GAME-10e: a Blocker line, for the range's type choice. Three of them
+   * side by side across the way the player faces, one slot apart, so the
+   * wall the card describes is there from the first press. A spot the nav
+   * grid says cannot be stood on is skipped, the way spawnPack skips a
+   * blocked ring spot. Returns the ones that were made.
+   */
+  spawnLine(feet: THREE.Vector3, facing: THREE.Vector3, type = "F04"): Foamer[] {
+    const spec = specFor(type);
+    const slots = slotsOf(spec) ?? { holdMetres: 9, spacingMetres: 1.2 };
+    const line = (spec as { line?: { count: number; inboundSteps: number } }).line
+      ?? { count: 3, inboundSteps: 4 };
+    const out: Foamer[] = [];
+    const n = line.count;
+    // Across the facing, on the ground plane.
+    let fx = -facing.x, fz = -facing.z;
+    const fl = Math.hypot(fx, fz);
+    if (fl < 1e-3) { fx = 0; fz = 1; } else { fx /= fl; fz /= fl; }
+    const rx = fz, rz = -fx;
+    const grid = this.navGrid;
+    for (let i = 0; i < n; i++) {
+      const off = (i - (n - 1) / 2) * slots.spacingMetres;
+      _packFeet.set(feet.x + rx * off, feet.y, feet.z + rz * off);
+      let placed = !grid || grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      // Blocked: slide the same slot outward along the line, a few times.
+      for (let k = 0; !placed && grid && k < line.inboundSteps; k++) {
+        _packFeet.x += rx * slots.spacingMetres;
+        _packFeet.z += rz * slots.spacingMetres;
+        placed = grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
+      }
+      if (!placed) continue;
+      const f = this.spawn(_packFeet, feet, type);
+      if (!f) break;
+      out.push(f);
+    }
+    return out;
+  }
+
   /** Fixed step, before world.step(). `player` is the player's position. */
   update(dt: number, player: THREE.Vector3): void {
     this.time += dt;
     this.dtPrev = dt;
+    this.step++;
+    // GAME-09b: settle kills held for the rest of their shot (handleHit).
+    // This runs before the Foamers step, so a dying one never attacks, walks
+    // or staggers: it is only still alive for its shot's darts. The page
+    // steps the darts after the Foamers, so a hold from step N covers the
+    // darts of step N and N+1 and is settled at the start of N+2:
+    // `dyingStep + 1 < step`.
+    // (a copy: a pop splices the list)
+    for (const f of [...this.list]) {
+      if (f.dyingHit && f.dyingStep + 1 < this.step) this.resolveDying(f);
+    }
     // ENG-08 stage 3b: every living Foamer bids for a token before the
     // director resolves the bids, so the best bid wins a free token rather
     // than the first caller. Without a director none of this runs and the
     // Foamers walk in and attack as they did before the brain.
     if (this.director) {
+      // GAME-10e: the shield wall is laid out before the bids, so a Blocker
+      // bids from where it will stand, and every Blocker in the wall sees
+      // the same slots this step.
+      this.assignSlots(player);
       for (const f of this.list) if (f.state !== "down" && f.state !== "finish") this.bidAgent(f, player);
       this.director.update(dt);
     }
@@ -423,9 +517,11 @@ export class FoamerSystem {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
       // Downed Foamers keep stepping (lie, sink) but no longer walk.
+      // GAME-09b: a dying Foamer (its kill held for the rest of its shot)
+      // keeps its colliders and its pose, and does nothing else.
       if (f.state === "down") {
         this.stepDown(f, dt);
-      } else {
+      } else if (!f.dyingHit) {
         this.stepFoamer(f, dt, player);
       }
       // The attached parts' meshes refresh here (wounds, stumps); the
@@ -435,7 +531,7 @@ export class FoamerSystem {
       // lost wearBreak of its starting voxels, breaks. The body never
       // breaks. A dart's hit that spends a part's hp is checked in
       // handleHit; this catches the slow wear.
-      if (f.state !== "down") {
+      if (f.state !== "down" && !f.dyingHit) {
         for (const part of f.parts.values()) {
           if (part.spec.kind === "body") continue;
           if (part.hp <= 0 ||
@@ -625,7 +721,13 @@ export class FoamerSystem {
             // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
             // Without a projectile system (the unit tests, the sandbox) the
             // windup and the throw pose still play, and nothing flies.
-            this.projectiles?.launch(f, player);
+            // GAME-10e: a volley fires `shots` balls fanned across
+            // `spreadDeg`, so the player can parry some and eat some.
+            const volley = atk as { shots?: number; spreadDeg?: number };
+            const shots = Math.max(1, volley.shots ?? 1);
+            const spread = volley.spreadDeg ?? 0;
+            for (let s = 0; s < shots; s++)
+              this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
             sound(this, "throw", f, f.centre);
           } else {
             f.bonk(atk.id);
@@ -741,6 +843,57 @@ export class FoamerSystem {
     f.poseParts(dt, moving);
   }
 
+  /**
+   * GAME-10e: a slot for every Blocker in the wall. The wall is a line
+   * across the player at the type's hold distance, one slot each, spacing
+   * from the type. Slots are handed out in agent id order, so they stay
+   * put as the wall walks: no Blocker swaps with another every frame. An
+   * index past the middle of the line spreads outward and stops at the
+   * end, where the wall simply gets longer.
+   */
+  private assignSlots(player: THREE.Vector3): void {
+    const wall: Foamer[] = [];
+    for (const f of this.list) {
+      if (f.state === "down" || f.state === "finish" || !f.agent) continue;
+      if (slotsOf(f.spec)) wall.push(f);
+    }
+    if (wall.length === 0) return;
+    wall.sort((a, b) => a.agent!.agentId - b.agent!.agentId);
+    const slots = slotsOf(wall[0]!.spec)!;
+    // Facing of the wall: from the player out to the middle of the group,
+    // on the ground plane. The group is still walking in on the first
+    // frame, so a degenerate spread faces +z (the arena's approach).
+    let gx = 0;
+    let gz = 0;
+    for (const f of wall) {
+      gx += f.centre.x;
+      gz += f.centre.z;
+    }
+    gx = gx / wall.length - player.x;
+    gz = gz / wall.length - player.z;
+    const gl = Math.hypot(gx, gz);
+    const fx = gl > 1e-3 ? gx / gl : 0;
+    const fz = gl > 1e-3 ? gz / gl : 1;
+    // Across the wall: the facing turned a quarter turn.
+    const rx = fz;
+    const rz = -fx;
+    const cx = player.x + fx * slots.holdMetres;
+    const cz = player.z + fz * slots.holdMetres;
+    const n = wall.length;
+    for (let i = 0; i < n; i++) {
+      const f = wall[i]!;
+      const off = (i - (n - 1) / 2) * slots.spacingMetres;
+      const sx = cx + rx * off;
+      const sz = cz + rz * off;
+      const input = f.agentInput!;
+      input.slotX = sx;
+      input.slotZ = sz;
+      input.slotDistance = Math.hypot(sx - f.centre.x, sz - f.centre.z);
+      // A shot-away shield leaves nothing to hold a wall with.
+      input.shieldBroken = !f.parts.has("shield");
+    }
+  }
+
   /** ENG-08 stage 3b: one step of the brain, before the state machine acts
    * on it. Fills the context from the world (distance, line of sight,
    * damage, neighbours), steps the brain on the decision it made last step,
@@ -837,7 +990,8 @@ export class FoamerSystem {
   /** Whether the brain's movement intent means walking this step. */
   private brainMoving(f: Foamer): boolean {
     const m = f.agent!.move;
-    return m === "followPath" || m === "circleLeft" || m === "circleRight" || m === "backOff";
+    return m === "followPath" || m === "circleLeft" || m === "circleRight" ||
+      m === "backOff" || m === "toSlot";
   }
 
   /**
@@ -863,6 +1017,22 @@ export class FoamerSystem {
       const dz = f.centre.z - player.z;
       const d = Math.hypot(dx, dz);
       if (d > 1e-4) this._wish.set((dx / d) * speed * dt, 0, (dz / d) * speed * dt);
+      return;
+    }
+    if (move === "toSlot") {
+      // GAME-10e: a straight walk to the slot the brain named. The nav grid
+      // only paths to the player, so the slot is walked to directly; the
+      // same steer() gives arrival slowing and separation from the wall.
+      const i4 = a.ctx.input as { slotX?: number; slotZ?: number };
+      const p = this._slotPath;
+      p.count = 1;
+      p.xs[0] = i4.slotX ?? f.centre.x;
+      p.zs[0] = i4.slotZ ?? f.centre.z;
+      this.agentAgent.x = f.centre.x;
+      this.agentAgent.z = f.centre.z;
+      this.agentAgent.speed = speed;
+      steer(this.agentAgent, p, this.neighbours, this._velXZ);
+      this._wish.set(this._velXZ.x * dt, 0, this._velXZ.z * dt);
       return;
     }
     if (move === "followPath" || move === "stand") {
@@ -1031,6 +1201,12 @@ export class FoamerSystem {
       // NoSuchCollider evidence: some hits miss every part and the root.
     }
     if (!f || !part) return;
+    // GAME-09b: another shot's dart ends a dying Foamer at once, so the held
+    // shot cannot keep adding to a kill that is already decided.
+    if (f.dyingHit && f.dyingHit.shot?.id !== hit.shot?.id) {
+      this.resolveDying(f);
+      return; // the held kill is the kill; this dart has nothing left to hit
+    }
     // The dart sound (AUD-01) wants to tell a Foamer part from an ordinary
     // voxel wall, so the material name DartImpacts just wrote is swapped
     // for the "foamer" surface. This runs even below the damage speed, so
@@ -1040,32 +1216,56 @@ export class FoamerSystem {
     const d = f.spec.damage[hit.type];
     const kind = f.spec.partDamage.kinds[part.spec.kind];
     // GAME-10b: a plate takes its share and the orange back takes extra.
+    // GAME-10e: a plate with an arc (the Blocker's shield) only covers its
+    // front, and not at all while the Blocker is staggered.
     const armour = armourOf(f.spec, part.spec.id);
-    const dmg = d * kind.hit * (armour?.damage ?? 1);
+    const covered = armour?.arcDeg === undefined
+      ? true
+      : plateFaces(f.spec, part.spec.id,
+        Math.sin(f.yaw), Math.cos(f.yaw),
+        -hit.direction.x, -hit.direction.z, // back toward the shooter
+        f.state === "stagger");
+    const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= dmg;
     f.health -= dmg * kind.total;
     // Only dart types that can pop count toward a catastrophic hit.
-    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, dmg * kind.total);
+    const total = dmg * kind.total;
+    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, total);
+    // GAME-09b: the same damage on the shot that dealt it, so a chunk
+    // finish can judge the shot alone and carve at its darts' mean point.
+    if (hit.shot) {
+      addShotDamage(
+        f.shotDamage, hit.shot.id, this.time, total, hit.point, f.finishWeakened,
+      );
+    }
     this.stats.hits++;
     // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
     f.damageSinceStep = true;
     this.paintWound(f, part, hit);
-    sound(this, "wound", f, partPoint(part));
+    // GAME-10e: a dart that the Blocker shield turns away thuds into the
+    // foam plate rather than into the Foamer.
+    const shielded = armour?.arcDeg !== undefined && covered;
+    sound(this, shielded ? "shield-hit" : "wound", f, partPoint(part));
     // Breaking: hp <= 0, or the carve took the part to wearBreak of its
     // starting voxels. The body never breaks; wear from slow chipping is
     // checked once per step in update.
     const worn = part.voxelCount <= part.startVoxels * (1 - f.spec.partDamage.wearBreak);
     if (f.health <= 0) {
-      // The card: pop if the damage taken in the last catastrophic.window
-      // seconds (the killing hit plus anything at the same moment) is at
-      // least catastrophic.share of the max health, otherwise go down.
-      // Only popTypes damage is in recentDamage.
-      const cutoff = this.time - f.spec.catastrophic.window;
-      let recent = 0;
-      for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
-      if (recent >= f.spec.catastrophic.share * f.maxHealth) this.pop(f);
-      else this.goDown(f, hit); // the killing hit pushes the ragdoll
+      // GAME-09b review: a chunk shot's first dart is usually not enough to
+      // clear minShare on its own (a weakened F01 dies to one dart's ~1.5
+      // damage), so hold the kill: mark it dying and keep its colliders, so
+      // the rest of this shot's darts still land, and resolve once on the
+      // next update (see resolveDying). A dart with no shot, or a chunk that
+      // cannot apply, resolves at once, exactly as before.
+      if (hit.shot && this.chunkCould(f, hit)) {
+        if (!f.dyingHit) {
+          f.dyingHit = hit;
+          f.dyingStep = this.step;
+        }
+        return;
+      }
+      this.resolveKill(f, hit);
       return;
     }
     if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part);
@@ -1082,6 +1282,43 @@ export class FoamerSystem {
       f.finishWeakened = true;
       this.startStagger(f, true);
     }
+  }
+
+  /** GAME-09b: could the hit's shot still be a chunk finish? The tier or
+   *  weakened flag and the shot's range; the share of health is left to the
+   *  shot's whole damage, which is what the hold is for. */
+  private chunkCould(f: Foamer, hit: DartHit): boolean {
+    return chunkPossible(
+      f.spec.catastrophic.chunk, hit.shot!.chunk, hit.shot!.muzzle,
+      f.rig.tier, f.finishWeakened, hit.point,
+    );
+  }
+
+  /** GAME-09b: the kill, once. Pop if the damage in the window is enough
+   *  (only popTypes count), else a chunk finish, else go down. */
+  private resolveKill(f: Foamer, hit: DartHit | null) {
+    const cutoff = this.time - f.spec.catastrophic.window;
+    let recent = 0;
+    for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
+    if (recent >= f.spec.catastrophic.share * f.maxHealth) {
+      this.pop(f);
+    } else if (hit && this.canChunk(f, hit)) {
+      // GAME-09b: the shot blows a hole through it instead.
+      this.chunk(f, hit);
+    } else {
+      this.goDown(f, hit ?? undefined); // the killing hit pushes the ragdoll
+    }
+  }
+
+  /** GAME-09b: settle a held kill. On the step after the hold's, or at once
+   *  when a dart from another shot hits it, the Foamer is killed: its parts
+   *  keep their colliders only until this runs, so the held shot's darts
+   *  that land in this step and the next still add their damage and their
+   *  hit points to the carve. */
+  private resolveDying(f: Foamer) {
+    const hit = f.dyingHit!;
+    f.dyingHit = null;
+    this.resolveKill(f, hit);
   }
 
   /** GAME-07: start a stagger, long (the finishable one) or short (a part
@@ -1106,6 +1343,8 @@ export class FoamerSystem {
    *  part break and the pop (a bounce is never a popping hit). */
   parryDamage(f: Foamer, amount: number): void {
     if (f.state === "down") return;
+    // GAME-09b: a kill held for a shot is decided; a bounce does not join it.
+    if (f.dyingHit) return;
     f.health -= amount;
     f.addDamage(this.time, amount);
     f.damageSinceStep = true;
@@ -1166,13 +1405,69 @@ export class FoamerSystem {
     return f.rig.parts.some((p) => p.kind === "arm" && !f.parts.has(p.id));
   }
 
+  /** GAME-09b: does this killing hit blow a hole through it? The rule is
+   *  pure (chunk.ts); this only gathers the parts it reads: the shot's own
+   *  damage on this Foamer inside catastrophic.window, the shot's mean hit
+   *  point, the rig's tier and whether it was already finishable. */
+  private canChunk(f: Foamer, hit: DartHit): boolean {
+    if (!hit.shot) return false;
+    const sum = shotSummary(f.shotDamage, hit.shot.id, this.time, f.spec.catastrophic.window);
+    if (!sum) return false;
+    return judgeChunk(
+      f.spec.catastrophic.chunk,
+      hit.shot.chunk,
+      hit.shot.muzzle,
+      f.rig.tier,
+      sum.preWeakened,
+      f.maxHealth,
+      sum.total,
+      sum.mean,
+    );
+  }
+
+  /** GAME-09b: the chunk finish. Carve a sphere of the shot's radius at the
+   *  shot's mean hit point through every part it reaches, throw the removed
+   *  foam out as one burst (inside the debris caps and chunk.debrisMax), and
+   *  go down with the hole in it, pushed hard along the shot. A part the
+   *  carve took below its break line breaks off on the next step's wear
+   *  check. Pops are untouched: a chunk is never a pop. */
+  private chunk(f: Foamer, hit: DartHit) {
+    const shot = hit.shot!;
+    if (!shot.chunk) return this.goDown(f, hit);
+    const sum = shotSummary(f.shotDamage, shot.id, this.time, f.spec.catastrophic.window)!;
+    const spec = f.spec.catastrophic.chunk;
+    const r = chunkRadius(spec, shot.chunk);
+    let left = spec.debrisMax;
+    // The mean point is world space; each part carves it in its own voxel
+    // space, so a hole through a hip takes the body and the leg. The debris
+    // goes out of the part that lost it, as a pop's does.
+    for (const part of f.parts.values()) {
+      if (left <= 0) break;
+      const vs = part.volume.voxelSize;
+      const rv = r / vs;
+      const c = part.worldToVoxel(_chunkC.copy(sum.mean));
+      const sz = part.spec.size;
+      // Skip a part the sphere cannot reach: its box plus the radius.
+      if (c.x < -rv || c.y < -rv || c.z < -rv) continue;
+      if (c.x > sz[0] + rv || c.y > sz[1] + rv || c.z > sz[2] + rv) continue;
+      const removed = carveSphere(part.volume, c.x, c.y, c.z, rv).slice(0, left);
+      if (removed.length === 0) continue;
+      left -= removed.length;
+      this.debris.spawn(removed, c, vs, (v) => part.voxelToWorld(v));
+    }
+    // The hole's own burst, before the down's topple: not a pop.
+    this.stats.chunks++;
+    sound(this, "chunk", f, sum.mean);
+    this.goDown(f, hit, spec.push);
+  }
+
   /** Go down (card "Go down"): it stops moving and attacking, its parts
    *  leave targets and lose their trimesh colliders (darts pass through),
    *  and the root capsule is removed. Then it becomes a ragdoll (ENG-12):
    *  every attached part is a dynamic body with a cuboid collider and a
    *  hinge to its parent, pushed by the killing hit. Stuck darts drop when
    *  its bodies are disposed. Counts as gone for the spawner. */
-  private goDown(f: Foamer, hit?: DartHit) {
+  private goDown(f: Foamer, hit?: DartHit, push = 1) {
     if (f.state === "down") return;
     f.state = "down";
     f.stateTime = 0;
@@ -1188,7 +1483,7 @@ export class FoamerSystem {
       if (t >= 0) this.targets.splice(t, 1);
       part.mesh.dropColliders();
     }
-    this.buildRagdoll(f, hit);
+    this.buildRagdoll(f, hit, push);
     this.downed.push(f);
   }
 
@@ -1208,7 +1503,7 @@ export class FoamerSystem {
    *  hit's height clamped inside the body's box, so a high hit tips it
    *  over away from the shooter. Runs once per death, so it allocates
    *  freely rather than reusing the per-step scratch. */
-  private buildRagdoll(f: Foamer, hit?: DartHit) {
+  private buildRagdoll(f: Foamer, hit?: DartHit, push = 1) {
     const rag = f.spec.down.ragdoll;
     const vs = f.rig.voxelSize;
     const dt = Math.max(this.dtPrev, 1 / 240);
@@ -1325,7 +1620,8 @@ export class FoamerSystem {
         const top = body ? this.topYOfPart(body) : 1;
         for (const part of f.parts.values()) {
           const c = part.voxelToWorld(_kbB.set(part.spec.size[0] / 2, part.spec.size[1] / 2, part.spec.size[2] / 2));
-          const k = rag.killSpeed * THREE.MathUtils.clamp(c.y / top, 0, 1.2);
+          // GAME-09b: a chunk finish pushes harder along the shot.
+          const k = push * rag.killSpeed * THREE.MathUtils.clamp(c.y / top, 0, 1.2);
           const v = part.body.linvel();
           part.body.setLinvel({ x: v.x + _kbV.x * k, y: v.y, z: v.z + _kbV.z * k }, true);
         }
@@ -1552,6 +1848,8 @@ export class FoamerSystem {
     part.pose.decompose(st2, q2, _sc);
     part.prevPose.decompose(_p, _q, _sc);
     sound(this, "part-off", f, partPoint(part));
+    // GAME-10e: the Blocker shield coming away is its own, bigger sound.
+    if (part.spec.id === "shield") sound(this, "shield-break", f, partPoint(part));
     // The part's last pose change over a step (the fling), plus 1.5 m/s
     // outward from the Foamer and up.
     const out2 = _v.set(st2.x - f.centre.x, 0, st2.z - f.centre.z);

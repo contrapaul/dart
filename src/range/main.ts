@@ -7,7 +7,7 @@
 import * as THREE from "three";
 import { createRenderer } from "../render/scene";
 import { createPhysics } from "../physics/world";
-import { startLoop, type FrameStats } from "../core/loop";
+import { startLoop, STEP, type FrameStats } from "../core/loop";
 import { Input } from "../core/input";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
@@ -17,6 +17,7 @@ import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
 import { FoamerSystem } from "../foamers/foamers";
+import type { Foamer } from "../foamers/foamer";
 import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
 import { makeLevelAI } from "../ai/level";
 import { SettingsStore, DIFFICULTIES } from "../core/settings";
@@ -33,6 +34,7 @@ import dartsJson from "../../data/darts.json";
 import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
 import foamerData from "../../data/foamers.json";
+import { timeToImpact, playerCapsuleCentre } from "../foamers/ball-time";
 
 const R = (rangeJson as unknown as {
   range: {
@@ -375,6 +377,27 @@ for (const t of Object.keys(foamerData.types)) {
   if (t === foamerType) b.classList.add("on");
   typeRow.appendChild(b);
 }
+// GAME-09b: spawn Foamers already finishable, so a chunk can be tried on an
+// F01 with B03 (its tier is Fodder, so at full health the rule refuses).
+const weakenRow = document.querySelector<HTMLDivElement>("#weaken")!;
+let weakenSpawn = false;
+for (const [label, on] of [["yes", true], ["no", false]] as const) {
+  const b = document.createElement("button");
+  b.textContent = label;
+  b.addEventListener("click", () => {
+    weakenSpawn = on;
+    weakenRow.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  });
+  if (on === weakenSpawn) b.classList.add("on");
+  weakenRow.appendChild(b);
+}
+/** Put a fresh Foamer into the finishable band, with no stagger: the card
+ *  only needs the weakened flag and health under finisher.weakenShare. */
+function weaken(f: Foamer | null) {
+  if (!f || !weakenSpawn) return;
+  f.health = Math.min(f.health, f.spec.finisher.weakenShare * f.maxHealth * 0.5);
+  f.finishWeakened = true;
+}
 // Spawn a Foamer at set metres ahead of the player, on the floor.
 const _fwd = new THREE.Vector3();
 const _fwdxz = new THREE.Vector3();
@@ -385,8 +408,13 @@ function spawnAhead(m: number) {
   _feet.set(_fwdxz.x + _fwd.x * m, 0, _fwdxz.z + _fwd.z * m);
   // GAME-10d: the Swarmer comes as its whole pack, so one button press
   // shows the ring the card describes; the others still spawn singly.
-  if (foamerType === "F03") foamers.spawnPack(_feet, camera.position);
-  else foamers.spawn(_feet, camera.position, foamerType);
+  if (foamerType === "F03") {
+    for (const p of foamers.spawnPack(_feet, camera.position)) weaken(p);
+  } else if (foamerType === "F04") {
+    // GAME-10e: a Blocker comes as its line, the shield wall the card
+    // describes, so one press shows it (and it can then close up).
+    for (const p of foamers.spawnLine(_feet, camera.position)) weaken(p);
+  } else weaken(foamers.spawn(_feet, camera.position, foamerType));
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));
@@ -650,6 +678,25 @@ const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _eye = new THREE.Vector3();
 const eye = new THREE.Vector3();
+// BUG-02: the parry watch's scratch (the range's parryNext mirrors the
+// game page's, but it cannot run the loop's step: it holds a countdown
+// the loop spends, and the hold lands at the lead's time of wait).
+const _rangeCentre = new THREE.Vector3();
+let parryWaitSec = 0;
+
+/** Seconds until the nearest incoming (not bounced) ball is within a hit
+ *  of the player's capsule, the shared flight math (ball-time.ts). 1e9
+ *  when there is none. */
+function parryNextWait(dt: number): number {
+  playerCapsuleCentre(player.eye(1, eye), _rangeCentre);
+  let best = 1e9;
+  for (const b of projectiles.list) {
+    if (b.bounced) continue;
+    const s = timeToImpact(b.pos, b.vel, dt, _rangeCentre);
+    if (s < best) best = s;
+  }
+  return best;
+}
 const WEAPON_KEYS = ["weapon1", "weapon2", "weapon3"] as const;
 
 const PAUSED_FRAME_MS = renderJson.pausedFrame * 1000;
@@ -667,6 +714,13 @@ loopCtl = startLoop({
   update(dt) {
     if (input.wasPressed("pause")) setPaused(!paused);
     if (!paused) {
+      // BUG-02: parryNext's hold lands on the lead's time of wait (the
+      // game page's helper runs its own steps; the range's cannot, so the
+      // loop spends the watch wanted's countdown here).
+      if (parryWaitSec > 0) {
+        parryWaitSec -= dt;
+        if (parryWaitSec <= 0) shield.forcedHold = true;
+      }
       player.update(dt, input);
       // GAME-04 stage 2: the tiny parry hit-stop slows the movables, like on the
       // game page (the shield counts the true dt and hands back the rate).
@@ -790,16 +844,19 @@ if (watch) {
         return e.thrown;
       },
       shieldState: () => shield.state,
-      /** GAME-04 stage 2: raise the disc with its hands-on lead preserved: for the
-       *  next ball that is still coming, raise it now; the range's watch
-       *  cannot run the page's own step, so it holds and lets the loop
-       *  raise it (the game page's parryNext runs the steps for it).
-       *  true when a ball was found to aim at. */
+      /** GAME-04 stage 2 (BUG-02): raise the disc with its hands-on lead,
+       *  timed by the ball's real flight (ball-time.ts, the game page's
+       *  helper's math): the hold lands when the ball is the shield's
+       *  lead time from the disc, so the loop's raise is within the
+       *  window by the arrival. A ball inside the lead already is not
+       *  raiseable in time: the hold goes up right away, the raise takes
+       *  its own time. true when a ball was found to aim at. */
       parryNext: () => {
-        let found = false;
-        for (const b of projectiles.list) if (!b.bounced) { found = true; break; }
-        if (found) shield.forcedHold = true;
-        return found;
+        if (paused) return false;
+        const t = parryNextWait(STEP);
+        if (t >= 1e9) return false;
+        parryWaitSec = Math.max(0, t - shield.parryLead);
+        return true;
       },
       state: () => ({
         parries: shield.parries,

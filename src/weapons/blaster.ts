@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { DartTypeName } from "./darts";
+import type { DartTypeName, DartShot, ShotChunk } from "./darts";
 import blastersJson from "../../data/blasters.json";
 
 // GAME-09: the resolved blaster spec, written once when the blaster and its
@@ -59,6 +59,8 @@ export interface BlasterSpec {
   hide: string[];
   viewmodel: ViewmodelSpec;
   motion: MotionSpec;
+  /** GAME-09b: null for a blaster and mod that cannot chunk. */
+  chunk: ShotChunk | null;
 }
 
 export interface BlasterControls {
@@ -70,8 +72,17 @@ export interface BlasterControls {
 // What the blaster can do with a dart system, kept as a small interface so a
 // test can pass a recording fake in place of the real DartSystem.
 export interface DartFiring {
-  fire(origin: THREE.Vector3, direction: THREE.Vector3, type: DartTypeName): void;
+  fire(
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    type: DartTypeName,
+    shot?: DartShot | null,
+  ): void;
 }
+
+// GAME-09b: shot ids, one counter for every blaster, so two blasters'
+// shots never share an id inside the chunk window.
+let shotSeq = 0;
 
 // The raw shape of one entry in data/blasters.json before mods merge in.
 interface RawMod {
@@ -84,6 +95,7 @@ interface RawMod {
   recoil?: Partial<RecoilSpec>;
   show?: string[];
   hide?: string[];
+  chunk?: ShotChunk | null;
   _note?: string;
 }
 
@@ -108,6 +120,7 @@ interface RawBlaster {
   muzzles: string[];
   viewmodel: ViewmodelSpec;
   motion: MotionSpec;
+  chunk?: ShotChunk | null;
   mods?: Record<string, RawMod>;
 }
 
@@ -143,6 +156,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     hide: [],
     viewmodel: raw.viewmodel,
     motion: raw.motion,
+    chunk: raw.chunk ?? null,
   };
   for (const m of activeMods) {
     const mod = raw.mods?.[m];
@@ -154,6 +168,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     if (mod.muzzles !== undefined) s.muzzles = [...mod.muzzles];
     if (mod.bothBarrels !== undefined) s.bothBarrels = mod.bothBarrels;
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
+    if (mod.chunk !== undefined) s.chunk = mod.chunk;
     for (const n of mod.show ?? []) if (!s.show.includes(n)) s.show.push(n);
     for (const n of mod.hide ?? []) if (!s.hide.includes(n)) s.hide.push(n);
   }
@@ -233,6 +248,10 @@ export class Blaster {
   // Seconds since the last shot (auto, break). Starts at the interval in
   // the constructor so the very first press can fire.
   private fireClock = 0;
+  // GAME-09b: the shot id and muzzle a shot's darts carry. One per trigger
+  // pull: every dart that leaves for one press shares the id, so the hit
+  // can add up what the shot did.
+  private readonly shot: DartShot = { id: 0, muzzle: new THREE.Vector3(), chunk: null };
   // Auto recoil recover: the values captured on release, eased to 0 over
   // `recover` seconds.
   private recoving = false;
@@ -373,6 +392,7 @@ export class Blaster {
       this.shots += 1;
       const n = s.muzzles.length;
       const start = this.nextMuzzle;
+      this.beginShot();
       for (let k = 0; k < s.dartsPerShot; k++) this.fireDart((start + k) % n, s.spreadDeg);
       this.nextMuzzle = (start + s.dartsPerShot) % n;
       this.st = "priming";
@@ -387,8 +407,17 @@ export class Blaster {
   private fireDart(i: number, spreadDeg: number): void {
     coneDir(_dir, this._aimDir, spreadDeg, this.rng);
     const o = this.muzzle(i);
-    this.darts.fire(o, _dir, this.dartType);
+    this.shot.muzzle.copy(o);
+    this.darts.fire(o, _dir, this.dartType, this.shot);
     this.onShot(i);
+  }
+
+  /** GAME-09b: start a shot: one id per trigger pull (a B03 press fires one
+   *  or both barrels as one shot). Its darts carry the id, the muzzle they
+   *  leave and the blaster's chunk block. */
+  private beginShot(): void {
+    this.shot.id = ++shotSeq;
+    this.shot.chunk = this.spec.chunk;
   }
 
   // The aim for this step, set in update() so fireDart reads it.
@@ -439,6 +468,7 @@ export class Blaster {
     this.fireClock -= s.fireInterval;
     this.mag -= 1;
     this.shots += 1;
+    this.beginShot();
     this.spreadNow = Math.min(r.spreadMax, this.spreadNow + r.spreadPerShot);
     this.climbDegNow = Math.min(r.climbDegMax, this.climbDegNow + r.climbDegPerShot);
     this.fireDart(0, s.spreadDeg + this.spreadNow);
@@ -456,6 +486,7 @@ export class Blaster {
       return;
     }
     this.fireClock -= s.fireInterval;
+    this.beginShot();
     const fire = (i: number) => {
       for (let k = 0; k < s.dartsPerShot; k++) this.fireDart(i, s.spreadDeg);
       this.loaded[i] = false;

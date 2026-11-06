@@ -101,6 +101,12 @@ export class FoamerSounds {
         // A thrower's windup shows before the ball leaves the hand
         // (GAME-10a); a bonker's swing keeps its own whoosh. GAME-10d: a
         // Swarmer's is a nibble, a small high snap, not a club.
+        // GAME-10e: a Blocker lifts the shield and brings the blaster up
+        // over it, its own sound rather than the Roamer's windup.
+        if (f.spec.rig === "F04") {
+          this.sink.play("F04-alert", p);
+          break;
+        }
         const token = f.attack()?.token;
         this.sink.play(
           token === "ranged" ? "F02-windup" : token === "swarm" ? "F03-nibble" : "F01-swing",
@@ -109,7 +115,7 @@ export class FoamerSounds {
         break;
       }
       case "throw":
-        this.sink.play("F02-throw", p);
+        this.sink.play(f.spec.rig === "F04" ? "F04-volley" : "F02-throw", p);
         break;
       case "fall":
         // GAME-11: it toppled, but it is not down, so no fizz-out.
@@ -129,6 +135,19 @@ export class FoamerSounds {
         break;
       case "stagger":
         this.sink.play("FX-stagger", p);
+        break;
+      // GAME-09b: the burst out of a chunk finish's hole. The down's own
+      // topple follows it from goDown.
+      case "chunk":
+        this.sink.play("FX-chunk", p);
+        break;
+      // GAME-10e, the Blocker's shield: a dart thudding into it, and the
+      // shield coming away (design/SOUNDS.md).
+      case "shield-hit":
+        this.sink.play("F04-shieldhit", p);
+        break;
+      case "shield-break":
+        this.sink.play("F04-shieldbreak", p);
         break;
       // GAME-10b, the Darter's charge: the scrape, the run starting, and
       // the wall or player it hits (placeholder IDs, design/SOUNDS.md 4.2).
