@@ -6,17 +6,13 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-LVL-03a done 2026-11-06, awaiting review (card `tasks/LVL-03a.md`,
-DeepSeek V4.1 Flash via Pi, branch `lvl-03a`): Level 1-3 beats 1 to 5 in
-`data/levels/1-3.json`, loaded by `arena.html?level=1-3`. The bay,
-explore 1, the Pit (A1), the breather, the Yard (A6) and a temporary exit.
-New test file `tests/level/level-1-3.test.ts` (validation with the arenas
-in order, floor under the walk start to exit, Pit ramps and Yard islands
-walkable on the nav grid built as the page builds it, no wave over 12
-Swarmers alive, exit pad dead until the last arena clears). Full suite 519
-pass, 2 skipped; `tsc` and `npm run build` clean. Not checked by eye: no
-browser here, so the look of the bay, the pit ledges, the yard islands and
-the door sizes, and the feel of the two Yard waves, are unverified.
+LVL-03a merged locally 2026-11-06, not pushed (card `tasks/LVL-03a.md`,
+DeepSeek V4.1 Flash via Pi): Level 1-3 beats 1 to 5 in
+`data/levels/1-3.json`, played as `arena.html?level=1-3`: the bay, explore
+1, the Pit (A1), the breather, the Yard (A6) and a temporary exit. The
+review moved two Pit rifts out from under the north ramp (a Swarmer stuck
+under it). Played to "Level complete" with the waves cleared by script.
+Full suite 520 pass, 2 skipped; `tsc` and `npm run build` clean.
 
 BUG-08 merged locally 2026-11-06, not pushed (card `tasks/BUG-08.md`,
 DeepSeek V4.1 Flash via Pi): a Roamer that has gone
@@ -442,6 +438,28 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-06: LVL-03a review, merged (Claude)
+
+- One bug found in play: in the Pit's wave 1 a Swarmer stood at
+  (-12, -51) in approach for over 25 s. Its rift sat on the pit floor
+  under the north ramp, and a ramp is a tilted slab, so it spawned in
+  the pocket under the slab. `pit-rift-n2` was under the slab's low end
+  too. Moved n1 to the ramp's head on the west ledge (-15, 0.2, -51) and
+  n2 just past its foot (-5.5, -3.8, -50). New test 4d: every rift in
+  the level passes the nav grid's `canStandAt` (it failed on both rifts
+  before the move). After: the first Swarmer walks down the ramp and all
+  six reach the player within 16 s.
+- In the browser (`arena.html?watch&level=1-3`): the explore pair comes
+  out and reaches the player; the Pit's ramps feed the pack in; in the
+  Yard's wave 1 two Swarmers were slow to leave the north end (about
+  15 s) but did arrive. Every arena cleared by script, the Yard's north
+  gate opened, and the exit pad showed "Level complete".
+- Corrected in the notes: the Pit's third wave is two Slowmers, and the
+  breather and the Yard are at the pit floor's height (-4), not 0.
+- Not checked: the look of each space by eye (the pane was hidden; only
+  the bay was seen: the dummies stand clear of the north door), the
+  pacing with real shooting, the frame time with 10 Swarmers.
 
 ### 2026-11-06: LVL-03a Level 1-3 beats 1 to 5 (DeepSeek V4.1 Flash via Pi)
 

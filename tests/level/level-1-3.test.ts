@@ -157,6 +157,20 @@ describe("Level 1-3 loads (LVL-03a)", () => {
     }
   });
 
+  // Review fix: a rift on the floor under a ramp's slab put its Swarmer in
+  // the pocket below the slab, where it stood in approach for good.
+  it("4d. every rift stands on walkable ground, not under a ramp", async () => {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
+    for (const arena of level.arenas ?? []) {
+      for (const r of arena.rifts) {
+        expect(g.canStandAt(r.pos[0], r.pos[2], r.pos[1]), `${arena.id} ${r.id}`).toBe(true);
+      }
+    }
+  });
+
   it("4. each arena's trigger is reachable on the nav grid", async () => {
     const { rapier, world } = await createPhysics();
     const built = buildLevel(level, rapier, world, FAKE);
