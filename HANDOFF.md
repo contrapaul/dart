@@ -602,6 +602,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: GAME-10i review, merged (Claude)
+
+- Read the diff: the `swing` attack in data (range pinned at 2.4, needs
+  the sword), the punch now needing `foreArmL` only, the swing's windup
+  and strike motion, the two sounds. Small and in the card's files.
+- Fixed in review, from the turnaround: (1) the blade's bottom sat on
+  the hand, so it grew back up the forearm past the shoulder with the
+  grip at the tip. Now it hangs from its hilt end at the hand, tilted
+  forward (rest -1.2 rad), hilt and guard at that end. (2) The cross
+  guard was orange, the weak-point colour; it is purple now. Turnaround
+  and the F07 pose sets re-rendered (the crouch and leap sets show the
+  rest pose, as before: the renderer has no pose for those states).
+- Main merged in (one HANDOFF log conflict, both kept). `tsc`, the full
+  suite (614 pass, 2 skipped) and the build pass.
+- Played on the range: from 4 m it closes to about 2.2 m and swings
+  (beyond the old punch's 1.7 m), hitting for 16; with the sword broken
+  off (hilt and guard go with it) it punches with the left fist.
+- Not checked: the swing seen from the side in play (in first person it
+  points at the camera), the two sounds by ear. The sword is 1.5 m, not
+  the card's 1.2 m; Paul to judge.
+
 ### 2026-11-07: GAME-10i, the Brawler's foam sword (Qwen 3.8-27B via Pi, branch `game-10i`)
 
 - Stage 1, the sword: `fistR` in the F07 rig is gone; a `sword` weapon
