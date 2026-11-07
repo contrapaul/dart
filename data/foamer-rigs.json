@@ -2607,7 +2607,7 @@
       "movement": "combo",
       "speed": 1.4,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-lime-deep",
       "parts": [
         {
           "id": "body",
@@ -2644,10 +2644,11 @@
             0,
             0
           ],
-          "material": "greybox-dark"
+          "material": "foam-lime-deep"
         },
         {
           "id": "head",
+          "material": "foam-purple",
           "kind": "head",
           "shape": "ellipsoid",
           "size": [
@@ -2688,7 +2689,7 @@
             -0.4,
             0
           ],
-          "material": "greybox-dark"
+          "material": "foam-lime-deep"
         },
         {
           "id": "hornL",
@@ -2715,7 +2716,7 @@
             0,
             1.15
           ],
-          "material": "greybox-dark"
+          "material": "foam-purple"
         },
         {
           "id": "pauldronL",
@@ -2737,7 +2738,7 @@
             -0.4,
             0
           ],
-          "material": "greybox-dark",
+          "material": "foam-lime-deep",
           "nubs": [
             [
               -0.5,
@@ -2753,6 +2754,7 @@
         },
         {
           "id": "armL",
+          "material": "foam-purple",
           "kind": "arm",
           "shape": "capsule",
           "size": [
@@ -2774,6 +2776,7 @@
         },
         {
           "id": "foreArmL",
+          "material": "foam-purple",
           "kind": "arm",
           "shape": "capsule",
           "size": [
@@ -2795,6 +2798,7 @@
         },
         {
           "id": "legL",
+          "material": "foam-purple",
           "kind": "leg",
           "shape": "capsule",
           "size": [
@@ -2816,6 +2820,7 @@
         },
         {
           "id": "shinL",
+          "material": "foam-purple",
           "kind": "leg",
           "shape": "capsule",
           "size": [
@@ -2861,7 +2866,7 @@
             0
           ],
           "flatBottom": true,
-          "material": "greybox-dark"
+          "material": "foam-lime-deep"
         },
         {
           "id": "hornR",
@@ -2888,7 +2893,7 @@
             0,
             -1.15
           ],
-          "material": "greybox-dark"
+          "material": "foam-purple"
         },
         {
           "id": "pauldronR",
@@ -2910,7 +2915,7 @@
             -0.4,
             0
           ],
-          "material": "greybox-dark",
+          "material": "foam-lime-deep",
           "nubs": [
             [
               0.5,
@@ -2926,6 +2931,7 @@
         },
         {
           "id": "armR",
+          "material": "foam-purple",
           "kind": "arm",
           "shape": "capsule",
           "size": [
@@ -2947,6 +2953,7 @@
         },
         {
           "id": "foreArmR",
+          "material": "foam-purple",
           "kind": "arm",
           "shape": "capsule",
           "size": [
@@ -2968,6 +2975,7 @@
         },
         {
           "id": "legR",
+          "material": "foam-purple",
           "kind": "leg",
           "shape": "capsule",
           "size": [
@@ -2989,6 +2997,7 @@
         },
         {
           "id": "shinR",
+          "material": "foam-purple",
           "kind": "leg",
           "shape": "capsule",
           "size": [
@@ -3034,7 +3043,7 @@
             0
           ],
           "flatBottom": true,
-          "material": "greybox-dark"
+          "material": "foam-lime-deep"
         },
         {
           "id": "shield",
@@ -3061,10 +3070,11 @@
             0,
             0
           ],
-          "material": "greybox-dark"
+          "material": "foam-orange"
         },
         {
           "id": "shieldBoss",
+          "material": "foam-orange",
           "kind": "detail",
           "shape": "cone",
           "size": [
@@ -3104,7 +3114,7 @@
             -0.9,
             0
           ],
-          "material": "greybox-dark"
+          "material": "foam-purple"
         },
         {
           "id": "maceHead",
@@ -3126,7 +3136,7 @@
             0.6,
             0
           ],
-          "material": "greybox-dark",
+          "material": "foam-purple",
           "nubs": [
             [
               1,
@@ -3200,7 +3210,7 @@
             0,
             0
           ],
-          "material": "greybox-dark"
+          "material": "foam-purple"
         }
       ],
       "health": 60
