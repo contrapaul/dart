@@ -1,5 +1,21 @@
 # ART-04 notes: B07 Collateral
 
+## Round 2 (Claude Opus 5.5, 2026-11-07)
+
+Paul's changes after Round 1: a large cylinder drum and a handle on the
+pump. The tube magazine and pump sleeve are gone; a navy drum with red
+rims and a charcoal hub sits between the receiver and the launch tube,
+its top chamber in line with the bore and six warheads in its front face
+(node `drum`); a vertical pump handle with red ribs slides on a rod under
+the launch tube (node `pump`, its origin at its bounds centre for the
+contract check). The card's drum holds 6, reserve 18.
+
+Checks: `art/blasters/check_glb.py` passes: 11,164 triangles, 523,556
+bytes, 6 materials, nodes `body`, `drum`, `pump`, `trigger`, `muzzle_1`.
+Two builds byte-identical, SHA-256
+`33d498769649b38051fec59c0360fb6cfd970e75d69f62b1810ddfe7bcf7d128`.
+Waiting for Paul's look.
+
 ## Round 1 (Claude Opus 5.5, 2026-11-07)
 
 Built from `design/blasters/B07.md` with `build.py`, on Paul's word to
