@@ -17,7 +17,9 @@ function springKick(dt: number, rate: number, kickMax: number,
   const dv = (-rate * rate * that.k - 2 * rate * that.v) * dt;
   that.v += dv;
   that.k += that.v * dt;
-  if (that.k < 0) { that.k = 0; that.v = 0; }
+  // Within a thousandth of the kick on the way home: at rest, so the
+  // root lands exactly on its placement instead of creeping forever.
+  if (that.k < kickMax * 1e-3 && that.v <= 0) { that.k = 0; that.v = 0; }
   if (that.k > kickMax) { that.k = kickMax; that.v = 0; }
   void that.j;
 }
@@ -51,6 +53,7 @@ export class Viewmodel {
   private boundHook: (m: number) => void = (m) => this.hookShot(m);
 
   private _w = new THREE.Vector3();
+  private _kickState = { k: 0, v: 0, j: 0 };
   // ART-05a: B02's slide: seconds since the last shot, and the travel it
   // is easing back from (re-set by each shot, so a burst kicks again).
   private slideClock = 99;
@@ -208,8 +211,13 @@ export class Viewmodel {
     const m = sp.motion;
 
     // Shot kick: spring at rate `return`, impulse at shot start.
-    springKick(dt, m.return, m.kick, { k: this.kick, v: this.kickVel, j: 0 });
-    this.kick = Math.max(0, Math.min(m.kick, this.kick));
+    // The spring works on a member (review 2026-11-08: it was handed a
+    // fresh literal and its result dropped, so no blaster ever kicked).
+    const ks = this._kickState;
+    ks.k = this.kick; ks.v = this.kickVel;
+    springKick(dt, m.return, m.kick, ks);
+    this.kick = Math.max(0, Math.min(m.kick, ks.k));
+    this.kickVel = ks.v;
 
     // Root: base placement + kick (+Z back) + tilt (up) + dip (switch).
     const tiltNorm = m.kick > 1e-9 ? this.kick / m.kick : 0;
