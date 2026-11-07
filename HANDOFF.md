@@ -6,6 +6,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+ENV-03 built 2026-11-07, both stages committed on `env-03`, not reviewed,
+not merged, not pushed (Qwen 3.8-27B via Pi): the E13 mod station as
+`Level.stations` and the cabinet code (`src/arena/stations.ts`), granted
+by the arena page, plus the test level `env-03` with one station per
+blaster that has mods. The look was not seen by eye and the two sounds
+not heard; no dev server was run in that session (card rule).
 ENV-01 merged locally 2026-11-07, not pushed: foam cladding (E01) and toy
 crate stacks (E02) whose crates break whole when worn, in the test level
 `env-01`. ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design
@@ -652,6 +658,97 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: ENV-03, the mod station (E13), both stages (Qwen 3.8-27B via Pi)
+
+Task: `tasks/ENV-03.md`, in full. Branch `env-03`. Two commits:
+`525a5f1` (stage 1: the cabinet) and `4c2ecf5` (stage 2: the env-03 test
+level).
+
+- **Stage 1.** `Level.stations?: Station[]` (`src/level/format.ts`; the
+  validator checks the blaster exists, the mod is a key of its mods,
+  facing is finite, pos is a Vec3). `Stations` (`src/arena/stations.ts`)
+  builds the cabinet from boxes: beige case, bezel, a canvas screen that
+  glows the mod's and blaster's names from data, a slot, grille bars,
+  square edges; sizes and colours in `data/station.json`. The use point
+  is on the cabinet's face (the level's `facing` is the way the cabinet
+  faces the player; face normal `(-sin, -cos)` times half the depth), at
+  1.15 m. The gate: 1.2 m reach of that point plus the view within the
+  cone onto it (dot against normalised forward, the finisher's way).
+  Holding `use` with the eye in the gate for 0.6 s calls
+  `Loadout.setMod(idx, mod, true)` once; the screen dims to
+  `spendScale` 0.12; `reset()` (restart) sets spent, holds, nudged and
+  the screen flat, so it can grant again.
+- **The use key settles to the tools first.** `useHeldForStations`
+  (`src/arena/stations.ts`) says the key does not reach the stations
+  while a finisher or vacuum is active or has a target (finisher.reads
+  the use press before the page's step hook runs, vacuum.targets are
+  read with the same eye and forward as the stations'; both statements
+  therefore hold in play, and the unit test's cases are the card's last
+  done-when clause). The step hook passes that to `stations.update`.
+- **The prompt reuses the finisher's element.** `GameHooks.stationPrompt?
+  (eye, forward)` (`src/game/game.ts`) is called in the render, after
+  the done and target lines, and returns the mod's name plus the use
+  key (the same wording as the finisher and vacuum's prompts). A level
+  without a station returns null and the line is invariant. `game.prompt`
+  records the component ("melee", "station" or "use") and the display
+  flag for the QA watch menu.
+- **A player who does not carry the blaster is told so** via the banner in
+  `arenaExtras` (onNeedBlaster), and the station stays unspent: it can
+  grant later if the blaster arrives (in play, via a pickup; the unit
+  test is driven by a stub loadout without B01). A held use on a spent
+  station plays `ENV-station-spent` (a low, dry buzz); a grant uses `ENV-station-grant`
+  (a rising two-note blip). Both are synth-only placeholder tones in
+  `data/sounds.json`, listed in the level table of `design/SOUNDS.md`.
+- **Stage 2.** `data/levels/env-03.json` is env-01's room (floor,
+  ceiling, four walls, exit pad) minus the columns and crates, with
+  three stations (B01 slug at west, B04 suppress at east, B03 both at
+  north, each facing the player start), `arenas: []`, no pickups (the
+  page loadout always carries all three blasters, so the no-pickup case
+  is in the unit test, not the file). Registered as `env-03` in
+  `src/arena/levels.ts` (its own line next to env-01's, to keep the
+  ENV-02 merge small), picked up in `tests/level/ring-load.test.ts`'s key list, and
+  self-validated in `tests/level/env-03.test.ts` (loads with no validate
+  errors or warnings; one station per blaster that has mods; no
+  arenas).
+- **The ENV-01 lesson, in full:** the path `buildLevel` -> `buildArena`
+  (`buildArena` in `src/arena/extras.ts`) -> `createGame`
+  (`src/game/game.ts`): `buildArena`'s return object is unused by the
+  game for station state, so `arenaExtras(g)` constructs the
+  `Stations` directly from `LEVEL.stations` (the level the page chose,
+  the same object `buildArena` built; the build's return object carries
+  no station state, the page keeps its own).
+  The `step` hook drives `stations.update` each frame; `respawnAtEntry`
+  calls `stations.reset()`, so a death, a try again and a play again
+  all start the run with every station live again. The `render` hook's
+  `stationPrompt` reads `stations.prompt` for the prompt element. A
+  level without stations: `new Stations(..., [])` has empty items,
+  `update` returns at once, `prompt` returns null and nothing changes,
+  as before (the card's level-without-stations-loads-as-before case).
+- **Bugs found in this session:** (1) the gate in `passes` divided the
+  eye-to-point delta by the forward *length* instead of dotting the view
+  with the normalised delta, so a view aimed straight at the point scored
+  -1 and failed the cone (the unit test caught it); the gate now dots
+  the normalised view with the normalised delta, the finisher's way. (2) The test passed the same `STATION` object to
+  every `Stations` in the suite and `spent` bled across tests; fixed
+  with `structuredClone`.
+- **Verified:** `npx tsc --noEmit` clean; `npx vitest run` 99 files,
+  674 pass, 2 skip; `npm run build` clean; dash check clean on every
+  touched file (PLAN.md and this entry re-checked after editing them).
+  New tests: `tests/arena/stations.test.ts` (8 station cases and 6
+  use-key precedence cases, headless, a bare Rapier world) and
+  `tests/level/env-03.test.ts` (3).
+- **Not seen by eye (no browser in this session, card rule is no dev
+  server):** the cabinet's shape and the screen's text, whether it
+  reads as Paul's 1990s office computer or as a generic box, whether
+  the grille and slot are visible at play distance, the two sounds, and
+  the prompt's replacement of the vacuum's (the render logic is
+  unit-chosen, I have not run it). For play: `arena.html?watch&level=env-03`,
+  stand in front of a cabinet, hold E for 0.6 s; all three should grant,
+  a fourth hold on a spent cabinet should play the spent buzz; the vacuum (a foamer in view) and the finisher (at the exit pad) should still take the key first.
+- **Left to Paul:** meta name for `env-03.json` and which mod each
+  station offers in the real level are his per the card; the stage 1
+  commit body notes the [Paul] placeholders.
 
 ### 2026-11-07: ENV-01 stage 3 review, merged (Claude Opus 5.5): crates break whole
 
