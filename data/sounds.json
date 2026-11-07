@@ -650,6 +650,112 @@
         ]
       }
     },
+    "B05-fire": {
+      "_note": "GAME-09e (Paul): one precision dart, a sharp crack: higher and shorter than B06-fire (SOUNDS.md 2.6).",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.05,
+              "attack": 0.001,
+              "decay": 0.04,
+              "lowpass": 4200,
+              "highpass": 400,
+              "lowpassEnd": 1200
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.04,
+              "f0": 320,
+              "f1": 140,
+              "wave": "square",
+              "attack": 0.001,
+              "decay": 0.03
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B05-bolt": {
+      "_note": "GAME-09e (Paul): the bolt worked between shots (the card's id; SOUNDS.md 2.6 splits it into bolt-back and bolt-fwd for the recording pass).",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": { "dur": 0.05, "freq": 1100 },
+            "gain": 0.6
+          },
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.002,
+              "decay": 0.06,
+              "lowpass": 2200,
+              "highpass": 500
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B05-reload": {
+      "_note": "GAME-09e (Paul): the thin box magazine out and in, used by the B05 reload cues (SOUNDS.md 2.6 splits it into mag-out and mag-in).",
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": { "dur": 0.06, "freq": 800 },
+            "gain": 0.6
+          },
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 1200,
+              "highpass": 250
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B05-whistle": {
+      "_note": "GAME-09e (Paul): the precision dart in flight (a whistler), capped to a few voices at once. Placeholder: nothing plays it yet, game-sounds.ts has no per-dart loop; wiring it belongs to the review (as with B06-spin).",
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0.04,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 1400,
+              "f1": 1100,
+              "wave": "sine",
+              "attack": 0.05,
+              "decay": 0.4
+            },
+            "gain": 0.35
+          }
+        ],
+        "loop": true
+      }
+    },
     "FX-explode": {
       "_note": "GAME-09d (Paul): the shared explosion: a foam pop with a puff (SOUNDS.md EX-small's shape, the card's id).",
       "files": [],
@@ -3491,6 +3597,23 @@
         "state": "reloading",
         "at": 0.8,
         "sound": "B04-mag-in"
+      }
+    ],
+    "B05": [
+      {
+        "state": "priming",
+        "at": 0.1,
+        "sound": "B05-bolt"
+      },
+      {
+        "state": "reloading",
+        "at": 0.15,
+        "sound": "B05-reload"
+      },
+      {
+        "state": "reloading",
+        "at": 0.75,
+        "sound": "B05-reload"
       }
     ],
     "B06": [
