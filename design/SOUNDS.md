@@ -321,6 +321,8 @@ The other Foamers (IDs given when each is built):
 | LV-wave | Next wave starting | Yes | 2 | Code |
 | LV-arena-clear | Arena cleared, doors open | Yes | 2 | Code plus Foley |
 | LV-door | Door opening and closing | Yes | 2 each | Foley |
+| ENV-station-grant | A mod station grants its mod (a rising two-note blip) | Later | 2 | Code |
+| ENV-station-spent | A used station, use key pressed (a low dry buzz) | Later | 2 | Code |
 | LV-switch | Switch or button | Yes | 3 | Foley |
 | ENV-button-press | Toy button pressed, cap squashes and lights | ENV-02 | 3 | Code: a click over a short rising tone |
 | ENV-button-dead | Toy button pressed again, nothing happens | ENV-02 | 2 | Code: a flat dull click |
