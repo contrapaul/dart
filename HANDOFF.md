@@ -6,6 +6,11 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design only, no
+code): 13 terrain element candidates and a recommended first five, waiting
+for Paul on Q17 to Q20 in `PLAN.md` section 13. No terrain element is built
+yet.
+
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
 a 4 m corridor opens into a 44 x 36 m yard with a 9 m ceiling and six
