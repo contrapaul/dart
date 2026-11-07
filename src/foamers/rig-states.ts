@@ -99,6 +99,13 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [0.2 * e, 0, 1.4 * e]);
     out.turn = 0.25 * e;
     out.pitch = 0.1 * e;
+  } else if (attack === "homingShot") {
+    // GAME-10j: the wrist launcher raised: the right arm lifts the blaster
+    // out to the side and up, the forearm over, the body aiming with it.
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [-1.7 * e, 0, 0.35 * e]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.6 * e, 0, 0]);
+    out.pitch = -0.12 * e;
+    out.y = 0.02 * e;
   }
 }
 
@@ -148,6 +155,16 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
       out.rot.set("armR", [(0.2 - 0.5 * u) * back, 0, (1.4 - 2.7 * u) * back]);
     out.turn = (0.25 - 0.45 * u) * back;
     out.pitch = (0.1 - 0.25 * u) * back;
+  } else if (attack === "homingShot") {
+    // GAME-10j: the launcher whips around from the raised pose (the ball
+    // leaves around the 60% mark) and settles back to the rest, so the
+    // recover starts clean.
+    const wp = k < 0.6 ? (k / 0.6) ** 2 : 1;
+    const a = k < 0.6 ? -1.7 + 2.2 * wp : 0.5 - 0.5 * ((k - 0.6) / 0.4);
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [a, 0, 0.35 * (1 - wp)]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.6 * (1 - wp), 0, 0]);
+    out.pitch = -0.12 * (1 - wp) + 0.12 * k;
+    out.y = 0.02 * Math.sin(k * Math.PI);
   }
 }
 

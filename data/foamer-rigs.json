@@ -2256,7 +2256,7 @@
       "movement": "fly",
       "speed": 3.5,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-purple",
       "parts": [
         {
           "id": "body",
@@ -2290,7 +2290,24 @@
             0
           ],
           "eyes": "slit",
-          "material": "greybox-dark"
+          "material": "foam-purple"
+        },
+        {
+          "id": "visor",
+          "kind": "detail",
+          "shape": "box",
+          "size": [
+            9,
+            2,
+            2
+          ],
+          "parent": "head",
+          "at": [
+            0,
+            0.65,
+            0.92
+          ],
+          "material": "foam-lime"
         },
         {
           "id": "jetL",
@@ -2320,7 +2337,7 @@
             0.8,
             1
           ],
-          "material": "greybox-dark"
+          "material": "foam-orange"
         },
         {
           "id": "wingL",
@@ -2347,7 +2364,7 @@
             0,
             -0.35
           ],
-          "material": "greybox-dark"
+          "material": "foam-lime"
         },
         {
           "id": "armL",
@@ -2409,7 +2426,7 @@
             0.8,
             1
           ],
-          "material": "greybox-dark"
+          "material": "foam-orange"
         },
         {
           "id": "wingR",
@@ -2436,7 +2453,7 @@
             0,
             0.35
           ],
-          "material": "greybox-dark"
+          "material": "foam-lime"
         },
         {
           "id": "armR",
@@ -2475,24 +2492,111 @@
           "kind": "weapon",
           "shape": "tube",
           "size": [
-            5,
-            10,
-            5
+            4,
+            7,
+            4
           ],
           "parent": "foreArmR",
           "at": [
-            0,
-            -0.9,
-            0
+            1.6,
+            -0.1,
+            0.3
           ],
           "tip": {
-            "material": "foam-orange",
-            "length": 3
+            "material": "foam-ink",
+            "length": 2
           },
-          "material": "greybox-dark"
+          "material": "foam-lime"
+        },
+        {
+          "id": "legL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "body",
+          "at": [
+            -0.45,
+            -0.8,
+            0
+          ],
+          "rest": [
+            -0.25,
+            0,
+            -0.06
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "shinL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "legL",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            0.4,
+            0,
+            0
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "legR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "body",
+          "at": [
+            0.45,
+            -0.8,
+            0
+          ],
+          "rest": [
+            -0.25,
+            0,
+            0.06
+          ],
+          "material": "foam-purple"
+        },
+        {
+          "id": "shinR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            4,
+            8,
+            4
+          ],
+          "parent": "legR",
+          "at": [
+            0,
+            -0.85,
+            0
+          ],
+          "rest": [
+            0.4,
+            0,
+            0
+          ],
+          "material": "foam-purple"
         }
       ],
-      "hover": 1.6,
       "health": 30
     },
     {
