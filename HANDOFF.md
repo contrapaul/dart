@@ -6,8 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-LVL-04b stage 3 done 2026-11-07, on branch `lvl-04b`, not merged and
-not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
+LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
 a 4 m corridor opens into a 44 x 36 m yard with a 9 m ceiling and six
 destructible islands, one 3.2 m voxel volume each and 2.5 m tall, in two
@@ -622,6 +621,24 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-04b stage 3 review, merged (Claude): Level 1-4 is whole
+
+- The first start got no reply from OpenRouter in three tries (Pi never
+  opened a session); a test call worked minutes later and the restart
+  built the stage in two commits.
+- Read the diff: `data/levels/1-4.json` and its tests only. The older
+  assertions it changed follow the level going on past the Ring. Its
+  PLAN edit had dropped the row's task cell; restored here.
+- Main merged in (HANDOFF Status and Log conflicts, both kept). `tsc`,
+  the full suite (619 pass, 2 skipped) and the build pass.
+- Played by script at the Yard: it locks; wave 1 spawns staggered (2
+  Darters, 8 Swarmers); wave 2's 13 fill up to the 12 cap and hold, and
+  one taken down lets the 13th in (23 spawned in the arena, 10 plus 13).
+  Cleared, the north door opens; from it the lift is a lit lime panel at
+  the end of the corridor; stepping on it shows "Level complete".
+- Not checked: the islands as high ground and their jump gaps, the fight
+  by hand, the frame time with 12 Foamers in the Yard.
 
 ### 2026-11-07: LVL-04b stage 3, the Yard and the lift (DeepSeek V4.1 Flash via Pi)
 
