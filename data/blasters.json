@@ -40,7 +40,7 @@
     "recoil": { "spreadPerShot": 0.5, "spreadMax": 7, "climbDegPerShot": 0.35, "climbDegMax": 5, "recover": 0.5 },
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.22, -0.3, -0.42], "rotationDeg": [2, 5, 0], "scale": 0.7 },
-    "motion": { "kick": 0.03, "tiltDeg": 3, "return": 12, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.2 },
+    "motion": { "kick": 0.03, "tiltDeg": 3, "return": 12, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.2, "boltTravel": 0.04 },
     "mods": {
       "rate": { "_note": "GAME-09d mod 1 (Paul): increased rate of fire, about 8 a second.", "fireInterval": 0.12 },
       "explosive": { "_note": "GAME-09d mod 2 (Paul): every 5th mega dart explodes where it first hits, through the shared ExplosionSystem. The count is on the blaster (Blaster.beginShot reads explosiveEvery).", "explosiveEvery": 5 }
@@ -55,7 +55,7 @@
     "zoom": { "fovShare": 0.4, "easeTime": 0.12 },
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.22, -0.3, -0.5], "rotationDeg": [2, 5, 0], "scale": 0.62 },
-    "motion": { "kick": 0.05, "tiltDeg": 6, "return": 12, "triggerDeg": 15, "pumpTravel": 0.05, "magDrop": 0.12 },
+    "motion": { "kick": 0.05, "tiltDeg": 6, "return": 12, "triggerDeg": 15, "pumpTravel": 0.05, "magDrop": 0.12, "boltLiftDeg": 60, "boltTravel": 0.05 },
     "mods": {
       "explosive": { "_note": "GAME-09e mod 1 (Paul): every shot explodes where it first hits, through the shared ExplosionSystem (the count is on the blaster: Blaster.beginShot reads explosiveEvery).", "explosiveEvery": 1 },
       "heavy": { "_note": "GAME-09e mod 2 (Paul): heavier rounds: the precisionHeavy dart, which pierces three Foamers and hits a little harder.", "dartType": "precisionHeavy" }
@@ -83,7 +83,7 @@
     "fireInterval": 0.15, "reloadTime": 1.0, "autoReload": true,
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 4, 0], "scale": 0.85 },
-    "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1 },
+    "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1, "slideTravel": 0.025, "slideReturn": 0.1 },
     "mods": {
       "burst": { "_note": "GAME-09c: mod 1. One press fires three darts, burstGap apart, then the cooldown.", "mode": "burst", "burstCount": 3, "burstGap": 0.07, "burstCooldown": 0.3 },
       "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit.", "dartType": "slug", "fireInterval": 0.45, "chunk": { "rangeMetres": 6, "carveRadius": 0.2, "push": 1.0 } }
