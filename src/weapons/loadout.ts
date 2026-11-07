@@ -124,6 +124,8 @@ export class Loadout {
     let given = 0;
     for (let i = 0; i < this.blasters.length; i++) {
       const b = this.blasters[i];
+      // GAME-09c: the B02's reserve never empties, so it is never topped up.
+      if (b.spec.reserveInfinite) continue;
       const share = i === this.idx ? activeShare : otherShare;
       const want = Math.ceil(b.spec.reserveMax * share);
       const space = Math.max(0, b.spec.reserveMax - b.reserve);

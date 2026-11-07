@@ -7,7 +7,7 @@ import blastersJson from "../../data/blasters.json";
 // stays allocation-free. Scalar fields are one source per value; a mod
 // overrides a field, and a nested block such as `recoil` merges key by key.
 
-export type BlasterMode = "pump" | "auto" | "break";
+export type BlasterMode = "pump" | "auto" | "break" | "semi";
 export type BlasterState = "ready" | "priming" | "reloading";
 
 export interface RecoilSpec {
@@ -46,6 +46,9 @@ export interface BlasterSpec {
   magSize: number;
   reserveMax: number;
   reserveStart: number;
+  /** GAME-09c: the reserve never runs out: reloads always fill the
+   *  magazine, and ammo boxes and the vacuum's refill skip it. */
+  reserveInfinite: boolean;
   reloadTime: number;
   primeTime: number;
   fireInterval: number;
@@ -109,6 +112,7 @@ interface RawBlaster {
   magSize: number;
   reserveMax: number;
   reserveStart: number;
+  reserveInfinite?: boolean;
   reloadTime: number;
   autoReload: boolean;
   primeTime?: number;
@@ -140,6 +144,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     magSize: raw.magSize,
     reserveMax: raw.reserveMax,
     reserveStart: raw.reserveStart,
+    reserveInfinite: raw.reserveInfinite ?? false,
     reloadTime: raw.reloadTime,
     primeTime: raw.primeTime ?? 0,
     fireInterval: raw.fireInterval ?? 0,
@@ -338,6 +343,9 @@ export class Blaster {
       case "break":
         this.updateBreak(controls);
         break;
+      case "semi":
+        this.updateSemi(controls);
+        break;
     }
   }
 
@@ -378,6 +386,12 @@ export class Blaster {
         take -= 1;
       }
     } else {
+      // GAME-09c: an infinite reserve never empties: the magazine takes
+      // the full count and the reserve stays full.
+      if (s.reserveInfinite) {
+        this.mag = s.magSize;
+        return;
+      }
       const take = Math.min(s.magSize - this.mag, this.reserve);
       this.mag += take;
       this.reserve -= take;
@@ -400,6 +414,24 @@ export class Blaster {
     } else if (s.autoReload && this.reserve > 0) {
       this.startReload();
     }
+  }
+
+  /** GAME-09c: semi-auto: one dart per trigger press, no pump and no
+   *  hold-to-fire; presses faster than fireInterval are capped; an empty
+   *  magazine with autoReload starts a reload. */
+  private updateSemi(controls: BlasterControls): void {
+    const s = this.spec;
+    if (!controls.firePressed) return;
+    if (this.fireClock < s.fireInterval) return;
+    if (this.mag === 0) {
+      if (s.autoReload && this.reserve > 0) this.startReload();
+      return;
+    }
+    this.fireClock = 0;
+    this.mag -= 1;
+    this.shots += 1;
+    this.beginShot();
+    this.fireDart(0, s.spreadDeg);
   }
 
   /** Fire one dart from muzzle index `i` with a cone of `spreadDeg` around

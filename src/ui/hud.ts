@@ -209,7 +209,9 @@ export class Hud {
     const label =
       state === "reloading" ? "RELOAD" : state === "priming" ? "PRIMING" : "AMMO";
     const mag = b.spec.mode === "break" ? b.loaded.filter(Boolean).length : b.mag;
-    const text = `${b.spec.name}\n${label} ${mag} / ${b.reserve}`;
+    // GAME-09c: the B02's reserve never runs out, so a symbol, not a number.
+    const res = b.spec.reserveInfinite ? "∞" : b.reserve;
+    const text = `${b.spec.name}\n${label} ${mag} / ${res}`;
     if (text !== this.lastText) {
       this.lastText = text;
       this.ammo.textContent = text;

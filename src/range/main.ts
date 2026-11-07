@@ -720,7 +720,7 @@ function parryNextWait(dt: number): { t: number; ball: import("../foamers/projec
   }
   return { t: best, ball };
 }
-const WEAPON_KEYS = ["weapon1", "weapon2", "weapon3"] as const;
+const WEAPON_KEYS = ["weapon1", "weapon2", "weapon3", "weapon4"] as const;
 
 const PAUSED_FRAME_MS = renderJson.pausedFrame * 1000;
 let pausedClock = PAUSED_FRAME_MS;
