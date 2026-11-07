@@ -713,6 +713,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: GAME-10l review, merged (Claude Opus 5.5): the F13 Biomechanic, all stages
+
+- Reviewed qwen-machine's stages 3 and 4. The two stage 2 flags are done:
+  the blob spacing and drift are data (`blobSpacingMetres`,
+  `blobDriftMetres`), and a Biomechanic with its wand broken heals nobody.
+- Fixed in review: a spray's hits kept landing after the player stepped
+  behind cover mid-run. Each hit now needs the player in sight (test 18b,
+  which fails without the fix).
+- Merged main in (B07, ART-05a, ART-05b); PLAN and HANDOFF conflicts kept
+  both sides. Dropped a stale "Started" ENV-02 row that was already
+  doubled on main.
+- Played: not possible with the pane hidden (the physics world and the
+  Foamer build only step in the render frame). The heal and the spray are
+  covered by the unit tests, which drive the real Foamer system and
+  physics. The look was checked from the stage 1 renders
+  (`design/foamers/F13-*.png`): hood, tank and antenna on the back, wand
+  in hand; the arm proportions are greybox and stay for Paul.
+- Not checked by eye: the stream and the spray in play, the three
+  placeholder sounds.
+- tsc, vitest (832 passed, 2 skipped), build green.
+
 ### 2026-11-08: GAME-10l stage 3 and 4 (Qwen 3.8-27B via Pi): the short spray, the tank gone, the sounds, the docs
 
 - **Asked for** (`tasks/GAME-10l.md`): stage 3 (the spray at the player,
