@@ -444,8 +444,10 @@
         "seed": 7
       },
       "weakpoint": {
-        "_note": "CONTENT-PLAN 3.1: the gun is the weak point. A dart on it takes damage x damage; with the gun or both barrels gone it cannot fire (see src/foamers/pellet.ts).",
-        "part": "gun",
+        "_note": "GAME-10g: CONTENT-PLAN 3.1, the gun is the weak point. GAME-10j: this became the parts list (the F10's jets are two parts).",
+        "parts": [
+          "gun"
+        ],
         "damage": 2
       },
       "attacks": [
@@ -585,6 +587,57 @@
         "part": "jaw",
         "damage": 2.5
       }
+    },
+    "F10": {
+      "rig": "F10",
+      "_note": "GAME-10j: the Turbo. On the Roamer's brain (see the F06), a ring it keeps at preferredDistanceMetres. Health 30 and speed 3.5 come from the rig. It flies on its jets (fly, the float's path); with one gone it flies lower and slower, with both gone it is on the floor walking. The jets are the weak points (weakpoint). The shot's numbers (homing) arrive with stage 2.",
+      "turnRate": 4,
+      "preferredDistanceMetres": 12,
+      "retreatDistanceMetres": 8,
+      "fly": {
+        "_note": "GAME-10j: the jet flight. hoverMetres: feet metres over the floor under it, higher than the F06's. bobMetres: the visual bob on top. damagedHoverMetres and damagedSpeedShare: once a jet is lost; with no jets left it is on the floor walking (its legs). fins: the parts that hold it up, its jets; the wings are decoration. Same shape as the float the F06 uses.",
+        "hoverMetres": 4,
+        "bobMetres": 0.12,
+        "damagedHoverMetres": 2,
+        "damagedSpeedShare": 0.6,
+        "fins": [
+          "jetL",
+          "jetR"
+        ]
+      },
+      "weakpoint": {
+        "_note": "GAME-10j: CONTENT-PLAN 3.1, the jets are the weak points. A dart on one takes damage x damage.",
+        "parts": [
+          "jetL",
+          "jetR"
+        ],
+        "damage": 2
+      },
+      "attacks": [
+        {
+          "id": "homingShot",
+          "damage": 10,
+          "token": "ranged",
+          "_note": "GAME-10j: one homing ball from the blaster tip (the numbers and the ball are stage 2). With the blaster gone, chooseAttack falls through to the bonk.",
+          "needs": [
+            "blaster"
+          ],
+          "windup": 0.6,
+          "strike": 0.3,
+          "range": 15
+        },
+        {
+          "id": "bonk",
+          "damage": 12,
+          "token": "melee",
+          "needs": [
+            "foreArmL",
+            "foreArmR"
+          ],
+          "windup": 0.6,
+          "strike": 0.2
+        }
+      ]
     }
   },
   "promoted": {

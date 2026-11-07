@@ -12,6 +12,7 @@ import {
 import { FoamerPart } from "./foamer-part";
 import { armourOf } from "./armour";
 import { floatOf } from "./float";
+import { flyOf } from "./fly";
 import { makeShockwave } from "./leap";
 import type { ShotDamage } from "./chunk";
 import type { DartHit } from "../weapons/darts";
@@ -448,7 +449,7 @@ export class Foamer {
       }
     }
     else if (flying) floatMotion(this.rig, this.stateTime, this.gait, t,
-      floatOf(this.spec)?.bobMetres ?? 0.12);
+      (floatOf(this.spec) ?? flyOf(this.spec))?.bobMetres ?? 0.12);
     else if (this.state === "approach" && moving) walkMotion(this.rig, this.gait, 1, t);
     else restInto(t);
     const k = 1 - Math.exp(-dt / this.poseBlend);

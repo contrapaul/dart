@@ -6,6 +6,16 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10j stage 1 in progress 2026-11-07 (Qwen 3.8-27B via Pi, branch
+`game-10j`): the F10 Turbo has its palette look, its type (the health
+30 jet flyer, hover 4 m, the jets a weak point, the bonk as fallback) and
+its flight on the F06's float path, with four legs to walk on when both
+jets are gone. New tests in `tests/foamers/f10-fly.test.ts` and
+`tests/ai/f10-brain.test.ts`. `npx tsc --noEmit`, `npx vitest run`
+(626 pass, 2 skipped) and `npm run build` clean. Not checked by eye:
+the palette, the flight, the pose of the shot (no browser here). Stage 2
+(its homing ball, its sounds) is next.
+
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
 a 4 m corridor opens into a 44 x 36 m yard with a 9 m ceiling and six
@@ -621,6 +631,44 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10j stage 1, committed (Qwen 3.8-27B via Pi): the F10 Turbo's look, type and flight
+
+- Stage 1 of `tasks/GAME-10j.md` on branch `game-10j` (own worktree,
+  ENV-00 runs in `design/` at the same time, not these files).
+- **Look:** the F10 rig's greybox is the palette: a purple body and arms
+  (the rig's own material), a lime head (the visor, the painted slit eyes
+  stay), lime wings and the blaster's trim, orange jets with their orange
+  tips. The rig also gained four purple legs (F02's pattern): the card
+  says both jets gone means it drops to the floor and walks, and a
+  four-legged rig walks. `npx tsx tools/render-rig.ts F10` renders the
+  turnaround to `design/foamers/F10-{front,side,back,three-quarter}.png`
+  and the sheet; a script then checks, from the solved rest pose, that
+  the jets sit on the lower back one on either side and the blaster
+  dangles from the right forearm's end (all pass). Not checked by eye:
+  the PNGs could not be opened here (no browser).
+- **Type:** an `F10` in `data/foamers.json`: rig F10 (health 30, speed
+  3.5), a `fly` block (hover 4 m, bob 0.12, damaged hover 2 m, damaged
+  speed share 0.6, the jets as its fins), the jets a weak point
+  (x2), and attacks `homingShot` (ranged, needs the blaster, damage 10,
+  windup 0.6) and the base `bonk`. It fights with the Roamer's brain
+  (the ranged token picks `f02`), holding at 12 m (PLAN section 14 says
+  what was reused).
+- **Flight:** the F06's float path, reused: `src/foamers/fly.ts` keeps
+  the flight's numbers (same shape as the float), and the one flight
+  block in `src/foamers/foamers.ts` reads `floatOf(spec) ?? flyOf(spec)`.
+  With one jet out it flies low and dull; with both gone it falls to the
+  floor and walks (the test walks, does not cruise).
+- The weak-point data now names its parts (`parts: ["gun"]`, the F10's
+  `["jetL", "jetR"]`); the Crawler test saw one line change with it.
+- New tests: `tests/foamers/f10-fly.test.ts` (spec, hover, slow down with
+  one jet, walk with both, weak-point count) and
+  `tests/ai/f10-brain.test.ts` (ranged brain, 12 m ring). `npx tsc
+  --noEmit`, full `npx vitest run` (626 passed, 2 skipped), `npm run
+  build` clean; the perl dash check on every file touched is clean.
+- Not in this stage (stage 2): the homing ball and its turn cap, the
+  launcher-less no-fire, the live cap, the poses for the shot and the
+  sounds. Not yet checked by eye: the palette, the flight in the page.
 
 ### 2026-11-07: LVL-04b stage 3 review, merged (Claude): Level 1-4 is whole
 

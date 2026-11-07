@@ -21,6 +21,7 @@ import {
 } from "./leap";
 import { decideLeap } from "../ai/f07-brain";
 import { floatOf } from "./float";
+import { flyOf } from "./fly";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
 import { pelletKind, pelletOf, weakpointOf, canStream } from "./pellet";
 import { wallKind, wallOf, canFireWall, liveLaunchers, wallSlots, wallWeakMultiplier } from "./wall";
@@ -939,6 +940,12 @@ export class FoamerSystem {
                   this.projectiles?.launch(f, player,
                     (s - (blob.count - 1) / 2) * blob.spreadDeg, smallBlobKind(blob));
               }
+            } else if (atk.id === "homingShot") {
+              // GAME-10j: the F10's card goes here. In this stage the type's
+              // attack is wired but the pink parryable homing ball is not
+              // built yet, so the windup and throw pose play and nothing
+              // flies (the same as the no-projectile-system path above).
+              // Stage 2: launch the homingShotKind from the blaster tip.
             } else {
               const volley = atk as { shots?: number; spreadDeg?: number };
               const shots = Math.max(1, volley.shots ?? 1);
@@ -1042,9 +1049,11 @@ export class FoamerSystem {
     // the floor under it: no gravity, and its height is set below after
     // the step. Losing every fin puts it on the floor (the floor fit in
     // poseParts takes over then).
-    const fl = floatOf(f.spec);
-    const finsLeft = fl ? fl.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0) : 0;
-    const flying = fl !== null && finsLeft > 0 &&
+    // GAME-10j: the F10 flies on the same path with its jets: with both
+    // gone it drops to the floor and walks (its legs) on the same brain.
+    const su = floatOf(f.spec) ?? flyOf(f.spec);
+    const finsLeft = su ? su.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0) : 0;
+    const flying = su !== null && finsLeft > 0 &&
       f.state !== "fall" && f.state !== "down" && f.state !== "finish";
 
     // Gravity: vertical speed, reset by the ground. Without legs it never
@@ -1081,7 +1090,7 @@ export class FoamerSystem {
       // share. With no legs, f.speed() would be the no-legs crawl share,
       // which is not what a Floater moves at: it uses the rig's own speed
       // (the leg handicaps are for walkers).
-      const share = flying && finsLeft < fl!.fins.length ? fl!.damagedSpeedShare : 1;
+      const share = flying && finsLeft < su!.fins.length ? su!.damagedSpeedShare : 1;
       const speed = flying
         ? f.rig.speed * share
         : crawling ? f.crawlSpeed() : f.speed();
@@ -1164,7 +1173,7 @@ export class FoamerSystem {
       // over the floor under it. No grid (the range, unit tests): stay at
       // the height the step left rather than guess a floor.
       const g = this.navGrid?.groundAt(f.centre.x, f.centre.z, f.centre.y) ?? NaN;
-      const hover = finsLeft < fl!.fins.length ? fl!.damagedHoverMetres : fl!.hoverMetres;
+      const hover = finsLeft < su!.fins.length ? su!.damagedHoverMetres : su!.hoverMetres;
       if (!Number.isNaN(g)) f.centre.y = g + hover;
     }
     f.applyPose();
@@ -1510,6 +1519,9 @@ export class FoamerSystem {
    *  re-checks a few times a second while its brain sidles. */
   private flightClear(f: Foamer, player: THREE.Vector3, fresh = false): boolean {
     if (!this.projectiles) return true;
+    // GAME-10j: a homing shot seeks after it leaves the blaster, so a
+    // blocked line does not block it: no gate to fail.
+    if (f.attack()?.id === "homingShot") return true;
     if (!fresh && f.throwCheckIn > 0) return f.throwClear;
     const from = this.projectiles.handAt(f, _throwFrom);
     f.throwClear = this.projectiles.flightClear(from, player);
@@ -1658,9 +1670,10 @@ export class FoamerSystem {
     // a dart on it always takes the multiplier, open or not.
     const wp = weakpointOf(f.spec);
     // GAME-10h: either arm launcher is a weak point (CONTENT-PLAN 3.1).
+    // GAME-10j: the F10's jets are weak points (two parts, 3.1).
     const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1) *
       (mouthOpen ? mouth!.damage : 1) *
-      (wp && part.spec.id === wp.part ? wp.damage : 1) *
+      (wp && wp.parts.includes(part.spec.id) ? wp.damage : 1) *
       wallWeakMultiplier(f.spec, part.spec.id);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= dmg;

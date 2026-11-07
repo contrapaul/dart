@@ -38,10 +38,10 @@ export function pelletOf(spec: FoamerSpec): PelletSpec | null {
   return (spec as { pellets?: PelletSpec }).pellets ?? null;
 }
 
-/** The weak point of a type (CONTENT-PLAN 3.1: the Crawler's gun): which
- *  part takes the multiplier, and what it takes. */
+/** The weak points of a type (CONTENT-PLAN 3.1: the Crawler's gun, the
+ *  F10's jets): which parts take the multiplier, and what they take. */
 export interface WeakpointSpec {
-  part: string;
+  parts: string[];
   damage: number;
 }
 
