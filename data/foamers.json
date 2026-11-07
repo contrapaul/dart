@@ -727,7 +727,49 @@
     },
     "F12": {
       "rig": "F12",
-      "_note": "GAME-10m: the Ambusher. A lean biped a little taller than the player: the deep purple body (foam-purple-deep), a row of small orange spines down the back (decoration: orange means weak point or parryable, and the F12 has neither, so they are kept small), the painted eyes under a lime visor bar. Health 25 and speed 3 come from the rig. No weak point (CONTENT-PLAN 3). Stage 1: the look and the type only; the pounce and the ambush arrive in later stages."
+      "_note": "GAME-10m: the Ambusher. A lean biped a little taller than the player: the deep purple body (foam-purple-deep), a row of small orange spines down the back (decoration: orange means weak point or parryable, and the F12 has neither, so they are kept small), the painted eyes under a lime visor bar. Health 25 and speed 3 come from the rig. No weak point (CONTENT-PLAN 3). Close up it claws (the base melee, the claw below); between pounce.minMetres and pounce.maxMetres, in sight and off cooldown, it crouches (the telegraph) and pounces in an arc at where the player stood (stage 2, src/foamers/pounce.ts and the F07 crouch and leap states reused); the ambush from a growth arrives in stage 3.",
+      "attackRange": 1.3,
+      "pounce": {
+        "_note": "GAME-10m stage 2: the pounce. It crouches (crouchSeconds, the telegraph) when the player is between minMetres and maxMetres, in sight and off cooldown, then flies an arc (arcMetres high at speed m/s) to where the player stood when the crouch began. Its landing within hitMetres of the player hits once (the pounce attack, damage 15) through the ordinary hit path (a raised shield takes its share; it is not parryable, no pink). cooldownSeconds runs from the start of the crouch. Both legs gone: no pounce (src/foamers/foamers.ts checks legs), it crawls in and claws.",
+        "minMetres": 3,
+        "maxMetres": 9,
+        "cooldownSeconds": 4,
+        "crouchSeconds": 0.45,
+        "speed": 7,
+        "arcMetres": 1.2,
+        "hitMetres": 1.2
+      },
+      "attacks": [
+        {
+          "_note": "GAME-10m stage 2: the claw, the up-close attack (damage 8, the base melee's windup and strike). Both forearms must still be hanging; with a forearm gone it falls back to the headbutt, and with a head gone it rams with its body (the base fallback in src/foamers/foamers.ts).",
+          "id": "claw",
+          "damage": 8,
+          "token": "melee",
+          "needs": [
+            "foreArmL",
+            "foreArmR"
+          ],
+          "windup": 0.5,
+          "strike": 0.25
+        },
+        {
+          "_note": "GAME-10m stage 2: the fallback when a forearm is gone (one claw cannot rake).",
+          "id": "headbutt",
+          "damage": 8,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.6,
+          "strike": 0.2
+        },
+        {
+          "_note": "GAME-10m stage 2: the pounce's hit. The flight lands it (the leaping branch in src/foamers/foamers.ts calls f.bonk(\"pounce\") and sets f.pounced, so one flight hits once); the brain only picks it when claw and headbutt are both gone (both forearms and the head lost), and then it rams like a bonk. Not parryable (no pink).",
+          "id": "pounce",
+          "damage": 15,
+          "token": "melee",
+          "windup": 0.3,
+          "strike": 0.1
+        }
+      ]
     },
     "F13": {
       "rig": "F13",

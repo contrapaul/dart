@@ -19,7 +19,9 @@ import {
   bandReaches, leapFlight, leapOf, landingPoint, shockwaveOf,
   startShockwave, stepShockwave, type ShockwaveSpec,
 } from "./leap";
+import { pounceOf } from "./pounce";
 import { decideLeap } from "../ai/f07-brain";
+import { decidePounce } from "../ai/f12-brain";
 import { floatOf } from "./float";
 import { flyOf } from "./fly";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
@@ -800,15 +802,41 @@ export class FoamerSystem {
         f.stateTime = 0;
         f.leapCooldown = leapOf(f.spec)!.cooldownSeconds;
         sound(this, "crouch", f, f.centre);
+      } else if (pounceOf(f.spec) && decidePounce(
+        {
+          distance: dist, cooldownLeft: f.leapCooldown,
+          onFeet: f.legs().length > 0, inSight: this.lineOfSight(f, player),
+        },
+        pounceOf(f.spec)!,
+      )) {
+        // GAME-10m: the Ambusher's crouch, the player's window to get clear
+        // of where it will land: it pounces on where the player stood when
+        // the crouch began, and the landing is the hit (the claw claws
+        // closer in; the pounce is the mid-range threat).
+        f.state = "crouch";
+        f.stateTime = 0;
+        f.leapCooldown = pounceOf(f.spec)!.cooldownSeconds;
+        f.pounced = false;
+        f.pounceX = player.x;
+        f.pounceZ = player.z;
+        sound(this, "crouch", f, f.centre);
       }
     } else if (f.state === "crouch") {
-      // The telegraph: still, then the leap. The landing point is a spot
-      // landShortMetres short of where the player was when the crouch ended
-      // (leap.landingPoint), so the flight itself never lands on them.
-      const leap = leapOf(f.spec)!;
-      f.stateTime = Math.min(f.stateTime, leap.crouchSeconds);
-      if (f.stateTime >= leap.crouchSeconds) {
-        const land = landingPoint(f.centre.x, f.centre.z, player.x, player.z, leap.landShortMetres);
+      // The telegraph: still, then the leap. The Brawler does not land on
+      // the player, so its landing is where the player was when the crouch
+      // ended, pulled short by landShortMetres (leap.landingPoint); the
+      // Ambusher aims at where the player stood when the crouch began
+      // (f.pounceX/Z, set in the approach branch): its landing is the hit.
+      const pounce = pounceOf(f.spec);
+      const leap = leapOf(f.spec);
+      const crouchSeconds = (pounce ?? leap)!.crouchSeconds;
+      f.stateTime = Math.min(f.stateTime, crouchSeconds);
+      if (f.stateTime >= crouchSeconds) {
+        const ax = pounce ? f.pounceX : player.x;
+        const az = pounce ? f.pounceZ : player.z;
+        const land = pounce
+          ? { x: ax, z: az }
+          : landingPoint(f.centre.x, f.centre.z, player.x, player.z, leap!.landShortMetres);
         const dx = land.x - f.centre.x;
         const dz = land.z - f.centre.z;
         const d = Math.hypot(dx, dz);
@@ -820,7 +848,7 @@ export class FoamerSystem {
           f.leapDirZ = Math.cos(f.yaw);
         }
         f.leapLeft = d;
-        const flight = leapFlight(d, leap.speed, leap.arcMetres, f.spec.gravity);
+        const flight = leapFlight(d, (pounce ?? leap)!.speed, (pounce ?? leap)!.arcMetres, f.spec.gravity);
         f.leapSeconds = flight.seconds;
         f.leapVy = flight.vy;
         f.vy = flight.vy;
@@ -831,24 +859,38 @@ export class FoamerSystem {
       // The arc. The system steps it (the standard movement below carries
       // the wish it sets and the vy the clock gives it); this branch only
       // watches for the landing. Blocked short of the point (a wall, a
-      // body) still lands at the end of the flight: the ring is what matters.
-      const sw = shockwaveOf(f.spec)!;
-      // The arc's vertical speed is read from the clock, not integrated: the
-      // controller reports the Foamer grounded on the frames just after the
-      // launch and would zero a vy it had accumulated.
+      // body) still lands at the end of the flight. The Brawler's landing
+      // sends the ring out; the Ambusher's (GAME-10m) reads the hit at
+      // that one moment: within pounce.hitMetres of the player once, and
+      // nothing else (no ring, no damage of its own). The arc's vertical
+      // speed is read from the clock, not integrated: the controller reports
+      // the Foamer grounded on the frames just after the launch and would
+      // zero a vy it had accumulated.
       f.vy = f.leapVy - f.spec.gravity * f.stateTime;
       if (f.stateTime >= f.leapSeconds) {
+        const pounce = pounceOf(f.spec);
+        // The landing is the pounce's hit: within hitMetres of the player
+        // (at an honest height, the way a melee does), once.
+        if (pounce && !f.pounced
+          && Math.hypot(player.x - f.centre.x, player.z - f.centre.z) <= pounce.hitMetres
+          && Math.abs(player.y - f.centre.y) < 2) {
+          f.pounced = true;
+          f.bonk("pounce");
+        }
+        const sw = shockwaveOf(f.spec);
         f.state = "recover";
         f.stateTime = 0;
         f.vy = 0;
         f.leapLeft = 0;
-        startShockwave(f.wave, sw, f.centre.x, f.centre.z);
-        const ring = f.waveMesh!;
-        ring.scale.set(0, 1, 0);
-        ring.position.set(f.centre.x, f.centre.y + sw.tubeMetres * 0.5, f.centre.z);
-        ring.visible = true;
-        sound(this, "land", f, f.centre);
-        this.onLand(f, f.centre, sw);
+        if (sw) {
+          startShockwave(f.wave, sw, f.centre.x, f.centre.z);
+          const ring = f.waveMesh!;
+          ring.scale.set(0, 1, 0);
+          ring.position.set(f.centre.x, f.centre.y + sw.tubeMetres * 0.5, f.centre.z);
+          ring.visible = true;
+          sound(this, "land", f, f.centre);
+          this.onLand(f, f.centre, sw);
+        }
       }
     } else if (f.state === "telegraph") {
       // The scrape: it stops, head down, and locks its line at the player's
@@ -1186,9 +1228,11 @@ export class FoamerSystem {
     // GAME-10f: the flight moves on its locked line at the leap's own speed
     // (the brain does not steer it, the way it does not steer a charge);
     // vy, from the clock above, carries the arc under the controller below.
+    // GAME-10m: the pounce flies on the same locked line, so it reads its
+    // speed the same way.
     if (f.state === "leaping") {
-      const leap = leapOf(f.spec)!;
-      const stepMetres = Math.min(leap.speed * dt, f.leapLeft);
+      const flightSpec = (pounceOf(f.spec) ?? leapOf(f.spec))!;
+      const stepMetres = Math.min(flightSpec.speed * dt, f.leapLeft);
       f.leapLeft -= stepMetres;
       this._wish.set(f.leapDirX * stepMetres, 0, f.leapDirZ * stepMetres);
     }

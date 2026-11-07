@@ -3536,10 +3536,10 @@
             8,
             7
           ],
-          "parent": "hips",
+          "parent": "body",
           "at": [
             -0.4,
-            -0.2,
+            -0.82,
             0
           ],
           "rest": [
@@ -3605,10 +3605,10 @@
             8,
             7
           ],
-          "parent": "hips",
+          "parent": "body",
           "at": [
             0.4,
-            -0.2,
+            -0.82,
             0
           ],
           "rest": [
@@ -3687,7 +3687,7 @@
         }
       },
       "health": 25,
-      "_note": "GAME-10m: the Ambusher. Paul's F12 row wins over the 3.3 stalker line (HANDOFF): a lean biped a little taller than the player (1.8 m). Deep purple body (foam-purple-deep, the darkest purple in data/materials.json), a narrow head with the painted angry eyes under a lime visor bar (the F04 and F10 pattern, so the palette's lime sits on the head), a row of small orange spines down the back: orange means weak point or parryable and the F12 has neither, so they are kept small, long arms to blunt foam claws, both feet flatBottom on the ground."    },
+      "_note": "GAME-10m: the Ambusher. Paul's F12 row wins over the 3.3 stalker line (HANDOFF): a lean biped a little taller than the player (1.8 m). Deep purple body (foam-purple-deep, the darkest purple in data/materials.json), a narrow head with the painted angry eyes under a lime visor bar (the F04 and F10 pattern, so the palette's lime sits on the head), a row of small orange spines down the back: orange means weak point or parryable and the F12 has neither, so they are kept small, long arms to blunt foam claws, both feet flatBottom on the ground. The legs are parented to the body (not the hips part) because f.legs() counts kind leg whose parent is the root part (src/foamers/foamer.ts): with the legs on the hips part the Ambusher always reads legless and can never pounce."    },
     {
       "id": "F13",
       "label": "F13",

@@ -178,6 +178,13 @@ export class Foamer {
   leapLeft = 0;
   leapSeconds = 0;
   leapVy = 0;
+  /** GAME-10m: where the player stood when the crouch began: the pounce
+   *  lands there, and its landing is the hit. */
+  pounceX = 0;
+  pounceZ = 0;
+  /** GAME-10m: the pounce has already hit on this flight, so one flight
+   *  hits once. */
+  pounced = false;
   /** GAME-10f: the shockwave this Brawler last landed (leap.ts). One ring
    *  at a time, reused per leap. */
   readonly wave = makeShockwave();
@@ -453,8 +460,10 @@ export class Foamer {
     if (this.state === "telegraph") scrapeMotion(this.rig, this.stateTime / (this.spec as { charge?: { telegraphSeconds: number } }).charge!.telegraphSeconds, t);
     else if (this.state === "charge") chargeMotion(this.rig, this.gait * 2, t);
     else if (this.state === "wallStun") wallStunMotion(this.rig, this.stateTime, (this.spec as { charge?: { wallStunSeconds: number } }).charge!.wallStunSeconds, t);
-    // GAME-10f: the fold before the leap, and the pose in the air.
-    else if (this.state === "crouch") crouchMotion(this.rig, this.stateTime / (this.spec as { leap?: { crouchSeconds: number } }).leap!.crouchSeconds, t);
+    // GAME-10f: the fold before the leap, and the pose in the air. The
+    // folded seconds are the leap's, or the pounce's for the Ambusher
+    // (GAME-10m).
+    else if (this.state === "crouch") crouchMotion(this.rig, this.stateTime / ((this.spec as { leap?: { crouchSeconds: number }, pounce?: { crouchSeconds: number } }).leap?.crouchSeconds ?? (this.spec as { pounce?: { crouchSeconds: number } }).pounce!.crouchSeconds), t);
     else if (this.state === "leaping") leapMotion(this.rig, this.stateTime / Math.max(0.001, this.leapSeconds), t);
     else if (this.state === "windup" && this.attack()) windupMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.windup, t);
     else if (this.state === "strike" && this.attack()) strikeMotion(this.rig, this.attack()!.id, this.stateTime / this.attack()!.strike, t);
