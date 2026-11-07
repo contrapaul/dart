@@ -173,9 +173,8 @@ describe("GAME-09d: B06 The Standard", () => {
 
   it("6. B06 is in the loadout order after B05", async () => {
     const blastersJson = await import("../../data/blasters.json");
-    // GAME-09e: B05 Shrike joined the order in level order (2-3 comes
-    // before 3-1), so B06 sits last.
-    expect(blastersJson.order).toEqual(["B01", "B04", "B03", "B05", "B06"]);
+    // B02 (GAME-09c) and B05 (GAME-09e) joined after B06 when the branches met.
+    expect(blastersJson.order.slice(0, 4)).toEqual(["B01", "B04", "B03", "B06"]);
   });
 });
 

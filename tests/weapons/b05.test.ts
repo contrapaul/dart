@@ -212,9 +212,11 @@ describe("GAME-09e: B05 Shrike", () => {
     expect(darts.count).toBe(5);
   });
 
-  it("5. B05 is in the loadout order between B03 and B06", async () => {
+  it("5. B05 is in the loadout order, after B02", async () => {
     const blastersJson = await import("../../data/blasters.json");
-    expect(blastersJson.order).toEqual(["B01", "B04", "B03", "B05", "B06"]);
+    // Review: B05 joined after B02 when the branches met, so every
+    // earlier blaster keeps its slot and key.
+    expect(blastersJson.order).toEqual(["B01", "B04", "B03", "B06", "B02", "B05"]);
   });
 });
 
