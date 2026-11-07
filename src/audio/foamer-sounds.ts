@@ -7,6 +7,7 @@ import type { AudioSink } from "./sink";
 import type { FoamerSystem, FoamerSoundKind } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
 import { floatOf } from "../foamers/float";
+import { flyOf } from "../foamers/fly";
 import type { LoopHandle } from "./sink";
 
 // FX-topple is heard at go-down; FX-fizz-out lands this much later.
@@ -91,15 +92,22 @@ export class FoamerSounds {
       }
     }
     // GAME-10c: a Floater whose fins still hold it up hums; the hum stops
-    // when the last fin goes or it goes down.
+    // when the last fin goes or it goes down. GAME-10j: the F10's jet hiss
+    // is the same hum on the same path, and its last jet going is the F10's
+    // own fall (the jet hiss stops and it flops).
     for (const f of sys.list) {
-      const fl = floatOf(f.spec);
-      if (!fl) continue;
-      const finsLeft = fl.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0);
+      const su = floatOf(f.spec) ?? flyOf(f.spec);
+      if (!su) continue;
+      const finsLeft = su.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0);
       const flying = finsLeft > 0 && f.state !== "fall" && f.state !== "down" && f.state !== "finish";
       const hum = this.hums.get(f);
-      if (flying && !hum) this.hums.set(f, this.sink.loop("F06-hum", { position: f.centre }));
+      if (flying && !hum)
+        this.hums.set(f, this.sink.loop(f.spec.rig === "F10" ? "F10-jet" : "F06-hum", { position: f.centre }));
       else if (!flying && hum) {
+        // GAME-10j: one last jet goes and the hiss stops: the fall is heard
+        // once at the same time (not over the fizz of a go-down).
+        if (f.spec.rig === "F10" && f.state !== "down" && f.state !== "finish")
+          this.sink.play("F10-fall", { position: f.centre });
         hum.stop();
         this.hums.delete(f);
       } else if (hum) hum.setPosition(f.centre);
@@ -161,9 +169,13 @@ export class FoamerSounds {
         break;
       }
       case "throw":
-        // GAME-10c: the Floater's jaw snaps shut to spit.
+        // GAME-10c: the Floater's jaw snaps shut to spit. GAME-10j: the
+        // F10's launcher puffs the homing ball.
         this.sink.play(
-          f.spec.rig === "F04" ? "F04-volley" : f.spec.rig === "F06" ? "F06-spit" : "F02-throw",
+          f.spec.rig === "F04" ? "F04-volley"
+            : f.spec.rig === "F06" ? "F06-spit"
+              : f.spec.rig === "F10" ? "F10-shot"
+                : "F02-throw",
           p,
         );
         break;

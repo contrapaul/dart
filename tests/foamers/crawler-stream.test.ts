@@ -178,7 +178,7 @@ describe("the F09 pellet stream (GAME-10g stage 2)", () => {
     const r = rig();
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), undefined, "F09")!;
     const wp = weakpointOf(f.spec)!;
-    expect(wp.part).toBe("gun");
+    expect(wp.parts).toEqual(["gun"]);
     expect(wp.damage).toBe(2);
     for (const part of f.parts.values()) {
       part.mesh.update();

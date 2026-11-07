@@ -2963,6 +2963,91 @@
         },
         "gain": 0.85
       }
+    },
+    "F10-jet": {
+      "_note": "GAME-10j: the Turbo's jet hiss under it while its jets hold it up. Placeholder synth: a looping hiss of filtered noise with a small whistling tone under it (the F06-hum's pattern, airy instead of round, design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0,
+      "maxVoices": 2,
+      "synth": {
+        "loop": true,
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.7,
+              "attack": 0.04,
+              "decay": 0.12,
+              "lowpass": 3800,
+              "highpass": 600,
+              "lowpassEnd": 2400
+            },
+            "gain": 0.55
+          },
+          {
+            "tone": {
+              "dur": 0.7,
+              "f0": 640,
+              "f1": 580,
+              "wave": "sine",
+              "attack": 0.05,
+              "decay": 0
+            },
+            "gain": 0.12
+          }
+        ]
+      }
+    },
+    "F10-shot": {
+      "_note": "GAME-10j: the homing ball leaving the wrist launcher. Placeholder synth: a soft puff and a small rising ring (one per shot; maxVoices is the cap).",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.16,
+              "attack": 0.003,
+              "decay": 0.13,
+              "lowpass": 1600,
+              "highpass": 300,
+              "lowpassEnd": 3200
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.22,
+              "f0": 320,
+              "f1": 660,
+              "wave": "sine",
+              "attack": 0.004,
+              "decay": 0.18
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "F10-fall": {
+      "_note": "GAME-10j: the Turbo dropping to the floor when the last jet breaks. Placeholder synth: a soft heavy flop of foam, one, when the jet hiss stops.",
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.3,
+          "attack": 0.006,
+          "decay": 0.26,
+          "lowpass": 500,
+          "highpass": 40,
+          "lowpassEnd": 160
+        },
+        "gain": 0.8
+      }
     }
   },
   "blasterCues": {
