@@ -20,7 +20,7 @@ and 3 (the Yard and the lit lift) are later runs.
 `npm run build` clean. Not checked by eye: the whole Pit, both ramps,
 the island over its hole, the corridor under the far yard, breather 2.
 
-LVL-04b stage 2 committed on 2026-11-07 (DeepSeek V4.1 Flash via Pi,
+LVL-04b stage 2 merged locally 2026-11-07, not pushed (DeepSeek V4.1 Flash via Pi,
 branch `lvl-04b`), not merged and not pushed: promoted Foamers and the
 mini-boss Ring. A new top-level `promoted` block in
 `data/foamers.json` holds `healthMultiplier` 1.5 and the part material
@@ -574,6 +574,29 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-04b stage 2 review, merged (Claude)
+
+- Read the diff: a cached promoted rig copy in `FoamerSystem.spawn`
+  (1.5 times the health, chest and brow in `foam-purple-light`, from the
+  `promoted` block in `data/foamers.json`), the page passing the wave's
+  flag and the alive Foamers' health, and `Wave.startsWithHealthShare`
+  in the runner (optional: a page that reports no health keeps the old
+  rule). Small and in the files the card allowed.
+- Main merged in, no conflicts. `tsc`, the full suite (610 pass, 2
+  skipped) and the build pass.
+- Played by script at the Ring: both Darters spawn promoted, 45 health,
+  light purple plates, seen on screen against the deep purple body with
+  the orange back still the only orange. Wave 2 waits at 50 of 90 health
+  (55%) and starts at 42 (47%), all 6 Swarmers arriving with the pair
+  still up. Cleared, the north door opens and the pad shows "Level
+  complete".
+- For Paul, from the model's section 14 rows: the Ring is a through room
+  with two doors, not the concept's four shutters, and reuses 1-3's 30 x
+  30 m room with a 10 x 8 m block, so the ring is about 10 m wide, not
+  6 m.
+- Not checked: the fight by hand, the pillars and ammo by eye, the
+  frame time.
 
 ### 2026-11-07: LVL-04b stage 2, promoted Foamers and the Ring (DeepSeek V4.1 Flash via Pi)
 
