@@ -176,3 +176,23 @@ describe("GAME-09d: B06 The Standard", () => {
     expect(blastersJson.order).toEqual(["B01", "B04", "B03", "B06"]);
   });
 });
+
+describe("GAME-09d review: a full-auto blaster stores no fire while idle", () => {
+  it("after five idle seconds, a held trigger fires at the interval, not a stored burst", () => {
+    // Review: the fire clock grew by dt every step, held or not, and was
+    // never capped, so after a pause a full-auto blaster emptied its
+    // magazine one dart per step until the stored time ran out (seen on the
+    // arena page: B06's 60 darts in about a second).
+    for (const id of ["B04", "B06"]) {
+      const { b, darts } = make(id);
+      const idle: BlasterControls = { fireHeld: false, firePressed: false, reloadPressed: false };
+      for (let i = 0; i < 60 * 5; i++) b.update(DT, idle, AIM);
+      const s = b.spec;
+      const steps = 60; // one second held
+      for (let i = 0; i < steps; i++) b.update(DT, HOLD, AIM);
+      const most = Math.ceil((1 - s.spinUp) / s.fireInterval) + 1;
+      expect(darts.count, `${id}: shots in one held second`).toBeLessThanOrEqual(most);
+      expect(darts.count, `${id}: it did fire`).toBeGreaterThan(0);
+    }
+  });
+});

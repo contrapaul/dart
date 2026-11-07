@@ -15,8 +15,8 @@ import tuning from "../../data/explosion.json";
 // loose debris and broken pieces outward, bursts foam chunks, and calls the
 // onExplode hook (the page plays FX-explode there).
 //
-// It never damages the player (a proposal for Paul: the explosive rounds are
-// a reward, not a hazard to their own feet). The damage goes through the
+// It never damages the player (Paul, 2026-11-07: the player's own
+// explosions never hurt the player). The damage goes through the
 // Foamer system's blastDamage, the non-dart path parryDamage uses, so a
 // blast can go a Foamer down or pop it.
 //
@@ -54,7 +54,7 @@ export class ExplosionSystem {
    *  exactly like DartImpacts.onCarve (the pages drop the islands there). */
   onCarve: (target: ExplosionTarget, removed: RemovedVoxel[]) => void = () => {};
   /** Called once per blast that ran, with the world point. The page plays
-   *  FX-explode here (game.ts, left unwired by this card: see HANDOFF). */
+   *  FX-explode here (game.ts). */
   onExplode: (point: THREE.Vector3) => void = () => {};
   /** The Foamer system, set by the page once it exists (DartImpacts is
    *  built first). Null: a blast still carves, pushes and bursts. */

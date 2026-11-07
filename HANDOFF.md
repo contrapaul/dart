@@ -693,6 +693,31 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: GAME-09d review, merged (Claude Opus 5.5): B06 and the shared explosion
+
+- **Bug, fixed in review, in every full-auto blaster: a stored burst
+  after a pause.** `Blaster.fireClock` grew by dt every step, trigger held
+  or not, and was never capped, so after any idle time a full-auto
+  blaster fired one dart per step until the stored time ran out (on the
+  arena page B06 emptied 60 darts in about a second; B04 its 35). The
+  clock now stores at most one shot. New test in
+  `tests/weapons/b06.test.ts` (five idle seconds, then a held second):
+  B04 fired 35 before the fix, at most its interval after.
+- **Played** (`arena.html?watch&level=env-01`, the trigger held through
+  the input module): after a long idle B06 fired 11 darts in 2 s (0.17 s
+  apart after the 0.25 s spin-up), every fifth exploding; explosive darts
+  blew both crates of a stack apart; an explosion at an F05 took 12 (the
+  centre damage) and a second F05 4 m away nothing; five blasts popped
+  it; a blast at the player's own feet did nothing (Paul: the player's
+  explosions never hurt the player).
+- Kept: the model also added a B06 `rate` station to the `env-03` test
+  level, outside its file list but useful.
+- Not checked: B06 in hand and the mega dart in flight by eye (pane
+  hidden; with it hidden the camera does not turn, so aimed fire at a
+  moving Foamer was not testable), the four sounds. B06 has no weapon key
+  yet (keys 1 to 3 are mapped; B02's card adds a fourth): it is reached
+  with the next-weapon key until the keys are sorted after GAME-09c merges.
+
 ### 2026-11-07: B06 The Standard and the shared explosion (GAME-09d, Qwen 3.8 Flash Next via Pi, dgx-spark, branch `game-09d`)
 
 - Asked for: the mega dart and B06's gameplay (card `tasks/GAME-09d.md`),

@@ -335,7 +335,10 @@ export class Blaster {
       }
       return;
     }
-    this.fireClock += dt;
+    // GAME-09d review: the clock stores at most one shot. Uncapped, it grew
+    // through every idle step and a full-auto blaster then emptied its
+    // magazine one dart per step after a pause.
+    this.fireClock = Math.min(this.fireClock + dt, s.fireInterval + dt);
     if (controls.reloadPressed && this.mag < s.magSize && this.reserve > 0) {
       this.startReload();
       return;
