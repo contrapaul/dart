@@ -21,6 +21,13 @@ live cap 6; sounds F10-jet (loop) / F10-shot / F10-fall.
 build` clean; the dash check is clean. Not checked by eye: the PNGs
 and the palette in play, the flight, the homing ball in play, the
 poses, the three new sounds (no browser here).
+ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design only, no
+code): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
+(its section 0): mods at stations, ammo on the ground; moving floors
+paused; Act 1 hazards must be able to kill; looks for crates, buttons,
+targets and stations. Cards ENV-01 (cladding, crates), ENV-02 (button) and
+ENV-03 (mod station) are written, not started. The killing hazard waits on
+Paul's choice. No terrain element is built yet.
 
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
@@ -746,6 +753,61 @@ github.com/contrapaul/dart (public), MIT licence.
 - Not in this stage (stage 2): the homing ball and its turn cap, the
   launcher-less no-fire, the live cap, the poses for the shot and the
   sounds. Not yet checked by eye: the palette, the flight in the page.
+### 2026-11-07: Paul's answers to Q17 to Q20, and the ENV-01 to ENV-03 cards (Claude Opus 5.5)
+
+- Recorded Paul's answers in `PLAN.md` sections 13 and 14 and in section 0
+  of `design/levels/ENVIRONMENT.md`, with a look line on E02, E08, E09 and
+  E13 and a dropped or paused line on E12 and E07.
+- Wrote `tasks/ENV-01.md` (E01, E02), `tasks/ENV-02.md` (E08) and
+  `tasks/ENV-03.md` (E13), with PLAN rows. Each builds its own test level
+  (`env-01` to `env-03`) so they do not touch real levels.
+- Moved eight decision rows that sat above the section 14 table header
+  (left by an earlier merge) to below it, so the table renders.
+- Open: which hazard can kill in Act 1 and how it hurts in foam terms.
+  The station's beige case and green or amber text are a starting
+  proposal on Paul's styling note, for him to tune.
+
+### 2026-11-07: ENV-00 review, merged (Claude)
+
+- Read `design/levels/ENVIRONMENT.md` in full: what exists today, 13
+  candidates (E01 to E13) across destructible, hazard, movement,
+  interactive, changing cover and stations, a first set of five (E01
+  cladding, E02 crate stack, E04 sticky patch, E08 toy button, E12 ammo
+  station) and Q17 to Q20 in PLAN section 13. Foam and toys only, no
+  fluid, fire or shock, `[Paul]` on every look; blaster and Foamer names
+  are Paul's own. Docs only; the suite passes (619, 2 skipped).
+- Waiting on Paul: which elements to build, and Q17 to Q20.
+
+### 2026-11-07: ENV-00, the environment element list (design only)
+
+- Card `tasks/ENV-00.md`, branch `env-00`. No game code touched: the
+  deliverable is `design/levels/ENVIRONMENT.md`, a proposal for Paul.
+- Section 1 lists what terrain the game has now and where it lives
+  (`src/level/format.ts`, `src/level/build.ts`, `src/voxel/pieces.ts`,
+  `src/voxel/islands.ts`, `src/arena/rifts.ts`, `src/pickups/pickups.ts`,
+  `src/ai/nav-grid.ts`), plus the two rules that limit every candidate:
+  the nav grid decides where a Foamer can follow, and the caps (6 zones,
+  150 debris bodies, 12 Foamers, 8 pickups) are hard.
+- Section 2 has 13 candidates, E01 to E13, one table then a paragraph
+  each: look in foam and toy terms, what it teaches, Foamers and blasters
+  by ID from `design/CONTENT-PLAN.md`, the README pillar it serves, cost
+  (S, M, L) and what code it needs against the real modules, and risks
+  (caps, nav bake, readability, age 10+). Kinds: destructible (E01, E02),
+  hazard (E03, E04), movement (E05 to E07), interactive (E08, E09),
+  changing cover (E10, E11), stations (E12, E13).
+- Decided, for Paul to overrule: foam cladding and the crate stack are
+  free because `Piece` plus the island path already does them; the sticky
+  patch and the vent are one multiplier and one push on the controller;
+  the ferry is the only L (it needs the ride-on-a-kinematic-body work the
+  KIT lift also needs); buttons, targets and latches share one hit
+  trigger; ammo and upgrade stations share one registry.
+- Section 3 recommends five first: E01 cladding, E02 crate stack, E04
+  sticky patch, E08 button, E12 ammo station, each S or M and each
+  reusing existing code. Section 4 gives Q17 to Q20, added to PLAN.md
+  section 13, with `[Paul]` left for every look.
+- PLAN.md: the ENV-00 row now reads proposal for Paul.
+- `npx vitest run` passes (no code changed). Not checked by eye: nothing
+  visual was built, so there is nothing to look at yet.
 
 ### 2026-11-07: LVL-04b stage 3 review, merged (Claude): Level 1-4 is whole
 
