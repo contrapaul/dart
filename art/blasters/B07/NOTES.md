@@ -13,7 +13,7 @@ the front. Colours, warheads and bumper as before.
 Checks: `art/blasters/check_glb.py` passes: 10,624 triangles, 502,828
 bytes, 6 materials, nodes `body`, `drum`, `pump`, `trigger`, `muzzle_1`.
 63.3 cm long, 23 cm tall. Two builds byte-identical, SHA-256 `eb60e4f35f58b2e39163d13d018b28f7a857099f1ee6d5c2cb89c5e3cc0d2c12`.
-Waiting for Paul's look.
+Paul approved the look on 2026-11-07.
 
 ## Round 2 (Claude Opus 5.5, 2026-11-07)
 
