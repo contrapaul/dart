@@ -110,11 +110,9 @@ describe("GAME-09 stage 2c: viewmodel animation", () => {
     // moved off the rest z, even if the end frame is at rest); the
     // state (__range) would be able to verify this in a real render,
     // but we can re-run a few frames without triggering a new shot:
-    const pz0 = maxKickZ;
-    // skip check of the max kick reached in this version; the
-    // contract is that the end state is at rest (the kick is
-    // released back to the rest by the end of the test window).
-    void pz0;
+    // Review 2026-11-08: the kick must actually show: the root went back
+    // by a good part of the data's kick before it came home.
+    expect(maxKickZ).toBeGreaterThan(spec1.motion.kick * 0.2); // the spring peaks near kick / e
     // Now still fire and prime-brake-ready: B01 update next step leaves
     // priming and returns to ready, so the viewmodel should be at
     // rest if there are no further shots; run more frames to reach

@@ -255,6 +255,82 @@
         ]
       }
     },
+    "B02-fire": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.03,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.16,
+          "attack": 0.002,
+          "decay": 0.14,
+          "lowpass": 1400,
+          "highpass": 120,
+          "lowpassEnd": 400
+        },
+        "gain": 0.7
+      }
+    },
+    "B02-fire-heavy": {
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.3,
+              "attack": 0.003,
+              "decay": 0.26,
+              "lowpass": 900,
+              "highpass": 50,
+              "lowpassEnd": 200
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.12,
+              "f0": 90,
+              "f1": 45,
+              "wave": "triangle",
+              "attack": 0.002,
+              "decay": 0.1
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "B02-reload": {
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 1200
+            },
+            "gain": 0.7
+          },
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.07,
+              "lowpass": 1000,
+              "highpass": 300
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
     "B03-fire": {
       "files": [],
       "volume": 0.95,
@@ -634,7 +710,10 @@
       "synth": {
         "layers": [
           {
-            "click": { "dur": 0.06, "freq": 700 },
+            "click": {
+              "dur": 0.06,
+              "freq": 700
+            },
             "gain": 0.7
           },
           {
@@ -648,6 +727,118 @@
             "gain": 0.4
           }
         ]
+      }
+    },
+    "B05-fire": {
+      "_note": "GAME-09e (Paul): one precision dart, a sharp crack: higher and shorter than B06-fire (SOUNDS.md 2.6).",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.05,
+              "attack": 0.001,
+              "decay": 0.04,
+              "lowpass": 4200,
+              "highpass": 400,
+              "lowpassEnd": 1200
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.04,
+              "f0": 320,
+              "f1": 140,
+              "wave": "square",
+              "attack": 0.001,
+              "decay": 0.03
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B05-bolt": {
+      "_note": "GAME-09e (Paul): the bolt worked between shots (the card's id; SOUNDS.md 2.6 splits it into bolt-back and bolt-fwd for the recording pass).",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 1100
+            },
+            "gain": 0.6
+          },
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.002,
+              "decay": 0.06,
+              "lowpass": 2200,
+              "highpass": 500
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B05-reload": {
+      "_note": "GAME-09e (Paul): the thin box magazine out and in, used by the B05 reload cues (SOUNDS.md 2.6 splits it into mag-out and mag-in).",
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.06,
+              "freq": 800
+            },
+            "gain": 0.6
+          },
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.002,
+              "decay": 0.08,
+              "lowpass": 1200,
+              "highpass": 250
+            },
+            "gain": 0.35
+          }
+        ]
+      }
+    },
+    "B05-whistle": {
+      "_note": "GAME-09e (Paul): the precision dart in flight (a whistler), capped to a few voices at once. Placeholder: nothing plays it yet, game-sounds.ts has no per-dart loop; wiring it belongs to the review (as with B06-spin).",
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0.04,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 1400,
+              "f1": 1100,
+              "wave": "sine",
+              "attack": 0.05,
+              "decay": 0.4
+            },
+            "gain": 0.35
+          }
+        ],
+        "loop": true
       }
     },
     "FX-explode": {
@@ -681,7 +872,11 @@
             "gain": 0.8
           },
           {
-            "crackle": { "dur": 0.35, "rate": 40, "decay": 0.06 },
+            "crackle": {
+              "dur": 0.35,
+              "rate": 40,
+              "decay": 0.06
+            },
             "gain": 0.5
           }
         ]
@@ -3469,6 +3664,112 @@
           }
         ]
       }
+    },
+    "B07-fire": {
+      "_note": "GAME-09f (Paul): the launcher's launch: a hollow thoomp, deeper and slower than FX-explode.",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.08,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.16,
+              "attack": 0.001,
+              "decay": 0.14,
+              "lowpass": 900,
+              "highpass": 50,
+              "lowpassEnd": 200
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.2,
+              "f0": 170,
+              "f1": 45,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.18
+            },
+            "gain": 1.0
+          }
+        ]
+      }
+    },
+    "B07-pump": {
+      "_note": "GAME-09f (Paul): the pump back and forward: a plastic clack.",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.1,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.03,
+              "freq": 800
+            },
+            "gain": 0.7
+          },
+          {
+            "noise": {
+              "dur": 0.05,
+              "attack": 0.001,
+              "decay": 0.04,
+              "lowpass": 2500,
+              "highpass": 300
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "B07-reload": {
+      "_note": "GAME-09f (Paul): a launcher round pushed into the drum: a soft thud.",
+      "files": [],
+      "volume": 0.75,
+      "jitter": 0.1,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.07,
+              "attack": 0.001,
+              "decay": 0.06,
+              "lowpass": 700,
+              "highpass": 60
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.05,
+              "f0": 120,
+              "f1": 70,
+              "wave": "sine",
+              "attack": 0.001,
+              "decay": 0.045
+            },
+            "gain": 0.6
+          }
+        ]
+      }
+    },
+    "B07-detonate": {
+      "_note": "GAME-09f (Paul): the remote detonate press: a firm click, the boom itself is FX-explode.",
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "click": {
+          "dur": 0.02,
+          "freq": 1600
+        }
+      }
     }
   },
   "blasterCues": {
@@ -3492,6 +3793,13 @@
         "state": "reloading",
         "at": 0.7,
         "sound": "B01-mag-in"
+      }
+    ],
+    "B02": [
+      {
+        "state": "reloading",
+        "at": 0.7,
+        "sound": "B02-reload"
       }
     ],
     "B03": [
@@ -3538,6 +3846,23 @@
         "sound": "B04-mag-in"
       }
     ],
+    "B05": [
+      {
+        "state": "priming",
+        "at": 0.1,
+        "sound": "B05-bolt"
+      },
+      {
+        "state": "reloading",
+        "at": 0.15,
+        "sound": "B05-reload"
+      },
+      {
+        "state": "reloading",
+        "at": 0.75,
+        "sound": "B05-reload"
+      }
+    ],
     "B06": [
       {
         "state": "reloading",
@@ -3548,6 +3873,33 @@
         "state": "reloading",
         "at": 0.75,
         "sound": "B06-reload"
+      }
+    ],
+    "B07": [
+      {
+        "state": "priming",
+        "at": 0.05,
+        "sound": "B07-pump"
+      },
+      {
+        "state": "priming",
+        "at": 0.95,
+        "sound": "B07-pump"
+      },
+      {
+        "state": "reloading",
+        "at": 0.15,
+        "sound": "B07-reload"
+      },
+      {
+        "state": "reloading",
+        "at": 0.5,
+        "sound": "B07-reload"
+      },
+      {
+        "state": "reloading",
+        "at": 0.85,
+        "sound": "B07-reload"
       }
     ]
   },

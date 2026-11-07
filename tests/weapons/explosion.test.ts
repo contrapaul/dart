@@ -98,14 +98,14 @@ describe("GAME-09d: the shared explosion", () => {
     const c = new THREE.Vector3(5, 1, 1);
     const r = rig([
       new THREE.Vector3(5, 1, 1), // dead centre: damageCentre
-      new THREE.Vector3(5 + tuning.rangeMetres / 2, 1, 1), // half range: half
-      new THREE.Vector3(5 + tuning.rangeMetres + 0.2, 1, 1), // outside: none
+      new THREE.Vector3(5 + tuning.profiles.dart.rangeMetres / 2, 1, 1), // half range: half
+      new THREE.Vector3(5 + tuning.profiles.dart.rangeMetres + 0.2, 1, 1), // outside: none
     ]);
     r.explosion.explode(c);
     const hits = [...r.blasts[0].damaged.values()];
     expect(hits.length).toBe(2); // the outside Foamer was not asked at all
     const [centre, half] = hits;
-    expect(centre).toBeCloseTo(tuning.damageCentre, 6);
+    expect(centre).toBeCloseTo(tuning.profiles.dart.damageCentre, 6);
     expect(half).toBeGreaterThan(0);
     expect(half).toBeLessThan(centre / 1.5);
     expect(r.explosion.stats.damage).toBe(2);

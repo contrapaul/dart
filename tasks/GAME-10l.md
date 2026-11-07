@@ -20,7 +20,8 @@ Title:       The F13 Biomechanic: palette look with a hood, a support brain
              that keeps behind its allies, a foam stream that heals the
              most hurt ally in range, a short damaging spray at the player,
              and the tank as the weak point that ends both
-Owner:       Pi (DeepSeek V4.1 Flash, openrouter, thinking high)
+Owner:       Pi (DeepSeek V4.1 Flash for stages 1 and 2; Qwen 3.8-27B on
+             qwen-machine for 3 and 4, Paul: local models overnight)
 Reviewer:    Claude Opus 5.5
 Depends on:  GAME-10j (the latest Foamer pattern), GAME-10k
 Branch:      game-10l, in its own worktree

@@ -125,6 +125,14 @@ export class GameSounds {
     // DT-carve comes from the impacts' onCarveAt, the same step.
     darts.onDartHit = (hit) => this.onDartHit(hit);
     darts.onDartRest = (e) => this.playFloor(e.point);
+    // GAME-09f: B07's remote rounds going off: a click for the press (the
+    // boom is FX-explode, played by the explosion's own hook). Chained so
+    // whatever wired onDetonate first still hears it.
+    const prevDetonate = darts.onDetonate;
+    darts.onDetonate = (point, type, clustered) => {
+      prevDetonate(point, type, clustered);
+      this.sink.play("B07-detonate", { position: point });
+    };
     if (this.impacts) this.impacts.onCarveAt = (p) => this.playCarve(p);
     for (const [id, cues] of Object.entries(this.data.blasterCues)) {
       this.cueLists.set(id, [...cues].sort((a, b) => a.at - b.at));

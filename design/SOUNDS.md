@@ -69,7 +69,8 @@ and the tool are unnamed so far).
 | B02-mag-out | Magazine out | Later | 3 | Blaster |
 | B02-mag-in | Magazine in | Later | 3 | Blaster |
 | B02-burst | Burst mod: three quick shots as one sound | Later | 3 | Blaster: layered |
-| B02-heavy-fire | Heavy rounds mod: slow, big thud | Later | 4 | Blaster |
+| B02-fire-heavy | Heavy rounds mod: slow, big thud | Later | 4 | Blaster |
+| B02-reload | Magazine in, the never empty reserve | Later | 3 | Blaster |
 
 ### 2.4 B03 Leviathan (break-action double barrel)
 
@@ -111,6 +112,14 @@ and the tool are unnamed so far).
 | B05-mag-in | Magazine in | Later | 3 | Blaster |
 | B05-whistle | Precision dart in flight (whistler) | Later | 3 | Blaster: a whistler dart, or Code |
 | B05-pierce | Heavy round passing through a Foamer | Later | 4 | Foley: a punch through foam |
+| B05-bolt | Bolt worked between shots (played once on the bolt cycle; the game's merged id for bolt-back and bolt-fwd) | Later | 3 | Blaster |
+| B05-reload | Magazine out and in (the game's merged id for mag-out and mag-in, played twice on the reload cues) | Later | 3 | Blaster |
+
+GAME-09e wired four of these into the game: `B05-fire`, `B05-whistle`,
+`B05-bolt` and `B05-reload`. The last two are one id each for what the
+recording pass may split in two; record the six sounds above separately
+and the data can go back to them. `B05-whistle` is a placeholder with no
+wiring yet (game-sounds.ts has no per-dart loop, as with B06-spin).
 
 ### 2.7 B06 The Standard (heavy full-auto, mega darts)
 
@@ -131,6 +140,8 @@ and the tool are unnamed so far).
 |---|---|---|---|---|
 | B07-fire | Launch: big air thump | Later | 5 | Blaster: a mega dart blaster, layered |
 | B07-pump | Pump back and forward | Later | 3 each | Blaster |
+| B07-reload | GAME-09f: a round pushed into the drum (placeholder synth) | Later | 3 | Foley |
+| B07-detonate | GAME-09f: the remote detonate press (placeholder synth) | Later | 2 | Foley: a clicker |
 | B07-load | A round pushed in | Later | 3 | Foley |
 | B07-flight | Round in flight (loop) | Later | 2 | Code or Foley: a whoosh |
 | B07-detonate-click | Remote detonate mod: the button | Later | 2 | Foley: a clicker |

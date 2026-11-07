@@ -861,6 +861,391 @@ github.com/contrapaul/dart (public), MIT licence.
   been played.
 - Stage 1 is committed on `game-10l`, not reviewed, not merged, not
   pushed.
+### 2026-11-08: ART-05b review, merged (Claude Opus 5.5): reload tilts, B07's reload drum, mod motion, and the fire kick
+
+- Reviewed dgx-spark's run. Fixed in review:
+  - B07's reload drum turned smoothly through the whole reload, so it sat
+    between chambers part way through. Each round now has an equal slot:
+    the drum turns its chamber over the first half and sits on it for
+    the second (test 5b).
+  - The run flagged a real bug it was told not to touch: `springKick` was
+    handed a fresh object literal and its result dropped, so no blaster
+    ever kicked back or tipped up on a shot. Fixed in its own commit: the
+    spring works on a member and snaps to rest within a thousandth of the
+    kick; the B01 test now checks the kick shows.
+- For Paul: the spring as written peaks near kick / e (B01: 0.9 cm for a
+  `kick` of 0.04), not at `kick`, so every blaster's kick reads about a
+  third of its brief's number. Raise the `kick` values, or say if `kick`
+  should mean the peak and I will change the spring.
+- Checked on the real glbs in env-03 (the loop stepped by hand, the pane
+  hidden): B01 kicks back 0.9 cm; B02 rolls 8 deg right and B04 8 deg
+  left at mid reload, both back to exactly rest; B07 reloading three
+  rounds turns 60, 120, 180 deg, holding on each chamber.
+- Not checked by eye: how the tilts and the kick look on screen.
+- tsc, vitest (809 passed, 2 skipped), build green.
+
+### 2026-11-08: ART-05b (Qwen 3.8 Flash Next via Pi, dgx-spark): reload tilts, B07's reload drum, B02 heavy's motion
+
+- Asked for: the rest of the "Motion (for ART-05)" briefs after ART-05a
+  and GAME-09f (`tasks/ART-05b.md`). Files: `src/weapons/viewmodel.ts`,
+  `src/weapons/blaster.ts` (`MotionSpec`, `RawMod`, `resolveSpec`), the
+  `motion` blocks and B02's `heavy` line in `data/blasters.json`, and
+  `tests/weapons/art-05b.test.ts`.
+- Reload tilt: new optional `MotionSpec.reloadRollDeg`. In `animate`,
+  while `blaster.state === "reloading"` the root's local Z rotation gets
+  `-reloadRollDeg * sin(progress * pi)`, so the blaster eases over and
+  back and is exactly at rest when the reload ends (sin is 0 at both
+  ends). Decision: folded into the existing root `rotation.set`, not a
+  new node or a new helper, because the root is already rewritten every
+  frame there.
+- Sign, found by test (test 1), as the card asked: `rotationDeg` is
+  `[2, 4, 0]` for B02 and `[2, 5, 0]` for B04, so Z is the only free roll
+  axis. A positive rotation about the local Z turns the top of the
+  blaster to the player's left (the camera looks down -Z), so
+  `reloadRollDeg` positive (right, B02) is subtracted. B02 is +8, B04 is
+  -8. The test asserts B02's peak is negative and B04's positive, which
+  is what "right" and "left" mean here.
+- B07's reload drum: the drum's existing index (one chamber per shot,
+  eased across the priming) is unchanged. Added `inReload` and
+  `reloadRounds`: the first reloading frame records `drumFrom` and the
+  round count (`magSize - blaster.mag`, read then, because the magazine
+  is only filled when the reload finishes), and `drumA` eases from
+  `drumFrom` to `drumFrom + rounds * drumStepDeg` on `blaster.progress`.
+  The frame the reload ends lands it exactly on that angle rather than on
+  the last frame's near miss, so it never sits between chambers. Decision:
+  spread evenly across the whole reload, not across part of it; the brief
+  just says one chamber for each round.
+- Mod motion: `RawMod.motion?: Partial<MotionSpec>` and one line in
+  `resolveSpec` (`s.motion = { ...s.motion, ...mod.motion }`), the same
+  shape as the `recoil` merge above it. B02's `heavy` carries
+  `{ "kick": 0.035, "slideReturn": 0.18 }`. Data lines hand-edited, the
+  compact one-line layout kept.
+- Untouched blasters: B01, B03, B05, B06 have no `reloadRollDeg`, and
+  test 3 drives each through shots and a reload and checks the root's Z
+  rotation never leaves its base value. The ART-05a and GAME-09f tests
+  pass unchanged; the whole suite is green (114 files, 808 passed,
+  2 skipped), `npx tsc --noEmit` and `npm run build` pass.
+- Test notes: `rig2` copies the spec with `autoReload: false` so an empty
+  magazine cannot start a reload the test is not asking for; `fireShots`
+  holds the trigger (an auto blaster's flywheels need `fireHeld`) and
+  re-presses once the blaster is ready and past its interval; the drum
+  reader unwraps the turn (a plain angle between quaternions folds every
+  360 degrees to zero) and must be read every frame, and reads `2 *
+  atan2(q.y, q.w)` for a rotation about local Y.
+- Not checked by eye: none of it on screen. The roll direction is only as
+  good as the reading above, so Paul should look at B02 and B04 reloading
+  and confirm which way they tip; and B07's drum should be watched
+  loading six rounds to see the pacing reads as round by round.
+- Not verified by test: the root shot kick's travel. Pre-existing, not
+  touched here: `animate` calls `springKick(dt, m.return, m.kick, { k:
+  this.kick, v: this.kickVel, j: 0 })` with a fresh object literal, and
+  `springKick` mutates that literal, so `this.kick` stays 0 and the root
+  never moves back or tips (only `kickVel` grows). ART-05a's
+  `viewmodel-anim.test.ts` already says so ("skip check of the max kick
+  reached in this version"). Left alone: making the kick work would move
+  B01, B03, B05 and B06, which this card requires stay unchanged. For
+  Paul to decide on, separately. Test 8 therefore checks the heavy
+  `slideReturn` by motion and the bigger `kick` through the spec.
+
+### 2026-11-08: ART-05a review, merged (Claude Opus 5.5): B02 slide, B05 bolt, B06 handle
+
+- Reviewed dgx-spark's run: clean, the data lines hand-edited in main's
+  layout. One change: the per-frame `seg` closure in `applyBolt` became a
+  module function, since the viewmodel allocates nothing per frame.
+- Checked on the real glbs in env-03 (the pane was hidden, so the loop was
+  stepped by hand): B02's slide goes back 2.1 cm on the shot frame and is
+  home within 10 frames; B05's bolt lifts 60 deg, goes back 4 cm at mid
+  priming and is home at rest when ready, and the lift raises the lever
+  (its top rises from 0.101 to 0.137 in the blaster's frame), so the
+  direction is right; B06's handle goes back 4 cm through the reload and
+  returns at the end.
+- Not checked by eye: how the three look on screen.
+- tsc, vitest (800 passed, 2 skipped), build green.
+
+### 2026-11-08: ART-05a (Qwen 3.8 Flash Next via Pi, dgx-spark): B02 slide, B05 bolt, B06 cocking handle
+
+- Asked for: the three viewmodel motions the approved models have waiting
+  for them, per `tasks/ART-05a.md`. Nothing else.
+- Built, all in `src/weapons/viewmodel.ts` following the B01 pump and B07
+  drum pattern (offset from `restP`/`restQ`, allocate nothing per frame):
+  - `applySlide(dt)` in the semi/burst branch: `hookShot` zeroes a clock
+    when `motion.slideTravel` is set and the `slide` node eases from
+    `slideTravel` back to rest over `slideReturn` seconds along its local
+    +Z. `hookShot` drops later darts of the same frame (existing
+    `shotsThisFrame` gate), but a burst's darts come on separate frames
+    `burstGap` apart, so each one re-kicks the slide.
+  - `applyBolt(blaster)` in the pump branch (B05) and the auto branch
+    (B06): the `bolt` node is driven by `blaster.progress`. Pump: lift
+    `boltLiftDeg` about local Z over 0 to 0.2, back `boltTravel` along
+    local +Z over 0.2 to 0.5, forward over 0.5 to 0.8, down over 0.8 to
+    1.0, only while `state === "priming"`. Auto: back `boltTravel` over 0
+    to 0.15 of the reload, held, let go over 0.85 to 1.0, only while
+    `state === "reloading"`. Outside its state the node sits at rest.
+- Decided: one `applyBolt` covers B05 and B06 by `spec.mode`, no new
+  field names per blaster; B06's data sets `boltTravel` alone so its
+  handle translates and never rotates. A blaster with no `bolt` node, or
+  with neither field, is left exactly as it was (B01, B03, B04, B07
+  untouched; their tests unchanged and still green).
+- New optional `MotionSpec` fields in `src/weapons/blaster.ts`:
+  `slideTravel`, `slideReturn`, `boltLiftDeg`, `boltTravel`. Data: the
+  three `motion` lines in `data/blasters.json` (hand-edited, one line
+  each): B02 `slideTravel` 0.025 / `slideReturn` 0.1, B05 `boltLiftDeg`
+  60 / `boltTravel` 0.05, B06 `boltTravel` 0.04. Start values for Paul
+  to tune on the range.
+- Not done on purpose: the heavy mod's slower slide, reload tilts, sounds
+  (all "not in this task"). B05 keeps its `pumpTravel` 0.05 even though
+  its glb has no `pump` node (pre-existing, the card says it moves
+  nothing).
+- Verified: `npx tsc --noEmit` clean, `npx vitest run` 800 passed 2
+  skipped (113 files) including 10 new tests in
+  `tests/weapons/art-05a.test.ts` (named-node trees, no glb, like
+  `tests/weapons/b07.test.ts` test 10), `npm run build` built. No em or
+  en dashes in the files touched.
+- Not checked by eye: none of it on screen. I could not open a browser, so
+  the slide kick, the bolt's lift direction (local +Z per the card's
+  "back is local +Z" fact, and the lift about the node's own Z) and the
+  handle pull are proven only by the node transforms in tests. The real
+  glb node names (`slide`, `bolt`) come from the card's facts, not from
+  loading the models. Paul should watch all three on the range, especially
+  that B05's bolt lifts the right way and B06's handle pulls the right
+  way.
+
+### 2026-11-08: GAME-09f review, merged (Claude Opus 5.5): B07 Collateral
+
+- Reviewed dgx-spark's run. Fixed in review:
+  - Both mods were always on, with two invented placeholder mods
+    (`longrange`, `rapid`) in their place. The card makes remote detonate
+    mod 1 and cluster mod 2, so they are now `mods.remote` and
+    `mods.cluster`; plain B07 blasts on its hit. The env-03 station offers
+    `remote`, moved to (-2.5, 0, -7) so B03's station does not hide it.
+  - The run rewrote `data/blasters.json` and `data/levels/env-03.json`
+    through a JSON dump, reformatting every blaster. Both are back in
+    main's compact layout with only B07's lines added.
+  - Cluster on its own never clustered: the impact hook dropped the
+    shot's `clustered` flag (only a remote detonation passed it). Fixed in
+    `src/weapons/impacts.ts`, with test 13b.
+- Played in env-03 (the pane was hidden, so the loop was stepped by hand):
+  plain B07 lands one launcher blast; with remote the round sits live,
+  the next press sets it off and spends no round; with cluster one round
+  gives five blasts (one launcher, four cluster 0.27 s later); the drum
+  node turns; the player's health stays at 100 throughout.
+- Not checked by eye: B07 on screen (viewmodel placement, the drum's look
+  as it turns), the blast push on Foamers in play (Foamer colliders do not
+  build while the pane is hidden; unit tests cover it), the sounds.
+- tsc, vitest (790 passed, 2 skipped), build green.
+
+### 2026-11-08: GAME-09f, both stages done (Qwen 3.8 Flash Next via Pi, branch `game-09f`)
+
+- Task (Paul): `tasks/GAME-09f.md`, B07 Collateral gameplay, two stages.
+- Stage 1 (commit `GAME-09f: stage 1, ...`): the `launcher` dart type
+  (`data/darts.json`: 18 m/s, gravityScale 1.0, explodes at its first
+  hit), B07 Collateral in `data/blasters.json` (pump, primeTime 0.9,
+  drum 6 / reserve 18 / start 12, reload 2.5, `explosiveEvery` 1, key 7
+  in `src/game/game.ts` and `src/range/main.ts`), and named blast
+  profiles in `data/explosion.json` read by the shared
+  `src/weapons/explosion.ts` (`dart` = B05/B06's old numbers, unchanged;
+  `launcher` carves 1.0 m, 25 damage, 3.5 m range, and shoves each Foamer
+  it damaged 2.5 m outward through the Foamer system's existing
+  `knockStep`, so a wall stops them and the player, who is never in the
+  Foamer list, is never touched). The viewmodel turns B07's `drum` node
+  60 deg about its bore (its local Y) per shot, eased over the priming,
+  from `motion.drumStepDeg`; B01 has none and is untouched. Sounds
+  `B07-fire`/`B07-pump`/`B07-reload` placeholder synths + cues (added to
+  `design/SOUNDS.md` 2.8), an env-03 mod station (B07 remote), and
+  `tests/weapons/b07.test.ts`.
+- Stage 2 (second commit): mod 1 remote detonate (a round that hits stops
+  as a new LIVE dart state, cap `maxLiveRounds` 3 in `data/darts.json`,
+  the oldest goes off when a fourth fires; a fire press while any are
+  live detonates them all through `DartSystem.detonateLive` and spends no
+  round; the press plays `B07-detonate` and each blast is the launcher
+  profile through the existing `onDetonate` hook) and mod 2 cluster (a
+  clustered blast schedules the data's four small `cluster` blasts, 1.5 m
+  out at the four sides, 0.25 s later, in simulation time, through the
+  same cap; `maxPerSecond` raised 6 -> 10 so a B07 round's five blasts,
+  or two rounds back to back, never lose one to the cap, as the card
+  asks). Tests 11-15 in the same file cover the remote stops, the press,
+  the cap, the four sides after the delay, and the cap room.
+- Decisions recorded in PLAN.md 14 (2026-11-08 entries): explosion
+  profiles, the shove through `knockStep`, LIVE as a dart state, the
+  simulation-time cluster.
+- `tests/weapons/models.test.ts` now accepts `drum` as B07's magazine
+  node (its approved glb has no `mag`), like the earlier pump/bolt
+  widening; `tests/weapons/b05.test.ts` order check extended with B07.
+- Green: `npx tsc --noEmit`, `npx vitest run` (112 files, 789 passed, 2
+  skipped), `npm run build`. No other repo touched, no dev server run.
+- Not checked by eye (this session had no browser): B07 in hand (viewmodel
+  placement and scale are start values), the drum's turn against the real
+  glb (the axis is read from its rest quaternion 90 deg about X, not
+  seen), the pump's look, the launcher round's arc and blast feel, and
+  the four placeholder sounds. B07's flight
+  sound (B07-flight in SOUNDS.md) was not asked for by the card and is
+  not wired.
+
+### 2026-11-07: GAME-09e review, merged (Claude Opus 5.5): B05 Shrike
+
+- Read through: the precision dart (and `precisionHeavy` for the heavy
+  mod), the pierce in `src/weapons/darts.ts` (a pierced Foamer's bodies
+  are ignored for the rest of the flight, walls stop it, never the same
+  Foamer twice), the zoom in `src/game/zoom.ts` (it holds the player's
+  own field of view and sensitivity and narrows both; a switch or reload
+  drops it). Clean.
+- Merged with B02: the order is B01, B04, B03, B06, B02, B05 on keys 1
+  to 6 (B05 after B02, so every earlier key stays); the `env-03` test
+  level keeps all six stations, B05's moved to an empty spot.
+- **Played** (`arena.html?watch&level=env-01`): two quick presses fire
+  once, the bolt's 0.9 s later the next fires. Not checkable with the
+  pane hidden: the zoom (driven from the render frame) and dart hits on
+  Foamers (their part colliders come from meshes built off the render
+  frame); both are covered by the unit tests (21 new).
+- Not checked: the model in hand, the bolt's animation (none yet), the
+  sounds. The zoom key is `KeyZ`, a proposal for Paul.
+
+### 2026-11-07: GAME-09e (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `game-09e`): B05 Shrike, the precision dart, pierce and zoom
+
+- **Task** (card: `tasks/GAME-09e.md`): the precision dart that pierces,
+  B05's bolt cycle, a zoom while held, and the explosive and heavier
+  rounds mods. Two commits, not reviewed, not merged. Fire-mode, loadout
+  and viewmodel code untouched (GAME-09c owns them).
+- **Stage 1** (`fd36fd1`). `precision` and `precisionHeavy` dart types in
+  `data/darts.json`; `precision` 8 / `precisionHeavy` 10 in
+  `data/foamers.json` (slug 6). Pierce is on the dart type: a dart with
+  `pierce` n flies through n Foamers, stops at n + 1, on a wall, or on a
+  second visit to the same Foamer. `src/weapons/darts.ts` gives each hit
+  the Foamer's key (root body handle) and, for a piercing type, all its
+  body handles, which the dart then ignores for the rest of its flight.
+  The `B05` entry in `data/blasters.json`: pump mode, `primeTime` 0.9 as
+  the bolt, precision darts, 1 per shot, no spread, 5/30 (start 15),
+  reload 1.8, `zoom` block, mods explosive (`explosiveEvery` 1) and heavy
+  (`dartType` precisionHeavy). In the order between B03 and B06; env-03
+  gained a fifth mod station. `tests/weapons/models.test.ts` accepts a
+  `bolt` node in place of `pump` for a pump blaster (B05's moving part).
+- **Stage 2** (`77ff1fa`). `src/game/zoom.ts`: while the `zoom` action is
+  held with a blaster whose data has a `zoom` block (B05 only: fovShare
+  0.4, easeTime 0.12), the camera's fov eases to that share of the
+  player's own setting and the look sensitivity scales with it; letting
+  go eases back, a switch or a reload drops it and the key must be
+  pressed again. `game.ts` drives it in `frame()`; `applySettings` hands
+  it the player's own fov and sensitivity. The `zoom` action is KeyZ and
+  gamepad button 11 in `data/input.json`.
+- **Decisions** (PLAN.md 14): pierce on the dart type, not the blaster;
+  heavier rounds is a second dart type so a mod changes one field; the
+  zoom narrows the player's own fov so the slider keeps working; a zoom
+  that survives a switch is a bug; B05 reuses `pump` with the bolt time
+  as `primeTime` rather than a new fire mode.
+- **Sound:** `B05-fire`, `B05-bolt`, `B05-reload`, `B05-whistle` in
+  `data/sounds.json` (synth placeholders) with B05's priming and reload
+  cues, listed in `design/SOUNDS.md` 2.6. `B05-bolt` and `B05-reload` are
+  one id each for what the recording pass may split (bolt-back/fwd,
+  mag-out/in). **Not a proposal from me:** KeyZ, gamepad 11, every B05
+  number, and those merged sound ids are all for Paul.
+- **Tests:** 21 new (`tests/weapons/b05.test.ts`,
+  `tests/weapons/b05-mods.test.ts`, `tests/game/zoom.test.ts`). Full
+  suite green: 110 files, 762 passed, 2 skipped; `npx tsc --noEmit` and
+  `npm run build` pass.
+- **Not checked by eye** (no browser, no images): the model in hand, the
+  viewmodel placement and whether the scope fills the view, the pierce
+  and the explosive blast on the range, the zoom's feel and how much the
+  narrowed view actually helps, and every B05 sound (synth only, never
+  heard). The bolt has no animation and there is no scope overlay, both
+  out of the card.
+- **Open:** B05 needs a fifth weapon-key slot (`game.ts` maps weapon1-3
+  to ids), and GAME-09c owns the weapon keys: left for that work or the
+  review.
+### 2026-11-07: GAME-09c review, merged (Claude Opus 5.5): B02 Musketeer
+
+- Merged with GAME-09d (B06): B02 joins the order after B06, so blasters
+  are B01, B04, B03, B06, B02 on keys 1 to 5 (index-based tests keep
+  their slots; level order can be set later). B06's fire-clock cap would
+  have stopped B02's burst after its first burst (the cooldown runs on
+  the same clock, longer than B02's interval); the cap now covers the
+  longer of the two. New test: a second burst fails with the old cap and
+  passes with the new.
+- B02 now uses its own approved model (`public/models/blasters/B02.glb`),
+  viewmodel scale 0.85; the spec test that pinned the placeholder moved
+  with it. A duplicate mod field and comment from the two branches went.
+- **Played** (`arena.html?watch&level=env-01`): B02 loads with its
+  `body`, `slide`, `trigger`, `mag` and `muzzle_1` nodes; one dart per
+  press, six then an automatic reload back to six; the HUD reads
+  "Musketeer AMMO 6 / ∞".
+- Not checked: the slide's kick (not animated yet: the viewmodel moves
+  only the magazine for semi and burst), the look in hand (pane hidden),
+  the three sounds.
+
+### 2026-11-07: GAME-09c: B02 Musketeer, both stages
+
+Built on `game-09c`, not reviewed, not merged, not pushed (Qwen 3.8-27B
+via Pi). All of the model work is not started.
+
+- **The weapon.** `data/blasters.json` gains `B02`: name Musketeer, mode
+  `semi`, standard darts, one dart a shot, spread 1 degree, magazine 6,
+  reload 1.0 s, auto reload, `fireInterval` 0.15 s (the fast-click cap).
+  The placeholder model is the B01 `.glb` with `muzzle_1`; its `_note`
+  says the B02 model replaces it when ART-01 ships, with no code change.
+- **New mode `semi`** in `src/weapons/blaster.ts`: one dart per trigger
+  press, never primes, and the fire clock caps presses faster than
+  `fireInterval`. Empty plus autoReload starts the reload. The viewmodel
+  animates a semi (and a burst, below) like a small pump: magazine drop
+  on the reload, no pump travel, no wheel.
+- **Never empty.** A data flag `reserveInfinite` on the resolved spec:
+  `finishReload` fills the magazine without touching the reserve, the
+  vacuum's refill (`Loadout.refillReserves`) and the ammo box
+  (`PickupSystem.giveAmmo`) skip such blasters, and the HUD shows the
+  reserve as an infinity sign, not a number. Every other blaster's
+  reserve is untouched. I added one line to `src/ui/hud.ts` for the
+  symbol: it is not in the card's file list, but the card asks for it.
+- **Stage 2, the burst mod.** A new mode `burst` on the blaster: one
+  press fires `burstCount` darts (3) at `burstGap` (0.07 s) on its own
+  gap clock, then the fireClock carries the `burstCooldown` (0.3 s).
+  Presses mid-burst or mid-cooldown do nothing, so no mash can beat the
+  data. A magazine that empties mid-burst (2 left fires 2, never a
+  third) ends the burst and starts the reload at once. Numbers in
+  `data/blasters.json`, not the code.
+- **Stage 2, the heavy mod.** Pure data: `slug` darts, the slower
+  `fireInterval` 0.45 s, and its own `chunk` (range 6 m, carve 0.2, push
+  1.0, larger than the standard dart's, smaller than B01's slug). The
+  shared chunk system turned it into a foam pop with no new code.
+- **In the game.** B02 is appended to the blaster `order` after B03 and
+  takes weapon key 4, so B01, B04 and B03 keep keys 1 to 3 and no level
+  loses a blaster (the level only depends on the first three being in
+  this order); `game.ts` and the range's `WEAPON_KEYS` lists grow by
+  one. The range's blaster and mod rows are data driven, so B02 shows up
+  with its two mods and no range code. `models.test.ts` node check reads
+  the model the spec points at and has a `semi`/`burst` branch
+  (placeholder reads the B01 file, where `mag` and `muzzle_1` live).
+  `data/levels/env-03.json` gains a fourth station (`B02` / `burst`, at
+  0, -4, between the start and the B03 station) because the env-03 test
+  offers one station per mod-carrying blaster and B02 has mods now.
+- **Sounds.** `data/sounds.json` gains the card's three placeholder IDs,
+  all synth for now (the files will land in AUD-02 when recorded):
+  `B02-fire` (light, quick), `B02-fire-heavy` (a slow, big thud),
+  `B02-reload` (a click and a soft noise). `SOUNDS.md` documents the
+  same three, renaming the earlier `B02-heavy-fire` draft. The fire
+  sound plays by the engine's `activeId + "-fire"` naming, so `B02-fire`
+  is live; `B02-reload` plays on the reload cue; `B02-fire-heavy` is
+  defined but not yet wired (a heavy shot still plays `B02-fire`).
+- **Tests.** `tests/weapons/b02.test.ts` (11 tests): the spec, one press
+  one dart, a held trigger fires only that one, fast presses are capped
+  by the clock, spaced presses fire exactly one each, the reserve stays
+  full over four full magazines, the vacuum's refill leaves it alone
+  while a real reserve still takes its share, the burst reads, the burst
+  fires 3 per press with the gap then waits the cooldown, a burst with 2
+  left fires 2 and reloads itself, the heavy mod reads, the heavy fires
+  slugs at the slower rate. All other weapon tests ran unchanged. `npx
+  tsc --noEmit`, `npx vitest run` (726 passed, 2 skipped) and `npm run
+  build` pass; the dash check is clean.
+- **Not checked by eye, I cannot see or run the game:** the B02 viewmodel
+  look and scale, the infinity sign render in the HUD, the semi and burst
+  feel and cadence in the range and arena, and whether the three sounds
+  sit right (the synth numbers are guessed); a heavy shot plays the
+  standard `B02-fire` until the heavy sound is wired.
+### 2026-11-07: B07 Collateral brief and model (ART-01, ART-04, Claude Opus 5.5)
+
+- Paul said to proceed with B07 in navy blue with red accents. Brief
+  `design/blasters/B07.md` (a tube magazine under a wide launch tube, a
+  ribbed pump sleeve, a ladder sight, a short stock) and the model from
+  `art/blasters/B07/build.py`; notes and checks in
+  `art/blasters/B07/NOTES.md`. All contract checks pass; the export is
+  repeatable. Waiting for Paul's approval of both. Gameplay not started.
 
 ### 2026-11-07: GAME-09d review, merged (Claude Opus 5.5): B06 and the shared explosion
 

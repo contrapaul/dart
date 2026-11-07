@@ -24,9 +24,11 @@ describe("the env-03 test level", () => {
   });
 
   it("offers one station per blaster that has mods", () => {
-    for (const id of blasterIds) expect(Object.keys(byId[id].mods).length).toBeGreaterThan(0);
+    // GAME-09c: B02 has no mod yet, so stations are only the mod-bearing
+    // blasters, not every id in the order.
+    const withMods = blasterIds.filter((id) => Object.keys(byId[id].mods ?? {}).length > 0);
     const stations = level.stations!;
-    expect(stations.map((s) => s.blaster).sort()).toEqual([...blasterIds].sort());
+    expect(stations.map((s) => s.blaster).sort()).toEqual([...withMods].sort());
     for (const s of stations)
       expect(Object.keys(byId[s.blaster].mods)).toContain(s.mod);
   });

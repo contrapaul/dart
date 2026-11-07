@@ -12,6 +12,7 @@ export const ACTIONS = [
   "moveForward", "moveBack", "moveLeft", "moveRight",
   "jump", "sprint", "dash",
   "fire", "shield", "melee", "reload", "use", "debugBlast",
+  "zoom",
   "weaponNext", "weaponPrev",
   "weapon1", "weapon2", "weapon3", "weapon4",
   "weapon5", "weapon6", "weapon7", "weapon8",

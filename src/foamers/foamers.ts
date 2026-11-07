@@ -1946,6 +1946,17 @@ export class FoamerSystem {
       // NoSuchCollider evidence: some hits miss every part and the root.
     }
     if (!f || !part) return;
+    // GAME-09e: name the Foamer this part belongs to, as a key the dart
+    // system can compare (its root body's handle), with every body of the
+    // Foamer. A piercing dart flies through each Foamer once and stops at
+    // the second visit, and its ray cast ignores this Foamer's bodies from
+    // here on so it never meets its far side.
+    hit.foamerKey = f.root.handle;
+    if ((dartTuning.types[hit.type].pierce ?? 0) > 0) {
+      const bodies = [f.root.handle];
+      for (const p of f.parts.values()) bodies.push(p.body.handle);
+      hit.foamerBodies = bodies;
+    }
     // GAME-09b: another shot's dart ends a dying Foamer at once, so the held
     // shot cannot keep adding to a kill that is already decided.
     if (f.dyingHit && f.dyingHit.shot?.id !== hit.shot?.id) {

@@ -23,13 +23,19 @@ export interface ShotChunk {
  *  id groups the darts of one trigger pull; muzzle is where they left. */
 /** GAME-09d: what a shot's darts carry so a hit can run the explosion.
  *  explodes: this dart explodes where it first hits (B06's explosive mod).
- *  exploded: set once the blast has run, so a bounce never doubles it. */
+ *  exploded: set once the blast has run, so a bounce never doubles it.
+ *  GAME-09f: clustered: the blast also throws four small blasts around it
+ *  (B07's cluster mod). liveRound: the round stops where it first hits and
+ *  stays live until it is detonated (B07's remote mod), instead of blasting
+ *  on the hit. */
 export interface DartShot {
   id: number;
   muzzle: THREE.Vector3;
   chunk: ShotChunk | null;
   explodes?: boolean;
   exploded?: boolean;
+  clustered?: boolean;
+  liveRound?: boolean;
 }
 
 export interface DartHit {
@@ -46,6 +52,16 @@ export interface DartHit {
   material: string | null;
   /** GAME-09b: the shot this dart left on, when the caller tagged it. */
   shot: DartShot | null;
+  /** GAME-09e: the Foamer whose part was hit, as a key (its root body's
+   *  handle), set by the Foamer system in the onHit chain. Absent or null
+   *  for a wall, a floor, a broken piece: anything that is not a live
+   *  Foamer part. A piercing dart uses it to pass through each Foamer once. */
+  foamerKey?: number | null;
+  /** GAME-09e: for a piercing dart only, the body handles of the Foamer
+   *  whose part was hit (its root and every part body), set by the Foamer
+   *  system. The dart's ray cast ignores them from here on, so a dart that
+   *  went through a Foamer never meets its far side. Absent otherwise. */
+  foamerBodies?: number[];
 }
 
 /** Where a dart came to rest on a surface. `point` is the dart's own
@@ -70,6 +86,9 @@ const FLYING = 0;
 const STUCK = 1;
 const RESTING = 2;
 const FADING = 3;
+// GAME-09f: a remote round that hit something and sits where it stopped,
+// waiting to be detonated. Not simulated: it does not fall or bounce.
+const LIVE = 4;
 
 const AXIS_Z = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
@@ -98,6 +117,12 @@ interface Slot {
   inst: number;                   // index in list[type]
   shot: DartShot | null;         // GAME-09b: the shot it left on
   shotBuf: DartShot;             // its own copy, so the next pull cannot change it
+  /** GAME-09e: the Foamers this dart has already pierced (their keys), at
+   *  most the type's pierce. Empty unless the type pierces. */
+  pierced: number[];
+  /** GAME-09e: every body handle belonging to a pierced Foamer, ignored by
+   *  the ray cast while pierced is not empty. */
+  piercedBodies: number[];
 }
 
 export class DartSystem {
@@ -119,17 +144,28 @@ export class DartSystem {
    *  it to the shared ExplosionSystem when the page passes one. */
   onExplosiveHit: (hit: DartHit) => void = () => {};
 
+  /** GAME-09f: called once per remote round that goes off, with where it
+   *  sits, its dart type (the blast's profile) and its cluster flag. Fires
+   *  when the blaster detonates the live rounds and when a round past the
+   *  live cap goes off to make room. DartImpacts wires it to the shared
+   *  ExplosionSystem when the page passes one. */
+  onDetonate: (point: THREE.Vector3, type: DartTypeName, clustered: boolean) => void =
+    () => {};
+
   private world: RAPIER.World;
   private ignore: RAPIER.Collider;
   private capFly = TUNE.maxLive;
   private capStick = TUNE.maxStuck;
   private capRest = TUNE.maxResting;
+  /** GAME-09f: live remote rounds at once (B07's cap); firing past it
+   *  detonates the oldest. */
+  private capLive = TUNE.maxLiveRounds;
   private life = TUNE.lifetime;
 
   private slots: Slot[] = [];
   private free: number[] = [];
   private list = {} as Record<DartTypeName, number[]>;
-  private count: Record<number, number> = { [FLYING]: 0, [STUCK]: 0, [RESTING]: 0, [FADING]: 0 };
+  private count: Record<number, number> = { [FLYING]: 0, [STUCK]: 0, [RESTING]: 0, [FADING]: 0, [LIVE]: 0 };
   private meshes: Record<DartTypeName, THREE.InstancedMesh> =
     {} as Record<DartTypeName, THREE.InstancedMesh>;
   private seq = 0;
@@ -185,6 +221,8 @@ export class DartSystem {
         inst: 0,
         shot: null,
         shotBuf: { id: 0, muzzle: new THREE.Vector3(), chunk: null },
+        pierced: [],
+        piercedBodies: [],
       });
       this.free.push(i);
     }
@@ -199,6 +237,15 @@ export class DartSystem {
   ): void {
     const spec = TUNE.types[type];
     if (this.count[FLYING] >= this.capFly) this.killOldest(FLYING);
+    // GAME-09f: a live cap already full: the oldest live round goes off to
+    // make room before this one flies (the card: a fourth is fired).
+    while (shot?.liveRound && this.count[LIVE] >= this.capLive) {
+      const oldest = this.oldest(LIVE);
+      if (oldest < 0) break;
+      const o = this.slots[oldest];
+      this.onDetonate(o.pos.clone(), o.type, o.shot?.clustered ?? false);
+      this.kill(oldest);
+    }
     const i = this.free.pop();
     if (i === undefined) return; // every slot busy; drop this shot
     const s = this.slots[i];
@@ -220,6 +267,8 @@ export class DartSystem {
     s.order = this.seq++;
     s.body = null;
     s.coll = null;
+    s.pierced.length = 0;
+    s.piercedBodies.length = 0;
     this.count[FLYING]++;
     // A copy: the blaster reuses one shot object, and its next trigger pull
     // must not rewrite the id and muzzle of darts still in flight.
@@ -232,6 +281,8 @@ export class DartSystem {
       // inherits a blast that already ran.
       s.shotBuf.explodes = shot.explodes ?? false;
       s.shotBuf.exploded = false;
+      s.shotBuf.clustered = shot.clustered ?? false;
+      s.shotBuf.liveRound = shot.liveRound ?? false;
       s.shot = s.shotBuf;
     } else s.shot = null;
     s.inst = this.list[type].length;
@@ -256,6 +307,7 @@ export class DartSystem {
         this.stepStuck(s);
         continue;
       }
+      if (s.state === LIVE) continue; // a waiting remote round is not simulated
       if (s.state === FLYING) {
         this.stepFlying(s, dt);
         continue;
@@ -309,6 +361,27 @@ export class DartSystem {
     };
   }
 
+  /** GAME-09f: the live remote rounds waiting to be detonated (B07's
+   *  remote mod). The blaster reads this on a fire press: any live round
+   *  turns the press into a detonation instead of a shot. */
+  liveRounds(): number {
+    return this.count[LIVE];
+  }
+
+  /** GAME-09f: every live remote round goes off at its own spot, oldest
+   *  first, each through onDetonate. Returns how many went off. */
+  detonateLive(): number {
+    let n = 0;
+    for (let i = 0; i < this.slots.length; i++) {
+      const s = this.slots[i];
+      if (!s.alive || s.state !== LIVE) continue;
+      this.onDetonate(s.pos.clone(), s.type, s.shot?.clustered ?? false);
+      this.kill(i);
+      n++;
+    }
+    return n;
+  }
+
   // -- steps ------------------------------------------------------------
 
   private stepFlying(s: Slot, dt: number) {
@@ -341,7 +414,15 @@ export class DartSystem {
       // again: a default collider's membership has every bit set).
       (c) => {
         const g = c.collisionGroups();
-        return g !== RAGDOLL_GROUPS && g !== CAPSULE_GROUPS;
+        if (g === RAGDOLL_GROUPS || g === CAPSULE_GROUPS) return false;
+        // GAME-09e: a dart that has pierced a Foamer ignores that Foamer's
+        // colliders for the rest of its flight, so it never meets the same
+        // one twice (the far side of the one it just went through).
+        if (s.pierced.length > 0) {
+          const h = c.parent()?.handle;
+          if (h !== undefined && s.piercedBodies.includes(h)) return false;
+        }
+        return true;
       },
     );
     if (hit) {
@@ -364,15 +445,27 @@ export class DartSystem {
         collider: hit.collider,
         material: null,
         shot: s.shot,
+        foamerKey: null,
       };
       this.onHit(dartHit);
       // After the onHit chain, so the sounds read the material.
       this.onDartHit(dartHit);
       // GAME-09d: an explosive dart blasts on its first hit whatever it
       // hit. The flag lives on the slot's own shot copy, so a bounce off a
-      // hard surface never fires a second blast.
+      // hard surface never fires a second blast. GAME-09f: a remote round
+      // does not blast here: it stops where it hit and stays live until
+      // detonated (the round's own copy keeps the exploded flag, so it
+      // never blasts twice even after a detonation).
       if (s.shot && s.shot.explodes && !s.shot.exploded) {
         s.shot.exploded = true;
+        if (s.shot.liveRound) {
+          s.pos.copy(this._hp);
+          s.vel.set(0, 0, 0);
+          s.state = LIVE;
+          this.count[FLYING]--;
+          this.count[LIVE]++;
+          return;
+        }
         this.onExplosiveHit(dartHit);
       }
       // Push dynamic bodies along the flight direction at the impact point.
@@ -386,6 +479,21 @@ export class DartSystem {
           { x: this._hp.x, y: this._hp.y, z: this._hp.z },
           true,
         );
+      }
+      // GAME-09e: a piercing dart that met a live Foamer part it has not
+      // hit yet, and still has pierce to spend, carries on through: the
+      // damage and the carve above already ran for this hit. A wall or the
+      // floor (no foamerKey), or the same Foamer again, stops it, and so
+      // does a dart that has used up its pierce. The step past the surface
+      // is along the flight line, so the entry face is not met twice.
+      const key = dartHit.foamerKey;
+      const pierce = s.spec.pierce;
+      if (pierce > 0 && typeof key === "number" && !s.pierced.includes(key) && s.pierced.length < pierce) {
+        s.pierced.push(key);
+        for (const h of dartHit.foamerBodies ?? []) if (!s.piercedBodies.includes(h)) s.piercedBodies.push(h);
+        s.pos.copy(this._hp).addScaledVector(this._dn, 0.03);
+        if (s.pos.y < KILL_Y) this.killSlot(s);
+        return;
       }
       // A body removed inside onHit (a popped Foamer) has nothing left to
       // stick to: the dart bounces off where it was and, like a released
@@ -515,7 +623,7 @@ export class DartSystem {
 
   // Oldest-first recycle: the stale dart in this state is freed when a cap is
   // reached. Called at most once per step and only then.
-  private killOldest(state: number) {
+  private oldest(state: number): number {
     let best = -1;
     let bestOrd = Infinity;
     for (let i = 0; i < this.slots.length; i++) {
@@ -525,6 +633,11 @@ export class DartSystem {
         best = i;
       }
     }
+    return best;
+  }
+
+  private killOldest(state: number) {
+    const best = this.oldest(state);
     if (best >= 0) this.kill(best);
   }
 

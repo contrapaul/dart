@@ -7,7 +7,7 @@ import blastersJson from "../../data/blasters.json";
 // stays allocation-free. Scalar fields are one source per value; a mod
 // overrides a field, and a nested block such as `recoil` merges key by key.
 
-export type BlasterMode = "pump" | "auto" | "break";
+export type BlasterMode = "pump" | "auto" | "break" | "semi" | "burst";
 export type BlasterState = "ready" | "priming" | "reloading";
 
 export interface RecoilSpec {
@@ -32,8 +32,26 @@ export interface MotionSpec {
   pumpTravel?: number;
   magDrop?: number;
   wheelSpin?: number;
+  /** GAME-09f: B07's drum: degrees the drum node turns per shot (one
+   *  chamber), eased over the pump time by the viewmodel. */
+  drumStepDeg?: number;
   breachOpenDeg?: number;
   latchDeg?: number;
+  /** ART-05a: B02's slide: how far the slide node goes back along its
+   *  local +Z on a shot, and the seconds it takes to come home. */
+  slideTravel?: number;
+  slideReturn?: number;
+  /** ART-05a: B05's bolt: degrees the bolt node lifts about its local Z
+   *  and how far it slides back along its local +Z across the priming.
+   *  With boltTravel alone (no lift) the same node works as a cocking
+   *  handle pulled during the reload (B06). */
+  boltLiftDeg?: number;
+  boltTravel?: number;
+  /** ART-05b: reload tilt: degrees the whole viewmodel rolls about its
+   *  forward axis at the middle of a reload, easing over and back. Positive
+   *  is to the right as the player sees it (B02 rolls right, B04 left).
+   *  A blaster without the field is untouched. */
+  reloadRollDeg?: number;
 }
 
 export interface BlasterSpec {
@@ -46,9 +64,18 @@ export interface BlasterSpec {
   magSize: number;
   reserveMax: number;
   reserveStart: number;
+  /** GAME-09c: the reserve never runs out: reloads always fill the
+   *  magazine, and ammo boxes and the vacuum's refill skip it. */
+  reserveInfinite: boolean;
   reloadTime: number;
   primeTime: number;
   fireInterval: number;
+  /** GAME-09c: burst mode: darts per press, the gap between them, and
+   *  the wait after the last dart. Defaults cover a blaster without the
+   *  mod (count 1, so it is just one dart and no gap is measured). */
+  burstCount: number;
+  burstGap: number;
+  burstCooldown: number;
   spinUp: number;
   spinDown: number;
   autoReload: boolean;
@@ -64,6 +91,14 @@ export interface BlasterSpec {
   /** GAME-09d: B06's explosive mod: every nth shot explodes at its first
    *  hit through the shared ExplosionSystem. 0: no explosive shots. */
   explosiveEvery: number;
+  /** GAME-09f mod 1 (B07 remote detonate): rounds stop where they first
+   *  hit and stay live; a fire press while any are live detonates them
+   *  all instead of firing. */
+  remote: boolean;
+  /** GAME-09f mod 2 (B07 cluster): the round's blast throws four small
+   *  blasts around it (the shared explosion reads the data's cluster
+   *  block). */
+  cluster: boolean;
 }
 
 export interface BlasterControls {
@@ -81,6 +116,12 @@ export interface DartFiring {
     type: DartTypeName,
     shot?: DartShot | null,
   ): void;
+  /** GAME-09f: the live remote rounds waiting to be detonated, and the
+   *  detonation of them all (B07's remote mod). The real DartSystem has
+   *  both; a test fake may omit them (a blaster without the mod never
+   *  calls them). */
+  liveRounds?(): number;
+  detonateLive?(): number;
 }
 
 // GAME-09b: shot ids, one counter for every blaster, so two blasters'
@@ -89,6 +130,7 @@ let shotSeq = 0;
 
 // The raw shape of one entry in data/blasters.json before mods merge in.
 interface RawMod {
+  mode?: string;
   dartType?: string;
   dartsPerShot?: number;
   spreadDeg?: number;
@@ -97,12 +139,22 @@ interface RawMod {
   fireInterval?: number;
   muzzles?: string[];
   bothBarrels?: boolean;
+  burstCount?: number;
+  burstGap?: number;
+  burstCooldown?: number;
   recoil?: Partial<RecoilSpec>;
+  /** ART-05b: a mod's own motion: keys here override the blaster's motion
+   *  block key by key, the way `recoil` does (B02 heavy: a bigger kick and
+   *  a slower slide return). */
+  motion?: Partial<MotionSpec>;
   show?: string[];
   hide?: string[];
   chunk?: ShotChunk | null;
   /** GAME-09d: every nth shot of this mod explodes (the explosive mod). */
   explosiveEvery?: number;
+  /** GAME-09f: B07's remote detonate and cluster mods. */
+  remote?: boolean;
+  cluster?: boolean;
   _note?: string;
 }
 
@@ -116,6 +168,7 @@ interface RawBlaster {
   magSize: number;
   reserveMax: number;
   reserveStart: number;
+  reserveInfinite?: boolean;
   reloadTime: number;
   autoReload: boolean;
   primeTime?: number;
@@ -130,13 +183,16 @@ interface RawBlaster {
   chunk?: ShotChunk | null;
   /** GAME-09d: every nth shot explodes (B06's explosive mod). */
   explosiveEvery?: number;
+  /** GAME-09f: B07's remote detonate and cluster mods. */
+  remote?: boolean;
+  cluster?: boolean;
   mods?: Record<string, RawMod>;
 }
 
 /** Merge a blaster's data with its active mods into a resolved spec. The
  *  mod's scalar fields overwrite the blaster's, its muzzles replace the
- *  list, its recoil block merges key by key, and its show and hide node
- *  lists accumulate. */
+ *  list, its recoil and motion blocks merge key by key, and its show and
+ *  hide node lists accumulate. */
 export function resolveSpec(blasterId: string, activeMods: string[] = []): BlasterSpec {
   const raw = (blastersJson as unknown as Record<string, RawBlaster>)[blasterId];
   const s: BlasterSpec = {
@@ -149,9 +205,13 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     magSize: raw.magSize,
     reserveMax: raw.reserveMax,
     reserveStart: raw.reserveStart,
+    reserveInfinite: raw.reserveInfinite ?? false,
     reloadTime: raw.reloadTime,
     primeTime: raw.primeTime ?? 0,
     fireInterval: raw.fireInterval ?? 0,
+    burstCount: 1,
+    burstGap: 0,
+    burstCooldown: 0,
     spinUp: raw.spinUp ?? 0,
     spinDown: raw.spinDown ?? 0,
     autoReload: raw.autoReload,
@@ -167,20 +227,29 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     motion: raw.motion,
     chunk: raw.chunk ?? null,
     explosiveEvery: raw.explosiveEvery ?? 0,
+    remote: raw.remote ?? false,
+    cluster: raw.cluster ?? false,
   };
   for (const m of activeMods) {
     const mod = raw.mods?.[m];
     if (!mod) continue;
+    if (mod.mode !== undefined) s.mode = mod.mode as BlasterMode;
     if (mod.dartType !== undefined) s.dartType = mod.dartType as DartTypeName;
     if (mod.dartsPerShot !== undefined) s.dartsPerShot = mod.dartsPerShot;
     if (mod.spreadDeg !== undefined) s.spreadDeg = mod.spreadDeg;
     if (mod.magSize !== undefined) s.magSize = mod.magSize;
     if (mod.fireInterval !== undefined) s.fireInterval = mod.fireInterval;
+    if (mod.burstCount !== undefined) s.burstCount = mod.burstCount;
+    if (mod.burstGap !== undefined) s.burstGap = mod.burstGap;
+    if (mod.burstCooldown !== undefined) s.burstCooldown = mod.burstCooldown;
     if (mod.muzzles !== undefined) s.muzzles = [...mod.muzzles];
     if (mod.bothBarrels !== undefined) s.bothBarrels = mod.bothBarrels;
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
+    if (mod.motion) s.motion = { ...s.motion, ...mod.motion };
     if (mod.chunk !== undefined) s.chunk = mod.chunk;
     if (mod.explosiveEvery !== undefined) s.explosiveEvery = mod.explosiveEvery;
+    if (mod.remote !== undefined) s.remote = mod.remote;
+    if (mod.cluster !== undefined) s.cluster = mod.cluster;
     for (const n of mod.show ?? []) if (!s.show.includes(n)) s.show.push(n);
     for (const n of mod.hide ?? []) if (!s.hide.includes(n)) s.hide.push(n);
   }
@@ -257,6 +326,10 @@ export class Blaster {
   private rng: () => number;
   private nextMuzzle = 0;   // pump: round-robin across the active muzzles
   private nextBarrel = 0;   // break: barrel to try next on a press
+  // GAME-09c: burst mode: the darts still to fire from the last press,
+  // and the seconds since the last dart of a running burst.
+  private burstLeft = 0;
+  private burstGapT = 0;
   // Seconds since the last shot (auto, break). Starts at the interval in
   // the constructor so the very first press can fire.
   private fireClock = 0;
@@ -285,6 +358,9 @@ export class Blaster {
     this.mag = spec.magSize;
     this.reserve = spec.reserveStart;
     this.fireClock = spec.fireInterval;
+    // A fresh burst blaster can burst at once: the cooldown is the gate,
+    // not the shots' own interval.
+    if (spec.mode === "burst") this.fireClock = spec.burstCooldown;
     this.loaded = new Array(spec.muzzles.length).fill(false);
     if (spec.mode === "break") {
       for (let i = 0; i < spec.muzzles.length && i < spec.magSize; i++) this.loaded[i] = true;
@@ -338,7 +414,9 @@ export class Blaster {
     // GAME-09d review: the clock stores at most one shot. Uncapped, it grew
     // through every idle step and a full-auto blaster then emptied its
     // magazine one dart per step after a pause.
-    this.fireClock = Math.min(this.fireClock + dt, s.fireInterval + dt);
+    // (Review, after merging B06: a burst's cooldown runs on this clock too,
+    // so the cap covers the longer of the two.)
+    this.fireClock = Math.min(this.fireClock + dt, Math.max(s.fireInterval, s.burstCooldown) + dt);
     if (controls.reloadPressed && this.mag < s.magSize && this.reserve > 0) {
       this.startReload();
       return;
@@ -352,6 +430,12 @@ export class Blaster {
         break;
       case "break":
         this.updateBreak(controls);
+        break;
+      case "semi":
+        this.updateSemi(controls);
+        break;
+      case "burst":
+        this.updateBurst(controls, dt);
         break;
     }
   }
@@ -393,6 +477,12 @@ export class Blaster {
         take -= 1;
       }
     } else {
+      // GAME-09c: an infinite reserve never empties: the magazine takes
+      // the full count and the reserve stays full.
+      if (s.reserveInfinite) {
+        this.mag = s.magSize;
+        return;
+      }
       const take = Math.min(s.magSize - this.mag, this.reserve);
       this.mag += take;
       this.reserve -= take;
@@ -402,6 +492,14 @@ export class Blaster {
   private updatePump(controls: BlasterControls): void {
     const s = this.spec;
     if (!controls.firePressed) return;
+    // GAME-09f mod 1 (Paul): with the remote mod, a press while any
+    // rounds are live detonates them all instead of firing; a press with
+    // none live fires as usual. The detonation spends no round and works
+    // the pump not at all: nothing left the drum.
+    if (s.remote && this.darts.liveRounds && this.darts.liveRounds() > 0) {
+      this.darts.detonateLive?.();
+      return;
+    }
     if (this.mag > 0) {
       this.mag -= 1;
       this.shots += 1;
@@ -415,6 +513,71 @@ export class Blaster {
     } else if (s.autoReload && this.reserve > 0) {
       this.startReload();
     }
+  }
+
+  /** GAME-09c: semi-auto: one dart per trigger press, no pump and no
+   *  hold-to-fire; presses faster than fireInterval are capped; an empty
+   *  magazine with autoReload starts a reload. */
+  private updateSemi(controls: BlasterControls): void {
+    const s = this.spec;
+    if (!controls.firePressed) return;
+    if (this.fireClock < s.fireInterval) return;
+    if (this.mag === 0) {
+      if (s.autoReload && this.reserve > 0) this.startReload();
+      return;
+    }
+    this.semiShot();
+  }
+
+  /** A semi dart: the shared bookkeeping behind one shot of one.
+   *  Resets the fire clock so the next press is capped at one per
+   *  interval (semi) or one burst per cooldown (burst). */
+  private semiShot(): void {
+    const s = this.spec;
+    this.fireClock = 0;
+    this.mag -= 1;
+    this.shots += 1;
+    this.beginShot();
+    this.fireDart(0, s.spreadDeg);
+  }
+
+  /** GAME-09c: burst mode: one press fires burstCount darts burstGap
+   *  apart, then waits burstCooldown. A running burst ignores further
+   *  presses, and a magazine that runs out mid-burst ends it with what
+   *  is left. The cooldown clock is fireClock, counted from the last
+   *  dart. */
+  private updateBurst(controls: BlasterControls, dt: number): void {
+    const s = this.spec;
+    if (this.burstLeft > 0) {
+      if (this.mag === 0) {
+        // Empty mid-burst: it ends with what was left.
+        this.burstLeft = 0;
+        if (s.autoReload && this.reserve > 0) this.startReload();
+        return;
+      }
+      // A running burst fires on the gap clock and nothing else.
+      this.burstGapT += dt;
+      if (this.burstGapT < s.burstGap) return;
+      this.burstGapT = 0;
+      this.burstLeft -= 1;
+      this.semiShot();
+      // A burst that empties the magazine takes over at once: the reserve
+      // never runs out, so a reload is always possible.
+      if (this.mag === 0 && s.autoReload && this.reserve > 0) this.startReload();
+      return;
+    }
+    if (!controls.firePressed) return;
+    if (this.fireClock < s.burstCooldown) return;
+    if (this.mag === 0) {
+      if (s.autoReload && this.reserve > 0) this.startReload();
+      return;
+    }
+    // The first dart fires at once; the rest follow on the gap clock and
+    // the cooldown runs from that dart. A one dart burst starts a burst
+    // with burstLeft at zero, so the gap clock never runs.
+    this.burstLeft = Math.min(s.burstCount, this.mag) - 1;
+    this.burstGapT = 0;
+    this.semiShot();
   }
 
   /** Fire one dart from muzzle index `i` with a cone of `spreadDeg` around
@@ -439,6 +602,12 @@ export class Blaster {
     this.shot.explodes =
       this.spec.explosiveEvery > 0 && this.shots % this.spec.explosiveEvery === 0;
     this.shot.exploded = false;
+    // GAME-09f: the launcher round explodes at its first hit, every shot
+    // (explosiveEvery 1 on B07). With the remote mod it stops where it
+    // hits instead, live until a press detonates it; with the cluster mod
+    // its blast also throws four small ones around it.
+    this.shot.liveRound = this.spec.remote && this.shot.explodes;
+    this.shot.clustered = this.spec.cluster && this.shot.explodes;
   }
 
   // The aim for this step, set in update() so fireDart reads it.
