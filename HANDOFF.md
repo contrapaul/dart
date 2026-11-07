@@ -7,9 +7,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 ## Status
 
 ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design only, no
-code): 13 terrain element candidates and a recommended first five, waiting
-for Paul on Q17 to Q20 in `PLAN.md` section 13. No terrain element is built
-yet.
+code): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
+(its section 0): mods at stations, ammo on the ground; moving floors
+paused; Act 1 hazards must be able to kill; looks for crates, buttons,
+targets and stations. Cards ENV-01 (cladding, crates), ENV-02 (button) and
+ENV-03 (mod station) are written, not started. The killing hazard waits on
+Paul's choice. No terrain element is built yet.
 
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
@@ -626,6 +629,20 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: Paul's answers to Q17 to Q20, and the ENV-01 to ENV-03 cards (Claude Opus 5.5)
+
+- Recorded Paul's answers in `PLAN.md` sections 13 and 14 and in section 0
+  of `design/levels/ENVIRONMENT.md`, with a look line on E02, E08, E09 and
+  E13 and a dropped or paused line on E12 and E07.
+- Wrote `tasks/ENV-01.md` (E01, E02), `tasks/ENV-02.md` (E08) and
+  `tasks/ENV-03.md` (E13), with PLAN rows. Each builds its own test level
+  (`env-01` to `env-03`) so they do not touch real levels.
+- Moved eight decision rows that sat above the section 14 table header
+  (left by an earlier merge) to below it, so the table renders.
+- Open: which hazard can kill in Act 1 and how it hurts in foam terms.
+  The station's beige case and green or amber text are a starting
+  proposal on Paul's styling note, for him to tune.
 
 ### 2026-11-07: ENV-00 review, merged (Claude)
 

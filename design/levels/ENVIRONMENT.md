@@ -1,7 +1,7 @@
 # DART environment and terrain elements
 
-Status: **proposal, ENV-00, 2026-11-07**. Design notes only, no game
-code. Candidates for Paul to approve, change or cut.
+Status: **proposal, ENV-00, 2026-11-07; Paul answered Q17 to Q20 the
+same day** (section 0). Design notes only, no game code.
 
 Read with `PLAN.md` 2 (content rules), 3 (combat), 7.3 (destruction) and
 9 (level design), `design/levels/README.md` (the pillars), `KIT.md`
@@ -12,6 +12,23 @@ Every number here is a proposal. Names, looks and settings are Paul's:
 each element carries a `[Paul]` note where a name or an in-fiction look
 is his to give. Nothing here is a fluid, a fire, an electric shock or
 anything that reads as horror: foam and toys only, audience 10+.
+
+---
+
+## 0. Paul's answers (2026-11-07)
+
+These override the proposal below wherever they disagree.
+
+| Question | Answer | What it changes |
+|---|---|---|
+| Q17 | Mods at stations, ammo on the ground | E13 is built. E12 is dropped: ammo stays the one-shot floor pickup |
+| Q18 | Pause on moving floors; we return to this later | E07 waits. The lift stays as built |
+| Q19 | Act 1 hazards must be able to kill the player: "Players must feel a sense of danger or they will not feel accomplished" | Every "it does no damage" below is replaced. E03 and E04 as written do not meet this |
+| Q20 | Looks (below, in each element) | E02, E08, E09 and E13 have their looks |
+
+**First set after the answers:** E01 cladding and E02 crates (one card,
+ENV-01), E08 button (ENV-02), E13 mod station (ENV-03), and one hazard
+that can kill. Which hazard, and how foam hurts, is still open.
 
 ---
 
@@ -117,6 +134,8 @@ Age rule: fine, it is foam falling off a toy wall.
 
 ### E02 Toy crate stack (destructible, S)
 
+**Look (Paul, 2026-11-07).** A box with a thickened frame on all edges.
+
 **What it is.** Two or three loose toy crates in a low pyramid (1.0 to
 1.4 m), each one a small voxel volume with no anchor to the floor, so
 losing the bottom crate topples the top ones. Look: a stack of chunky
@@ -148,6 +167,8 @@ re-bake must follow a settled island: today it follows a carve, which is
 the same thing here.
 
 ### E03 Foam spray vent (hazard, S)
+
+**Paul, 2026-11-07, Q19.** Act 1 hazards must be able to kill the player, so the no-damage rule below is replaced.
 
 **What it is.** A round vent in a floor, wall or ceiling that puffs a
 short, wide cone of foam crumbs and air for about a second on a timer
@@ -185,6 +206,8 @@ down a sight line reads as a bug unless the telegraph is loud, so the
 first one goes in a breather room with nothing shooting.
 
 ### E04 Sticky foam patch (hazard, S)
+
+**Paul, 2026-11-07, Q19.** Act 1 hazards must be able to kill the player, so the no-damage rule below is replaced.
 
 **What it is.** A 2 to 3 m blob of soft foam stuck flat to the floor, or
 a patch of it under a ceiling vent. Walking into it slows the player to
@@ -282,6 +305,8 @@ change. Age rule: fine.
 
 ### E07 Ferry ledge (movement, L)
 
+**Paused (Paul, 2026-11-07, Q18).** We return to moving floors later.
+
 **What it is.** A platform, 3 by 3 m (the size of KIT's lift), that runs
 a fixed straight track of 6 to 10 m every few seconds, carrying whoever
 stands on it. Unlike a lift it never answers a call: it is a rhythm to
@@ -318,6 +343,8 @@ will not know it moves. Age rule: fine.
 
 ### E08 Toy button (interactive, S)
 
+**Look (Paul, 2026-11-07).** A flat box with a cylinder button to press.
+
 **What it is.** A big, palm-size-to-fist-size plunger on a stand at chest
 height, with a rubber dome that squashes when hit by a dart, a melee
 swing or a body. It fires once, sets a light to the accent colour, and
@@ -351,6 +378,8 @@ must show it from the lock (pillar 1). Age rule: fine, and pressing a big
 noisy button is the most 10+ thing in the list.
 
 ### E09 Dart target trigger (interactive, M)
+
+**Look (Paul, 2026-11-07).** White with red stripes, a standard round target.
 
 **What it is.** A round foam target on a wall or a running rail, like the
 targets a dart gun set comes with, with three rings. Hitting the bull
@@ -454,6 +483,8 @@ colour vanish against the floor, so give them a cap colour no floor uses.
 
 ### E12 Ammo station (station, M)
 
+**Dropped (Paul, 2026-11-07, Q17).** Ammo stays on the ground as pickups.
+
 **What it is.** A wall mount with a lit trough, 1 m wide, one per ammo
 type the level uses. Standing in front of it for a moment refills that
 ammo to the level's cap; then it goes dark and recharges over 20 s. It is
@@ -487,6 +518,8 @@ regeneration loop). The recharge must be legible or players stand on it
 waiting, so the lamp count is the whole tell. Age rule: fine.
 
 ### E13 Upgrade station (station, M)
+
+**Paul, 2026-11-07.** Mods are granted here (Q17). Look: the shape of an old arcade cabinet, styled like an early 1990s office computer. Copy no real machine's design, name or logo.
 
 **What it is.** The U1 and U2 alcoves the 1-4 level already marks: a
 niche in a wall 1.2 m wide, lit, holding one of the shield mods or a
