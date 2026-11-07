@@ -73,7 +73,9 @@ export class FoamerSounds {
               ? "F03-scurry"
               : f.spec.rig === "F09"
                 ? "F09-step"
-                : "FX-step-medium",
+                : f.spec.rig === "F08"
+                  ? "F08-step"
+                  : "FX-step-medium",
           { position: f.centre },
         );
       } else if (seen === undefined) {
@@ -145,6 +147,12 @@ export class FoamerSounds {
           this.sink.play("F09-spinup", p);
           break;
         }
+        if (f.spec.rig === "F08" && token === "ranged") {
+          // GAME-10h: both launchers lift before the wall. The stomp (the
+          // launcherless Trawler) keeps the plain swing below.
+          this.sink.play("F08-windup", p);
+          break;
+        }
         this.sink.play(
           token === "ranged" ? "F02-windup" : token === "swarm" ? "F03-nibble" : "F01-swing",
           p,
@@ -162,6 +170,11 @@ export class FoamerSounds {
         // GAME-10g: one pellet leaving the barrels. Cheap, and the voice
         // cap in data/sounds.json is what keeps a storm of them in check.
         this.sink.play("F09-pellet", p);
+        break;
+      case "wall":
+        // GAME-10h: one wall leaving the launchers. One sound per wall, not
+        // per ball (the card).
+        this.sink.play("F08-wall", p);
         break;
       case "fall":
         // GAME-11: it toppled, but it is not down, so no fizz-out.

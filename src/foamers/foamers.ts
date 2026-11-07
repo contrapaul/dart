@@ -23,6 +23,7 @@ import { decideLeap } from "../ai/f07-brain";
 import { floatOf } from "./float";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
 import { pelletKind, pelletOf, weakpointOf, canStream } from "./pellet";
+import { wallKind, wallOf, canFireWall, liveLaunchers, wallSlots, wallWeakMultiplier } from "./wall";
 import { makeRng } from "../audio/synth";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
@@ -57,6 +58,8 @@ const CORE = materialId("foam-core");
 // before it counts as a hit: its capsule radius (0.27 m from the rig) plus
 // the player's (0.35 m, data/player.json), and a little slack for a step.
 const CHARGE_CONTACT = 0.7;
+// GAME-10h: scratch for the wall row's launch line.
+const _wall = new THREE.Vector3();
 
 /** The merged spec of one Foamer type: the base with the type's overrides on
  *  top. An unknown type falls back to the base (which is rig F01), so a page
@@ -89,6 +92,9 @@ function singleBall(atk: object): boolean {
   // fan (big: false) is the volley case the flight check leaves alone.
   const big = (atk as { big?: boolean }).big;
   if (big !== undefined) return big;
+  // GAME-10h: a wall is a wide row, not one arc, so the centre arc the
+  // flight check samples is not the shot (F04's fan's case).
+  if ((atk as { row?: boolean }).row) return false;
   return Math.max(1, (atk as { shots?: number }).shots ?? 1) === 1;
 }
 
@@ -210,7 +216,10 @@ export type FoamerSoundKind =
   | "crouch" | "land"
   // GAME-10g, the Crawler: each pellet of a stream (a cheap tick; the
   // voice cap in data/sounds.json bounds a storm of them).
-  | "pellet";
+  | "pellet"
+  // GAME-10h, the Trawler: one wall of foam balls leaving the launchers
+  // (one sound per wall, not per ball).
+  | "wall";
 
 /** GAME-10f: the Brawler's shockwave ring, one material for every ring. */
 const WAVE_MATERIAL = new THREE.MeshStandardMaterial({
@@ -704,6 +713,12 @@ export class FoamerSystem {
           f.pelletTurn++;
           f.pelletFired = 0;
         }
+        // GAME-10h: a wall's number picks its gap's seed; the balls fire in
+        // the strike.
+        if (f.attack()?.id === "wall") {
+          f.wallTurn++;
+          f.wallFired = false;
+        }
         sound(this, "attack", f, f.centre);
       } else if (charge && f.legs().length === 0 && this.mayAttack(f, this.headDist(f, player), this.engagementRange(f))) {
         // No legs left: no charge. It bites from the ground like a crawl.
@@ -868,6 +883,9 @@ export class FoamerSystem {
             // pellet every intervalSeconds (see the strike branch), so
             // nothing leaves the barrels at the transition and the ball's
             // throw sound is not played.
+          } else if (inReach && atk.token === "ranged" && wallOf(f.spec)) {
+            // GAME-10h: the Trawler's wall fires at the strike's start (see
+            // the strike branch), with its own sound, not the throw's.
           } else if (inReach && atk.token === "ranged") {
             // A throw is not a hit: the ball does the damage when it lands
             // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
@@ -929,6 +947,33 @@ export class FoamerSystem {
           f.pelletFired++;
           sound(this, "pellet", f, f.centre);
         }
+      }
+      // GAME-10h: the Trawler's wall. One row of balls across the aim line
+      // at the player's chest, all launched at once at the strike's start
+      // from a launcher that is still attached; the gap is a function of the
+      // data seed and the wall's number (never Math.random()).
+      const wall = wallOf(f.spec);
+      if (wall && f.attack()?.id === "wall" && this.projectiles && !f.wallFired
+        && canFireWall(f.spec, f)) {
+        f.wallFired = true;
+        const dx = player.x - f.centre.x;
+        const dz = player.z - f.centre.z;
+        const r = makeRng(wall.seed + f.wallTurn * 1013);
+        const live = liveLaunchers(f.spec, f);
+        const count = wall.ballsPerLauncher * wall.launchers.length;
+        const slots = wallSlots(wall, live, r);
+        // The row is across the line to the player and every ball flies
+        // parallel to it, so a player in the gap is missed by all of them
+        // and one beside it is met by one. The row sits a step out from the
+        // body so no ball starts inside the Foamer's own geometry.
+        const from = _wall.set(
+          f.centre.x + dx * (wall.muzzleMetres / Math.max(1e-3, Math.hypot(dx, dz))),
+          player.y - wall.chestBelowEyeMetres,
+          f.centre.z + dz * (wall.muzzleMetres / Math.max(1e-3, Math.hypot(dx, dz))),
+        );
+        this.projectiles.launchWall(f, from, dx, dz,
+          slots, count, wall.spacingMetres, wallKind(wall));
+        sound(this, "wall", f, f.centre);
       }
       if (f.stateTime >= f.attack()!.strike) {
         f.state = "recover";
@@ -1166,7 +1211,8 @@ export class FoamerSystem {
     // GAME-10g: with its turret gone the Crawler fights at melee range.
     // The keep-distance ring would park it 14 m from a stomp it can never
     // land, so while it can only stomp the brain closes like a bonker's.
-    if (pelletOf(f.spec) && this.chooseAttack(f) === "stomp") {
+    // GAME-10h: the same for a Trawler with both launchers gone.
+    if ((pelletOf(f.spec) || wallOf(f.spec)) && this.chooseAttack(f) === "stomp") {
       input.throwRange = input.attackRange;
       input.preferredDistance = input.attackRange;
       input.retreatDistance = input.attackRange;
@@ -1516,6 +1562,10 @@ export class FoamerSystem {
       // gun alone): with the gun or both barrels gone it cannot fire, and
       // the stomp below is what it fights with.
       if (a.id === "stream" && pelletOf(f.spec) && !canStream(f.spec, f)) continue;
+      // GAME-10h: the wall needs at least one launcher (its data needs are
+      // empty: either launcher fires). With both gone the stomp below is
+      // what it fights with.
+      if (a.id === "wall" && wallOf(f.spec) && !canFireWall(f.spec, f)) continue;
       if (a.needs.every((id) => f.parts.has(id))) return a.id;
     }
     return f.spec.attacks[f.spec.attacks.length - 1]?.id ?? "headbutt";
@@ -1575,9 +1625,11 @@ export class FoamerSystem {
     // GAME-10g: the Crawler's gun is its weak point (CONTENT-PLAN 3.1):
     // a dart on it always takes the multiplier, open or not.
     const wp = weakpointOf(f.spec);
+    // GAME-10h: either arm launcher is a weak point (CONTENT-PLAN 3.1).
     const dmg = d * kind.hit * (covered ? (armour?.damage ?? 1) : 1) *
       (mouthOpen ? mouth!.damage : 1) *
-      (wp && part.spec.id === wp.part ? wp.damage : 1);
+      (wp && part.spec.id === wp.part ? wp.damage : 1) *
+      wallWeakMultiplier(f.spec, part.spec.id);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
     part.hp -= dmg;
     f.health -= dmg * kind.total;

@@ -2814,6 +2814,90 @@
         },
         "gain": 0.8
       }
+    },
+    "F08-windup": {
+      "_note": "GAME-10h: the Trawler lifts both launchers before the wall. Placeholder synth: a heavy wind with a rising clunk (Foley plus Blaster will replace it).",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.7,
+              "attack": 0.08,
+              "decay": 0.6,
+              "lowpass": 1800,
+              "highpass": 200,
+              "lowpassEnd": 900
+            },
+            "gain": 0.5
+          },
+          {
+            "tone": {
+              "dur": 0.7,
+              "f0": 90,
+              "f1": 180,
+              "wave": "square",
+              "attack": 0.06,
+              "decay": 0.6
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "F08-wall": {
+      "_note": "GAME-10h: one wall leaving the launchers. One sound per wall, not per ball (the card). Placeholder synth: a wide low thump with a hiss of foam.",
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.06,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.35,
+              "attack": 0.005,
+              "decay": 0.3,
+              "lowpass": 5000,
+              "highpass": 900,
+              "lowpassEnd": 1200
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.3,
+              "f0": 140,
+              "f1": 55,
+              "wave": "sine",
+              "attack": 0.004,
+              "decay": 0.28
+            },
+            "gain": 0.6
+          }
+        ]
+      }
+    },
+    "F08-step": {
+      "_note": "GAME-10h: the Trawler's heavy foot plant. The heaviest step in the game (health 80, speed 0.9): longer and lower than F09-step.",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.09,
+      "maxVoices": 4,
+      "synth": {
+        "noise": {
+          "dur": 0.13,
+          "attack": 0.003,
+          "decay": 0.12,
+          "lowpass": 700,
+          "highpass": 70,
+          "lowpassEnd": 220
+        },
+        "gain": 0.85
+      }
     }
   },
   "blasterCues": {
