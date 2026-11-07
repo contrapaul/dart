@@ -34,6 +34,22 @@ with both launchers gone, and the three sounds are not heard. The look is
 the rendered turnaround sheets; play tuned nothing (the numbers are
 proposals for Paul).
 
+LVL-04a merged locally 2026-11-07, not pushed (card
+`tasks/LVL-04a.md`, DeepSeek V4.1 Flash via Pi, branch `lvl-04a`):
+Level 1-4 beats 1 to 5 in `data/levels/1-4.json`, loaded by
+`arena.html?level=1-4` through a new entry in `src/arena/levels.ts`.
+The forecourt (four foam dummies and the A1 ammo box), the 14 m corridor
+and 16 x 12 m explore room (one Darter, one wave, locked in and out), the
+A4 hall (18 x 44 m, six staggered columns, four rifts, 4 Swarmers plus a
+Darter then 4 Roamers plus 2 Darters, A2 ammo at column 3), the mid-hall
+alcove with its U1 mark, and the A8 bridge (two 16 x 16 m yards, a
+4 x 24 m deck 9 m over an 8 m ring, `noLock`, two Darters, `escape` into
+the ring) with a temporary exit pad on the ring. Beats 6 to 10 (the Pit,
+breather 2, the mini-boss Ring, the Yard, the lift) are a later card.
+`npx tsc --noEmit`, full `npx vitest run` (585 pass, 2 skipped) and
+`npm run build` clean. Not checked by eye: every space, the charges down
+the hall, the shield charge on the bridge, the drop.
+
 LVL-03b merged locally 2026-11-07 (card `tasks/LVL-03b.md`, DeepSeek V4.1
 Flash via Pi, branch `lvl-03b`), not pushed:
 Level 1-3 beats 6 to 9 in `data/levels/1-3.json`: the hall chase (A4,
@@ -524,6 +540,124 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-04a review, merged (Claude)
+
+- Read the diff: `data/levels/1-4.json`, the level list, a new test file
+  and the level id list in `tests/level/ring-load.test.ts` (one id added,
+  nothing loosened). The seven section 14 rows are sound: full design
+  sizes, 2.8 m explore pillars, 3.2 m hall columns for the KIT 5 cap, a
+  clear 40 m centre lane for the charge, `noLock` plus `escape` for the
+  bridge, B03 from the loadout order, no fall damage.
+- Main merged in (one HANDOFF log conflict, both sides kept). `tsc`, the
+  full suite (585 pass, 2 skipped) and the build pass.
+- Played by script on `arena.html?watch&level=1-4`: the forecourt
+  renders with its four targets; the explore room locks and its Darter
+  telegraphs, charges, hits for 8 and stuns on the wall; the hall locks,
+  wave 1 is 4 Swarmers and a Darter, wave 2 is 4 Roamers and 2 Darters,
+  and its doors open on the clear; the bridge starts both Darters with no
+  door shut; stepping off the deck's side drops the player 9 m to the
+  ring, the escape ends the arena and removes the Darters, and the pad
+  shows "Level complete".
+- Not checked: the shield charge against a Darter on the deck, the
+  blast wall over the yard hole, whether the hall's columns read as
+  cover, the frame time. The page title is "DART: the Pit" for every
+  level (`arena.html`, older than this card).
+
+### 2026-11-07: LVL-04a, Level 1-4 beats 1 to 5 (DeepSeek V4.1 Flash via Pi)
+
+- Asked: build beats 1 to 5 of Level 1-4 from its approved LVL-00 concept
+  in a new `data/levels/1-4.json`, list it for `arena.html?level=1-4`,
+  and cover the card's done-when with tests. Beats 6 to 10 are out of
+  scope; GAME-10b's `1-4-ring` test file is untouched.
+- Built, all in the level file: forecourt with four foam dummies at 4, 6,
+  10 and 15 m and the A1 box (24); the 14 m corridor into a 16 x 12 m
+  room with two pillars and one Darter as a one-wave arena; the A4 hall
+  (18 x 44 m, 7 m ceiling, six columns, four rifts, two waves, A2 ammo at
+  column 3); the alcove off the corridor past the hall with the U1 mark;
+  the A8 bridge: two yards, a 4 x 24 m deck 9 m over an 8 m ring, no
+  doors, `noLock`, two Darters, an `escape` box over the ring, a blast
+  wall over a 3.2 m hole in the near yard's floor, and the S2 mark; a
+  temporary exit pad on the ring below the deck. `_notes` in the file say
+  what the card asked to be noted (the dummies, the missing fall damage,
+  the temporary exit, the [Paul] marks, nothing scaled).
+- Decided and why, in PLAN.md section 14: the explore pillars are 2.8 m
+  not 1.6 m (1.6 m hides nothing at eye height); the hall columns are
+  3.2 m zones at the KIT 5 cap, three foam and three shell as LVL-03b
+  did; the centre lane is held clear for the F05's 14 m `rangeMetres` and
+  18 m `metres`; the bridge yard floors are split into four pieces around
+  the hole so the hole is a real hole, not a decal; B03 comes from the
+  loadout order rather than a stand, the card's own fallback.
+- Tests: `tests/level/level-1-4.test.ts` (10) check validation with the
+  arenas in order, floor under the whole walk sampled every metre from
+  the start to the far yard, the hall and both yards walkable on a nav
+  grid baked the way the arena page bakes it with the path across the
+  bridge, the lane clear in both directions at every column's z, the drop
+  landing at -9 (and the yard's hole), every rift `canStandAt`, the
+  bridge ending on the escape with Darters up and no door shut, and the
+  exit pad doing nothing until the last arena ends. One line in
+  `tests/level/ring-load.test.ts` gained `1-4` in its expected key list;
+  nothing was loosened elsewhere.
+- Not checked by eye (no browser here): the four spaces' look and
+  reading, the dummies' placement against the walls, whether the Darter
+  actually charges down the hall lane between the waves, the shield
+  charge on the bridge, and the 9 m drop. The F05 windup against a real
+  player is untested.
+
+### 2026-11-07: BUG-11 review, merged (Claude)
+
+- Read the commit: one line in `tests/foamers/parts.test.ts`'s `tick`
+  (`debris.update(dt)` before `world.step()`), the same order as the
+  game's fixed step (`src/game/game.ts`). No game code, no assertion
+  changed; test 8 still checks the headbutt and its 0.9 s windup. The
+  four probe files were removed before the commit.
+- Main merged into the branch (one HANDOFF log conflict, both sides
+  kept); `tsc`, the full suite and the build pass on the merge.
+- Noted, not changed: `src/voxel/debris.ts` throws its chunks with
+  `Math.random`, and the chunks collide with Foamers, so they can change
+  a fight. The project rule is a seeded PRNG in simulation code. That is
+  a card of its own if it matters for replays or tests.
+
+### 2026-11-07: BUG-11, why parts.test.ts test 8 failed once in a full run (Qwen 3.8-27B via Pi, branch `bug-11`)
+
+- Symptom as card: test 8 (both forearms gone, the next attack must be the 0.9 s
+  windup headbutt not the 0.6 s bonk) failed once in a full `npx vitest run` on
+  main, 15 of 15 alone, 11 full runs clean, the failure was made while two other
+  models' test suites ran on the same machine.
+- Cause: the test-only `tick` in `tests/foamers/parts.test.ts` ran
+  `darts.update`, `foamers.update`, `world.step` but not `debris.update`,
+  whereas the game's fixed step (`src/game/game.ts`) ages and dies the foam
+  chunks every step. Breaking both forearms in the test carves the two parts
+  and throws a handful of real chunks (`src/voxel/debris.ts` spawn: 4 s life,
+  0.108 m cubes, random direction and speed out of `Math.random`). Where a
+  chunk lands is random, and under a loaded event loop the pending mesh work
+  in `settleAll` and `breakOff` resolves in a different order, so a chunk can
+  land in the Foamer's walk line. The chunks die after 4 s in the game, but in
+  the test tick they are immortal. A chunk on the line under the autostep
+  (0.2 m, data/ai.json) still holds the character controller's straight walk on
+  some rolls, so the Foamer never closes the approach to the 1.3 m attack range
+  in the 10 s window and the windup never starts.
+- Forced proof: planting one immortal 0.108 m chunk in the walk line made test
+  8's sequence stall in 5 of 10 forced runs (probe `parts-probe8` 8L); the same
+  scene with the game's tick (debris ages out at 4 s) passed 30 of 30 and every
+  forced variant. That is the on-purpose failure the card asks for.
+- Fix: `tick` in `tests/foamers/parts.test.ts` now calls `debris.update(dt)`
+  before `world.step()`, matching the game's fixed step order, so a chunk that
+  throws itself in the walk line dies 4 s later like in the game. Test-only,
+  one line. No assertion was removed or loosened; test 8 still checks the
+  headbutt and its 0.9 s windup.
+- Gates: `npx tsc --noEmit`, `npx vitest run` (554 pass, 2 skip) and
+  `npm run build` all pass; 30 solo test-8 runs and 5 loaded full-suite runs
+  (a second full suite in the background) all green.
+- Not checked by eye in a browser: the change is in the test's tick, nothing
+  visual moves.
+- Search for other non-determinism in the code test 8 runs: `Math.random` in
+  the debris spawn (direction and speed) is the one real source. No
+  `performance.now`, `Date.now`, `setTimeout`, `setInterval` or `crypto` in
+  `src/foamers/`, `src/weapons/darts.ts`, `src/voxel/debris.ts`, the
+  `src/voxel/carve`/`mesher` path, `src/physics/world.ts` or `src/ai/` that
+  touches this test.
+- Separate, untouched: the `tower-throw.test.ts` timeout from BUG-10's notes.
 
 ### 2026-11-07: LVL-03b review (Claude)
 

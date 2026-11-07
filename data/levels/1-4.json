@@ -1,0 +1,1809 @@
+{
+ "_note": "LVL-04a: Level 1-4 beats 1 to 5. One run north: the forecourt, explore 1, the A4 hall, the alcove off the corridor past it, and the A8 bridge over the ring, where a temporary exit pad stands. Beats 6 to 10 (the Pit, breather 2, the mini-boss Ring, the Yard, the lift) come in a later card. Metres, Y up, -z is north, positions are box centres.",
+ "meta": {
+  "id": "1-4",
+  "name": "[Paul]",
+  "act": 1,
+  "targetSeconds": 1140,
+  "accent": "#[Paul]",
+  "setting": "[Paul]"
+ },
+ "shell": [
+  {
+   "id": "fc-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -11.0
+   ],
+   "size": [
+    16,
+    1,
+    22
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "fc-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    7.5,
+    -11.0
+   ],
+   "size": [
+    16,
+    1,
+    22
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "fc-wall-s",
+   "shape": "box",
+   "pos": [
+    0.0,
+    3.5,
+    -0.5
+   ],
+   "size": [
+    16,
+    7,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "fc-wall-w",
+   "shape": "box",
+   "pos": [
+    -7.5,
+    3.5,
+    -11.0
+   ],
+   "size": [
+    1,
+    7,
+    20
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "fc-wall-e",
+   "shape": "box",
+   "pos": [
+    7.5,
+    3.5,
+    -11.0
+   ],
+   "size": [
+    1,
+    7,
+    20
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "fc-wall-n-w",
+   "shape": "box",
+   "pos": [
+    -5.0,
+    3.5,
+    -21.5
+   ],
+   "size": [
+    6.0,
+    7,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "fc-wall-n-e",
+   "shape": "box",
+   "pos": [
+    5.0,
+    3.5,
+    -21.5
+   ],
+   "size": [
+    6.0,
+    7,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "fc-wall-n-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    5.25,
+    -21.5
+   ],
+   "size": [
+    4.0,
+    3.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr1-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -29.0
+   ],
+   "size": [
+    6,
+    1,
+    14
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "corr1-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    5.0,
+    -29.0
+   ],
+   "size": [
+    6,
+    1.0,
+    14
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr1-wall-w",
+   "shape": "box",
+   "pos": [
+    -2.5,
+    2.25,
+    -29.0
+   ],
+   "size": [
+    1,
+    4.5,
+    14
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr1-wall-e",
+   "shape": "box",
+   "pos": [
+    2.5,
+    2.25,
+    -29.0
+   ],
+   "size": [
+    1,
+    4.5,
+    14
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -45.0
+   ],
+   "size": [
+    14,
+    1,
+    18
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "room-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    6.5,
+    -45.0
+   ],
+   "size": [
+    14,
+    1,
+    18
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-w",
+   "shape": "box",
+   "pos": [
+    -6.5,
+    3.0,
+    -45.0
+   ],
+   "size": [
+    1,
+    6,
+    16
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-e",
+   "shape": "box",
+   "pos": [
+    6.5,
+    3.0,
+    -45.0
+   ],
+   "size": [
+    1,
+    6,
+    16
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-s-w",
+   "shape": "box",
+   "pos": [
+    -4.5,
+    3.0,
+    -36.5
+   ],
+   "size": [
+    5.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-s-e",
+   "shape": "box",
+   "pos": [
+    4.5,
+    3.0,
+    -36.5
+   ],
+   "size": [
+    5.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-s-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    4.75,
+    -36.5
+   ],
+   "size": [
+    4.0,
+    2.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-n-w",
+   "shape": "box",
+   "pos": [
+    -4.5,
+    3.0,
+    -53.5
+   ],
+   "size": [
+    5.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-n-e",
+   "shape": "box",
+   "pos": [
+    4.5,
+    3.0,
+    -53.5
+   ],
+   "size": [
+    5.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "room-wall-n-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    4.75,
+    -53.5
+   ],
+   "size": [
+    4.0,
+    2.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr2-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -58.0
+   ],
+   "size": [
+    6,
+    1,
+    8
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "corr2-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    5.0,
+    -58.0
+   ],
+   "size": [
+    6,
+    1.0,
+    8
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr2-wall-w",
+   "shape": "box",
+   "pos": [
+    -2.5,
+    2.25,
+    -58.0
+   ],
+   "size": [
+    1,
+    4.5,
+    8
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr2-wall-e",
+   "shape": "box",
+   "pos": [
+    2.5,
+    2.25,
+    -58.0
+   ],
+   "size": [
+    1,
+    4.5,
+    8
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -85.0
+   ],
+   "size": [
+    20,
+    1,
+    46
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "hall-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    7.5,
+    -85.0
+   ],
+   "size": [
+    20,
+    1,
+    46
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-w",
+   "shape": "box",
+   "pos": [
+    -9.5,
+    3.5,
+    -85.0
+   ],
+   "size": [
+    1,
+    7,
+    44
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-e",
+   "shape": "box",
+   "pos": [
+    9.5,
+    3.5,
+    -85.0
+   ],
+   "size": [
+    1,
+    7,
+    44
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-s-w",
+   "shape": "box",
+   "pos": [
+    -6.0,
+    3.5,
+    -62.5
+   ],
+   "size": [
+    8.0,
+    7,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-s-e",
+   "shape": "box",
+   "pos": [
+    6.0,
+    3.5,
+    -62.5
+   ],
+   "size": [
+    8.0,
+    7,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-s-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    5.25,
+    -62.5
+   ],
+   "size": [
+    4.0,
+    3.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-n-w",
+   "shape": "box",
+   "pos": [
+    -6.0,
+    3.5,
+    -107.5
+   ],
+   "size": [
+    8.0,
+    7,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-n-e",
+   "shape": "box",
+   "pos": [
+    6.0,
+    3.5,
+    -107.5
+   ],
+   "size": [
+    8.0,
+    7,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-wall-n-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    5.25,
+    -107.5
+   ],
+   "size": [
+    4.0,
+    3.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "alcove-floor",
+   "shape": "box",
+   "pos": [
+    7.5,
+    -0.5,
+    -112.5
+   ],
+   "size": [
+    9,
+    1,
+    9
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "alcove-ceiling",
+   "shape": "box",
+   "pos": [
+    7.5,
+    5.0,
+    -112.5
+   ],
+   "size": [
+    9,
+    1.0,
+    9
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "alcove-wall-n",
+   "shape": "box",
+   "pos": [
+    7.0,
+    2.25,
+    -116.5
+   ],
+   "size": [
+    8,
+    4.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "alcove-wall-s",
+   "shape": "box",
+   "pos": [
+    7.0,
+    2.25,
+    -108.5
+   ],
+   "size": [
+    8,
+    4.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "alcove-wall-e",
+   "shape": "box",
+   "pos": [
+    11.5,
+    2.25,
+    -112.5
+   ],
+   "size": [
+    1,
+    4.5,
+    9
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr3-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -112.5
+   ],
+   "size": [
+    6,
+    1,
+    9
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "corr3-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    5.0,
+    -112.5
+   ],
+   "size": [
+    6,
+    1.0,
+    9
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr3-wall-w",
+   "shape": "box",
+   "pos": [
+    -2.5,
+    2.25,
+    -112.5
+   ],
+   "size": [
+    1,
+    4.5,
+    9
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr3-wall-e-s",
+   "shape": "box",
+   "pos": [
+    2.5,
+    2.25,
+    -109.0
+   ],
+   "size": [
+    1,
+    4.5,
+    2
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr3-wall-e-n",
+   "shape": "box",
+   "pos": [
+    2.5,
+    2.25,
+    -115.5
+   ],
+   "size": [
+    1,
+    4.5,
+    3
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "corr3-lintel-e",
+   "shape": "box",
+   "pos": [
+    2.5,
+    4.0,
+    -112.0
+   ],
+   "size": [
+    1,
+    1.0,
+    4
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-floor-w",
+   "shape": "box",
+   "pos": [
+    -3.7,
+    -0.5,
+    -126.0
+   ],
+   "size": [
+    10.6,
+    1,
+    18
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "yard-floor-e",
+   "shape": "box",
+   "pos": [
+    6.5,
+    -0.5,
+    -126.0
+   ],
+   "size": [
+    5,
+    1,
+    18
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "yard-floor-s",
+   "shape": "box",
+   "pos": [
+    2.8,
+    -0.5,
+    -122.4
+   ],
+   "size": [
+    2.4,
+    1,
+    10.8
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "yard-floor-n",
+   "shape": "box",
+   "pos": [
+    2.8,
+    -0.5,
+    -133.0
+   ],
+   "size": [
+    2.4,
+    1,
+    4
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "yard-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    6.5,
+    -126.0
+   ],
+   "size": [
+    18,
+    1,
+    18
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-w",
+   "shape": "box",
+   "pos": [
+    -8.5,
+    3.0,
+    -126.0
+   ],
+   "size": [
+    1,
+    6,
+    16
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-e",
+   "shape": "box",
+   "pos": [
+    8.5,
+    3.0,
+    -126.0
+   ],
+   "size": [
+    1,
+    6,
+    16
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-s-w",
+   "shape": "box",
+   "pos": [
+    -5.5,
+    3.0,
+    -117.5
+   ],
+   "size": [
+    7.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-s-e",
+   "shape": "box",
+   "pos": [
+    5.5,
+    3.0,
+    -117.5
+   ],
+   "size": [
+    7.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-s-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    4.75,
+    -117.5
+   ],
+   "size": [
+    4.0,
+    2.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-n-w",
+   "shape": "box",
+   "pos": [
+    -5.5,
+    3.0,
+    -134.5
+   ],
+   "size": [
+    7.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-n-e",
+   "shape": "box",
+   "pos": [
+    5.5,
+    3.0,
+    -134.5
+   ],
+   "size": [
+    7.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard-wall-n-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    4.75,
+    -134.5
+   ],
+   "size": [
+    4.0,
+    2.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "bridge-deck",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -147.0
+   ],
+   "size": [
+    4,
+    1,
+    24
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "yard2-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -0.5,
+    -167.5
+   ],
+   "size": [
+    18,
+    1,
+    17
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "yard2-ceiling",
+   "shape": "box",
+   "pos": [
+    0.0,
+    6.5,
+    -167.5
+   ],
+   "size": [
+    18,
+    1,
+    17
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard2-wall-n",
+   "shape": "box",
+   "pos": [
+    0.0,
+    3.0,
+    -175.5
+   ],
+   "size": [
+    18,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard2-wall-w",
+   "shape": "box",
+   "pos": [
+    -8.5,
+    3.0,
+    -167.5
+   ],
+   "size": [
+    1,
+    6,
+    15
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard2-wall-e",
+   "shape": "box",
+   "pos": [
+    8.5,
+    3.0,
+    -167.5
+   ],
+   "size": [
+    1,
+    6,
+    15
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard2-wall-s-w",
+   "shape": "box",
+   "pos": [
+    -5.5,
+    3.0,
+    -159.5
+   ],
+   "size": [
+    7.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard2-wall-s-e",
+   "shape": "box",
+   "pos": [
+    5.5,
+    3.0,
+    -159.5
+   ],
+   "size": [
+    7.0,
+    6,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "yard2-wall-s-lintel",
+   "shape": "box",
+   "pos": [
+    0.0,
+    4.75,
+    -159.5
+   ],
+   "size": [
+    4.0,
+    2.5,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "ring-floor",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -9.5,
+    -147.0
+   ],
+   "size": [
+    10,
+    1,
+    50
+   ],
+   "material": "greybox-dark"
+  },
+  {
+   "id": "ring-wall-w",
+   "shape": "box",
+   "pos": [
+    -4.5,
+    -5.0,
+    -147.0
+   ],
+   "size": [
+    1,
+    8,
+    48
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "ring-wall-e",
+   "shape": "box",
+   "pos": [
+    4.5,
+    -5.0,
+    -147.0
+   ],
+   "size": [
+    1,
+    8,
+    48
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "ring-wall-s",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -5.0,
+    -122.5
+   ],
+   "size": [
+    10,
+    8,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "ring-wall-n",
+   "shape": "box",
+   "pos": [
+    0.0,
+    -5.0,
+    -171.5
+   ],
+   "size": [
+    10,
+    8,
+    1
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-col-2",
+   "shape": "box",
+   "pos": [
+    6.0,
+    2.0,
+    -73.0
+   ],
+   "size": [
+    1.2,
+    4,
+    1.2
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-col-4",
+   "shape": "box",
+   "pos": [
+    6.0,
+    2.0,
+    -89.0
+   ],
+   "size": [
+    1.2,
+    4,
+    1.2
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "hall-col-6",
+   "shape": "box",
+   "pos": [
+    6.0,
+    2.0,
+    -105.0
+   ],
+   "size": [
+    1.2,
+    4,
+    1.2
+   ],
+   "material": "greybox"
+  },
+  {
+   "id": "s1-marking",
+   "shape": "box",
+   "pos": [
+    5.4,
+    0.05,
+    -44
+   ],
+   "size": [
+    1.2,
+    0.1,
+    1.2
+   ],
+   "material": "foam-lime-light"
+  },
+  {
+   "id": "u1-marking",
+   "shape": "box",
+   "pos": [
+    7,
+    0.05,
+    -113
+   ],
+   "size": [
+    1.0,
+    0.1,
+    1.0
+   ],
+   "material": "foam-yellow"
+  },
+  {
+   "id": "s2-marking",
+   "shape": "box",
+   "pos": [
+    -6.3,
+    0.05,
+    -131
+   ],
+   "size": [
+    1.0,
+    0.1,
+    1.0
+   ],
+   "material": "foam-lime-light"
+  }
+ ],
+ "pieces": [
+  {
+   "id": "fc-dummy-1",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      -3,
+      0.9,
+      -7
+     ],
+     "size": [
+      1.0,
+      1.8,
+      0.6
+     ],
+     "material": "foam-white"
+    }
+   ]
+  },
+  {
+   "id": "fc-dummy-2",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      3.5,
+      0.9,
+      -9
+     ],
+     "size": [
+      1.0,
+      1.8,
+      0.6
+     ],
+     "material": "foam-white"
+    }
+   ]
+  },
+  {
+   "id": "fc-dummy-3",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      -4,
+      0.9,
+      -13
+     ],
+     "size": [
+      1.0,
+      1.8,
+      0.6
+     ],
+     "material": "foam-white"
+    }
+   ]
+  },
+  {
+   "id": "fc-dummy-4",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      4,
+      0.9,
+      -18
+     ],
+     "size": [
+      1.0,
+      1.8,
+      0.6
+     ],
+     "material": "foam-white"
+    }
+   ]
+  },
+  {
+   "id": "room-pillar-w",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      -2.5,
+      1.4,
+      -44
+     ],
+     "size": [
+      1.6,
+      2.8,
+      1.6
+     ],
+     "material": "foam-orange"
+    }
+   ]
+  },
+  {
+   "id": "room-pillar-e",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      2.5,
+      1.4,
+      -44
+     ],
+     "size": [
+      1.6,
+      2.8,
+      1.6
+     ],
+     "material": "foam-orange"
+    }
+   ]
+  },
+  {
+   "id": "hall-col-1",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      -6,
+      1.6,
+      -65
+     ],
+     "size": [
+      1.2,
+      3.2,
+      1.2
+     ],
+     "material": "foam-orange"
+    }
+   ]
+  },
+  {
+   "id": "hall-col-3",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      -6,
+      1.6,
+      -81
+     ],
+     "size": [
+      1.2,
+      3.2,
+      1.2
+     ],
+     "material": "foam-orange"
+    }
+   ]
+  },
+  {
+   "id": "hall-col-5",
+   "kind": "cover",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      -6,
+      1.6,
+      -97
+     ],
+     "size": [
+      1.2,
+      3.2,
+      1.2
+     ],
+     "material": "foam-orange"
+    }
+   ]
+  },
+  {
+   "id": "yard-blast-hole",
+   "kind": "blast-wall",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      2,
+      1.6,
+      -126.55
+     ],
+     "size": [
+      3.2,
+      3.2,
+      0.5
+     ],
+     "material": "plastic"
+    }
+   ]
+  },
+  {
+   "id": "yard-blast-s2",
+   "kind": "blast-wall",
+   "anchor": "floor",
+   "volumes": [
+    {
+     "pos": [
+      -7.75,
+      1.6,
+      -131
+     ],
+     "size": [
+      0.5,
+      3.2,
+      3.2
+     ],
+     "material": "plastic"
+    }
+   ]
+  }
+ ],
+ "arenas": [
+  {
+   "id": "explore-1",
+   "archetype": "A4",
+   "trigger": {
+    "pos": [
+     0,
+     2.5,
+     -41
+    ],
+    "size": [
+     10,
+     5,
+     6
+    ]
+   },
+   "doors": [
+    {
+     "id": "explore-in",
+     "pos": [
+      0,
+      1.75,
+      -36.5
+     ],
+     "size": [
+      4,
+      3.5,
+      0.4
+     ],
+     "state": "open"
+    },
+    {
+     "id": "explore-out",
+     "pos": [
+      0,
+      1.75,
+      -53.5
+     ],
+     "size": [
+      4,
+      3.5,
+      0.4
+     ],
+     "state": "locked"
+    }
+   ],
+   "rifts": [
+    {
+     "id": "explore-r1",
+     "pos": [
+      0,
+      0.2,
+      -52
+     ],
+     "facing": [
+      0,
+      0,
+      1
+     ]
+    }
+   ],
+   "waves": [
+    {
+     "id": "explore-w1",
+     "rifts": [
+      "explore-r1"
+     ],
+     "spawns": [
+      {
+       "foamer": "F05",
+       "count": 1
+      }
+     ],
+     "delaySeconds": 1.5
+    }
+   ],
+   "unlockOnClear": [
+    "explore-in",
+    "explore-out"
+   ],
+   "checkpoint": true,
+   "checkpointPos": [
+    0,
+    0,
+    -37
+   ]
+  },
+  {
+   "id": "hall",
+   "archetype": "A4",
+   "trigger": {
+    "pos": [
+     0,
+     3.5,
+     -81
+    ],
+    "size": [
+     18,
+     7,
+     6
+    ]
+   },
+   "doors": [
+    {
+     "id": "hall-in",
+     "pos": [
+      0,
+      1.75,
+      -62.5
+     ],
+     "size": [
+      4,
+      3.5,
+      0.4
+     ],
+     "state": "open"
+    },
+    {
+     "id": "hall-out",
+     "pos": [
+      0,
+      1.75,
+      -107.5
+     ],
+     "size": [
+      4,
+      3.5,
+      0.4
+     ],
+     "state": "locked"
+    }
+   ],
+   "rifts": [
+    {
+     "id": "hall-rn",
+     "pos": [
+      0,
+      0.2,
+      -106.4
+     ],
+     "facing": [
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "id": "hall-rf",
+     "pos": [
+      0,
+      0.2,
+      -92
+     ],
+     "facing": [
+      0,
+      1,
+      0
+     ]
+    },
+    {
+     "id": "hall-re",
+     "pos": [
+      8.4,
+      0.2,
+      -73
+     ],
+     "facing": [
+      -1,
+      0,
+      0
+     ]
+    },
+    {
+     "id": "hall-rw",
+     "pos": [
+      -8.4,
+      0.2,
+      -97
+     ],
+     "facing": [
+      1,
+      0,
+      0
+     ]
+    }
+   ],
+   "waves": [
+    {
+     "id": "hall-w1",
+     "rifts": [
+      "hall-rf",
+      "hall-rf",
+      "hall-rf",
+      "hall-rf",
+      "hall-rn"
+     ],
+     "spawns": [
+      {
+       "foamer": "F03",
+       "count": 4
+      },
+      {
+       "foamer": "F05",
+       "count": 1
+      }
+     ],
+     "delaySeconds": 1.5,
+     "holdSeconds": 1.2
+    },
+    {
+     "id": "hall-w2",
+     "rifts": [
+      "hall-rw",
+      "hall-rw",
+      "hall-rw",
+      "hall-rw",
+      "hall-rn",
+      "hall-re"
+     ],
+     "spawns": [
+      {
+       "foamer": "F02",
+       "count": 4
+      },
+      {
+       "foamer": "F05",
+       "count": 2
+      }
+     ],
+     "delaySeconds": 2,
+     "holdSeconds": 1.5
+    }
+   ],
+   "unlockOnClear": [
+    "hall-in",
+    "hall-out"
+   ]
+  },
+  {
+   "id": "bridge",
+   "archetype": "A8",
+   "trigger": {
+    "pos": [
+     0,
+     3,
+     -124.5
+    ],
+    "size": [
+     16,
+     6,
+     8
+    ]
+   },
+   "doors": [],
+   "rifts": [
+    {
+     "id": "bridge-near",
+     "pos": [
+      -6,
+      0.2,
+      -131
+     ],
+     "facing": [
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "id": "bridge-far",
+     "pos": [
+      6,
+      0.2,
+      -171
+     ],
+     "facing": [
+      -1,
+      0,
+      0
+     ]
+    }
+   ],
+   "waves": [
+    {
+     "id": "bridge-w1",
+     "rifts": [
+      "bridge-near",
+      "bridge-far"
+     ],
+     "spawns": [
+      {
+       "foamer": "F05",
+       "count": 2
+      }
+     ],
+     "delaySeconds": 2
+    }
+   ],
+   "unlockOnClear": [],
+   "noLock": true,
+   "escape": {
+    "box": {
+     "pos": [
+      0,
+      -7.5,
+      -147
+     ],
+     "size": [
+      8,
+      3,
+      46
+     ]
+    }
+   }
+  }
+ ],
+ "pickups": [
+  {
+   "id": "a1-ammo",
+   "type": "darts-standard",
+   "count": 24,
+   "pos": [
+    2.5,
+    0.4,
+    -18.5
+   ]
+  },
+  {
+   "id": "a2-ammo",
+   "type": "darts-standard",
+   "count": 8,
+   "pos": [
+    -7.6,
+    0.4,
+    -81
+   ]
+  }
+ ],
+ "playerStart": {
+  "pos": [
+   0,
+   0,
+   -3
+  ],
+  "yaw": 0
+ },
+ "exit": {
+  "pos": [
+   0,
+   -7.5,
+   -147
+  ],
+  "size": [
+   3.4,
+   4,
+   3
+  ]
+ },
+ "_notes": [
+  "forecourt: no foam dummy is a placeable thing (only waves spawn Foamers, and a wave would lock the court), so the four the card asks for are small voxel foam-white pieces at 4, 6, 10 and 15 m from the start. They carve like any cover and cannot shoot back.",
+  "explore-1: the Darter stands at the room's north wall, 16 m from the room's south door and 30 m from the forecourt's north door, which is the concept's 30 m first sight line down the corridor. The arena locks as 1-3's explore room does, which needs no change to the runner.",
+  "room pillars: 1.6 x 1.6 x 2.8 m, KIT 5's cover pillar, so the card's 1.6 m pillars are its full height (a 1.6 m pillar would be under the player's 1.6 m eye height and hide nothing).",
+  "hall: six columns 8 m apart, staggered 6 m either side of the centre lane, west at z -65, -81, -97 (3.2 m voxel foam zones) and east at z -73, -89, -105 (4 m shell). The lock trigger is 18 m in, the card's and the concept's number; at 8 m spacing that is the third column, not the fourth, so the trigger follows the 18 m.",
+  "hall waves: a wave's rift list is one slot per Foamer, taken in turn, so a repeated id weights that rift. Wave 1 is 4 Swarmers from the floor rift 29 m up the hall, then 1 Darter from the north wall; wave 2 is 4 Roamers from the west wall, then 2 Darters from the north and east rifts. 5 then 6 alive.",
+  "hall charge line: the centre lane between the two column rows is clear from the south door to the north wall, 40 m, so a Darter has well over its 18 m run; the columns sit 6 m either side of it as the player's sidestep.",
+  "alcove: the U1 station is [Paul] and not built; the foam-yellow floor marking at [7, -113] marks its empty spot. It opens off the corridor past the hall's north door, which is the concept's map (U1 / A2 between the hall and the bridge) and keeps the station out of the locked hall. No ammo here: A2 is at column 3.",
+  "bridge: two 16 x 16 m yards and a 4 x 24 m deck at 0, 9 m over an 8 m wide ring at -9, no rails. There are no doors and noLock is set: the fight starts on entering the near yard, the way on is the drop, and entering the ring ends the arena (escape) whether or not a Darter is up.",
+  "bridge way down: the blast wall the card says hides the way down stands over a 3.2 m hole in the near yard's floor at x 1.6..4, z -131..-127.8, which drops to the ring; the second blast wall is the S2 spot, [Paul], its lime marking at [-6.3, -131] beside it. Dropping off the deck's side is the other way down, as the concept's jump off the bridge is.",
+  "no fall damage: data/player.json has no fall damage setting (only maxFallSpeed 40), so the 9 m drop to the ring is survivable and is the level's intended way on.",
+  "exit: a plain pad on the ring at [0, -9, -147], under the bridge. It is temporary: the Pit, breather 2, the mini-boss Ring, the Yard and the lift are a later card, and the pad stands where that way on begins.",
+  "B03: the arena page builds the loadout from data/blasters.json, which already lists B03 third, so the level starts with it in hand; no blaster pickup is built (PLAN.md section 14, LVL-04a).",
+  "S1: the broken wall is [Paul] and not built; the lime marking at [5.4, -44] is on the room's east wall behind the east cover pillar, where the concept puts it.",
+  "nothing is scaled down: the forecourt is 14 x 20 m, the hall 18 x 44 m with a 7 m ceiling, the alcove 8 x 8 m, the yards 16 x 16 m and the bridge 4 x 24 m, all as the card gives them."
+ ]
+}
