@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-GAME-10j complete 2026-11-07 (Qwen 3.8-27B via Pi,
+GAME-10j merged locally 2026-11-07, not pushed (Qwen 3.8-27B via Pi,
 branch `game-10j`): the F10 Turbo. Stage 1: the palette look (purple
 body and arms, lime visor, wings and blaster trim, orange jets), the
 `F10` type (health 30, speed 3.5, hover 4 m) and its flight on the
@@ -18,9 +18,11 @@ at most 90 deg/s per step and then straight; a parry ends the steer on
 the player; the launcher gone it closes and bonks and does not shoot;
 live cap 6; sounds F10-jet (loop) / F10-shot / F10-fall.
 `npx tsc --noEmit`, `npx vitest run` (634 pass, 2 skipped) and `npm run
-build` clean; the dash check is clean. Not checked by eye: the PNGs
-and the palette in play, the flight, the homing ball in play, the
-poses, the three new sounds (no browser here).
+build` clean; the dash check is clean. Review (Claude): the look was fixed (purple head
+with a lime visor, the launcher on the wrist with an ink tip), a release
+height check that stopped the Turbo ever firing from its hover was fixed,
+and the whole card was played on the range. The three sounds are not
+heard yet.
 ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design only, no
 code): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
 (its section 0): mods at stations, ammo on the ground; moving floors
@@ -644,6 +646,42 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10j review, merged (Claude Opus 5.5): the F10 Turbo
+
+- **Look, fixed in review.** The head was all lime; the card asks for a
+  purple body with a lime visor, so the head is purple with a lime visor
+  box above the slit eyes (the F04's pattern). The launcher was a 0.5 m
+  tube hanging from the forearm to the floor, reading as a third leg; it
+  is now a short tube on the outside of the right wrist. Its tip was
+  orange, which means a weak point; it is ink. Turnaround and poses
+  re-rendered and checked by eye: in the windup the launcher comes up and
+  points forward.
+- **Bug, fixed in review: the Turbo never fired in play.** The release
+  needs the Foamer within 2 m of height of the player (`dy < 2` in
+  `src/foamers/foamers.ts`), so at its 4 m hover every strike released
+  nothing. Qwen's shot test passed only because it stood the player 3 m
+  up. The limit now applies to melee only; a ball flies from any height.
+  New test 3b (a player on the floor, the Turbo at its hover) failed
+  before the fix and passes after. A ranged Foamer on a ledge more than
+  2 m above the player now fires too, where before its strike fizzled.
+- Test 4 (the steer runs out) read a ball that had already hit the player
+  or the floor; it now keeps the ball in the air (player 40 m off, launch
+  9 m up) and checks it is still flying.
+- **Played on the range** (`range.html?watch`, the F10 button): it hovers
+  at 4.0 m; a pink ball leaves about 5.4 m up and curves onto a player
+  10 m off, two hits in 6 s; after a 5 m sidestep the ball turns at the
+  90 deg/s cap (18 deg per 0.2 s) and goes wide; four parries out of four,
+  the homing cleared on each, and the returned balls took it from 30 to
+  14 health; one jet off it drops to 2.0 m, both off to the floor and it
+  still winds up to shoot; the launcher off, no launches and it walks in
+  10.6 m in 3 s to bonk.
+- Not checked: the slower flight with one jet (the range holds it in its
+  ring, so it did not move; the unit test covers the speed), the three
+  sounds by ear, and the range's parry helper, which predicts a straight
+  flight and so cannot time a ball that is still curving (the parries
+  above were done by raising the shield at 2 m).
+- tsc, 635 tests (2 skipped) and the build are green.
 
 ### 2026-11-07: GAME-10j stage 3, finished (Qwen 3.8-27B via Pi): docs and the done-list
 

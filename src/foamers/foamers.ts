@@ -898,7 +898,10 @@ export class FoamerSystem {
         const dy = Math.abs(player.y - f.centre.y);
         // GAME-11: a prone Foamer strikes from its head, ahead of the feet.
         const reach = f.prone ? this.headDist(f, player) : dist;
-        const inReach = reach <= attackRange(f.spec, atk) + 0.3 && dy < 2;
+        // GAME-10j review: the height limit is for a melee strike. A ball
+        // flies to the player from any height, so a Turbo at its 4 m hover
+        // (or a thrower on a ledge) still fires.
+        const inReach = reach <= attackRange(f.spec, atk) + 0.3 && (atk.token === "ranged" || dy < 2);
         // BUG-07: the check at the start of a throw is the cheap one, this
         // is the backstop. The windup is 0.6 s, in which the Foamer walks
         // or sidles and the player can move several metres, so a flight

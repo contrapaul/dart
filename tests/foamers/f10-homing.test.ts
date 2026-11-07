@@ -141,6 +141,17 @@ describe("the Turbo's homing shot (GAME-10j stage 2)", () => {
     expect(f.parts.has("blaster"), "it still carries the launcher on that shot").toBe(true);
   });
 
+  it("3b. it fires from its hover height at a player on the floor", () => {
+    // Review: the release asked for less than 2 m of height between the
+    // Foamer and the player, so a Turbo at its 4 m hover never fired in
+    // play (test 3 put the player 3 m up). A ranged shot has no such limit.
+    const r = rig(new THREE.Vector3(0, 0.9, 10));
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), r.playerAt, "F10")!;
+    for (let i = 0; i < 60 * 8 && r.projectiles.list.length === 0; i++) tick(r, r.playerAt);
+    expect(f.centre.y - r.playerAt.y, "it is well above the player").toBeGreaterThan(2);
+    expect(r.projectiles.list.length, "a homing ball is in the air").toBeGreaterThan(0);
+  });
+
   it("4. it turns to a player who has moved aside, then flies straight", () => {
     // Review: the player stands 40 m off and the ball leaves 9 m up, so it
     // is still in the air when its steer seconds run out (at 8 m and 3 m up
