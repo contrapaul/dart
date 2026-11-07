@@ -39,6 +39,15 @@ export class PlayerHealth {
     return lost;
   }
 
+  /** ENV-04 review: a crush (the toy press) skips the grace: a head coming
+   *  down does not wait because something else hit a moment ago. It still
+   *  rides the difficulty multiplier, and it starts a new grace. */
+  crush(amount: number): number {
+    if (this.dead) return 0;
+    this.grace = 0;
+    return this.damage(amount);
+  }
+
   /** Recover hp, never above max. Returns the hp actually gained. */
   heal(amount: number): number {
     const gained = Math.min(this.max - this.hp, Math.max(0, amount));

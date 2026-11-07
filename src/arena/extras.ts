@@ -9,6 +9,9 @@ import { RiftVisuals } from "./rifts";
 import { Stations, useHeldForStations } from "./stations";
 import { chosenLevel } from "./levels";
 import { ButtonSystem, type PressEvent } from "../level/buttons";
+import {
+  HealthPressPlayer, PressSystem,
+} from "../level/presses";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -157,6 +160,24 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
 
   const runner = new LevelRunner(arenas, events);
 
+  // ENV-04: the level's crushes, built by the page in buildLevel and kept
+  // here with the buttons and the stations. Their swims run every step on
+  // their own timer (phase in the file off the others); a level without
+  // any builds an empty system, so a level without presses plays as
+  // before (the ENV-01 rule: built here, so the page runs them and not
+  // only the unit tests). `pressPlayer` is the page's own example, through
+  // the page's own health and the usual go-down (ENV-04's `HealthPressPlayer`).
+  // Review: g.ui is built after this hook returns (see the top of this
+  // function), so the press reads it when a crush lands, never here: handed
+  // over now it was null and the first crush threw.
+  const pressUi = {
+    get paused() { return g.ui.paused; },
+    get poppedOut() { return g.ui.poppedOut; },
+    pop: () => g.ui.pop(),
+  };
+  const pressPlayer = new HealthPressPlayer(health, pressUi, hud, audio);
+  const presses = new PressSystem(level.presses);
+
   // ENV-02: the level's buttons, wired to the door verb above. The press
   // runs the action through `events.setDoor`, so a button opens a door the
   // same way the lock-in does, sound and all.
@@ -233,6 +254,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     pickups.clear();
     pickups.loadLevelBoxes(LEVEL); // LVL-02a: the file boxes come back
     stations.reset(); // ENV-03: the stations grant again on a restart
+    presses.reset(); // ENV-04: the heads are back up on their own timers
     hud.clearFlash();
     // Back to the ammo the player had at the start: there are no pickups
     // yet, so a retry with what was left could not win the arena.
@@ -289,6 +311,25 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       for (const f of foamers.list) if (f.state !== "down") aliveHealth += Math.max(0, f.health);
       arenaCtx.aliveHealth = aliveHealth;
       runner.update(dt, arenaCtx);
+      // ENV-04: the crushing toy presses, each on its own timer at every
+      // fixed step, so a pause keeps them stopped with the rest. The crush
+      // lands through the player's own path (pressPlayer: health.damage,
+      // with the grace and the difficulty, and the shield that never blocks
+      // it because a head is coming from above), and a Foamer under the head
+      // pops the same way a fatal one would through the same pop chain as
+      // the finisher (FX-pop and the bar). ENV-press-windup plays at
+      // telegraph start, ENV-press-slam at every slam's end.
+      pressPlayer.feet.copy(at);
+      const pressRes = presses.step(dt, pressPlayer, {
+        list: foamers.list,
+        pop: (f) => {
+          foamers.pop(f);
+          hud.popFlash();
+          audio.play("FX-pop");
+        },
+      });
+      for (const w of pressRes.windups) audio.play("ENV-press-windup", { position: w.pos });
+      for (const s of pressRes.slams) audio.play("ENV-press-slam", { position: s.pos });
       // ENV-02: a swing presses a button within its own reach and arc, and
       // a step presses a floor one. The melee counts its presses, so a held
       // key does not press a button every step: only a new swing asks.
@@ -363,6 +404,8 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       ammoBoxes: pickups.count("ammo"),
       // ENV-02: which buttons have been pressed.
       buttons: Object.fromEntries(buttons.ids.map((id) => [id, buttons.isPressed(id)])),
+      // ENV-04: which phase each crush is in.
+      presses: Object.fromEntries(presses.ids.map((id) => [id, presses.phaseOf(id)])),
     }),
   };
 

@@ -1,0 +1,31 @@
+{
+  "_note": "ENV-04 (E14): a test level, not a level to ship. A 3 m wide corridor the player sprints through, then the exit. Two crushing toy presses sit across the corridor (at z -0.5 and -4.0, review: moved clear of the exit, and the walls cut so the level validates) on their own 4.32 s cycles, phase apart so they never slam the same step. Each pad fills the corridor's 3 m width (review: a 1.5 m pad left room to walk round it while the head was down), so the only way on is to cross a pad while its head is up. Heights are clear of a standing player (who projects 1.8 m); the face comes down to 2 cm above the pad floor. Metres, Y up, -z is north, positions are box centres, sizes are full extents. Then the exit.",
+  "meta": {
+    "id": "env-04",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 60,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+
+  "shell": [
+    { "id": "hall-floor", "shape": "box", "pos": [0, -0.5, 0], "size": [4, 1, 17], "material": "greybox-dark" },
+    { "id": "hall-ceiling", "shape": "box", "pos": [0, 4.5, 0], "size": [4, 1, 17], "material": "greybox" },
+    { "id": "wall-w", "shape": "box", "pos": [-1.75, 2, 0], "size": [0.5, 4, 16], "material": "greybox" },
+    { "id": "wall-e", "shape": "box", "pos": [1.75, 2, 0], "size": [0.5, 4, 16], "material": "greybox" },
+    { "id": "wall-s", "shape": "box", "pos": [0, 2, 8.5], "size": [4, 4, 1], "material": "greybox" },
+    { "id": "wall-n", "shape": "box", "pos": [0, 2, -8.5], "size": [4, 4, 1], "material": "greybox" },
+    { "id": "exit-pad", "shape": "box", "pos": [0, 0.01, -7], "size": [2, 0.02, 1.8], "material": "foam-white" }
+  ],
+
+  "arenas": [],
+
+  "presses": [
+    { "id": "press-a", "pos": [0, 0.03, -0.5], "size": [3, 1.5], "height": 2.2, "phase": 0 },
+    { "id": "press-b", "pos": [0, 0.03, -4.0], "size": [3, 1.5], "height": 2.2, "phase": 2.16 }
+  ],
+
+  "playerStart": { "pos": [0, 0, 7.5], "yaw": 0 },
+  "exit": { "pos": [0, 1, -7], "size": [2, 2, 1.8] }
+}
