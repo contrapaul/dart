@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-GAME-10j complete except stage 3 docs 2026-11-07 (Qwen 3.8-27B via Pi,
+GAME-10j complete 2026-11-07 (Qwen 3.8-27B via Pi,
 branch `game-10j`): the F10 Turbo. Stage 1: the palette look (purple
 body and arms, lime visor, wings and blaster trim, orange jets), the
 `F10` type (health 30, speed 3.5, hover 4 m) and its flight on the
@@ -637,6 +637,28 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10j stage 3, finished (Qwen 3.8-27B via Pi): docs and the done-list
+
+- The card's own stage 3: a verification pass, not new build. The
+  whole done list is checked and all held: the new test files
+  (`tests/foamers/f10-fly.test.ts`, `tests/foamers/f10-homing.test.ts`,
+  `tests/ai/f10-brain.test.ts`) cover each item of the done list
+  (spec loading; hover check; lowering + slowing down on one jet
+  damage and flight to the floor; jet weak point; steering on the
+  moved player and stopping after `homing.seconds`; per-step turn
+  upper bound; parried ones don't follow; no flight with the launcher
+  destroyed; live cap; tests of other types unmodified). The PLAN row
+  and the item-14 judgment (stages 1-2) are in order; this entry and
+  the Status finish the HANDOFF.
+- Final gate on the updated docs: `npx tsc --noEmit` clean, `npx
+  vitest run` 634 pass 2 skip, `npm run build` clean, dash check clean.
+- What's left unverified by everything (no browser on this machine):
+  the turnaround PNG and the play-look, the homing ball's behavior
+  in the game field, the wind-up/attack poses, the three new sounds
+  (F10-jet / F10-shot / F10-fall), and the range page with an F10
+  button from it. Branch `game-10j` has the three stage commits
+  above `7c0fd04` and is unmerged and unpushed.
 
 ### 2026-11-07: GAME-10j stage 2, committed (Qwen 3.8-27B via Pi): the F10 Turbo's homing shot
 
