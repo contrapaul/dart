@@ -228,7 +228,9 @@ The other Foamers (IDs given when each is built):
 | F06-blobBounce | Floater: a small blob off a wall, a short foam tick | Yes | 4 | Foley: a foam ball off wood |
 | F07 | Gorilla brawler | Leap, slam, shockwave ring travelling | Later | Foley: drop something heavy on foam |
 | F07-crouch | GAME-10f placeholder ID: the Brawler folds before its leap (the telegraph) | Yes | 3 | Foley: a foam cushion compressing, with a creak |
-| F07-punch | GAME-10f placeholder ID: the Brawler's two-fist punch | Yes | 3 | Foley: a heavy whoosh into a foam board |
+| F07-punch | GAME-10f placeholder ID: the Brawler's left-fist punch (with the sword gone) | Yes | 3 | Foley: a heavy whoosh into a foam board |
+| F07-swing | GAME-10i placeholder ID: the Brawler's sword swing, a broad whoosh off the foam blade | Yes | 3 | Foley: a soft saw through the air, a light crop off a foam mat |
+| F07-sword-break | GAME-10i placeholder ID: the Brawler's foam sword chipping away, over the generic part-thump | Yes | 2 | Foley: a bright foam snap, with falling crumbs |
 | F07-land | GAME-10f placeholder ID: the Brawler lands and the shockwave starts | Yes | 3 | Foley: drop something heavy on foam |
 | F08 | Huge tank | Heavy steps, launcher volley, foam wall of balls | Later | Blaster plus Foley |
 | F09 | Spider turret | Leg clicks (loop), turret spin, pellet stream (loop) | Later | Foley plus Blaster |

@@ -1657,43 +1657,52 @@
           ]
         },
         {
-          "id": "fistR",
+          "id": "sword",
           "kind": "weapon",
-          "shape": "ellipsoid",
+          "_note": "GAME-10i: the foam sword. A 1.5 m rounded blade held upright in the right fist; the hilt and cross guard are children, so they break away with it. With the sword gone it punches with the left fist.",
+          "shape": "capsule",
           "size": [
-            12,
-            11,
-            12
+            6,
+            30,
+            6
           ],
+          "rest": [-1.2, 0, 0],
           "parent": "foreArmR",
           "at": [
             0,
-            -0.9,
-            0
+            -0.92,
+            0.1
           ],
-          "pivot": [
-            0,
-            0.6,
-            0
+          "pivot": [0, 1, 0],
+          "material": "foam-lime"
+        },
+        {
+          "id": "swordHilt",
+          "kind": "detail",
+          "shape": "box",
+          "size": [
+            7,
+            8,
+            5
           ],
-          "material": "foam-lime",
-          "nubs": [
-            [
-              0,
-              -1,
-              0.7
-            ],
-            [
-              -0.6,
-              -1,
-              0.6
-            ],
-            [
-              0.6,
-              -1,
-              0.6
-            ]
-          ]
+          "parent": "sword",
+          "at": [0, 0.75, 0],
+          "pivot": [0, 0.75, 0],
+          "material": "foam-lime"
+        },
+        {
+          "id": "swordGuard",
+          "kind": "detail",
+          "shape": "box",
+          "size": [
+            14,
+            4,
+            5
+          ],
+          "parent": "sword",
+          "at": [0, 0.6, 0],
+          "pivot": [0, 0.6, 0],
+          "material": "foam-purple"
         },
         {
           "id": "legL",

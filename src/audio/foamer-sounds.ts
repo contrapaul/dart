@@ -137,8 +137,9 @@ export class FoamerSounds {
         }
         const token = f.attack()?.token;
         if (f.spec.rig === "F07") {
-          // GAME-10f: the Brawler's swing is a two-fist punch, its own sound.
-          this.sink.play("F07-punch", p);
+          // GAME-10i: the sword swing whooshes; the left-fist punch after
+          // the blade is gone keeps the old two-fist thwack.
+          this.sink.play(f.attack()?.id === "swing" ? "F07-swing" : "F07-punch", p);
           break;
         }
         if (f.spec.rig === "F09" && token === "ranged") {
@@ -175,6 +176,11 @@ export class FoamerSounds {
         // GAME-10h: one wall leaving the launchers. One sound per wall, not
         // per ball (the card).
         this.sink.play("F08-wall", p);
+        break;
+      // GAME-10i, the Brawler's foam sword chipping away, over the generic
+      // part-off (the shield-break's pattern).
+      case "sword-break":
+        this.sink.play("F07-sword-break", p);
         break;
       case "fall":
         // GAME-11: it toppled, but it is not down, so no fizz-out.
