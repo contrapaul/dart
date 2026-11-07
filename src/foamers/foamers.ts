@@ -1058,8 +1058,10 @@ export class FoamerSystem {
           Math.round(spray.seconds / spray.tick),
           Math.floor(f.stateTime / spray.tick) + 1,
         );
+        // Review: a hit lands only while the player is in sight, so
+        // stepping behind cover mid-run stops the spray reaching them.
         while (f.sprayFired < want) {
-          f.bonk(sprayAtk.id);
+          if (this.lineOfSight(f, player)) f.bonk(sprayAtk.id);
           f.sprayFired++;
         }
       }

@@ -154,6 +154,20 @@ describe("the Biomechanic's spray (GAME-10l stage 3)", () => {
     expect(runs).toBeGreaterThanOrEqual(1);
   });
 
+  it("18b. review: stepping behind a wall mid-run stops the rest of the spray", () => {
+    const r = rig(new THREE.Vector3(0, 0, 6), false);
+    r.foamers.spawn(new THREE.Vector3(0, 0, 4), undefined, "F13")!;
+    const before = r.health.hp;
+    let i = 0;
+    while (r.health.hp === before && i++ < 600) tick(r);
+    expect(r.health.hp, "the first hit of a run landed").toBeLessThan(before);
+    const afterFirst = r.health.hp;
+    // A wall drops between them: the run's next hits are out of sight.
+    r.world.createCollider(RAPIER.ColliderDesc.cuboid(6, 3, 0.1).setTranslation(0, 1.5, 5));
+    run(r, SPRAY.seconds + 0.2);
+    expect(r.health.hp, "nothing reaches the player behind the wall").toBe(afterFirst);
+  });
+
   it("18. a raised shield takes the block share, and the spray is not parryable", () => {
     const spec = specFor("F13");
     expect(decideMeleeParry(spec, "spray", true, true), "the parry turns nothing").toBe("block");
