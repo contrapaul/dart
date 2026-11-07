@@ -693,6 +693,25 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: GAME-09e review, merged (Claude Opus 5.5): B05 Shrike
+
+- Read through: the precision dart (and `precisionHeavy` for the heavy
+  mod), the pierce in `src/weapons/darts.ts` (a pierced Foamer's bodies
+  are ignored for the rest of the flight, walls stop it, never the same
+  Foamer twice), the zoom in `src/game/zoom.ts` (it holds the player's
+  own field of view and sensitivity and narrows both; a switch or reload
+  drops it). Clean.
+- Merged with B02: the order is B01, B04, B03, B06, B02, B05 on keys 1
+  to 6 (B05 after B02, so every earlier key stays); the `env-03` test
+  level keeps all six stations, B05's moved to an empty spot.
+- **Played** (`arena.html?watch&level=env-01`): two quick presses fire
+  once, the bolt's 0.9 s later the next fires. Not checkable with the
+  pane hidden: the zoom (driven from the render frame) and dart hits on
+  Foamers (their part colliders come from meshes built off the render
+  frame); both are covered by the unit tests (21 new).
+- Not checked: the model in hand, the bolt's animation (none yet), the
+  sounds. The zoom key is `KeyZ`, a proposal for Paul.
+
 ### 2026-11-07: GAME-09e (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `game-09e`): B05 Shrike, the precision dart, pierce and zoom
 
 - **Task** (card: `tasks/GAME-09e.md`): the precision dart that pierces,
