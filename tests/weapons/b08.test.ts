@@ -71,7 +71,7 @@ function makeWorld(rapier: typeof RAPIER, wall = true) {
 /** The single live slot (the test fires exactly one ball). */
 function liveSlot(system: DartSystem) {
   const slots = (system as unknown as {
-    slots: { alive: boolean; state: number; vel: THREE.Vector3; bounceLeft: number }[];
+    slots: { alive: boolean; state: number; pos: THREE.Vector3; vel: THREE.Vector3; bounceLeft: number }[];
   }).slots;
   const live = slots.filter((s) => s.alive);
   expect(live.length).toBe(1);

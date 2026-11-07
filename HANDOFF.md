@@ -19,7 +19,7 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 ## Status
 
 GAME-09g code done 2026-11-08, reviewed and merged by Claude Opus 5.5,
-not merged, not pushed (Qwen 3.8 Flash Next via Pi): B08 Firehose gameplay
+(Qwen 3.8 Flash Next via Pi): B08 Firehose gameplay
 on B04's model as a placeholder. The `ball` dart type (`data/darts.json`,
 restitution 0.6, `bounces` 2) ricochets off a hard surface and rests after
 its budget (the ricochet code in `src/weapons/darts.ts`); B08 (auto, ball,
