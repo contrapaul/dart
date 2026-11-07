@@ -18,6 +18,26 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+GAME-10l all stages done 2026-11-07 and 2026-11-08: stage 1 and 2 by
+DeepSeek V4.1 Flash via Pi, stage 3 (the short spray, the tank gone and
+the sounds) and stage 4 (the docs) by Qwen 3.8-27B via Pi, three stage
+commits on `game-10l`, not reviewed, not merged, not pushed: the F13
+Biomechanic, look, type, tank, healing stream and the short spray at
+the player. The palette with a purple hood over the crown, a lime tank
+on the back and a purple wand with a foam-core tip in the right hand;
+the `F13` type on the keep-distance brain with a 10 m ring and the tank
+a 2x weak point; the healing stream, the most hurt ally in range and in
+sight gaining 5 health a second from a chain of foam-core blobs off the
+wand tip, one ally at a time, halved range without the antenna, none
+without the tank or the wand; with nobody to heal and the player close,
+the short spray, 6 damage a second over its 1.2 s, the raised shield
+taking its share; the tank gone ending the healing and the spray, the
+wand closing in and bonking. Place-holder sounds in `data/sounds.json`
+(F13-heal, F13-spray, F13-tank-break); rows in `design/SOUNDS.md`.
+Nothing was seen by eye and nothing was played (no browser in any
+session); the hood, the tank and the wand were checked by script from
+the resolved rest pose, the blob chain and the spray by test only, and
+the three sounds have never been heard.
 GAME-10k code done 2026-11-07, three stage commits on `game-10k`, not
 reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): the F11
 Seawall. The palette look (deep lime armour, purple mace, orange tower
@@ -693,6 +713,175 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: GAME-10l review, merged (Claude Opus 5.5): the F13 Biomechanic, all stages
+
+- Reviewed qwen-machine's stages 3 and 4. The two stage 2 flags are done:
+  the blob spacing and drift are data (`blobSpacingMetres`,
+  `blobDriftMetres`), and a Biomechanic with its wand broken heals nobody.
+- Fixed in review: a spray's hits kept landing after the player stepped
+  behind cover mid-run. Each hit now needs the player in sight (test 18b,
+  which fails without the fix).
+- Merged main in (B07, ART-05a, ART-05b); PLAN and HANDOFF conflicts kept
+  both sides. Dropped a stale "Started" ENV-02 row that was already
+  doubled on main.
+- Played: not possible with the pane hidden (the physics world and the
+  Foamer build only step in the render frame). The heal and the spray are
+  covered by the unit tests, which drive the real Foamer system and
+  physics. The look was checked from the stage 1 renders
+  (`design/foamers/F13-*.png`): hood, tank and antenna on the back, wand
+  in hand; the arm proportions are greybox and stay for Paul.
+- Not checked by eye: the stream and the spray in play, the three
+  placeholder sounds.
+- tsc, vitest (832 passed, 2 skipped), build green.
+
+### 2026-11-08: GAME-10l stage 3 and 4 (Qwen 3.8-27B via Pi): the short spray, the tank gone, the sounds, the docs
+
+- **Asked for** (`tasks/GAME-10l.md`): stage 3 (the spray at the player,
+  the tank gone, the sounds) and stage 4 (the docs), plus two review fixes
+  from the stage 1 and 2 review, each with a test: the blob chain's
+  spacing and drift are tuning numbers in `data/foamers.json`, not in
+  code, and a Biomechanic with the wand broken off does not heal at all.
+- **The spray.** With no ally to heal and the player inside the spray's
+  range (5 m) it winds up (0.6 s, the telegraph, the player's window to
+  raise the shield) and lays on the spray for its own time (1.2 s): 6
+  damage a second, one hit (3.6, `round(seconds / tick)`, 2 of them) every
+  `tick` (0.6 s, past the player's 0.5 s post-hit grace so the run pours
+  through) through the page's ordinary hit path (the bonk path as
+  `src/game/game.ts` wires it: the shield's block and its share, the melee
+  parry decider, the player's health). The raised shield takes its share,
+  the spray is not parryable. The run is the strike, the `spray` attack in
+  the data (`windup`/`strike` read the block), the numbers in F13's `spray`
+  block read by the new `src/foamers/spray.ts` (`sprayOf`, `canSpray`, the
+  wand is the nozzle, the tank the press: either one missing is no spray).
+- **chooseAttack.** The `healStream` is the attack while there is an ally
+  to mend, one it holds or one it is walking in (the ring ride runs on
+  its 10 m windup: with it skipped the engagement range reads as
+  5, which stops the windup at the ring, and the ring walk toward a hurt
+  ally dies with it. Caught by stage 2 test 14, fixed; the traces of both
+  states were checked against each other). With no ally the wand is the
+  spray's; with the tank or the wand missing the bonk remains.
+- **The tank gone.** No healing (stage 2), no spray, and the brain's
+  distances close to the bonk's reach (stage 2), so the wand closes in
+  and bonks. The tank breaking plays `F13-tank-break`.
+- **Review fixes.** 1: the blob chain's spacing and drift went from
+  code constants (`BLOB_SPACING`, `BLOB_SPEED` in `src/foamers/heal.ts`)
+  to the `heal` block (`blobSpacingMetres`, `blobDriftMetres`); test 6
+  reads them. 2: `canHeal` now needs the wand as well: no tip to pour
+  from, and a stream nobody can see is no stream (a rule, PLAN section
+  14); test 15 covers it (the target is dropped, the chain is hidden, the
+  ally's health does not move, and the ring closes to the bonk's reach).
+- **The sounds.** `F13-heal` is a loop owned by the audio state
+  (`src/audio/foamer-sounds.ts`): it runs only while the chain is actually
+  drawn (the held target and the chain's visibility), so it starts and
+  stops with the stream. `F13-spray` is one puff as the run starts.
+  `F13-tank-break` plays on the break, over the generic part thump (the
+  sword-break's pattern). Placeholder synths in `data/sounds.json`, the
+  rows in `design/SOUNDS.md`.
+- **The docs (stage 4).** The GAME-10l row in PLAN.md reads that all
+  stages are done, and the section 14 decisions record the hit read as
+  perSecond over the seconds through the run's tick, the healStream's
+  ring-ride condition, the tank gone and the wand-gone no-heal rule.
+  The status above is updated.
+- **Tests.** A new `tests/foamers/biomechanic-spray.test.ts`, five: the
+  spray's numbers and its needs, the run landing in whole rounds of
+  perSecond-over-seconds, a raised shield taking the block share and the
+  spray not being parryable, no spray while the stream is held, and the
+  tank gone with no spray and the wand closing in to bonk. The heal tests
+  carry 6 (the blob numbers), 12 (tank gone) and 15 (wand gone). All 22
+  F13 tests are green. `npx tsc --noEmit`, `npx vitest run` (763 passed,
+  2 skipped) and `npm run build` are green, and the dash check comes back
+  empty. No dev server was run in this session (card rule).
+- **What I did not check by eye:** the stream's look and the spray's
+  moment. This session cannot see images and cannot open a browser, so
+  the spray is verified by the tests only. The three sounds were never
+  heard. Nothing was played.
+- Stage 3 and the docs (stage 4) are committed to `game-10l`, not
+  reviewed, not merged, not pushed. The task card is done in all stages.
+
+### 2026-11-07: GAME-10l stage 2 (DeepSeek V4.1 Flash via Pi): the Biomechanic's healing stream
+
+- **Asked for** (`tasks/GAME-10l.md`): stage 2 only, the healing stream.
+  Stage 3 (the short spray at the player, and the docs) is next.
+- **What it does.** Every `heal.pickSeconds` (0.5 s) F13 looks for the ally
+  with the lowest health share that is below full, inside its 7 m heal
+  range and in sight, turns to it and pours `heal.perSecond` (5) health a
+  second into it, one ally at a time and never above its maximum. The
+  stream is a chain of foam-core blobs from the wand tip to the ally's
+  chest, at most `heal.blobCap` (12), drawn only while it is healing.
+  Without the antenna the range halves to 3.5 m; without the tank there is
+  no healing and it closes in to bonk, as before.
+- **Moving.** With nobody in reach it walks its ring toward a hurt ally it
+  can see, taking the stride side that closes on the ally, and it never
+  steps inside its 10 m kept distance (the circle branch of
+  `steerAgent` refuses the inward step for a healing type).
+- **Numbers** live in F13's `heal` block in `data/foamers.json` and are
+  read by the new `src/foamers/heal.ts` (`healOf`, `canHeal`, `healRange`,
+  `healthShare`, `HealStream`, `wandTipPoint`). No number is in code except
+  the blob spacing and drift speed, which are look constants.
+- **Two decisions.** Aim is by health share, not by health missing: a 5 of
+  35 F06 outranks a 20 of 25 F13. The target is held until it is full, dying,
+  out of range or out of sight rather than re-picked every look, because
+  two equally hurt allies otherwise traded the stream on every look and
+  neither healed (seen in the tests).
+- **Sight.** The ray is cast the full length and accepts a first hit on the
+  ally's own capsule; a ray to a standing body cannot stop short of it the
+  way the player's sight stops short of the player, so the shared margin
+  gave no ally ever (the first version's bug, caught by the tests).
+- **Tests.** New `tests/foamers/biomechanic-heal.test.ts`, nine: the
+  numbers and the cap, the most hurt ally by share and the turn to it, no
+  target when full, stopping at the maximum, one ally at a time, out of
+  range and out of sight, the antenna halving the range, the tank ending
+  it plus the ring closing to the bonk, and the blob cap at the far edge.
+  `npx tsc --noEmit`, `npx vitest run` (757 passed, 2 skipped) and
+  `npm run build` are green.
+- **Not checked by eye:** the blob chain, its drift, and the moment the
+  stream appears and goes. No browser and no images in this session, so
+  the stream was checked by test only. Nothing was played.
+- Stage 2 is committed on `game-10l`, not reviewed, not merged, not
+  pushed.
+
+### 2026-11-07: GAME-10l stage 1 (DeepSeek V4.1 Flash via Pi): the F13 Biomechanic's look, type and tank
+
+- **Asked for** (`tasks/GAME-10l.md`): stage 1 only, the Biomechanic's
+  palette look with a hood, its `F13` type on the keep-distance brain at
+  about 10 m, and the tank as its weak point. Stages 2 (the healing
+  stream) and 3 (the spray and the docs) are next.
+- **Look.** The rig's material is `foam-orange` and the tank `foam-lime`,
+  the antenna and the wand `foam-purple` with the wand's three-voxel tip
+  left `foam-core`, and the legs purple. The hood is a new `kind:
+  "detail"` part on the head, an ellipsoid of 15 x 9 x 15 voxels with
+  `taper [1, 0.6]` at `[0, 0.6, -0.1]`: measured from the solved rest
+  pose it sits over 78 of the 80 crown voxels and leaves all 26 eye
+  voxels (white and ink) showing. A narrower taper, `[0.9, 0.55]`, covered
+  71 and pushing the hood back dropped it to about half, so the hood
+  stays forward and wide.
+- **Type.** `data/foamers.json` gains the `F13` entry: rig F13, the
+  rig's health 25, `preferredDistanceMetres` 10 and
+  `retreatDistanceMetres` 5, `weakpoint: { parts: ["tank"], damage: 2 }`.
+  Its first attack carrying a token is `healStream` (token `ranged`, no
+  damage, `needs` the tank), which is what makes the system pick the
+  keep-distance brain, so no brain code was written; the `bonk` is last,
+  so a tankless one still fights. Stage 1 declares the stream and does
+  not fire it: two lines in `src/foamers/foamers.ts` keep it out of the
+  player's windup and excuse it from `flightClear`, the way the F10's
+  homing shot is excused, because the target is an ally.
+- **Rendered** `design/foamers/F13-{front,side,back,three-quarter,sheet}.png`
+  with `npx tsx tools/render-rig.ts F13`.
+- **Tests.** `tests/foamers/biomechanic.test.ts` (palette, hood coverage
+  and the eyes showing, the tank behind the body and the wand in the
+  right hand with a foam-core tip, the type reading its own spec, the
+  tank taking 2x where the body does not) and
+  `tests/ai/biomechanic-brain.test.ts` (the keep-distance brain on its
+  own distances, and 20 s of walking that never comes inside the
+  retreat distance). `npx tsc --noEmit`, `npx vitest run` (748 passed,
+  2 skipped) and `npm run build` are green.
+- **Not checked by eye:** the five PNGs and the look in the game. This
+  session had no browser and cannot view images, so the hood, the tank
+  placement and the wand were checked by script from the solved rest
+  pose only. The hood has not been seen on the model, and nothing has
+  been played.
+- Stage 1 is committed on `game-10l`, not reviewed, not merged, not
+  pushed.
 ### 2026-11-08: ART-05b review, merged (Claude Opus 5.5): reload tilts, B07's reload drum, mod motion, and the fire kick
 
 - Reviewed dgx-spark's run. Fixed in review:
