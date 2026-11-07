@@ -3,6 +3,7 @@ import rigData from "../../data/foamer-rigs.json";
 import dartsData from "../../data/darts.json";
 import blastersData from "../../data/blasters.json";
 import type { Arena, Level, Piece, PieceVolume, ShellBox } from "./format";
+import buttonData from "../../data/buttons.json";
 
 // Checks a level file against design/levels/BLOCKOUT.md section 5. Rule 7
 // (secrets) is for a thing LVL-01 does not load yet; the dart type names of
@@ -290,6 +291,42 @@ export function validateLevel(level: Level): ValidationResult {
         }
       }
     }
+  }
+
+  // ENV-02 (E08): a button sits in the shell, names a door that exists, and
+  // faces out along one axis. Its cap is what a dart or a melee meets, so it
+  // is a spot like a door's: it may sit against a wall, not inside one.
+  const doorIds = new Set(arenas.flatMap((a) => a.doors.map((d) => d.id)));
+  const seenButtons = new Set<string>();
+  for (const b of level.buttons ?? []) {
+    const what = `button ${b.id}`;
+    if (seenButtons.has(b.id)) errors.push(`${what}: id used twice`);
+    seenButtons.add(b.id);
+    if (!isVec3(b.pos)) {
+      errors.push(`${what}: pos must be three numbers`);
+      continue;
+    }
+    const f = b.facing;
+    if (!isVec3(f)) {
+      errors.push(`${what}: facing must be three numbers`);
+    } else {
+      const len = Math.hypot(f[0], f[1], f[2]);
+      const axes = [Math.abs(f[0]), Math.abs(f[1]), Math.abs(f[2])].filter((n) => n > 1e-3).length;
+      if (Math.abs(len - 1) > 1e-3 || axes !== 1) {
+        errors.push(`${what}: facing must be a unit axis, like [0, 1, 0]`);
+      }
+    }
+    if (!b.action || typeof b.action.open !== "string") {
+      errors.push(`${what}: action.open must name a door`);
+    } else if (!doorIds.has(b.action.open)) {
+      errors.push(`${what}: action.open names unknown door ${b.action.open}`);
+    }
+    checkSpot(what, b.pos, true);
+    // The cap stands proud of the plate, so a floor button's centre needs
+    // the plate and the cap inside the shell's height too. The plate is
+    // turned so its own thin axis (size[1]) lies along `facing`.
+    const top = b.pos[1] + buttonData.plate.size[1] / 2 + buttonData.cap.height;
+    if (top > shellBounds.max[1] + TOUCH) errors.push(`${what}: cap reaches above the shell`);
   }
 
   // Rule 10 is about shell boxes alone: they may not share volume. Doors

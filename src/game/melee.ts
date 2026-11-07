@@ -80,6 +80,10 @@ export class Melee {
   swingLeft = 0;
   /** Seconds left of the bash's cooldown. */
   bashLeft = 0;
+  /** ENV-02: presses that spent a swing or a bash, ever. A page that asks
+   *  what else a swing reached reads the change, so a held key does not
+   *  press a button every step. */
+  presses = 0;
   private rechargeLeft = T.rechargeSeconds;
   private lastParries = 0;
   private lastPress = -1e9; // sim time of the last press (the combo window)
@@ -102,6 +106,10 @@ export class Melee {
 
   get maxCharges(): number { return T.charges; }
   get swinging(): boolean { return this.swingLeft > 0; }
+  /** ENV-02: the charged swing's own numbers, so a page can ask what else
+   *  the swing reached (a button) with the reach the card gave melee. */
+  get reach(): number { return T.reach; }
+  get arcDeg(): number { return T.arcDeg; }
   get comboHits(): number { return this.spec.hits.length; }
   /** The bash's view kick in radians; the page adds it to the camera's
    *  climb like the shield's kicks. */
@@ -118,6 +126,7 @@ export class Melee {
     this.rechargeLeft = T.rechargeSeconds;
     this.lastParries = 0;
     this.lastPress = -1e9;
+    this.presses = 0;
   }
 
   /** One fixed step: the timers. The parry refill reads the shield's own
@@ -183,6 +192,7 @@ export class Melee {
     }
     this.carveLine(eye, forward, T.reach, T.carveRadius, T.debrisMax, e);
     e.swung = idx;
+    this.presses++;
     return e;
   }
 
@@ -204,6 +214,7 @@ export class Melee {
     }
     this.carveLine(eye, forward, T.bash.reach, T.bash.carveRadius, T.bash.debrisMax, e);
     e.swung = -1;
+    this.presses++;
     return e;
   }
 

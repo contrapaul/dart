@@ -1,0 +1,47 @@
+{
+  "_note": "ENV-02: a test level, not a level to ship. Two rooms 10 x 10 m, joined by one 2 m wide, 3 m tall door in a 1 m divider at z = 0. The player starts in the south room; the exit pad is in the north room, so the level can only be finished by opening the door. The door belongs to one arena with noLock, so nothing ever changes its state: `locked` in the file means it is shut from the first frame. That arena has no waves, so its trigger clears it at once and the page's exit pad then ends the level. Either button opens the door: the wall button beside the door at chest height (1.3 m), facing the south room, and the floor button across the south room off the walking line. Both name the same door in `action.open`. Metres, Y up, -z is north, positions are box centres, sizes are full extents.",
+  "meta": {
+    "id": "env-02",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 60,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+
+  "shell": [
+    { "id": "rooms-floor", "shape": "box", "pos": [0, -0.5, 0], "size": [12, 1, 22], "material": "greybox-dark" },
+    { "id": "rooms-ceiling", "shape": "box", "pos": [0, 4.5, 0], "size": [12, 1, 22], "material": "greybox" },
+    { "id": "wall-w", "shape": "box", "pos": [-5.5, 2, 0], "size": [1, 4, 22], "material": "greybox" },
+    { "id": "wall-e", "shape": "box", "pos": [5.5, 2, 0], "size": [1, 4, 22], "material": "greybox" },
+    { "id": "wall-s", "shape": "box", "pos": [0, 2, 10.5], "size": [10, 4, 1], "material": "greybox" },
+    { "id": "wall-n", "shape": "box", "pos": [0, 2, -10.5], "size": [10, 4, 1], "material": "greybox" },
+    { "id": "divider-w", "shape": "box", "pos": [-3, 2, 0], "size": [4, 4, 1], "material": "greybox" },
+    { "id": "divider-e", "shape": "box", "pos": [3, 2, 0], "size": [4, 4, 1], "material": "greybox" },
+    { "id": "divider-lintel", "shape": "box", "pos": [0, 3.5, 0], "size": [2, 1, 1], "material": "greybox" },
+    { "id": "exit-pad", "shape": "box", "pos": [0, 0.01, -8], "size": [2, 0.02, 2], "material": "foam-white" }
+  ],
+
+  "arenas": [
+    {
+      "id": "env-02-chamber",
+      "archetype": "A1",
+      "noLock": true,
+      "trigger": { "pos": [0, 1, 5], "size": [10, 4, 10] },
+      "doors": [
+        { "id": "env-02-door", "pos": [0, 1.5, 0], "size": [2, 3, 0.4], "state": "locked" }
+      ],
+      "rifts": [],
+      "waves": [],
+      "unlockOnClear": []
+    }
+  ],
+
+  "buttons": [
+    { "id": "door-button", "pos": [-1.6, 1.3, 0.56], "facing": [0, 0, 1], "action": { "open": "env-02-door" } },
+    { "id": "floor-button", "pos": [3.5, 0.06, 4.5], "facing": [0, 1, 0], "action": { "open": "env-02-door" } }
+  ],
+
+  "playerStart": { "pos": [0, 0, 8], "yaw": 0 },
+  "exit": { "pos": [0, 1, -8], "size": [2, 2, 2] }
+}

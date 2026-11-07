@@ -324,6 +324,8 @@ The other Foamers (IDs given when each is built):
 | ENV-station-grant | A mod station grants its mod (a rising two-note blip) | Later | 2 | Code |
 | ENV-station-spent | A used station, use key pressed (a low dry buzz) | Later | 2 | Code |
 | LV-switch | Switch or button | Yes | 3 | Foley |
+| ENV-button-press | Toy button pressed, cap squashes and lights | ENV-02 | 3 | Code: a click over a short rising tone |
+| ENV-button-dead | Toy button pressed again, nothing happens | ENV-02 | 2 | Code: a flat dull click |
 | LV-key | Key picked up | Later | 2 | Code |
 | LV-secret | Secret found | Later | 1 | Code |
 | LV-wall-break | Wall blasted through to a secret | Later | 3 | Foley: crumble a big polystyrene sheet |

@@ -1,0 +1,15 @@
+{
+  "_note": "ENV-02: the toy button (E08). Paul's look: a flat plate with a cylinder cap to press. The plate's thin axis is its own Y, and it is turned so that Y points along the button's `facing`, so the same numbers mount it on a floor or a wall. The cap stands `height` proud of the plate and sinks `pressDepth` into it when pressed, squashing by the same amount, and its colour goes from `material` to `litMaterial`. Colours are names in data/materials.json; orange and yellow stay out (orange is the weak point, yellow is the player's darts). `stepTolerance` is how far above the cap top the player's feet may be and still count as standing on a floor button. Metres.",
+  "plate": {
+    "size": [0.5, 0.12, 0.5],
+    "material": "plastic"
+  },
+  "cap": {
+    "diameter": 0.25,
+    "height": 0.08,
+    "material": "foam-ink",
+    "litMaterial": "foam-lime-light",
+    "pressDepth": 0.06
+  },
+  "stepTolerance": 0.06
+}

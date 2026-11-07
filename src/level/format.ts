@@ -172,11 +172,31 @@ export interface Station {
   mod: string;
 }
 
+/** ENV-02: what pressing a button does. The only action for now, and the
+ *  same verb the lock-in uses: a door id, set to open. */
+export interface ButtonAction {
+  open: string;
+}
+
+/** ENV-02: a toy button (E08). `pos` is the centre of the flat base plate;
+ *  the cap sits on the plate's outer face. The plate and cap sizes are the
+ *  same for every button and live in data/buttons.json. */
+export interface Button {
+  id: string;
+  pos: Vec3;
+  /** Outward normal of the face it is mounted on. [0, 1, 0] is a floor
+   *  button, pressed by the player stepping on it. */
+  facing: Vec3;
+  action: ButtonAction;
+}
+
 export interface Level {
   meta: LevelMeta;
   shell: ShellBox[];
   pieces?: Piece[];
   arenas?: Arena[];
+  /** ENV-02: buttons, each wired to one action. */
+  buttons?: Button[];
   pickups?: Pickup[];
   stations?: Station[];
   playerStart: PlayerStart;
