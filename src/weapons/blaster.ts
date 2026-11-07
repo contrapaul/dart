@@ -90,6 +90,8 @@ interface RawMod {
   dartsPerShot?: number;
   spreadDeg?: number;
   magSize?: number;
+  /** GAME-09d: the rate mod (B06) overrides the auto interval. */
+  fireInterval?: number;
   muzzles?: string[];
   bothBarrels?: boolean;
   recoil?: Partial<RecoilSpec>;
@@ -165,6 +167,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     if (mod.dartsPerShot !== undefined) s.dartsPerShot = mod.dartsPerShot;
     if (mod.spreadDeg !== undefined) s.spreadDeg = mod.spreadDeg;
     if (mod.magSize !== undefined) s.magSize = mod.magSize;
+    if (mod.fireInterval !== undefined) s.fireInterval = mod.fireInterval;
     if (mod.muzzles !== undefined) s.muzzles = [...mod.muzzles];
     if (mod.bothBarrels !== undefined) s.bothBarrels = mod.bothBarrels;
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
