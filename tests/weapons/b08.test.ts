@@ -25,6 +25,9 @@ import type { DartTypeName } from "../../src/weapons/darts";
 const DT = 1 / 60;
 const AIM = new THREE.Vector3(0, 0, -1);
 const MUZ = [new THREE.Vector3(0, 1.4, -0.5)];
+// A twin blaster asks for muzzle index 1 too; the placeholder model has one
+// muzzle, so both entries point at the same point until B08's model exists.
+const muzzleAt = (i: number) => MUZ[i % MUZ.length];
 
 function lcg(seed: number): () => number {
   let s = seed >>> 0;
@@ -36,13 +39,11 @@ function lcg(seed: number): () => number {
 
 class FakeDarts implements DartFiring {
   readonly types: DartTypeName[] = [];
-  readonly muzzleIdx: number[] = [];
   readonly times: number[] = [];
   now = 0;
-  fire(_o: THREE.Vector3, _d: THREE.Vector3, t: DartTypeName, _shot?: unknown, muzzleIdx = 0): void {
+  fire(_o: THREE.Vector3, _d: THREE.Vector3, t: DartTypeName, _shot?: unknown): void {
     this.types.push(t);
     this.times.push(this.now);
-    this.muzzleIdx.push(muzzleIdx);
   }
   get count(): number {
     return this.types.length;
@@ -51,7 +52,7 @@ class FakeDarts implements DartFiring {
 
 function make(blasterId: string, mods: string[] = []): { b: Blaster; darts: FakeDarts } {
   const darts = new FakeDarts();
-  const b = new Blaster(resolveSpec(blasterId, mods), darts, (i) => MUZ[i], lcg(7));
+  const b = new Blaster(resolveSpec(blasterId, mods), darts, muzzleAt, lcg(7));
   return { b, darts };
 }
 const HOLD: BlasterControls = { fireHeld: true, firePressed: true, reloadPressed: false };
@@ -289,5 +290,56 @@ describe("GAME-09g: B08's movement slow", () => {
     const shieldShare = 0.8; // the share shield.ts would set speedScale to
     const both = walkSpeed(S.fireMoveShare, shieldShare);
     expect(both).toBeCloseTo(P.walkSpeed * S.fireMoveShare * shieldShare, 1);
+  });
+});
+
+describe("GAME-09g: B08's mods", () => {
+  const BASE = resolveSpec("B08");
+
+  it("9. Control (mod 1, Paul): recoil control and reduced movement penalty", () => {
+    const C = resolveSpec("B08", ["control"]);
+    // Much less spread growth and climb than the bare blaster.
+    expect(C.recoil.spreadPerShot).toBeLessThan(BASE.recoil.spreadPerShot * 0.5);
+    expect(C.recoil.climbDegPerShot).toBeLessThan(BASE.recoil.climbDegPerShot * 0.5);
+    expect(C.recoil.spreadMax).toBeLessThan(BASE.recoil.spreadMax);
+    expect(C.recoil.climbDegMax).toBeLessThan(BASE.recoil.climbDegMax);
+    // The recovery keeps the blaster's own value (the block merges key by key).
+    expect(C.recoil.recover).toBe(BASE.recoil.recover);
+    // The movement penalty is eased.
+    expect(BASE.fireMoveShare).toBe(0.6);
+    expect(C.fireMoveShare).toBe(0.85);
+  });
+
+  it("10. Twin (mod 2, Paul): a second barrel for 2x fire rate, alternating muzzles", () => {
+    const T = resolveSpec("B08", ["twin"]);
+    expect(T.fireInterval).toBeCloseTo(BASE.fireInterval / 2, 6);
+    // The placeholder model has one muzzle, so both entries name muzzle_1
+    // until B08's own model exists (tests/weapons/b08.test.ts, HANDOFF).
+    expect(T.muzzles).toEqual(["muzzle_1", "muzzle_1"]);
+    const { b, darts } = make("B08", ["twin"]);
+    const muzzleIdx: number[] = [];
+    b.onShot = (i) => muzzleIdx.push(i);
+    // Spin up first (nothing fires below wheelSpeed 1), then 2 s of held
+    // trigger: about twice the bare rate.
+    for (let i = 0; i < 47; i++) { b.update(DT, HOLD, AIM); darts.now += DT; }
+    expect(darts.count).toBe(0);
+    for (let i = 0; i < 120; i++) { b.update(DT, HOLD, AIM); darts.now += DT; }
+    const want = 2 / T.fireInterval;
+    expect(darts.count).toBeGreaterThan(want * 0.85);
+    expect(darts.count).toBeLessThan(want * 1.15);
+    // The auto shot alternates the two muzzles.
+    expect(muzzleIdx.slice(0, 4)).toEqual([0, 1, 0, 1]);
+  });
+
+  it("11. the bare blaster alternates one muzzle only, and the mods leave other blasters alone", () => {
+    const { b, darts } = make("B08");
+    const muzzleIdx: number[] = [];
+    b.onShot = (i) => muzzleIdx.push(i);
+    for (let i = 0; i < 120; i++) { b.update(DT, HOLD, AIM); darts.now += DT; }
+    expect(muzzleIdx.every((i) => i === 0)).toBe(true);
+    // B04 still has its own numbers (its spec never reads fireMoveShare).
+    const S4 = resolveSpec("B04");
+    expect(S4.fireMoveShare).toBe(1);
+    expect(S4.fireInterval).toBe(0.1);
   });
 });
