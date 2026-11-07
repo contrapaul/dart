@@ -274,7 +274,13 @@ export class Viewmodel {
             this.drumFrom = this.drumA;
             this.reloadRounds = Math.max(0, sp.magSize - blaster.mag);
           }
-          this.drumA = this.drumFrom + this.reloadRounds * step * blaster.progress;
+          // Each round has an equal slot of the reload: the drum turns its
+          // chamber over the first half of the slot and sits on it for the
+          // second half (review: on a chamber part way through).
+          const x = this.reloadRounds * blaster.progress;
+          const k = Math.floor(x);
+          const f = Math.min(1, (x - k) * 2);
+          this.drumA = this.drumFrom + (Math.min(k, this.reloadRounds) + (k < this.reloadRounds ? f : 0)) * step;
         } else {
           if (this.inReload) {
             // The reload just ended: land exactly on the chamber rather

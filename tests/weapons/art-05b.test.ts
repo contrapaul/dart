@@ -253,6 +253,26 @@ describe("ART-05b: B07's drum turning as it reloads", () => {
     expect(worst).toBeLessThan(STEP * 0.2);
   });
 
+  it("5b. review: in the second half of each round's slot the drum sits still on a chamber", () => {
+    const g = drumRig();
+    fireShots(g, MAG, () => g.track.deg());
+    const rounds = startReload(g, MAG);
+    const start = MAG * STEP;
+    let checked = 0;
+    while (g.b.state === "reloading") {
+      g.b.update(DT, NO_FIRE, AIM);
+      g.vm.animate(DT, g.b, false);
+      const x = rounds * g.b.progress;
+      const f = x - Math.floor(x);
+      if (g.b.state === "reloading" && f > 0.55 && f < 0.95) {
+        const k = Math.floor(x);
+        expect(Math.abs(g.track.deg() - (start + (k + 1) * STEP))).toBeLessThan(1e-6);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(3);
+  });
+
   it("6. the per-shot turn is unchanged and idle frames do not move it", () => {
     // One shot: one chamber, exactly as GAME-09f (the pump eases the
     // index across the priming).
