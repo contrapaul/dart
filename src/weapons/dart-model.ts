@@ -27,6 +27,20 @@ function linear(hex: string): [number, number, number] {
 }
 
 export function buildDartGeometry(spec: DartTypeSpec): THREE.BufferGeometry {
+  // GAME-09g: the foam ball (B08) is a sphere, not a dart shape.
+  if ("shape" in spec && spec.shape === "ball") {
+    const geo = new THREE.SphereGeometry(spec.radius, 14, 10);
+    const n = geo.getAttribute("position").count;
+    const body = linear(spec.bodyColor);
+    const colors = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      colors[i * 3] = body[0];
+      colors[i * 3 + 1] = body[1];
+      colors[i * 3 + 2] = body[2];
+    }
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    return geo;
+  }
   const len = spec.length;
   const radius = spec.radius;
   const tipLen = len * TIP_FRACTION;

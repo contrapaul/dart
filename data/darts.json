@@ -100,6 +100,24 @@
       "carveRadius": 0.25,
       "pierce": 0
     },
+    "ball": {
+      "_note": "GAME-09g: the foam ball (B08 Firehose, D14): a round ball, fast (30 m/s), a little drop, light. shape: ball draws it as a sphere (src/weapons/dart-model.ts). bounces: it ricochets off a hard surface this many times, keeping restitution of its speed each time, then falls and rests like a dart. Start values for Paul to tune on the range.",
+      "speed": 30,
+      "gravityScale": 0.45,
+      "drag": 0.25,
+      "length": 0.12,
+      "radius": 0.06,
+      "shape": "ball",
+      "bodyColor": "#2ec4ff",
+      "tipColor": "#ff7a1a",
+      "sticks": false,
+      "restitution": 0.6,
+      "bounces": 2,
+      "impulse": 0.8,
+      "fireInterval": 0.035,
+      "carveRadius": 0.12,
+      "pierce": 0
+    },
     "precisionHeavy": {
       "_note": "GAME-09e mod 2 (Paul): B05's heavier round: the same thin dart, a little slower, more impulse, and it pierces three Foamers. Its damage is data/foamers.json's precisionHeavy. Start values for Paul to tune.",
       "speed": 54,

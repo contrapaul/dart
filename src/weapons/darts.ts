@@ -123,6 +123,10 @@ interface Slot {
   /** GAME-09e: every body handle belonging to a pierced Foamer, ignored by
    *  the ray cast while pierced is not empty. */
   piercedBodies: number[];
+  /** GAME-09g: bounces a foam ball (B08) has left before it falls and
+   *  rests like a dart. Set from the type's `bounces` in fire(); 0 for
+   *  every dart type. */
+  bounceLeft: number;
 }
 
 export class DartSystem {
@@ -223,6 +227,7 @@ export class DartSystem {
         shotBuf: { id: 0, muzzle: new THREE.Vector3(), chunk: null },
         pierced: [],
         piercedBodies: [],
+        bounceLeft: 0,
       });
       this.free.push(i);
     }
@@ -269,6 +274,8 @@ export class DartSystem {
     s.coll = null;
     s.pierced.length = 0;
     s.piercedBodies.length = 0;
+    // GAME-09g: a foam ball starts with its type's bounce budget.
+    s.bounceLeft = "bounces" in spec ? spec.bounces : 0;
     this.count[FLYING]++;
     // A copy: the blaster reuses one shot object, and its next trigger pull
     // must not rewrite the id and muzzle of darts still in flight.
@@ -502,6 +509,24 @@ export class DartSystem {
       if (bodyGone) s.canStick = false;
       if (s.spec.sticks && s.canStick && !bodyGone) {
         this.stick(s, hit, hitBody);
+        return;
+      }
+      // GAME-09g: a foam ball (B08) ricochets off a hard surface: it
+      // bounces with restitution of its speed up to its type's `bounces`
+      // times, never coming to rest on one of them. With the budget spent
+      // it takes the ordinary dart path below: it bounces off and falls,
+      // and rests on the floor like a dart (review: it used to stop dead
+      // where it touched, so a ball could hang on a wall).
+      if (s.bounceLeft > 0) {
+        s.bounceLeft -= 1;
+        // Reflect the velocity about the surface normal, scaled by restitution.
+        const n = this._n3;
+        const d = s.vel.x * n.x + s.vel.y * n.y + s.vel.z * n.z;
+        s.vel.x = (s.vel.x - 2 * d * n.x) * s.spec.restitution;
+        s.vel.y = (s.vel.y - 2 * d * n.y) * s.spec.restitution;
+        s.vel.z = (s.vel.z - 2 * d * n.z) * s.spec.restitution;
+        // Step off the surface a touch so it does not re-hit the same face.
+        s.pos.copy(this._hp).addScaledVector(n, 0.004);
         return;
       }
       // Reflect the velocity about the surface normal, scaled by restitution.

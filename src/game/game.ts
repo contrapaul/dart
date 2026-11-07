@@ -687,7 +687,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // muzzle from the active viewmodel, the aim 50 m down the view, and
       // the loadout's fixed step, then the darts.
       for (let i = 0; i < loadout.ids.length; i++) {
-        const key = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5", "weapon6", "weapon7"][i];
+        const key = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5", "weapon6", "weapon7", "weapon8"][i];
         if (input.wasPressed(key as "weapon1")) loadout.select(i);
       }
       if (input.wasPressed("weaponNext")) loadout.next();
@@ -753,6 +753,12 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         },
         _aimDir,
       );
+      // GAME-09g: B08's movement slow: while the active blaster is firing
+      // (trigger held, wheels up to speed) the player moves at its
+      // fireMoveShare. fireMoveScale multiplies in beside the shield's
+      // speedScale; the switch never fires, so it clears then too.
+      player.fireMoveScale =
+        loadout.switching ? 1 : loadout.active.firing ? loadout.active.spec.fireMoveShare : 1;
       // The blaster, player and level hooks, one step per fixed step.
       audio.sounds?.update(dt, {
         fireHeld: canFire && input.isDown("fire"),

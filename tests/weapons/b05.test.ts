@@ -216,8 +216,9 @@ describe("GAME-09e: B05 Shrike", () => {
     const blastersJson = await import("../../data/blasters.json");
     // Review: B05 joined after B02 when the branches met, so every
     // earlier blaster keeps its slot and key. GAME-09f: B07 joins at the
-    // end for the same reason (key 7).
-    expect(blastersJson.order).toEqual(["B01", "B04", "B03", "B06", "B02", "B05", "B07"]);
+    // end for the same reason (key 7). GAME-09g: B08 joins at the end
+    // (key 8).
+    expect(blastersJson.order).toEqual(["B01", "B04", "B03", "B06", "B02", "B05", "B07", "B08"]);
   });
 });
 
