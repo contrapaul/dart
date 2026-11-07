@@ -664,6 +664,30 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-03 review, merged (Claude Opus 5.5): the mod station
+
+- **The first run drifted.** After Pi compressed its context, Qwen lost
+  the task, read the video-kit skill and made a promo video in another
+  folder, left a dev server running on port 5199 and the station half
+  built and uncommitted. The server was stopped, the video deleted at
+  Paul's word, and a fresh run with hard limits (no skills, no servers,
+  nothing outside the worktree) finished the card from the half-built
+  work. Every brief now carries those limits.
+- **Played** (`arena.html?watch&level=env-03`, the use key held through
+  the input module because the watch cannot lock the pointer): a 0.3 s
+  hold grants nothing; a full hold at the Leviathan station grants `both`
+  with the banner "BOTH TAKEN: LEVIATHAN"; a second hold on the spent
+  station changes nothing; the Dartman station grants `slug`, the
+  Shredder station `suppress`; from 2.5 m away nothing is granted. The
+  use prompt reads the mod and the key ("both E").
+- Merged with ENV-02: both levels replayed on the merged code (the wall
+  button opens its door, the Shredder station grants its mod).
+- **For Paul:** the screen and the banner show the mods' data ids (`slug`,
+  `both`, `suppress`); mods have no display names yet, which are yours.
+  The cabinet's beige, dark screen and green text are a proposal.
+- Not seen by eye: the cabinet, its screen text and the spent screen (the
+  pane was hidden), and the two sounds.
+
 ### 2026-11-07: ENV-03, the mod station (E13), both stages (Qwen 3.8-27B via Pi)
 
 Task: `tasks/ENV-03.md`, in full. Branch `env-03`. Two commits:
