@@ -3770,6 +3770,71 @@
           "freq": 1600
         }
       }
+    },
+    "B08-fire": {
+      "_note": "GAME-09g (Paul): one foam ball at about 28 a second: a fast soft thud, shorter and quieter than B04-fire so the stream does not blunt. maxVoices is high because the rate is high; a new one steals the oldest.",
+      "files": [],
+      "volume": 0.55,
+      "jitter": 0.1,
+      "maxVoices": 10,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.05,
+              "attack": 0.001,
+              "decay": 0.04,
+              "lowpass": 1200,
+              "highpass": 120,
+              "lowpassEnd": 350
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.04,
+              "f0": 150,
+              "f1": 80,
+              "wave": "sine",
+              "attack": 0.001,
+              "decay": 0.035
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "B08-spin-up": {
+      "_note": "GAME-09g (Paul): the gatling's long spin-up (the id in SOUNDS.md 2.9). Placeholder synth: a rising whirr over the 0.8 s spinUp. Nothing plays it yet (game-sounds.ts has no per-blaster spin loop; B06-spin is the same), so the wiring belongs to the audio pass.",
+      "files": [],
+      "volume": 0.5,
+      "jitter": 0.03,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.8,
+              "f0": 90,
+              "f1": 340,
+              "wave": "sawtooth",
+              "attack": 0.05,
+              "decay": 0.7
+            },
+            "gain": 0.5
+          },
+          {
+            "noise": {
+              "dur": 0.8,
+              "attack": 0.05,
+              "decay": 0.7,
+              "lowpass": 2400,
+              "highpass": 600
+            },
+            "gain": 0.25
+          }
+        ]
+      }
     }
   },
   "blasterCues": {

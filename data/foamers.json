@@ -9,7 +9,8 @@
       "mega": 3,
       "precision": 8,
       "precisionHeavy": 10,
-      "launcher": 4
+      "launcher": 4,
+      "ball": 1.5
     },
     "minDamageSpeed": 8,
     "turnRate": 6,

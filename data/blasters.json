@@ -1,6 +1,6 @@
 {
   "_note": "The three slice blasters (GAME-09), keyed by id, in level order. Units: metres, seconds, degrees. Common fields, then one block for the fire mode: pump (primeTime), auto (fireInterval, spinUp, spinDown, recoil), break (fireInterval). A mod's fields override the blaster's; nested blocks (recoil) merge key by key. Starting values from the blaster cards, marked to tune on the range. Viewmodel placement numbers are first guesses; the reviewer sets them.",
-  "order": ["B01", "B04", "B03", "B06", "B02", "B05", "B07"],
+  "order": ["B01", "B04", "B03", "B06", "B02", "B05", "B07", "B08"],
   "switchTime": 0.35,
   "B01": {
     "name": "The Dartman", "model": "/models/blasters/B01.glb",
@@ -103,6 +103,22 @@
     "mods": {
       "remote": { "_note": "GAME-09f: mod 1, remote detonate.", "remote": true },
       "cluster": { "_note": "GAME-09f: mod 2, cluster.", "cluster": true }
+    }
+  },
+  "B08": {
+    "_note": "GAME-09g: Firehose (CONTENT-PLAN section 4, Paul: gatling, room-clearing 'final word', spins up to fire at an incredible rate, foam balls, 120 / 240, massive power, recoil, chaotic, ricochets, slows movement when firing). Placeholder model: B04's, whose flywheels already spin, until ART-01/ART-04 give B08 its own; the swap is this one line. fireMoveShare: while the trigger is held and the wheels are up to speed, the player walks and sprints at this share of their speed (src/game/game.ts feeds it to the controller's fireMoveScale, which multiplies in beside the shield's own slow, it does not replace it). Mod Twin names muzzle_1 twice: the placeholder model has one muzzle, so both barrels draw from the same node until B08's own model exists. Start values for Paul to tune on the range.",
+    "name": "Firehose", "model": "/models/blasters/B04.glb",
+    "mode": "auto", "dartType": "ball", "dartsPerShot": 1, "spreadDeg": 2.5,
+    "magSize": 120, "reserveMax": 240, "reserveStart": 120,
+    "fireInterval": 0.035, "spinUp": 0.8, "spinDown": 1.2, "reloadTime": 3.0, "autoReload": true,
+    "fireMoveShare": 0.6,
+    "recoil": { "spreadPerShot": 0.9, "spreadMax": 14, "climbDegPerShot": 0.6, "climbDegMax": 10, "recover": 0.5 },
+    "muzzles": ["muzzle_1"],
+    "viewmodel": { "position": [0.2, -0.28, -0.42], "rotationDeg": [2, 5, 0], "scale": 0.8 },
+    "motion": { "kick": 0.05, "tiltDeg": 4, "return": 12, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.2, "reloadRollDeg": -8 },
+    "mods": {
+      "control": { "_note": "GAME-09g mod 1 (Paul): recoil control and reduced movement penalty: much less spread and climb, and the firing slow eased to 0.85.", "recoil": { "spreadPerShot": 0.2, "spreadMax": 6, "climbDegPerShot": 0.15, "climbDegMax": 4 }, "fireMoveShare": 0.85 },
+      "twin": { "_note": "GAME-09g mod 2 (Paul): a second barrel for 2x fire rate: half the fireInterval, the auto shot alternating the two muzzles. Both entries name muzzle_1 until B08's own model exists (the placeholder has one muzzle).", "fireInterval": 0.0175, "muzzles": ["muzzle_1", "muzzle_1"] }
     }
   }
 }
