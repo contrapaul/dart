@@ -116,8 +116,11 @@ describe("GAME-09f: B07 Collateral reads its spec", () => {
     expect(b.reloadTime).toBe(2.5);
     expect(b.muzzles).toEqual(["muzzle_1"]);
     expect(b.motion.drumStepDeg).toBe(60);
-    expect(b.remote).toBe(true);
-    expect(b.cluster).toBe(true);
+    // Both are mods (the card: mod 1 remote, mod 2 cluster), off by default.
+    expect(b.remote).toBe(false);
+    expect(b.cluster).toBe(false);
+    expect(resolveSpec("B07", ["remote"]).remote).toBe(true);
+    expect(resolveSpec("B07", ["cluster"]).cluster).toBe(true);
     expect(b.explosiveEvery).toBe(1); // every round explodes at its first hit
   });
 
@@ -139,7 +142,12 @@ describe("GAME-09f: B07 Collateral reads its spec", () => {
   });
 
   it("5. every round is an explosive launcher round; the mod flags come from the data", () => {
-    const { b, darts } = make("B07");
+    const plain = make("B07");
+    plain.b.update(DT, TAP, AIM);
+    expect(plain.darts.shots[0].explodes).toBe(true);
+    expect(plain.darts.shots[0].liveRound).toBe(false); // no mod: blasts on the hit
+    expect(plain.darts.shots[0].clustered).toBe(false);
+    const { b, darts } = make("B07", ["remote", "cluster"]);
     b.update(DT, TAP, AIM);
     expect(darts.types[0]).toBe("launcher");
     expect(darts.shots[0].explodes).toBe(true);
@@ -347,7 +355,7 @@ function launcherShot() {
 describe("GAME-09f mod 1: remote detonate", () => {
   it("11. the round stops where it first hit and stays live; no blast until the press", () => {
     const r = liveRig();
-    const blaster = new Blaster(resolveSpec("B07", []), r.darts as DartFiring, (i) => MUZ[i], lcg(11));
+    const blaster = new Blaster(resolveSpec("B07", ["remote"]), r.darts as DartFiring, (i) => MUZ[i], lcg(11));
     blaster.update(DT, TAP, new THREE.Vector3(0, -0.35, -1).normalize());
     const rest = { y: 0, z: 0 };
     for (let i = 0; i < 180; i++) {

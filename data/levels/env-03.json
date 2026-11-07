@@ -1,5 +1,5 @@
 {
-  "_note": "ENV-03: a test level, not a level to ship. The same room as env-01, no columns or crates: seven E13 mod stations, one per blaster that has mods (B01 slug, B04 suppress, B03 both, B06 rate, B02 burst, B05 explosive, B07 longrange), each facing the player start (facing pi looks toward +z). The loadout always carries all three blasters, so the not-carried case lives in the station's unit test (tests/arena/stations.test.ts). An empty arenas list, so no lock ever shuts anything. [Paul] the meta fields, the station positions and which mod each station offers.",
+  "_note": "ENV-03: a test level, not a level to ship. The same room as env-01, no columns or crates: seven E13 mod stations, one per blaster that has mods (B01 slug, B04 suppress, B03 both, B06 rate, B02 burst, B05 explosive, B07 remote), each facing the player start (facing pi looks toward +z). The loadout always carries all three blasters, so the not-carried case lives in the station's unit test (tests/arena/stations.test.ts). An empty arenas list, so no lock ever shuts anything. [Paul] the meta fields, the station positions and which mod each station offers.",
   "meta": {
     "id": "env-03",
     "name": "[Paul]",
@@ -8,211 +8,29 @@
     "accent": "#[Paul]",
     "setting": "[Paul]"
   },
+
   "shell": [
-    {
-      "id": "room-floor",
-      "shape": "box",
-      "pos": [
-        0,
-        -0.5,
-        0
-      ],
-      "size": [
-        18,
-        1,
-        18
-      ],
-      "material": "greybox-dark"
-    },
-    {
-      "id": "room-ceiling",
-      "shape": "box",
-      "pos": [
-        0,
-        4.5,
-        0
-      ],
-      "size": [
-        16,
-        1,
-        16
-      ],
-      "material": "greybox"
-    },
-    {
-      "id": "room-wall-w",
-      "shape": "box",
-      "pos": [
-        -8.5,
-        2.5,
-        0
-      ],
-      "size": [
-        1,
-        5,
-        18
-      ],
-      "material": "greybox"
-    },
-    {
-      "id": "room-wall-e",
-      "shape": "box",
-      "pos": [
-        8.5,
-        2.5,
-        0
-      ],
-      "size": [
-        1,
-        5,
-        18
-      ],
-      "material": "greybox"
-    },
-    {
-      "id": "room-wall-n",
-      "shape": "box",
-      "pos": [
-        0,
-        2.5,
-        -8.5
-      ],
-      "size": [
-        16,
-        5,
-        1
-      ],
-      "material": "greybox"
-    },
-    {
-      "id": "room-wall-s",
-      "shape": "box",
-      "pos": [
-        0,
-        2.5,
-        8.5
-      ],
-      "size": [
-        16,
-        5,
-        1
-      ],
-      "material": "greybox"
-    },
-    {
-      "id": "exit-pad",
-      "shape": "box",
-      "pos": [
-        3,
-        0.01,
-        -6
-      ],
-      "size": [
-        2,
-        0.02,
-        2
-      ],
-      "material": "foam-white"
-    }
+    { "id": "room-floor", "shape": "box", "pos": [0, -0.5, 0], "size": [18, 1, 18], "material": "greybox-dark" },
+    { "id": "room-ceiling", "shape": "box", "pos": [0, 4.5, 0], "size": [16, 1, 16], "material": "greybox" },
+    { "id": "room-wall-w", "shape": "box", "pos": [-8.5, 2.5, 0], "size": [1, 5, 18], "material": "greybox" },
+    { "id": "room-wall-e", "shape": "box", "pos": [8.5, 2.5, 0], "size": [1, 5, 18], "material": "greybox" },
+    { "id": "room-wall-n", "shape": "box", "pos": [0, 2.5, -8.5], "size": [16, 5, 1], "material": "greybox" },
+    { "id": "room-wall-s", "shape": "box", "pos": [0, 2.5, 8.5], "size": [16, 5, 1], "material": "greybox" },
+    { "id": "exit-pad", "shape": "box", "pos": [3, 0.01, -6], "size": [2, 0.02, 2], "material": "foam-white" }
   ],
+
   "stations": [
-    {
-      "id": "station-b01",
-      "pos": [
-        -4,
-        0,
-        -3
-      ],
-      "facing": 3.1415926,
-      "blaster": "B01",
-      "mod": "slug"
-    },
-    {
-      "id": "station-b04",
-      "pos": [
-        4,
-        0,
-        -3
-      ],
-      "facing": 3.1415926,
-      "blaster": "B04",
-      "mod": "suppress"
-    },
-    {
-      "id": "station-b03",
-      "pos": [
-        0,
-        0,
-        -5.5
-      ],
-      "facing": 3.1415926,
-      "blaster": "B03",
-      "mod": "both"
-    },
-    {
-      "id": "station-b02",
-      "pos": [
-        0,
-        0,
-        -4
-      ],
-      "facing": 3.1415926,
-      "blaster": "B02",
-      "mod": "burst"
-    },
-    {
-      "id": "station-b06",
-      "pos": [
-        -4,
-        0,
-        -5.5
-      ],
-      "facing": 3.1415926,
-      "blaster": "B06",
-      "mod": "rate"
-    },
-    {
-      "id": "station-b05",
-      "pos": [
-        4,
-        0,
-        -5.5
-      ],
-      "facing": 3.1415926,
-      "blaster": "B05",
-      "mod": "explosive"
-    },
-    {
-      "id": "station-b07",
-      "pos": [
-        0,
-        0,
-        -7
-      ],
-      "facing": 3.1415926,
-      "blaster": "B07",
-      "mod": "longrange"
-    }
+    { "id": "station-b01", "pos": [-4, 0, -3], "facing": 3.1415926, "blaster": "B01", "mod": "slug" },
+    { "id": "station-b04", "pos": [4, 0, -3], "facing": 3.1415926, "blaster": "B04", "mod": "suppress" },
+    { "id": "station-b03", "pos": [0, 0, -5.5], "facing": 3.1415926, "blaster": "B03", "mod": "both" },
+    { "id": "station-b02", "pos": [0, 0, -4], "facing": 3.1415926, "blaster": "B02", "mod": "burst" },
+    { "id": "station-b06", "pos": [-4, 0, -5.5], "facing": 3.1415926, "blaster": "B06", "mod": "rate" },
+    { "id": "station-b05", "pos": [4, 0, -5.5], "facing": 3.1415926, "blaster": "B05", "mod": "explosive" },
+    { "id": "station-b07", "pos": [0, 0, -7], "facing": 3.1415926, "blaster": "B07", "mod": "remote" }
   ],
+
   "arenas": [],
-  "playerStart": {
-    "pos": [
-      0,
-      0,
-      6
-    ],
-    "yaw": 0
-  },
-  "exit": {
-    "pos": [
-      3,
-      1,
-      -6
-    ],
-    "size": [
-      2,
-      2,
-      2
-    ]
-  }
+
+  "playerStart": { "pos": [0, 0, 6], "yaw": 0 },
+  "exit": { "pos": [3, 1, -6], "size": [2, 2, 2] }
 }

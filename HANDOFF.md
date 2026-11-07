@@ -710,7 +710,7 @@ github.com/contrapaul/dart (public), MIT licence.
   60 deg about its bore (its local Y) per shot, eased over the priming,
   from `motion.drumStepDeg`; B01 has none and is untouched. Sounds
   `B07-fire`/`B07-pump`/`B07-reload` placeholder synths + cues (added to
-  `design/SOUNDS.md` 2.8), an env-03 mod station (B07 longrange), and
+  `design/SOUNDS.md` 2.8), an env-03 mod station (B07 remote), and
   `tests/weapons/b07.test.ts`.
 - Stage 2 (second commit): mod 1 remote detonate (a round that hits stops
   as a new LIVE dart state, cap `maxLiveRounds` 3 in `data/darts.json`,
@@ -736,8 +736,7 @@ github.com/contrapaul/dart (public), MIT licence.
   placement and scale are start values), the drum's turn against the real
   glb (the axis is read from its rest quaternion 90 deg about X, not
   seen), the pump's look, the launcher round's arc and blast feel, and
-  the four placeholder sounds. The B07 mods (`longrange`, `rapid`) are
-  placeholders with `[Paul]`-style notes for him to write. B07's flight
+  the four placeholder sounds. B07's flight
   sound (B07-flight in SOUNDS.md) was not asked for by the card and is
   not wired.
 
