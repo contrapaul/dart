@@ -3,6 +3,9 @@
   "carve": {
     "minEffectiveRadius": 0.5
   },
+  "crate": {
+    "breakShare": 0.25
+  },
   "debris": {
     "max": 150,
     "perCarveMax": 14,

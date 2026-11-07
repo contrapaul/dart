@@ -632,6 +632,46 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-01 stage 3, a crate breaks whole when worn (DeepSeek V4.1 Flash via Pi)
+
+Task: stage 3 of `tasks/ENV-01.md`, after the review found the topple never
+happens in play (a dart cuts a crater in the near face; the back panel and
+bars keep the top crate tied to its plinth unless a full ring is cut).
+
+- A crate is the set of volumes tagged with one `crate` id. All five crates'
+eighteen volumes are tagged in `data/levels/env-01.json` (`cr-a-l`,
+`cr-a-r`, `cr-a-top`, `cr-b-bottom`, `cr-b-top`); the three wood plinths are
+untagged, so no plinth is ever part of a crate and no bedrock row is ever
+counted.
+- New `src/voxel/crates.ts`: `Crates` counts each crate's destructible
+voxels at load, tallies every carve against it, and once it has lost
+`crate.breakShare` of them (0.25 in `data/destruction.json`) it empties the
+rest at once and returns those voxels in the carve's removed list, so the
+existing island search sees the whole crate go and the crate above falls.
+`burstCrate` turns a break into debris through `DebrisSystem.spawn`, which
+keeps the `debris.max` and `debris.perCarveMax` caps.
+- Counting is over each crate's union box, once, not per volume. Counting the
+  18 volumes separately gave 384 for a 216 voxel crate: the six panels and
+twelve frame bars overlap. The union box is 184 voxels a crate (the panels
+and bars, not the hollow inside).
+- `src/level/build.ts` records one `CrateBox` per tagged volume (same
+rounding as the fill) and puts `crates` on `BuiltLevel`.
+- One carve path: `carveReport` in `src/game/game.ts` runs the crate tally,
+the break debris, the islands and the nav patch. `impacts.onCarve` (darts)
+and the new `MeleeEvents.carves` (melee, `Melee.press` now reports
+`{target, removed}`) both feed it, so no carve source counts twice or
+misses.
+- Tests: `tests/voxel/crates.test.ts`, 8 tests, all green: tags and plinths,
+  counting, under and over the share, the crate above becoming an island at
+  the right height, an untagged volume unchanged, the union box count, the
+  debris caps, and a real melee swing's carve counting once against a crate.
+- `npx tsc --noEmit`, `npx vitest run` (641 pass, 2 skipped) and
+`npm run build` are clean. No em or en dashes in the files touched.
+- Not checked by eye (no browser here): the break in play, whether 184
+voxels split into the six panels and twelve bars reads as a crate
+collapsing, and whether one swing past the share feels right at 0.25. The
+melee carve was proved in a unit rig, not in the page.
+
 ### 2026-11-07: ENV-01 review (Claude Opus 5.5)
 
 - Stage 1, the cladding, passes: tsc, 633 tests and the build are green,

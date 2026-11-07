@@ -6,6 +6,7 @@ import { VoxelVolume } from "../voxel/chunk";
 import { VolumeMesh } from "../voxel/volume-mesh";
 import type { Mesher } from "../voxel/pieces";
 import { material, materialId } from "../voxel/materials";
+import { Crates, type CrateBox } from "../voxel/crates";
 import type { Door, DoorState, Level, ShellBox } from "./format";
 
 // Turns a validated level into meshes, colliders and voxels. Shell boxes are
@@ -50,6 +51,8 @@ export interface BuiltLevel {
   readonly voxels: VoxelVolume;
   readonly voxelMesh: VolumeMesh;
   readonly doors: Map<string, DoorHandle>;
+  /** ENV-01: the level's crates, counted once the volume is filled. */
+  readonly crates: Crates;
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -108,12 +111,18 @@ function addRamp(
 }
 
 /** Paints a piece's world-space volumes into the shared voxel volume. */
-function fillPieces(level: Level, voxels: VoxelVolume, origin: THREE.Vector3) {
+function fillPieces(
+  level: Level, voxels: VoxelVolume, origin: THREE.Vector3, crates: CrateBox[],
+) {
   const pieces = level.pieces ?? [];
   for (const piece of pieces) {
     let bottom = Infinity;
     for (const v of piece.volumes) bottom = Math.min(bottom, v.pos[1] - v.size[1] / 2);
     for (const v of piece.volumes) {
+      // ENV-01: a tagged volume is part of a crate. Its voxel box is taken
+      // here, from the same rounding the fill uses, so the crate's bounds
+      // and its filled voxels cannot disagree.
+      const tag = v.crate;
       const x0 = Math.round((v.pos[0] - v.size[0] / 2 - origin.x) / VOXEL);
       const x1 = Math.round((v.pos[0] + v.size[0] / 2 - origin.x) / VOXEL) - 1;
       const y0 = Math.round((v.pos[1] - v.size[1] / 2 - origin.y) / VOXEL);
@@ -121,6 +130,7 @@ function fillPieces(level: Level, voxels: VoxelVolume, origin: THREE.Vector3) {
       const z0 = Math.round((v.pos[2] - v.size[2] / 2 - origin.z) / VOXEL);
       const z1 = Math.round((v.pos[2] + v.size[2] / 2 - origin.z) / VOXEL) - 1;
       voxels.fillBox(x0, y0, z0, x1, y1, z1, materialId(v.material));
+      if (tag) crates.push({ id: tag, min: [x0, y0, z0], max: [x1, y1, z1] });
     }
     if (piece.anchor === "floor") {
       // The lowest row is bedrock: it is the anchor the rest hangs from.
@@ -181,7 +191,8 @@ export function buildLevel(
     ? new THREE.Vector3(snap(minX), snap(minY), snap(minZ))
     : new THREE.Vector3(0, 0, 0);
   const voxels = new VoxelVolume(VOXEL);
-  fillPieces(level, voxels, origin);
+  const crateBoxes: CrateBox[] = [];
+  fillPieces(level, voxels, origin, crateBoxes);
   const voxelMesh = new VolumeMesh(voxels, mesher, rapier, world, origin);
   voxelMesh.update();
   group.add(voxelMesh.group);
@@ -194,7 +205,11 @@ export function buildLevel(
   }
 
   if (scene) scene.add(group);
-  return { group, voxels, voxelMesh, doors, navBounds: navBoundsOf(level) };
+  return {
+    group, voxels, voxelMesh, doors,
+    crates: new Crates(voxels, crateBoxes),
+    navBounds: navBoundsOf(level),
+  };
 }
 
 function makeDoor(

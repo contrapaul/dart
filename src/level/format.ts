@@ -48,6 +48,10 @@ export type Anchor = "floor" | "wall" | "ceiling";
 
 export interface PieceVolume extends Box {
   material: MaterialName;
+  /** ENV-01: volumes with the same id are one crate, which breaks whole
+   *  once it has lost `crate.breakShare` of its voxels
+   *  (`src/voxel/crates.ts`). Volumes with no id behave as before. */
+  crate?: string;
 }
 
 export interface Piece {
