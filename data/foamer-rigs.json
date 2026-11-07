@@ -1666,17 +1666,14 @@
             30,
             6
           ],
+          "rest": [-1.2, 0, 0],
           "parent": "foreArmR",
           "at": [
             0,
             -0.92,
             0.1
           ],
-          "pivot": [
-            0,
-            -1.05,
-            0.1
-          ],
+          "pivot": [0, 1, 0],
           "material": "foam-lime"
         },
         {
@@ -1689,16 +1686,8 @@
             5
           ],
           "parent": "sword",
-          "at": [
-            0,
-            -0.75,
-            0
-          ],
-          "pivot": [
-            0,
-            -0.75,
-            0
-          ],
+          "at": [0, 0.75, 0],
+          "pivot": [0, 0.75, 0],
           "material": "foam-lime"
         },
         {
@@ -1711,17 +1700,9 @@
             5
           ],
           "parent": "sword",
-          "at": [
-            0,
-            -0.6,
-            0
-          ],
-          "pivot": [
-            0,
-            -0.6,
-            0
-          ],
-          "material": "foam-orange"
+          "at": [0, 0.6, 0],
+          "pivot": [0, 0.6, 0],
+          "material": "foam-purple"
         },
         {
           "id": "legL",
