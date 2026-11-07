@@ -43,7 +43,7 @@
     "motion": { "kick": 0.03, "tiltDeg": 3, "return": 12, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.2 },
     "mods": {
       "rate": { "_note": "GAME-09d mod 1 (Paul): increased rate of fire, about 8 a second.", "fireInterval": 0.12 },
-      "explosive": { "_note": "GAME-09d mod 2 (Paul): every 5th mega dart explodes where it first hits. Data only here; the rule lives in src/weapons/explosion.ts." }
+      "explosive": { "_note": "GAME-09d mod 2 (Paul): every 5th mega dart explodes where it first hits, through the shared ExplosionSystem. The count is on the blaster (Blaster.beginShot reads explosiveEvery).", "explosiveEvery": 5 }
     }
   },
   "B03": {

@@ -1888,6 +1888,34 @@ export class FoamerSystem {
     }
   }
 
+  /** GAME-09d: a blast's damage on one Foamer, from the shared
+   *  ExplosionSystem. Health and the finishable band as in the dart's
+   *  damage and parryDamage, but the damage counts toward a catastrophic
+   *  hit, so a blast at the centre can pop as well as go down (the card:
+   *  "it can down or pop"). */
+  blastDamage(f: Foamer, amount: number): void {
+    if (f.state === "down") return;
+    if (f.dyingHit) return;
+    f.health -= amount;
+    f.addDamage(this.time, amount);
+    f.damageSinceStep = true;
+    sound(this, "wound", f, f.centre);
+    if (f.health <= 0) {
+      // The pop window holds the blast's own damage (parryDamage's bounce
+      // cannot pop; a blast can), so resolveKill decides pop or go down.
+      this.resolveKill(f, null);
+      return;
+    }
+    if (
+      !f.finishWeakened && f.health > 0
+      && f.health <= f.spec.finisher.weakenShare * f.maxHealth
+      && !f.prone && f.state !== "finish"
+    ) {
+      f.finishWeakened = true;
+      this.startStagger(f, true);
+    }
+  }
+
   /** GAME-05: one step of the shield's knockback: drive the Foamer up to
    *  `want` metres along (dirX, dirZ, horizontal) through its own movement
    *  controller and exclusion set, so a wall stops it. Returns the
