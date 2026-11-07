@@ -1,6 +1,6 @@
 {
   "_note": "The three slice blasters (GAME-09), keyed by id, in level order. Units: metres, seconds, degrees. Common fields, then one block for the fire mode: pump (primeTime), auto (fireInterval, spinUp, spinDown, recoil), break (fireInterval). A mod's fields override the blaster's; nested blocks (recoil) merge key by key. Starting values from the blaster cards, marked to tune on the range. Viewmodel placement numbers are first guesses; the reviewer sets them.",
-  "order": ["B01", "B04", "B03", "B06", "B02", "B05"],
+  "order": ["B01", "B04", "B03", "B06", "B02", "B05", "B07"],
   "switchTime": 0.35,
   "B01": {
     "name": "The Dartman", "model": "/models/blasters/B01.glb",
@@ -87,6 +87,22 @@
     "mods": {
       "burst": { "_note": "GAME-09c: mod 1. One press fires three darts, burstGap apart, then the cooldown.", "mode": "burst", "burstCount": 3, "burstGap": 0.07, "burstCooldown": 0.3 },
       "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit.", "dartType": "slug", "fireInterval": 0.45, "chunk": { "rangeMetres": 6, "carveRadius": 0.2, "push": 1.0 } }
+    }
+  },
+  "B07": {
+    "_note": "GAME-09f: Collateral (design/blasters/B07.md). Pump-action single launcher round: slow, high arc, explodes where it first hits. Mod 1, remote: rounds stop where they hit and a fire press detonates them all. Mod 2, cluster: the blast throws four small ones around it. Start values for Paul to tune on the range.",
+    "name": "Collateral", "model": "/models/blasters/B07.glb",
+    "mode": "pump", "dartType": "launcher", "dartsPerShot": 1, "spreadDeg": 1.0,
+    "magSize": 6, "reserveMax": 18, "reserveStart": 12,
+    "primeTime": 0.9, "reloadTime": 2.5, "autoReload": true,
+    "recoil": { "spreadPerShot": 1.2, "spreadMax": 6, "climbDegPerShot": 0.8, "climbDegMax": 4, "recover": 0.6 },
+    "muzzles": ["muzzle_1"],
+    "explosiveEvery": 1,
+    "viewmodel": { "position": [0.21, -0.29, -0.4], "rotationDeg": [2, 5, 0], "scale": 0.78 },
+    "motion": { "kick": 0.05, "tiltDeg": 4, "return": 12, "triggerDeg": 15, "pumpTravel": 0.07, "drumStepDeg": 60, "magDrop": 0.18 },
+    "mods": {
+      "remote": { "_note": "GAME-09f: mod 1, remote detonate.", "remote": true },
+      "cluster": { "_note": "GAME-09f: mod 2, cluster.", "cluster": true }
     }
   }
 }

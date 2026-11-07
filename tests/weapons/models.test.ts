@@ -51,7 +51,13 @@ describe("GAME-09 models", () => {
           names.has("pump") || names.has("bolt"),
           `${id}: no pump and no bolt`,
         ).toBe(true);
-        expect(names.has("mag"), `${id}: no mag`).toBe(true);
+        // GAME-09f: B07's drum is its magazine, so a drum node counts too
+        // (its glb has body, drum, pump, trigger, muzzle_1, no separate
+        // mag).
+        expect(
+          names.has("mag") || names.has("drum"),
+          `${id}: no mag and no drum`,
+        ).toBe(true);
       } else if (spec.mode === "auto") {
         // GAME-09d: an auto blaster spins a pair of flywheels (B04) or
         // cycles a bolt (B06, whose approved model has one). Either is a

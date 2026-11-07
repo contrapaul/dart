@@ -38,6 +38,7 @@ export class Viewmodel {
   private restQ = new Map<string, THREE.Quaternion>();
   private _q = new THREE.Quaternion();
   private _axisX = new THREE.Vector3(1, 0, 0);
+  private _axisY = new THREE.Vector3(0, 1, 0);
   /** Break action: a fired barrel keeps its spent shell until the reload
    *  opens the breach and throws it out. */
   private spent = [false, false, false, false];
@@ -53,6 +54,11 @@ export class Viewmodel {
   private trigA = 0;            // eased trigger rotation
   private trigClock = 99;       // seconds since last shot
   private wheelA = 0;           // cumulative flywheel angle
+  // GAME-09f: B07's revolver drum: the angle it has turned, the angle it
+  // is coming from, and the angle it is easing to (one chamber per shot).
+  private drumA = 0;
+  private drumFrom = 0;
+  private drumTarget = 0;
   private ejT = [-1, -1, -1, -1]; // 0..1 flight per barrel, -1 idle
 
   private constructor(spec: BlasterSpec, scene: THREE.Object3D) {
@@ -156,6 +162,12 @@ export class Viewmodel {
     this.kickVel += this.spec.motion.kick * this.spec.motion.return;
     this.trigClock = 0;
     if (this.spec.mode === "break") this.spent[m] = true;
+    // GAME-09f: a pump shot indexes the drum one chamber (drumStepDeg),
+    // which animate eases across the priming that starts on this press.
+    if (this.spec.mode === "pump" && this.spec.motion.drumStepDeg) {
+      this.drumFrom = this.drumA;
+      this.drumTarget += this.spec.motion.drumStepDeg * DEG;
+    }
   }
 
   // Public test/render accessors (Loadout drives these each frame).
@@ -221,6 +233,24 @@ export class Viewmodel {
       if (pn) {
         const r = this.restP.get("pump");
         if (r) pn.position.set(r[0], r[1], r[2] + off);
+      }
+      // GAME-09f: B07's drum turns one chamber per shot about its bore
+      // axis (its local Y: the drum's rest rotation is 90 degrees about
+      // X), eased across the priming time with the pump (B01 has no drum
+      // node and no drumStepDeg, so it is untouched).
+      if (m.drumStepDeg) {
+        if (blaster.state === "priming") {
+          this.drumA = this.drumFrom + (this.drumTarget - this.drumFrom) * blaster.progress;
+        } else {
+          // Priming over (or the shot dropped): the drum finishes its
+          // index, so it never sits between chambers.
+          this.drumA = this.drumTarget;
+        }
+        const dn = this.nodeByName.get("drum");
+        if (dn) {
+          const q = this.restQ.get("drum");
+          if (q) dn.quaternion.copy(q).multiply(this._q.setFromAxisAngle(this._axisY, this.drumA));
+        }
       }
       this.applyMagDrop(blaster, m.magDrop ?? 0);
     } else if (sp.mode === "auto") {

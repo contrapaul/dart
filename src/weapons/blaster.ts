@@ -32,6 +32,9 @@ export interface MotionSpec {
   pumpTravel?: number;
   magDrop?: number;
   wheelSpin?: number;
+  /** GAME-09f: B07's drum: degrees the drum node turns per shot (one
+   *  chamber), eased over the pump time by the viewmodel. */
+  drumStepDeg?: number;
   breachOpenDeg?: number;
   latchDeg?: number;
 }
@@ -73,6 +76,14 @@ export interface BlasterSpec {
   /** GAME-09d: B06's explosive mod: every nth shot explodes at its first
    *  hit through the shared ExplosionSystem. 0: no explosive shots. */
   explosiveEvery: number;
+  /** GAME-09f mod 1 (B07 remote detonate): rounds stop where they first
+   *  hit and stay live; a fire press while any are live detonates them
+   *  all instead of firing. */
+  remote: boolean;
+  /** GAME-09f mod 2 (B07 cluster): the round's blast throws four small
+   *  blasts around it (the shared explosion reads the data's cluster
+   *  block). */
+  cluster: boolean;
 }
 
 export interface BlasterControls {
@@ -90,6 +101,12 @@ export interface DartFiring {
     type: DartTypeName,
     shot?: DartShot | null,
   ): void;
+  /** GAME-09f: the live remote rounds waiting to be detonated, and the
+   *  detonation of them all (B07's remote mod). The real DartSystem has
+   *  both; a test fake may omit them (a blaster without the mod never
+   *  calls them). */
+  liveRounds?(): number;
+  detonateLive?(): number;
 }
 
 // GAME-09b: shot ids, one counter for every blaster, so two blasters'
@@ -116,6 +133,9 @@ interface RawMod {
   chunk?: ShotChunk | null;
   /** GAME-09d: every nth shot of this mod explodes (the explosive mod). */
   explosiveEvery?: number;
+  /** GAME-09f: B07's remote detonate and cluster mods. */
+  remote?: boolean;
+  cluster?: boolean;
   _note?: string;
 }
 
@@ -144,6 +164,9 @@ interface RawBlaster {
   chunk?: ShotChunk | null;
   /** GAME-09d: every nth shot explodes (B06's explosive mod). */
   explosiveEvery?: number;
+  /** GAME-09f: B07's remote detonate and cluster mods. */
+  remote?: boolean;
+  cluster?: boolean;
   mods?: Record<string, RawMod>;
 }
 
@@ -185,6 +208,8 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     motion: raw.motion,
     chunk: raw.chunk ?? null,
     explosiveEvery: raw.explosiveEvery ?? 0,
+    remote: raw.remote ?? false,
+    cluster: raw.cluster ?? false,
   };
   for (const m of activeMods) {
     const mod = raw.mods?.[m];
@@ -203,6 +228,8 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
     if (mod.chunk !== undefined) s.chunk = mod.chunk;
     if (mod.explosiveEvery !== undefined) s.explosiveEvery = mod.explosiveEvery;
+    if (mod.remote !== undefined) s.remote = mod.remote;
+    if (mod.cluster !== undefined) s.cluster = mod.cluster;
     for (const n of mod.show ?? []) if (!s.show.includes(n)) s.show.push(n);
     for (const n of mod.hide ?? []) if (!s.hide.includes(n)) s.hide.push(n);
   }
@@ -445,6 +472,14 @@ export class Blaster {
   private updatePump(controls: BlasterControls): void {
     const s = this.spec;
     if (!controls.firePressed) return;
+    // GAME-09f mod 1 (Paul): with the remote mod, a press while any
+    // rounds are live detonates them all instead of firing; a press with
+    // none live fires as usual. The detonation spends no round and works
+    // the pump not at all: nothing left the drum.
+    if (s.remote && this.darts.liveRounds && this.darts.liveRounds() > 0) {
+      this.darts.detonateLive?.();
+      return;
+    }
     if (this.mag > 0) {
       this.mag -= 1;
       this.shots += 1;
@@ -547,6 +582,12 @@ export class Blaster {
     this.shot.explodes =
       this.spec.explosiveEvery > 0 && this.shots % this.spec.explosiveEvery === 0;
     this.shot.exploded = false;
+    // GAME-09f: the launcher round explodes at its first hit, every shot
+    // (explosiveEvery 1 on B07). With the remote mod it stops where it
+    // hits instead, live until a press detonates it; with the cluster mod
+    // its blast also throws four small ones around it.
+    this.shot.liveRound = this.spec.remote && this.shot.explodes;
+    this.shot.clustered = this.spec.cluster && this.shot.explodes;
   }
 
   // The aim for this step, set in update() so fireDart reads it.

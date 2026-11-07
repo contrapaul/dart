@@ -693,6 +693,77 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: GAME-09f review, merged (Claude Opus 5.5): B07 Collateral
+
+- Reviewed dgx-spark's run. Fixed in review:
+  - Both mods were always on, with two invented placeholder mods
+    (`longrange`, `rapid`) in their place. The card makes remote detonate
+    mod 1 and cluster mod 2, so they are now `mods.remote` and
+    `mods.cluster`; plain B07 blasts on its hit. The env-03 station offers
+    `remote`, moved to (-2.5, 0, -7) so B03's station does not hide it.
+  - The run rewrote `data/blasters.json` and `data/levels/env-03.json`
+    through a JSON dump, reformatting every blaster. Both are back in
+    main's compact layout with only B07's lines added.
+  - Cluster on its own never clustered: the impact hook dropped the
+    shot's `clustered` flag (only a remote detonation passed it). Fixed in
+    `src/weapons/impacts.ts`, with test 13b.
+- Played in env-03 (the pane was hidden, so the loop was stepped by hand):
+  plain B07 lands one launcher blast; with remote the round sits live,
+  the next press sets it off and spends no round; with cluster one round
+  gives five blasts (one launcher, four cluster 0.27 s later); the drum
+  node turns; the player's health stays at 100 throughout.
+- Not checked by eye: B07 on screen (viewmodel placement, the drum's look
+  as it turns), the blast push on Foamers in play (Foamer colliders do not
+  build while the pane is hidden; unit tests cover it), the sounds.
+- tsc, vitest (790 passed, 2 skipped), build green.
+
+### 2026-11-08: GAME-09f, both stages done (Qwen 3.8 Flash Next via Pi, branch `game-09f`)
+
+- Task (Paul): `tasks/GAME-09f.md`, B07 Collateral gameplay, two stages.
+- Stage 1 (commit `GAME-09f: stage 1, ...`): the `launcher` dart type
+  (`data/darts.json`: 18 m/s, gravityScale 1.0, explodes at its first
+  hit), B07 Collateral in `data/blasters.json` (pump, primeTime 0.9,
+  drum 6 / reserve 18 / start 12, reload 2.5, `explosiveEvery` 1, key 7
+  in `src/game/game.ts` and `src/range/main.ts`), and named blast
+  profiles in `data/explosion.json` read by the shared
+  `src/weapons/explosion.ts` (`dart` = B05/B06's old numbers, unchanged;
+  `launcher` carves 1.0 m, 25 damage, 3.5 m range, and shoves each Foamer
+  it damaged 2.5 m outward through the Foamer system's existing
+  `knockStep`, so a wall stops them and the player, who is never in the
+  Foamer list, is never touched). The viewmodel turns B07's `drum` node
+  60 deg about its bore (its local Y) per shot, eased over the priming,
+  from `motion.drumStepDeg`; B01 has none and is untouched. Sounds
+  `B07-fire`/`B07-pump`/`B07-reload` placeholder synths + cues (added to
+  `design/SOUNDS.md` 2.8), an env-03 mod station (B07 remote), and
+  `tests/weapons/b07.test.ts`.
+- Stage 2 (second commit): mod 1 remote detonate (a round that hits stops
+  as a new LIVE dart state, cap `maxLiveRounds` 3 in `data/darts.json`,
+  the oldest goes off when a fourth fires; a fire press while any are
+  live detonates them all through `DartSystem.detonateLive` and spends no
+  round; the press plays `B07-detonate` and each blast is the launcher
+  profile through the existing `onDetonate` hook) and mod 2 cluster (a
+  clustered blast schedules the data's four small `cluster` blasts, 1.5 m
+  out at the four sides, 0.25 s later, in simulation time, through the
+  same cap; `maxPerSecond` raised 6 -> 10 so a B07 round's five blasts,
+  or two rounds back to back, never lose one to the cap, as the card
+  asks). Tests 11-15 in the same file cover the remote stops, the press,
+  the cap, the four sides after the delay, and the cap room.
+- Decisions recorded in PLAN.md 14 (2026-11-08 entries): explosion
+  profiles, the shove through `knockStep`, LIVE as a dart state, the
+  simulation-time cluster.
+- `tests/weapons/models.test.ts` now accepts `drum` as B07's magazine
+  node (its approved glb has no `mag`), like the earlier pump/bolt
+  widening; `tests/weapons/b05.test.ts` order check extended with B07.
+- Green: `npx tsc --noEmit`, `npx vitest run` (112 files, 789 passed, 2
+  skipped), `npm run build`. No other repo touched, no dev server run.
+- Not checked by eye (this session had no browser): B07 in hand (viewmodel
+  placement and scale are start values), the drum's turn against the real
+  glb (the axis is read from its rest quaternion 90 deg about X, not
+  seen), the pump's look, the launcher round's arc and blast feel, and
+  the four placeholder sounds. B07's flight
+  sound (B07-flight in SOUNDS.md) was not asked for by the card and is
+  not wired.
+
 ### 2026-11-07: GAME-09e review, merged (Claude Opus 5.5): B05 Shrike
 
 - Read through: the precision dart (and `precisionHeavy` for the heavy

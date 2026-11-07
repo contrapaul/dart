@@ -7,6 +7,12 @@ import { DEBRIS_GROUPS } from "../physics/world";
 import type { DebrisSystem } from "../voxel/debris";
 import tuning from "../../data/explosion.json";
 
+/** One blast profile (data/explosion.json profiles). GAME-09f: today's
+ *  numbers are the `dart` profile (B05 and B06 keep them); `launcher` is
+ *  B07's round and shoves Foamers; `cluster` is a cluster blast. */
+export type BlastProfileName = keyof typeof tuning.profiles;
+export type BlastProfile = (typeof tuning.profiles)[BlastProfileName];
+
 // GAME-09d: the shared explosion (CONTENT-PLAN 4: B05, B06 and B07 all gain
 // explosive options, and explosions carve). One system serves every
 // explosive dart, so a blast looks and hits the same whoever threw it.
@@ -37,17 +43,21 @@ export interface ExplosionTarget {
 
 /** What the system calls on the Foamer system (a structural subset, so a
  *  test can pass a fake). blastDamage is the non-dart damage path (see
- *  Foamers.blastDamage); list is every live Foamer. */
+ *  Foamers.blastDamage); list is every live Foamer. GAME-09f: knockStep is
+ *  the shield's existing shove (optional so an old fake still fits): a
+ *  launcher profile with pushMetres above 0 shoves every Foamer it
+ *  damaged away from the blast through it, a wall stopping them. The
+ *  player is not in the Foamer list, so the push never reaches them. */
 export interface BlastDamageTargets {
   readonly list: readonly { centre: THREE.Vector3 }[];
   blastDamage(f: { centre: THREE.Vector3 }, amount: number): void;
+  knockStep?(f: { centre: THREE.Vector3 }, dirX: number, dirZ: number, want: number): number;
 }
-
-const T = tuning;
 
 // Shared scratch: explode allocates nothing per blast after construction.
 const _c = new THREE.Vector3();
 const _push = new THREE.Vector3();
+const _side = new THREE.Vector3();
 
 export class ExplosionSystem {
   /** Called after each carve that removed voxels, with the removed ones,
@@ -63,6 +73,8 @@ export class ExplosionSystem {
   /** Simulation seconds, advanced by tick. */
   time = 0;
   readonly stats = { blasts: 0, dropped: 0, damage: 0 };
+  /** GAME-09f: blasts pending in simulation time (a cluster's follow-ups). */
+  private pending: { point: THREE.Vector3; profile: BlastProfileName; at: number }[] = [];
   private bucket = -1;
   private bucketCount = 0;
   private _ignore: RAPIER.Collider | null = null;
@@ -73,10 +85,24 @@ export class ExplosionSystem {
     private targets: ExplosionTarget[],
   ) {}
 
-  /** Advance the cap's clock. Chained onto the dart system's update by
-   *  DartImpacts, so it ticks whenever the game steps. */
+  /** Advance the cap's clock and fire due pending blasts. Chained onto the
+   *  dart system's update by DartImpacts, so it ticks whenever the game
+   *  steps. No wall clock anywhere: a test run under load behaves like the
+   *  game. */
   tick(dt: number): void {
     this.time += dt;
+    for (let i = this.pending.length - 1; i >= 0; i--) {
+      const p = this.pending[i];
+      if (p.at > this.time) continue;
+      this.pending.splice(i, 1);
+      this.explode(p.point, p.profile);
+    }
+  }
+
+  /** GAME-09f mod 2: queue a blast at a future simulation time (the
+   *  cluster's four small blasts after their delay). */
+  private schedule(point: THREE.Vector3, profile: BlastProfileName, at: number): void {
+    this.pending.push({ point: point.clone(), profile, at });
   }
 
   /** Ignore this collider's body in the outward push (the player's own
@@ -86,19 +112,23 @@ export class ExplosionSystem {
     this._ignore = collider;
   }
 
-  /** The blast at a world point. Over the per-second cap it does nothing. */
-  explode(point: THREE.Vector3): void {
+  /** The blast at a world point, in a profile (default: the dart's, so
+   *  B05's and B06's blasts are unchanged). Over the per-second cap (shared
+   *  across profiles) it does nothing. clustered: also queue the four
+   *  small cluster blasts (GAME-09f mod 2). */
+  explode(point: THREE.Vector3, profile: BlastProfileName = "dart", clustered = false): void {
     const second = Math.floor(this.time);
     if (second !== this.bucket) {
       this.bucket = second;
       this.bucketCount = 0;
     }
-    if (this.bucketCount >= T.maxPerSecond) {
+    if (this.bucketCount >= tuning.maxPerSecond) {
       this.stats.dropped++;
       return;
     }
     this.bucketCount++;
     this.stats.blasts++;
+    const T = tuning.profiles[profile];
 
     // 1. Carve a sphere from every volume the point reaches. The carve is
     // the same call a dart carve makes; islands cut loose by it drop
@@ -114,17 +144,28 @@ export class ExplosionSystem {
     }
 
     // 2. Damage every Foamer whose centre is in range, linearly to 0 at the
-    // edge, through the non-dart path (it can go down or pop).
+    // edge, through the non-dart path (it can go down or pop). GAME-09f: a
+    // profile with pushMetres above 0 also shoves each one hit away from
+    // the blast through knockStep with the same falloff, so a wall stops
+    // them, and the player is never in the list.
     if (this.foamers) {
       const range2 = T.rangeMetres * T.rangeMetres;
       for (const f of this.foamers.list) {
         const d2 = f.centre.distanceToSquared(point);
         if (d2 > range2) continue;
-        const fall = 1 - Math.sqrt(d2) / T.rangeMetres;
+        const dist = Math.sqrt(d2);
+        const fall = 1 - dist / T.rangeMetres;
         const amount = T.damageCentre * fall;
         if (amount <= 0) continue;
         this.stats.damage++;
         this.foamers.blastDamage(f, amount);
+        const want = T.pushMetres * fall;
+        if (want > 0 && this.foamers.knockStep) {
+          const d = dist || 1e-3;
+          this.foamers.knockStep(
+            f, (f.centre.x - point.x) / d, (f.centre.z - point.z) / d, want,
+          );
+        }
       }
     }
 
@@ -151,6 +192,19 @@ export class ExplosionSystem {
     // 4. A foam burst of chunks at the point. The debris system's ring is
     // the cap on chunks (destruction.json debris.max), as everywhere else.
     this.debris.burst(point, T.burstChunks, T.burstSize, materialId(T.burstMaterial));
+
+    // 5. GAME-09f mod 2 (Paul): a clustered blast throws four small blasts
+    // of the data's cluster profile around it, distanceMetres out at the
+    // four sides (world axes), after delaySeconds. They run through the
+    // same system and the same per-second cap as everything else.
+    if (clustered) {
+      const c = tuning.cluster;
+      const at = this.time + c.delaySeconds;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        _side.set(dx * c.distanceMetres, 0, dz * c.distanceMetres);
+        this.schedule(_c.copy(point).add(_side), c.profile as BlastProfileName, at);
+      }
+    }
 
     this.onExplode(point);
   }

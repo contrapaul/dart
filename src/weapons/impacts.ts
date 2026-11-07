@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
-import { DartSystem, type DartHit } from "./darts";
+import { DartSystem, type DartHit, type DartTypeName } from "./darts";
 import dartTuning from "../../data/darts.json";
 import { carveSphere, type RemovedVoxel } from "../voxel/carve";
 import { material } from "../voxel/materials";
 import { DebrisSystem } from "../voxel/debris";
 import type { VoxelVolume } from "../voxel/chunk";
-import type { ExplosionSystem } from "./explosion";
+import type { ExplosionSystem, BlastProfileName } from "./explosion";
 
 // Wires dart hits on voxel volumes into carving and foam debris. A
 // VoxelTarget is anything with a voxel volume and its own colliders; a
@@ -22,6 +22,14 @@ export interface VoxelTarget {
 }
 
 const centreScratch = new THREE.Vector3();
+
+/** GAME-09f: which blast profile a dart type blasts with. The launcher's
+ *  round uses the launcher profile (its own carve, range, damage, push);
+ *  every other type keeps the dart profile, which holds B05's and B06's
+ *  original numbers. */
+function profileFor(type: DartTypeName): BlastProfileName {
+  return type === "launcher" ? "launcher" : "dart";
+}
 
 export class DartImpacts {
   readonly stats = { hits: 0, carves: 0, voxelsRemoved: 0 };
@@ -51,7 +59,15 @@ export class DartImpacts {
     };
     if (this.explosion) {
       darts.onUpdate = (dt: number) => this.explosion!.tick(dt);
-      darts.onExplosiveHit = (hit) => this.explosion!.explode(hit.point);
+      // GAME-09f: a launcher round blasts in the launcher profile, every
+      // other explosive dart (B06's) keeps the dart profile it always had.
+      // A clustered round (B07's cluster mod) throws its four on this hit too.
+      darts.onExplosiveHit = (hit) =>
+        this.explosion!.explode(hit.point, profileFor(hit.type), hit.shot?.clustered ?? false);
+      // GAME-09f mod 1: a remote round's detonation (a fire press, or the
+      // cap popping the oldest) blasts where the round stopped.
+      darts.onDetonate = (point, type, clustered) =>
+        this.explosion!.explode(point, profileFor(type), clustered);
     }
   }
 

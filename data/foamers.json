@@ -8,7 +8,8 @@
       "slug": 6,
       "mega": 3,
       "precision": 8,
-      "precisionHeavy": 10
+      "precisionHeavy": 10,
+      "launcher": 4
     },
     "minDamageSpeed": 8,
     "turnRate": 6,
