@@ -6,6 +6,12 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+ENV-04 built 2026-11-07, both stages committed on `env-04`, not reviewed,
+not merged, not pushed (Qwen 3.8-27B via Pi): the E14 crushing toy press
+(`src/level/presses.ts`, timing and look in `data/press.json`), stepped by
+the arena page, plus the test corridor `env-04` with two presses a beat
+apart and the exit beyond. The look was not seen by eye and the two sounds
+not heard; the crush was not checked in a browser.
 ENV-03 built 2026-11-07, both stages committed on `env-03`, not reviewed,
 not merged, not pushed (Qwen 3.8-27B via Pi): the E13 mod station as
 `Level.stations` and the cabinet code (`src/arena/stations.ts`), granted
@@ -664,6 +670,111 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-04 review, merged (Claude Opus 5.5): the crushing toy press
+
+Three bugs fixed in review, all invisible to the unit tests:
+- **The first crush crashed the game.** `arenaExtras` handed `g.ui` to the
+  press player while the hooks were being set up, but the UI controller
+  is built after that (the comment at the top of the function says so),
+  so the press held `null` and threw on its first crush. It now reads
+  `g.ui` when a crush lands.
+- **The test corridor did not load.** The page's validator refused it
+  (side walls overlapping the end walls, the exit pad in the north
+  wall). The press tests validate a level of their own, never this one.
+  New `tests/level/env-04.test.ts` validates the real file; the walls are
+  16 m, the exit 0.5 m off the north wall, the presses at z -0.5 and -4.
+- **The presses could be walked round.** Each pad was 1.5 m in a 3 m
+  corridor, and the level's note said so. The pads now span the corridor.
+- **A crush skipped the grace.** It went through `health.damage`, which
+  ignores everything for 0.5 s after a hit. `PlayerHealth.crush` skips
+  that grace and still rides the difficulty multiplier (Story: 50 of
+  100). Test in `tests/player/health.test.ts`.
+- **Played** (`arena.html?watch&level=env-04`): on a pad the cycle runs
+  up, telegraph, slam, and the player goes from 100 to 0 and is downed;
+  between the presses the player is untouched through every phase of
+  both; the exit completes the level. Not seen by eye: the head, the
+  shake and light, the sounds (pane hidden).
+- For Paul: on Story difficulty a crush takes half the bar, so it does
+  not kill from full health there. Say if a press should kill on every
+  difficulty.
+
+### 2026-11-07: ENV-04 both stages committed (Qwen 3.8-27B via Pi, branch `env-04`): the crushing toy press
+
+- **Task:** the E14 hazard that can kill, per `tasks/ENV-04.md`: a toy
+  stamp on a timer that telegraphs (shake, light on, windup sound), slams,
+  holds, rises; crushing whoever stands on its pad. Test level `env-04`.
+  Two commits: stage 1 `8eb75be`, stage 2 `5b34d7d`, both on `env-04`,
+  unreviewed, unmerged, unpushed.
+- **The press.** `data/press.json`: the cycle (up 2.0, telegraph 0.7, slam
+  0.12, down 0.5, rise 1.0, 4.32 s whole), 100 damage, head thickness 0.5 m
+  with a 2 cm air gap at the bottom, pad 6 cm, two 0.3 m posts, shake 3 cm
+  at 12 Hz, plus a [Paul] note that the lime/purple look is a placeholder
+  that stays away from orange, pink, blue and yellow. `src/level/presses.ts`:
+  `buildPress` draws the pad, the two posts and the head (a chunky block,
+  a capsule as the soft face, its light) on a kinematic collider that moves
+  with it; `PressSystem.step(dt, player, { list, pop })` advances each press
+  on its own phase (its `t`) and, once per slam end, runs the footprint
+  test: the pad's box (x and z) up to the head's low point against a body's
+  feet. In it, the player goes to the page handler and a Foamer is popped.
+  No physics contact: the crush is the test, and one slam damages once, not
+  per step of the hold.
+- **The damage path (stage 1).** The arena page's `HealthPressPlayer`
+  copies the player's feet and calls `health.damage(amount, "press")` on
+  the crush, then the hurt sound, the HUD flash, and `ui.pop()` when down,
+  the same order as the Foamer hit in `src/game/game.ts`. The raised
+  shield does not block it: the shield's arc test answers Foamer attacks
+  only, and a head comes from the top. At 100 with no armour at Normal
+  (damageTaken 1) one slam downs; on Story (0.5) it is 50, left to the
+  reviewer per the card's Easy-difficulty note.
+- **Wiring, the ENV-01 lesson.** The press reaches the arena page through
+  `src/arena/extras.ts`: `buildLevel` builds every `presses[]` entry into
+  `BuiltLevel.presses`, `arenaExtras` takes the handles and makes one
+  `HealthPressPlayer` with the real `PlayerHealth`, UI, HUD and audio, and
+  one `PressSystem` over the handles; the page's step hook (after the
+  runner) copies the player's feet, steps the system with `foamers.list`
+  and a pop that plays `FX-pop` and flashes, plays `ENV-press-windup` at
+  each windup and `ENV-press-slam` at each slam (both positional), and a
+  fall or a Try again calls `presses.reset()` so the heads are back at rest
+  and the lights off. `watchState` reports each press's phase. No test
+  builds the arena page, so this wiring is from reading the code, like
+  ENV-03's; nothing in a unit test proves the page passes the press to the
+  game.
+- **Sounds.** `ENV-press-windup` (a rising square over a noise burst) and
+  `ENV-press-slam` (a noise thud that low-passes from 900 Hz down to 60,
+  a bass sine under it), synth only, in `data/sounds.json`, rows in
+  `design/SOUNDS.md`.
+- **Stage 2.** `data/levels/env-04.json`: a 3 m wide corridor (wall faces
+  at x ±1.5, walls 0.5 m thick, ceiling 4.5), 17 m long; two presses at
+  z = -2.5 and -6, both 1.5 x 1.5 m, 2.2 m between pad and head face, phase
+  0 and 2.16 (half the cycle apart, so they never slam the same step); the
+  exit pad beyond them at z = -7.5, `arenas: []` so it works from the first
+  frame; name, accent and setting are [Paul]. Registered as `env-04` in
+  `src/arena/levels.ts` and the key list in `tests/level/ring-load.test.ts`.
+  The head is clear of a 1.8 m standing player: its face rests at 2.26 m
+  above the floor and comes down to 8 cm on the pad at the bottom.
+- **Validation.** `src/level/validate.ts`: a duplicate id, the pad's
+  numbers, and a `phase` outside `[0, CYCLE_TOTAL)` are errors, and a pad
+  that sits inside a solid of the level (anything but the shell) is an
+  error.
+- **Tests.** 13 in `tests/level/press.test.ts`, all built through
+  `buildLevel` (the builder the page uses, ENV-02's pattern): the cycle is
+  the data's; the five phases walk in order on a cycle; one slam and one
+  windup event per cycle, carrying the page's sounds; a player in the
+  footprint at the slam takes the full 100 (no shield share) and downs (one
+  pop, the hurt sound); a player 2 m away takes nothing; one slam damages
+  exactly once, not every step of the 0.5 s hold; a Foamer under the head
+  pops, one beside stays; two presses half a cycle apart slam on different
+  steps; a level with no presses loads and runs as before; a phase named
+  into the data's cycle starts that press already off its rest; reset puts
+  the heads back. The ring-load key list now counts env-04 among the nine
+  registered levels.
+- `npx tsc --noEmit` clean, `npx vitest run` 102 files and 703 passed with
+  2 skipped, `npm run build` clean, the em dash check clean on every file
+  touched.
+- **Not checked by eye:** no browser in this run. Nobody has seen the pad,
+  the posts or the head in the world, the shake, the light, the capsule's
+  face, or the crush in `arena.html?level=env-04`; the two sounds have not
+  been heard; the look is the placeholder the data's [Paul] note names.
 ### 2026-11-07: BUG-12 review, merged (Claude Opus 5.5): anchors and the sleeping piece
 
 - The anchor fix is right: a ceiling piece beds its top row, a wall piece

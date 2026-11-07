@@ -326,6 +326,8 @@ The other Foamers (IDs given when each is built):
 | LV-switch | Switch or button | Yes | 3 | Foley |
 | ENV-button-press | Toy button pressed, cap squashes and lights | ENV-02 | 3 | Code: a click over a short rising tone |
 | ENV-button-dead | Toy button pressed again, nothing happens | ENV-02 | 2 | Code: a flat dull click |
+| ENV-press-windup | The crushing press telegraphs: the head shakes and its light comes on | ENV-04 | 2 | Code: a rising electric whine over a low rattle |
+| ENV-press-slam | The press lands: the head hits the pad | ENV-04 | 3 | Code: a heavy thud, a low boom under a fast decaying hit |
 | LV-key | Key picked up | Later | 2 | Code |
 | LV-secret | Secret found | Later | 1 | Code |
 | LV-wall-break | Wall blasted through to a secret | Later | 3 | Foley: crumble a big polystyrene sheet |

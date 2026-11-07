@@ -2,6 +2,7 @@ import type { Level } from "../level/format";
 import envOneJson from "../../data/levels/env-01.json";
 import envTwoJson from "../../data/levels/env-02.json";
 import envThreeJson from "../../data/levels/env-03.json";
+import envFourJson from "../../data/levels/env-04.json";
 import fourJson from "../../data/levels/1-4.json";
 import pitJson from "../../data/levels/1-1-pit.json";
 import ringJson from "../../data/levels/1-4-ring.json";
@@ -32,6 +33,7 @@ export const ARENA_LEVELS: Record<string, Level> = {
   "env-01": envOneJson as unknown as Level,
   "env-02": envTwoJson as unknown as Level,
   "env-03": envThreeJson as unknown as Level,
+  "env-04": envFourJson as unknown as Level,
 };
 
 /** The level the page should play: `?level=` when it names one, else the
