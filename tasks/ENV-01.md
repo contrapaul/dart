@@ -67,6 +67,25 @@ Two stages, each committed on its own and each leaving the game working.
   do not build a new physics path.
 - Two stacks in the room, one near the column.
 
+**Stage 3: a crate breaks whole when worn** (added 2026-11-07 after
+review; Paul chose it). In play, darts never cut a full ring through a
+bottom crate, so the top crate never fell (HANDOFF, ENV-01 review). The
+rule: once a crate has lost a share of its voxels (`crate.breakShare` in
+`data/destruction.json`, start 0.25), all of its remaining voxels are
+removed at once: some become foam debris inside the existing caps, the
+rest just vanish, and the island search then runs on what was removed,
+so the crate above falls as before.
+- **Data:** a `PieceVolume` may carry `crate: "<id>"`; the volumes with
+  the same id in one piece are one crate. Volumes with no `crate` behave
+  exactly as today. Tag every crate in `env-01.json`.
+- **Code:** count each crate's voxels when the level fills, and after
+  each carve (darts, melee, anything that reports a carve) add the
+  removed voxels to their crate's tally. Find where carves are reported
+  (`src/game/game.ts`, `impacts.onCarve`, and `src/game/melee.ts`) and
+  make one path for both. Keep the per-voxel crate lookup cheap (a map
+  filled at load, or a bounds check against each crate's box).
+- **Plinth:** the bedrock plinth is never part of a crate.
+
 ## Done when
 
 - Tests in new files: the level loads and its pieces fit the zone cap;
@@ -81,6 +100,11 @@ Two stages, each committed on its own and each leaving the game working.
   the page: say so).
 - Every commit message ends with a blank line, then:
   `Co-Authored-By: DeepSeek V4.1 Flash via Pi <noreply@local>`
+
+- Stage 3 tests: a crate that loses less than the share stays; one that
+  passes it is gone entirely; the crate above it becomes an island; a
+  melee carve counts too; a volume with no `crate` tag is unchanged; the
+  debris cap holds.
 
 ## Not in this task
 
