@@ -1,0 +1,47 @@
+{
+  "_note": "ENV-01 stage 1: a test level, not a level to ship. One plain lit room 16 x 16 m, a player start, an exit pad in the room, and an empty arenas list so no lock ever shuts anything (the page's exit works from the first frame). The column is a shell box, 0.8 x 3 x 0.8 m at [-3, 1.5, 0], indestructible. col-coat is E01: one piece of four volumes, 0.3 m thick on all four sides, tied to the floor so its lowest voxel row is the bedrock anchor (build.ts fillPieces) and the coat cannot fall off as an island. Metres, Y up, -z is north, positions are box centres, sizes are full extents.",
+  "meta": {
+    "id": "env-01",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 60,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+
+  "shell": [
+    { "id": "room-floor", "shape": "box", "pos": [0, -0.5, 0],
+      "size": [18, 1, 18], "material": "greybox-dark" },
+    { "id": "room-ceiling", "shape": "box", "pos": [0, 4.5, 0],
+      "size": [16, 1, 16], "material": "greybox" },
+    { "id": "room-wall-w", "shape": "box", "pos": [-8.5, 2.5, 0],
+      "size": [1, 5, 18], "material": "greybox" },
+    { "id": "room-wall-e", "shape": "box", "pos": [8.5, 2.5, 0],
+      "size": [1, 5, 18], "material": "greybox" },
+    { "id": "room-wall-n", "shape": "box", "pos": [0, 2.5, -8.5],
+      "size": [16, 5, 1], "material": "greybox" },
+    { "id": "room-wall-s", "shape": "box", "pos": [0, 2.5, 8.5],
+      "size": [16, 5, 1], "material": "greybox" },
+
+    { "id": "col-shell", "shape": "box", "pos": [-3, 1.5, 0],
+      "size": [0.8, 3, 0.8], "material": "greybox-dark" },
+
+    { "id": "exit-pad", "shape": "box", "pos": [3, 0.01, -6],
+      "size": [2, 0.02, 2], "material": "foam-white" }
+  ],
+
+  "pieces": [
+    { "id": "col-coat", "kind": "cover", "anchor": "floor",
+      "volumes": [
+        { "pos": [-3.55, 1.5, 0], "size": [0.3, 3, 1.4], "material": "foam-yellow" },
+        { "pos": [-2.45, 1.5, 0], "size": [0.3, 3, 1.4], "material": "foam-yellow" },
+        { "pos": [-3, 1.5, -0.55], "size": [0.8, 3, 0.3], "material": "foam-yellow" },
+        { "pos": [-3, 1.5, 0.55], "size": [0.8, 3, 0.3], "material": "foam-yellow" }
+      ] }
+  ],
+
+  "arenas": [],
+
+  "playerStart": { "pos": [0, 0, 6], "yaw": 0 },
+  "exit": { "pos": [3, 1, -6], "size": [2, 2, 2] }
+}
