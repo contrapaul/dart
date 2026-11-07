@@ -681,6 +681,17 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: B02 Musketeer model (ART-04, Claude Opus 5.5)
+
+- `art/blasters/B02/build.py` builds `public/models/blasters/B02.glb`
+  from the approved brief in Blender (Steam install), on B01's helpers.
+  A plain round bumper (Paul dropped the flared one mid-build). Renders in
+  `art/blasters/B02/renders/`; notes, departures from the brief and the
+  checks in `art/blasters/B02/NOTES.md`. All contract checks pass and the
+  export is repeatable.
+- Not done: the slide's kick animation, and pointing B02's data at the
+  model (after GAME-09c merges). Waiting for Paul's look.
+
 ### 2026-11-07: GAME-10k review, merged (Claude Opus 5.5): the F11 Seawall
 
 - **Look, checked by eye:** the turnaround matches the brief: deep lime

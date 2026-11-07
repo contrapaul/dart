@@ -176,7 +176,7 @@ Unlock point:  [level]
 | ID | Name | Role | Ammo | Status |
 |---|---|---|---|---|
 | B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Model approved 2026-11-01 (`public/models/blasters/B01.glb`, built by `art/blasters/B01/build.py`); in game with GAME-09 |
-| B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Gameplay on a placeholder model in GAME-09c (Paul, 2026-11-07); card and brief approved by Paul 2026-11-07 (`design/blasters/B02.md`); model not started |
+| B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Gameplay on a placeholder model in GAME-09c (Paul, 2026-11-07); card and brief approved by Paul 2026-11-07 (`design/blasters/B02.md`); model built 2026-11-07 by Claude (`public/models/blasters/B02.glb`, built by `art/blasters/B02/build.py`), contract checks pass, waiting for Paul's look |
 | B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Model approved 2026-11-01 (`public/models/blasters/B03.glb`, built by `art/blasters/B03/build.py`); in game with GAME-09 |
 | B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Model approved 2026-11-01 (`public/models/blasters/B04.glb`, built by `art/blasters/B04/build.py`); in game with GAME-09 |
 | B05 | Shrike | Precision, zoom, piercing | Precision dart | Details in CONTENT-PLAN 4; card and model not started |
