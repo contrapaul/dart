@@ -161,6 +161,9 @@ export class FallingPieces {
       if (pc.wakeWhenSourceDone && !pc.source.busy) {
         pc.wakeWhenSourceDone = false;
         pc.body!.wakeUp();
+        // Review: a rest it reported on the old colliders was not where it
+        // lands; report the real one when it sleeps again.
+        pc.rested = false;
       }
       if (!pc.body || pc.body.translation().y < -20) {
         this.dispose(pc, i);

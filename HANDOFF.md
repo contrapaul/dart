@@ -656,6 +656,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: BUG-12 review, merged (Claude Opus 5.5): anchors and the sleeping piece
+
+- The anchor fix is right: a ceiling piece beds its top row, a wall piece
+  beds only the voxels built into an axis-aligned shell box, so
+  `store-window` now wears as cover and `pit-island` still drops its
+  middle into the hole when carved.
+- **The tower plug, by design now.** LVL-02d wanted "a cardboard voxel
+  piece above floor 2 that one shot breaks"; it only did that because of
+  the bug, and the model rightly left the file for review. Review added
+  `anchor: "none"` (a piece that hangs from nothing: the first carve
+  drops it whole; `src/level/format.ts`, the validator skips its anchor
+  side) and set `tower-plug` to it. Test 9 of `level-1-2.test.ts` is
+  back to "drops as one slab". Played in `arena.html?level=1-2`: from
+  floor 2, the dart that hit the plug dropped it whole onto floor 2.
+- **Wake fix, one addition:** a piece that settled on the old colliders
+  had already reported its rest to the nav grid, so a woken piece never
+  reported where it really landed. Waking it now clears `rested`.
+- Not seen by eye: the pane was hidden. The bedrock rows of wall and
+  ceiling pieces show the bedrock colour where they are flush with the
+  shell, as floor anchors always have; worth a look in play.
+
 ### 2026-11-07: BUG-12, done, not yet reviewed (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `bug-12`): the wall and ceiling anchors, and the sleeping piece
 
 - **Task (card `tasks/BUG-12.md`).** Two fixes: `fillPieces` wrote a
