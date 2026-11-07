@@ -513,6 +513,29 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: LVL-04a review, merged (Claude)
+
+- Read the diff: `data/levels/1-4.json`, the level list, a new test file
+  and the level id list in `tests/level/ring-load.test.ts` (one id added,
+  nothing loosened). The seven section 14 rows are sound: full design
+  sizes, 2.8 m explore pillars, 3.2 m hall columns for the KIT 5 cap, a
+  clear 40 m centre lane for the charge, `noLock` plus `escape` for the
+  bridge, B03 from the loadout order, no fall damage.
+- Main merged in (one HANDOFF log conflict, both sides kept). `tsc`, the
+  full suite (585 pass, 2 skipped) and the build pass.
+- Played by script on `arena.html?watch&level=1-4`: the forecourt
+  renders with its four targets; the explore room locks and its Darter
+  telegraphs, charges, hits for 8 and stuns on the wall; the hall locks,
+  wave 1 is 4 Swarmers and a Darter, wave 2 is 4 Roamers and 2 Darters,
+  and its doors open on the clear; the bridge starts both Darters with no
+  door shut; stepping off the deck's side drops the player 9 m to the
+  ring, the escape ends the arena and removes the Darters, and the pad
+  shows "Level complete".
+- Not checked: the shield charge against a Darter on the deck, the
+  blast wall over the yard hole, whether the hall's columns read as
+  cover, the frame time. The page title is "DART: the Pit" for every
+  level (`arena.html`, older than this card).
+
 ### 2026-11-07: LVL-04a, Level 1-4 beats 1 to 5 (DeepSeek V4.1 Flash via Pi)
 
 - Asked: build beats 1 to 5 of Level 1-4 from its approved LVL-00 concept
