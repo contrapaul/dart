@@ -243,6 +243,10 @@ export class Foamer {
   /** GAME-10k: whether its tell part is drawn with the parry material
    *  now (the system's stepTell re-asserts it while it is on). */
   tellOn = false;
+  /** GAME-10l stage 3: the hits that have landed in the spray's run going
+   *  now, one every tick (the data's). Turns where the windup really
+   *  starts (the system's approach branch). */
+  sprayFired = 0;
   /** GAME-10l: the ally it is streaming health into (null when it is not
    *  healing), seconds until its next look for the most hurt ally, and the
    *  clock its stream's blobs drift on. The system fills these; a type with

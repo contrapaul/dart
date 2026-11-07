@@ -40,6 +40,7 @@ import { makePath, type NavGrid } from "../ai/nav-grid";
 import type { ProjectileSystem } from "./projectiles";
 import { homingOf, homingShotKind } from "./homing";
 import { healOf, canHeal, healRange, healthShare, HealStream, wandTipPoint } from "./heal";
+import { sprayOf, canSpray } from "./spray";
 import { SIGHT_QUERY_GROUPS } from "../physics/world";
 
 // Spawning, per-part dart damage with foam-core wounds, breaking,
@@ -258,7 +259,13 @@ export type FoamerSoundKind =
   | "wall"
   // GAME-10i, the Brawler: its foam sword chipping away. The generic
   // part-off still plays under it, the way the shield-break does.
-  | "sword-break";
+  | "sword-break"
+  // GAME-10l, the Biomechanic: the short damaging spray laying on the
+  // player (the F13-heal loop is owned by the sounds' state; the
+  // tank-break fires over the generic part-thump, the sword-break's
+  // pattern).
+  | "spray"
+  | "tank-break";
 
 /** GAME-10f: the Brawler's shockwave ring, one material for every ring. */
 const WAVE_MATERIAL = new THREE.MeshStandardMaterial({
@@ -767,6 +774,14 @@ export class FoamerSystem {
           f.wallTurn++;
           f.wallFired = false;
         }
+        // GAME-10l stage 2: the healing stream's sound loop (F13-heal) is
+        // owned by the sounds' state: no windup sound of its own (the throw's
+        // would be wrong when nothing flies at the player).
+        // GAME-10l stage 3: a spray's run counts its hits; the counter
+        // turns here and the hits land in the strike, one every tick.
+        if (f.attack()?.id === "spray") {
+          f.sprayFired = 0;
+        }
         sound(this, "attack", f, f.centre);
       } else if (charge && f.legs().length === 0 && this.mayAttack(f, this.headDist(f, player), this.engagementRange(f))) {
         // No legs left: no charge. It bites from the ground like a crawl.
@@ -940,7 +955,17 @@ export class FoamerSystem {
           } else if (inReach && atk.token === "ranged" && atk.id === "healStream") {
             // GAME-10l: the Biomechanic's healing stream goes to an ally,
             // never to the player, so nothing leaves the wand here and the
-            // throw sound does not play. Stage 2 fills the strike branch in.
+            // throw sound does not play. No heal is poured here either: the
+            // stream is the stepHeal loop, which keeps it while the target
+            // holds. The wand's spark-on (F13-heal, a loop while streaming)
+            // rides on the sounds' state.
+          } else if (inReach && atk.token === "ranged" && atk.id === "spray") {
+            // GAME-10l stage 3: the short damaging spray. No projectile
+            // leaves the wand: each tick that lands costs the player, one
+            // every spray.tick, through the ordinary bonk path (see the
+            // strike branch), and the spray's puff sounds as the run
+            // starts (the rest of the run is quiet: a short, bright one).
+            sound(this, "spray", f, f.centre);
           } else if (inReach && atk.token === "ranged") {
             // A throw is not a hit: the ball does the damage when it lands
             // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
@@ -1017,6 +1042,25 @@ export class FoamerSystem {
           this.projectiles.launch(f, player, spread, kind);
           f.pelletFired++;
           sound(this, "pellet", f, f.centre);
+        }
+      }
+      // GAME-10l stage 3: the Biomechanic's spray lands as the run goes on.
+      // One hit every tick (the data's own, past the player's post-hit grace
+      // so the whole run pours), perSecond over the ticks, one at a time
+      // through the ordinary bonk hit path (the raised shield takes its
+      // share; a parry turns nothing, so the spray has no parry window).
+      const sprayAtk = f.attack();
+      const spray = sprayOf(f.spec);
+      if (sprayAtk?.id === "spray" && spray && sprayAtk.token === "ranged"
+        && canSpray(f.spec, f) && dist <= spray.range + 0.3
+        && Math.abs(player.y - f.centre.y) < 2) {
+        const want = Math.min(
+          Math.round(spray.seconds / spray.tick),
+          Math.floor(f.stateTime / spray.tick) + 1,
+        );
+        while (f.sprayFired < want) {
+          f.bonk(sprayAtk.id);
+          f.sprayFired++;
         }
       }
       // GAME-10h: the Trawler's wall. One row of balls across the aim line
@@ -1218,24 +1262,26 @@ export class FoamerSystem {
    *  full and inside its heal range, that it can see, and holds that one
    *  while it stays in range and in sight, pouring heal.perSecond into it
    *  (never above its maximum). One ally at a time. With its tank gone it
-   *  cannot heal at all, and the chain is not drawn. */
+   *  cannot heal at all, and with its wand broken it does not heal either
+   *  (there is no tip to pour from: a hidden stream is a stream nobody
+   *  can see, and healing in the dark is only confusing). */
   private stepHeal(f: Foamer, dt: number): void {
     const heal = healOf(f.spec)!;
     f.healCheckIn = Math.max(0, f.healCheckIn - dt);
     const range = healRange(f.spec, f);
-    const tank = canHeal(f.spec, f);
+    const can = canHeal(f.spec, f);
     // It keeps the ally it holds while it is still worth mending and in
     // reach: one ally at a time, not a new one every look the shares cross
     // (two hurt allies would otherwise trade the stream back and forth and
     // neither would get anywhere). A new one is picked on the clock when it
     // holds nobody.
-    let target = tank ? f.healTarget : null;
+    let target = can ? f.healTarget : null;
     const lost = !target || !this.healable(f, target) ||
       Math.hypot(target.centre.x - f.centre.x, target.centre.z - f.centre.z) > range ||
       !this.healSight(f, target);
     if (lost) target = null;
     if (!target && f.healCheckIn <= 0) {
-      target = tank ? this.healPick(f, range) : null;
+      target = can ? this.healPick(f, range) : null;
       f.healCheckIn = heal.pickSeconds;
     }
     f.healTarget = target;
@@ -1245,7 +1291,7 @@ export class FoamerSystem {
     // one is mending, so the sight rays run once per walk, not per frame.
     if (target) f.healSeek = null;
     else if (!f.healSeek || !this.healable(f, f.healSeek)) {
-      f.healSeek = tank ? this.healSeekPick(f, range) : null;
+      f.healSeek = can ? this.healSeekPick(f, range) : null;
     }
     if (!target) {
       f.healStream?.hide();
@@ -1444,11 +1490,19 @@ export class FoamerSystem {
     input.playerY = player.y - playerData.eyeHeight;
     input.playerZ = player.z;
     input.attackRange = this.engagementRange(f);
-    // GAME-10g: with its turret gone the Crawler fights at melee range.
-    // The keep-distance ring would park it 14 m from a stomp it can never
-    // land, so while it can only stomp the brain closes like a bonker's.
-    // GAME-10h: the same for a Trawler with both launchers gone.
-    if ((pelletOf(f.spec) || wallOf(f.spec)) && this.chooseAttack(f) === "stomp") {
+    // GAME-10l stage 3: the Biomechanic holds its ring to heal from, while
+    // it can heal. With the tank gone it has no stream or spray left and
+    // closes in to bonk with the wand (the card). With the wand broken off
+    // it heals nobody (there is no tip to pour from) and sprays nobody
+    // (no nozzle), and the bonk is a wand without a wand: it closes in
+    // the same way, so the ring cuts in either case.
+    if (healOf(f.spec)) {
+      if (!canHeal(f.spec, f)) {
+        input.throwRange = input.attackRange;
+        input.preferredDistance = input.attackRange;
+        input.retreatDistance = input.attackRange;
+      }
+    } else if ((pelletOf(f.spec) || wallOf(f.spec)) && this.chooseAttack(f) === "stomp") {
       input.throwRange = input.attackRange;
       input.preferredDistance = input.attackRange;
       input.retreatDistance = input.attackRange;
@@ -1457,14 +1511,6 @@ export class FoamerSystem {
     // ring it would keep is 12 m from a bonk it can never land: the
     // brain closes like a bonker's while there is no ranged shot.
     else if (homingOf(f.spec) && !f.parts.has("blaster")) {
-      input.throwRange = input.attackRange;
-      input.preferredDistance = input.attackRange;
-      input.retreatDistance = input.attackRange;
-    }
-    // GAME-10l stage 2: the Biomechanic holds its ring to heal from, so its
-    // own 10 m is never cut down to a bonk's reach. With its tank gone it
-    // has no stream left and closes in to bonk, the way the others do.
-    else if (healOf(f.spec) && !canHeal(f.spec, f)) {
       input.throwRange = input.attackRange;
       input.preferredDistance = input.attackRange;
       input.retreatDistance = input.attackRange;
@@ -1845,6 +1891,18 @@ export class FoamerSystem {
       return f.spec.attacks.find((a) => (a as { big?: boolean }).big)!.id;
     }
     for (const a of f.spec.attacks) {
+      // GAME-10l stage 3: the healing stream is an attack while there is an
+      // ally to mend: one it holds, or one it is walking the ring toward.
+      // The ring ride runs on it (the 10 m windup is what lets the brain
+      // come round to the hold, and the hold is where it strides toward
+      // the seek). With no ally at all the wand is the spray's, and the
+      // spray is the bonk's when it has neither (the card: with no ally to
+      // heal it sprays, and with the tank gone the wand only bonks). With
+      // the tank or the wand missing canHeal is false and the stream is
+      // gone, whatever the allies are doing.
+      if (a.id === "healStream" && healOf(f.spec)
+        && (!canHeal(f.spec, f)
+          || (f.healTarget === null && f.healSeek === null))) continue;
       // GAME-10g: the stream also needs a barrel (the data needs carry the
       // gun alone): with the gun or both barrels gone it cannot fire, and
       // the stomp below is what it fights with.
@@ -1853,6 +1911,13 @@ export class FoamerSystem {
       // empty: either launcher fires). With both gone the stomp below is
       // what it fights with.
       if (a.id === "wall" && wallOf(f.spec) && !canFireWall(f.spec, f)) continue;
+      // GAME-10l stage 3: the spray is only on when it has nothing to
+      // heal (cheaper than checking an attack no one else takes): with an
+      // ally in reach the stream is chosen and there is no gap on the
+      // windup. The wand is the nozzle (canSpray) and the tank the press,
+      // exactly the healing stream's needs.
+      if (a.id === "spray" && sprayOf(f.spec)
+        && (f.healTarget !== null || !canSpray(f.spec, f))) continue;
       if (a.needs.every((id) => f.parts.has(id))) return a.id;
     }
     return f.spec.attacks[f.spec.attacks.length - 1]?.id ?? "headbutt";
@@ -2573,6 +2638,10 @@ export class FoamerSystem {
     // GAME-10i: the Brawler's sword breaking is a blade snap, not a part
     // losing.
     if (part.spec.id === "sword") sound(this, "sword-break", f, partPoint(part));
+    // GAME-10l stage 3: the tank breaking is the end of the healing and the
+    // spray (the card), a press popping, over the generic part-thump (the
+    // sword-break's pattern).
+    if (part.spec.id === "tank") sound(this, "tank-break", f, partPoint(part));
     // The part's last pose change over a step (the fling), plus 1.5 m/s
     // outward from the Foamer and up.
     const out2 = _v.set(st2.x - f.centre.x, 0, st2.z - f.centre.z);

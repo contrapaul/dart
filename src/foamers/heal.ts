@@ -17,6 +17,10 @@ export interface HealSpec {
   pickSeconds: number;
   /** Hard cap on the blobs the stream is drawn with. */
   blobCap: number;
+  /** Metres between two blobs of the chain. */
+  blobSpacingMetres: number;
+  /** How fast a blob reads as travelling from the wand to the ally, m/s. */
+  blobDriftMetres: number;
   /** The radius of one blob, metres. */
   blobRadiusMetres: number;
 }
@@ -26,10 +30,13 @@ export function healOf(spec: FoamerSpec): HealSpec | null {
   return (spec as { heal?: HealSpec }).heal ?? null;
 }
 
-/** Whether this Foamer can still heal: the tank is the press. With it gone
- *  the healing stream is gone (the card; stage 3's spray too). */
+/** Whether this Foamer can still heal: the tank is the press and the wand
+ *  the nozzle the stream is poured from. With the tank gone the healing
+ *  stream is gone (the card; stage 3's spray too), and with the wand
+ *  broken off there is no tip to pour from, so there is no healing either
+ *  (a stream nobody can see is no stream). */
 export function canHeal(spec: FoamerSpec, f: Foamer): boolean {
-  return healOf(spec) !== null && f.parts.has("tank");
+  return healOf(spec) !== null && f.parts.has("tank") && f.parts.has("wand");
 }
 
 /** The range it heals at: the antenna is the tank's aerial, so with it gone
@@ -57,10 +64,6 @@ export const HEAL_MATERIAL = new THREE.MeshStandardMaterial({
 });
 
 const BLOB_GEO = new THREE.SphereGeometry(1, 8, 6);
-/** Metres between two blobs of the stream: a chain of them, not a jet. */
-const BLOB_SPACING = 0.5;
-/** How fast a blob reads as travelling from the wand to the ally, m/s. */
-const BLOB_SPEED = 3;
 
 const _from = new THREE.Vector3();
 const _to = new THREE.Vector3();
@@ -92,17 +95,19 @@ export class HealStream {
    *  the cap. phase (seconds) moves them; time is the system's clock, so
    *  the stream is deterministic. */
   draw(from: THREE.Vector3, to: THREE.Vector3, heal: HealSpec, phase: number): void {
+    const spacing = Math.max(1e-3, heal.blobSpacingMetres);
+    const driftSpeed = Math.max(0, heal.blobDriftMetres);
     _from.copy(from);
     _to.copy(to);
     const len = _from.distanceTo(_to);
-    const shown = Math.min(this.blobs.length, Math.max(1, Math.ceil(len / BLOB_SPACING)));
-    const drift = (phase * BLOB_SPEED) % BLOB_SPACING;
+    const shown = Math.min(this.blobs.length, Math.max(1, Math.ceil(len / spacing)));
+    const drift = (phase * driftSpeed) % spacing;
     for (let i = 0; i < this.blobs.length; i++) {
       const blob = this.blobs[i]!;
       const on = i < shown;
       blob.visible = on;
       if (!on) continue;
-      const t = Math.min(0.98, (i * BLOB_SPACING + drift) / Math.max(1e-3, len));
+      const t = Math.min(0.98, (i * spacing + drift) / Math.max(1e-3, len));
       _at.lerpVectors(_from, _to, t);
       blob.position.copy(_at);
       blob.scale.setScalar(heal.blobRadiusMetres);

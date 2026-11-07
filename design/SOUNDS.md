@@ -251,7 +251,10 @@ The other Foamers (IDs given when each is built):
 | F11-shield-break | GAME-10k placeholder ID: the Seawall's tower shield breaking off after its parries | Yes | 2 | Foley: a hard crack, a board falling apart |
 | F11 | Armoured knight | Heavy armoured steps, mace swings, overhead slam, sweep, the slow parry wind-up (must be easy to hear), shield hits | Later | Foley |
 | F12 | Ambusher in foam growths | Rustle in a growth, pounce, landing | Later | Foley |
-| F13 | Medic | Spray wand (loop), healing sparkle on another Foamer, tank breaking | Later | Foley: spray bottle |
+| F13-heal | GAME-10l stage 3 placeholder ID: the Biomechanic's wand while it streams an ally a mend (loop, only while the stream draws; stop the moment the chain hides) | Yes | 2 | Foley: a spray bottle held open, bright and airy, with a soft core-froth in it |
+| F13-spray | GAME-10l stage 3 placeholder ID: the short damaging spray at the player, one puff as the run starts (the run then pours the small hits quietly) | Yes | 2 | Foley: a hard pressurized "tssss" |
+| F13-tank-break | GAME-10l stage 3 placeholder ID: the tank breaking off, the end of the healing and the spray (over the part-thump) | Yes | 2 | Foley: a pressurized can popping apart |
+| F13 | Medic | GAME-10l stage 3 placeholder IDs: F13-heal (stream loop), F13-spray, F13-tank-break; healing sparkle on another Foamer | Later | Foley: spray bottle |
 | BOSS 1 to 3 | Bosses | Written when you design them | Later | |
 
 ## 5. Player

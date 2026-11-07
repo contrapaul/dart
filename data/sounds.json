@@ -3321,6 +3321,51 @@
         ]
       }
     },
+    "F13-heal": {
+      "_note": "GAME-10l stage 3: the Biomechanic's wand while it streams an ally a mend (loop; it runs only while the stream draws, the sounds' state owns it). Placeholder synth: a bright airy froth, a spray bottle held open (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.55,
+      "jitter": 0,
+      "maxVoices": 2,
+      "synth": {
+        "loop": true,
+        "layers": [
+          { "noise": { "dur": 0.5, "attack": 0.03, "decay": 0.1, "lowpass": 6500, "highpass": 1800, "lowpassEnd": 3800 }, "gain": 0.6 },
+          { "tone": { "dur": 0.5, "f0": 1900, "f1": 1700, "wave": "sine", "attack": 0.04, "decay": 0 }, "gain": 0.08 }
+        ]
+      }
+    },
+    "F13-spray": {
+      "_note": "GAME-10l stage 3: the Biomechanic's short damaging spray at the player, one puff as the run starts (the run then pours the small hits quietly). Placeholder synth: a hard pressurized 'tssss', the wand's nozzle let go (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.04,
+      "maxVoices": 2,
+      "synth": {
+        "noise": {
+          "dur": 0.35,
+          "attack": 0.003,
+          "decay": 0.32,
+          "lowpass": 7000,
+          "highpass": 2200,
+          "lowpassEnd": 2400
+        },
+        "gain": 0.7
+      }
+    },
+    "F13-tank-break": {
+      "_note": "GAME-10l stage 3: the Biomechanic's tank breaking off, the end of the healing and the spray (over the generic part-thump, the sword-break's pattern). Placeholder synth: a pressurized can popping apart (design/SOUNDS.md).",
+      "files": [],
+      "volume": 1.0,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          { "click": { "dur": 0.05, "freq": 1600 }, "gain": 0.8 },
+          { "noise": { "dur": 0.4, "attack": 0.004, "decay": 0.36, "lowpass": 2600, "highpass": 300, "lowpassEnd": 500 }, "gain": 0.7 }
+        ]
+      }
+    },
     "ENV-button-press": {
       "files": [],
       "volume": 0.75,

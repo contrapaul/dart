@@ -79,6 +79,11 @@ describe("the Biomechanic's healing stream (GAME-10l stage 2)", () => {
     expect(heal.perSecond).toBe(5);
     expect(heal.pickSeconds).toBe(0.5);
     expect(heal.blobCap).toBe(12);
+    // The few bits of the stream's look are in the data as well (review
+    // fix: the code no longer carries numbers).
+    expect(heal.blobSpacingMetres).toBe(0.5);
+    expect(heal.blobDriftMetres).toBe(3);
+    expect(heal.blobRadiusMetres).toBeCloseTo(0.09, 5);
     // No other type heals.
     expect(healOf(specFor("F01"))).toBeNull();
     const r = rig();
@@ -231,5 +236,26 @@ describe("the Biomechanic's healing stream (GAME-10l stage 2)", () => {
     expect(f.healTarget ?? a, "the mended ally is the hurt one").toBe(a);
     // Round the ring, not through it: the player is never crowded.
     expect(closest).toBeGreaterThan(f.spec.preferredDistanceMetres - 1);
+  });
+
+  it("15. wand gone, no healing at all: there is no tip to pour from", () => {
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 4), undefined, "F13")!;
+    const a = ally(r, -2, 3, 20);
+    run(r, 0.6);
+    expect(f.healTarget).toBe(a);
+    expect(f.healStream!.group.visible, "the chain is drawn").toBe(true);
+
+    f.parts.delete("wand");
+    expect(canHeal(f.spec, f), "no nozzle, no stream").toBe(false);
+    a.health = 20;
+    run(r, 2);
+    expect(f.healTarget, "a Biomechanic with no wand does not heal").toBeNull();
+    expect(f.healStream!.group.visible, "the chain is not drawn either").toBe(false);
+    expect(a.health, "nothing is mended").toBe(20);
+    // The bonk is the wand's, so without it there is nothing to fight
+    // with at range: the ring cuts in to the bonk's reach, like when the
+    // tank is gone.
+    expect(f.agentInput!.preferredDistance).toBe(f.spec.attackRange);
   });
 });
