@@ -80,7 +80,7 @@ Two stages, each committed on its own and each leaving the game working.
   Status updated, and what you could not check by eye (you cannot see
   the page: say so).
 - Every commit message ends with a blank line, then:
-  `Co-Authored-By: DeepSeek V4.1 Flash <noreply@deepseek.com>`
+  `Co-Authored-By: DeepSeek V4.1 Flash via Pi <noreply@local>`
 
 ## Not in this task
 
