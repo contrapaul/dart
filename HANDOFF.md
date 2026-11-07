@@ -693,6 +693,58 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: GAME-09e (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `game-09e`): B05 Shrike, the precision dart, pierce and zoom
+
+- **Task** (card: `tasks/GAME-09e.md`): the precision dart that pierces,
+  B05's bolt cycle, a zoom while held, and the explosive and heavier
+  rounds mods. Two commits, not reviewed, not merged. Fire-mode, loadout
+  and viewmodel code untouched (GAME-09c owns them).
+- **Stage 1** (`fd36fd1`). `precision` and `precisionHeavy` dart types in
+  `data/darts.json`; `precision` 8 / `precisionHeavy` 10 in
+  `data/foamers.json` (slug 6). Pierce is on the dart type: a dart with
+  `pierce` n flies through n Foamers, stops at n + 1, on a wall, or on a
+  second visit to the same Foamer. `src/weapons/darts.ts` gives each hit
+  the Foamer's key (root body handle) and, for a piercing type, all its
+  body handles, which the dart then ignores for the rest of its flight.
+  The `B05` entry in `data/blasters.json`: pump mode, `primeTime` 0.9 as
+  the bolt, precision darts, 1 per shot, no spread, 5/30 (start 15),
+  reload 1.8, `zoom` block, mods explosive (`explosiveEvery` 1) and heavy
+  (`dartType` precisionHeavy). In the order between B03 and B06; env-03
+  gained a fifth mod station. `tests/weapons/models.test.ts` accepts a
+  `bolt` node in place of `pump` for a pump blaster (B05's moving part).
+- **Stage 2** (`77ff1fa`). `src/game/zoom.ts`: while the `zoom` action is
+  held with a blaster whose data has a `zoom` block (B05 only: fovShare
+  0.4, easeTime 0.12), the camera's fov eases to that share of the
+  player's own setting and the look sensitivity scales with it; letting
+  go eases back, a switch or a reload drops it and the key must be
+  pressed again. `game.ts` drives it in `frame()`; `applySettings` hands
+  it the player's own fov and sensitivity. The `zoom` action is KeyZ and
+  gamepad button 11 in `data/input.json`.
+- **Decisions** (PLAN.md 14): pierce on the dart type, not the blaster;
+  heavier rounds is a second dart type so a mod changes one field; the
+  zoom narrows the player's own fov so the slider keeps working; a zoom
+  that survives a switch is a bug; B05 reuses `pump` with the bolt time
+  as `primeTime` rather than a new fire mode.
+- **Sound:** `B05-fire`, `B05-bolt`, `B05-reload`, `B05-whistle` in
+  `data/sounds.json` (synth placeholders) with B05's priming and reload
+  cues, listed in `design/SOUNDS.md` 2.6. `B05-bolt` and `B05-reload` are
+  one id each for what the recording pass may split (bolt-back/fwd,
+  mag-out/in). **Not a proposal from me:** KeyZ, gamepad 11, every B05
+  number, and those merged sound ids are all for Paul.
+- **Tests:** 21 new (`tests/weapons/b05.test.ts`,
+  `tests/weapons/b05-mods.test.ts`, `tests/game/zoom.test.ts`). Full
+  suite green: 110 files, 762 passed, 2 skipped; `npx tsc --noEmit` and
+  `npm run build` pass.
+- **Not checked by eye** (no browser, no images): the model in hand, the
+  viewmodel placement and whether the scope fills the view, the pierce
+  and the explosive blast on the range, the zoom's feel and how much the
+  narrowed view actually helps, and every B05 sound (synth only, never
+  heard). The bolt has no animation and there is no scope overlay, both
+  out of the card.
+- **Open:** B05 needs a fifth weapon-key slot (`game.ts` maps weapon1-3
+  to ids), and GAME-09c owns the weapon keys: left for that work or the
+  review.
+
 ### 2026-11-07: GAME-09d review, merged (Claude Opus 5.5): B06 and the shared explosion
 
 - **Bug, fixed in review, in every full-auto blaster: a stored burst
