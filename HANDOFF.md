@@ -622,6 +622,37 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-00, the environment element list (design only)
+
+- Card `tasks/ENV-00.md`, branch `env-00`. No game code touched: the
+  deliverable is `design/levels/ENVIRONMENT.md`, a proposal for Paul.
+- Section 1 lists what terrain the game has now and where it lives
+  (`src/level/format.ts`, `src/level/build.ts`, `src/voxel/pieces.ts`,
+  `src/voxel/islands.ts`, `src/arena/rifts.ts`, `src/pickups/pickups.ts`,
+  `src/ai/nav-grid.ts`), plus the two rules that limit every candidate:
+  the nav grid decides where a Foamer can follow, and the caps (6 zones,
+  150 debris bodies, 12 Foamers, 8 pickups) are hard.
+- Section 2 has 13 candidates, E01 to E13, one table then a paragraph
+  each: look in foam and toy terms, what it teaches, Foamers and blasters
+  by ID from `design/CONTENT-PLAN.md`, the README pillar it serves, cost
+  (S, M, L) and what code it needs against the real modules, and risks
+  (caps, nav bake, readability, age 10+). Kinds: destructible (E01, E02),
+  hazard (E03, E04), movement (E05 to E07), interactive (E08, E09),
+  changing cover (E10, E11), stations (E12, E13).
+- Decided, for Paul to overrule: foam cladding and the crate stack are
+  free because `Piece` plus the island path already does them; the sticky
+  patch and the vent are one multiplier and one push on the controller;
+  the ferry is the only L (it needs the ride-on-a-kinematic-body work the
+  KIT lift also needs); buttons, targets and latches share one hit
+  trigger; ammo and upgrade stations share one registry.
+- Section 3 recommends five first: E01 cladding, E02 crate stack, E04
+  sticky patch, E08 button, E12 ammo station, each S or M and each
+  reusing existing code. Section 4 gives Q17 to Q20, added to PLAN.md
+  section 13, with `[Paul]` left for every look.
+- PLAN.md: the ENV-00 row now reads proposal for Paul.
+- `npx vitest run` passes (no code changed). Not checked by eye: nothing
+  visual was built, so there is nothing to look at yet.
+
 ### 2026-11-07: LVL-04b stage 3 review, merged (Claude): Level 1-4 is whole
 
 - The first start got no reply from OpenRouter in three tries (Pi never
