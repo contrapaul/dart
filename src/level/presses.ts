@@ -84,8 +84,8 @@ export interface PressPlayer {
 }
 
 /** The arena page's press player: the crush lands through the player's own
- *  health exactly the way a Foamer's hit does (`health.damage`, so the
- *  difficulty multiplier and the grace ride along), and the raised shield
+ *  health (`health.crush`: the difficulty multiplier rides along, the
+ *  grace a recent hit left does not stop it), and the raised shield
  *  never blocks it: a disc in front cannot stop a head from the top. If the
  *  crush downs the player, the page pops it the usual way. */
 export class HealthPressPlayer implements PressPlayer {
@@ -99,7 +99,8 @@ export class HealthPressPlayer implements PressPlayer {
 
   crush(amount: number): void {
     if (this.ui.paused || this.ui.poppedOut) return;
-    const lost = this.health.damage(amount, "press");
+    // Review: through `crush`, which skips the grace a recent hit left.
+    const lost = this.health.crush(amount);
     if (lost <= 0) return;
     this.hud.onHit();
     this.audio.play("PL-hurt");

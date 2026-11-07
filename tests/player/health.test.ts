@@ -75,4 +75,18 @@ describe("PlayerHealth (UI-01 stage 1)", () => {
     expect(h.hp).toBe(MAX);
     expect(h.damage(1)).toBe(1);
   });
+
+  it("a crush lands inside the grace (ENV-04 review)", () => {
+    // A press slamming down does not care that a Foamer hit the player a
+    // moment ago: the crush skips the grace, and still rides the
+    // difficulty multiplier.
+    const h = new PlayerHealth();
+    h.damage(10);
+    expect(h.damage(10)).toBe(0); // in the grace
+    expect(h.crush(100)).toBe(MAX - 10);
+    expect(h.dead).toBe(true);
+    const easy = new PlayerHealth();
+    easy.damageTaken = 0.5;
+    expect(easy.crush(100)).toBe(50);
+  });
 });

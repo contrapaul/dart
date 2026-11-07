@@ -670,6 +670,34 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-04 review, merged (Claude Opus 5.5): the crushing toy press
+
+Three bugs fixed in review, all invisible to the unit tests:
+- **The first crush crashed the game.** `arenaExtras` handed `g.ui` to the
+  press player while the hooks were being set up, but the UI controller
+  is built after that (the comment at the top of the function says so),
+  so the press held `null` and threw on its first crush. It now reads
+  `g.ui` when a crush lands.
+- **The test corridor did not load.** The page's validator refused it
+  (side walls overlapping the end walls, the exit pad in the north
+  wall). The press tests validate a level of their own, never this one.
+  New `tests/level/env-04.test.ts` validates the real file; the walls are
+  16 m, the exit 0.5 m off the north wall, the presses at z -0.5 and -4.
+- **The presses could be walked round.** Each pad was 1.5 m in a 3 m
+  corridor, and the level's note said so. The pads now span the corridor.
+- **A crush skipped the grace.** It went through `health.damage`, which
+  ignores everything for 0.5 s after a hit. `PlayerHealth.crush` skips
+  that grace and still rides the difficulty multiplier (Story: 50 of
+  100). Test in `tests/player/health.test.ts`.
+- **Played** (`arena.html?watch&level=env-04`): on a pad the cycle runs
+  up, telegraph, slam, and the player goes from 100 to 0 and is downed;
+  between the presses the player is untouched through every phase of
+  both; the exit completes the level. Not seen by eye: the head, the
+  shake and light, the sounds (pane hidden).
+- For Paul: on Story difficulty a crush takes half the bar, so it does
+  not kill from full health there. Say if a press should kill on every
+  difficulty.
+
 ### 2026-11-07: ENV-04 both stages committed (Qwen 3.8-27B via Pi, branch `env-04`): the crushing toy press
 
 - **Task:** the E14 hazard that can kill, per `tasks/ENV-04.md`: a toy

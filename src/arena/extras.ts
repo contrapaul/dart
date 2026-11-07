@@ -167,7 +167,15 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   // before (the ENV-01 rule: built here, so the page runs them and not
   // only the unit tests). `pressPlayer` is the page's own example, through
   // the page's own health and the usual go-down (ENV-04's `HealthPressPlayer`).
-  const pressPlayer = new HealthPressPlayer(health, g.ui, hud, audio);
+  // Review: g.ui is built after this hook returns (see the top of this
+  // function), so the press reads it when a crush lands, never here: handed
+  // over now it was null and the first crush threw.
+  const pressUi = {
+    get paused() { return g.ui.paused; },
+    get poppedOut() { return g.ui.poppedOut; },
+    pop: () => g.ui.pop(),
+  };
+  const pressPlayer = new HealthPressPlayer(health, pressUi, hud, audio);
   const presses = new PressSystem(level.presses);
 
   // ENV-02: the level's buttons, wired to the door verb above. The press
