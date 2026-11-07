@@ -6,7 +6,9 @@
       "standard": 1,
       "suction": 0.5,
       "slug": 6,
-      "mega": 3
+      "mega": 3,
+      "precision": 8,
+      "precisionHeavy": 10
     },
     "minDamageSpeed": 8,
     "turnRate": 6,

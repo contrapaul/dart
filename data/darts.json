@@ -18,7 +18,8 @@
       "restitution": 0.35,
       "impulse": 0.6,
       "fireInterval": 0.16,
-      "carveRadius": 0.12
+      "carveRadius": 0.12,
+      "pierce": 0
     },
     "suction": {
       "speed": 34,
@@ -32,7 +33,8 @@
       "restitution": 0,
       "impulse": 0.4,
       "fireInterval": 0.22,
-      "carveRadius": 0.08
+      "carveRadius": 0.08,
+      "pierce": 0
     },
     "mega": {
       "_note": "GAME-09d: the mega dart (B06, and B07's launcher round later, D14). 1.6 times the standard radius, a little slower, more drop, more impulse, a bigger carve. Start values for Paul to tune on the range.",
@@ -47,7 +49,24 @@
       "restitution": 0.3,
       "impulse": 1.8,
       "fireInterval": 0.17,
-      "carveRadius": 0.2
+      "carveRadius": 0.2,
+      "pierce": 0
+    },
+    "precision": {
+      "_note": "GAME-09e: the precision dart, B05's whistler (design/blasters/B05.md): fast, flat, thin, a small carve, high damage (the damage table in data/foamers.json). pierce: how many Foamers it flies through before it stops (a wall or the floor always stops it). The heavier-rounds mod reads pierce 3 there. Start values for Paul to tune on the range.",
+      "speed": 60,
+      "gravityScale": 0.12,
+      "drag": 0.05,
+      "length": 0.19,
+      "radius": 0.012,
+      "bodyColor": "#f2f7ff",
+      "tipColor": "#ff7a1a",
+      "sticks": false,
+      "restitution": 0.25,
+      "impulse": 0.8,
+      "fireInterval": 0.2,
+      "carveRadius": 0.07,
+      "pierce": 1
     },
     "slug": {
       "speed": 34,
@@ -61,7 +80,24 @@
       "restitution": 0.35,
       "impulse": 1.5,
       "fireInterval": 0.3,
-      "carveRadius": 0.25
+      "carveRadius": 0.25,
+      "pierce": 0
+    },
+    "precisionHeavy": {
+      "_note": "GAME-09e mod 2 (Paul): B05's heavier round: the same thin dart, a little slower, more impulse, and it pierces three Foamers. Its damage is data/foamers.json's precisionHeavy. Start values for Paul to tune.",
+      "speed": 54,
+      "gravityScale": 0.14,
+      "drag": 0.06,
+      "length": 0.19,
+      "radius": 0.014,
+      "bodyColor": "#c9d6e8",
+      "tipColor": "#ff7a1a",
+      "sticks": false,
+      "restitution": 0.25,
+      "impulse": 1.2,
+      "fireInterval": 0.2,
+      "carveRadius": 0.09,
+      "pierce": 3
     }
   }
 }

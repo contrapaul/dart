@@ -5,6 +5,7 @@ import { createFoamMaterial } from "../render/foam-material";
 import { createPhysics, type Rapier } from "../physics/world";
 import { startLoop, STEP } from "../core/loop";
 import { Input, settings as lookSettings } from "../core/input";
+import { Zoom } from "./zoom";
 import { SettingsStore, type Settings, DIFFICULTIES } from "../core/settings";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
@@ -165,12 +166,15 @@ export interface Game<T extends BuiltGame = BuiltGame> {
 /** The settings live: look, FOV, volume, damage taken, flashes. */
 function applySettings(
   s: Settings, camera: THREE.PerspectiveCamera, health: PlayerHealth,
-  hud: Hud, audio: GameAudio, shield: Shield,
+  hud: Hud, audio: GameAudio, shield: Shield, zoom: Zoom,
 ): void {
   shield.toggleMode = s.shieldMode;
-  lookSettings.mouseSensitivity = s.mouseSensitivity;
+  // GAME-09e: the look settings and the field of view go through the zoom,
+  // which holds the player's own values and narrows them while zoomed.
+  zoom.baseSensitivity = s.mouseSensitivity;
+  zoom.baseFov = s.fov;
   lookSettings.invertY = s.invertY;
-  camera.fov = s.fov;
+  camera.fov = zoom.fov;
   camera.updateProjectionMatrix();
   health.damageTaken = s.damageTaken;
   // GAME-04 stage 2: the parry window scales with the preset's multiplier (PLAN
@@ -215,6 +219,11 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // The loadout loads before the start overlay can resolve, so by the time
   // the player can act every viewmodel is on screen.
   const loadout = await Loadout.load(camera, darts);
+
+  // GAME-09e: the zoom. It holds the player's own field of view and look
+  // sensitivity, and narrows both while the `zoom` action is held with a
+  // blaster whose data has a zoom block (B05). Driven in frame().
+  const zoom = new Zoom();
 
   const _aimUnused = new THREE.Vector3();
   Loadout.muzzleToWorld = (camPoint, out) => {
@@ -395,7 +404,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const audio = createAudio({
     camera, loadout, player, darts, impacts, foamers,
     paused: () => paused,
-    onReady: () => applySettings(store.value, camera, health, hud, audio, shield),
+    onReady: () => applySettings(store.value, camera, health, hud, audio, shield, zoom),
   });
   // GAME-08: the foam vacuum, E on a weakened stagger: the lock, the
   // suck, and the blasters' reserves credited with the type's shares.
@@ -407,7 +416,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
 
   /** The settings live. */
   function applyAll(): void {
-    applySettings(store.value, camera, health, hud, audio, shield);
+    applySettings(store.value, camera, health, hud, audio, shield, zoom);
   }
   store.onChange(applyAll);
   // The defaults from storage go onto the camera, look and health now; the
@@ -678,7 +687,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // muzzle from the active viewmodel, the aim 50 m down the view, and
       // the loadout's fixed step, then the darts.
       for (let i = 0; i < loadout.ids.length; i++) {
-        const key = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5"][i];
+        const key = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5", "weapon6"][i];
         if (input.wasPressed(key as "weapon1")) loadout.select(i);
       }
       if (input.wasPressed("weaponNext")) loadout.next();
@@ -855,6 +864,18 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
         levelAI.piecesReady();
       }
       if (ui.paused) return;
+      // GAME-09e: the zoom before the look is read, so a zoomed aim is
+      // finer in the same frame. A switch (a new active id) or a reload
+      // drops the zoom; the key must be pressed again to get it back.
+      zoom.setBlaster(loadout.activeId());
+      if (loadout.active.state === "reloading") zoom.cancel();
+      zoom.update(dt, input.isDown("zoom"));
+      lookSettings.mouseSensitivity = zoom.sensitivity;
+      const fov = zoom.fov;
+      if (fov !== camera.fov) {
+        camera.fov = fov;
+        camera.updateProjectionMatrix();
+      }
       const look = input.takeLook(dt);
       player.yaw -= look.yaw;
       player.pitch = THREE.MathUtils.clamp(player.pitch + look.pitch, -1.5, 1.5);

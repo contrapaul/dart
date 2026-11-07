@@ -46,6 +46,16 @@ export interface DartHit {
   material: string | null;
   /** GAME-09b: the shot this dart left on, when the caller tagged it. */
   shot: DartShot | null;
+  /** GAME-09e: the Foamer whose part was hit, as a key (its root body's
+   *  handle), set by the Foamer system in the onHit chain. Absent or null
+   *  for a wall, a floor, a broken piece: anything that is not a live
+   *  Foamer part. A piercing dart uses it to pass through each Foamer once. */
+  foamerKey?: number | null;
+  /** GAME-09e: for a piercing dart only, the body handles of the Foamer
+   *  whose part was hit (its root and every part body), set by the Foamer
+   *  system. The dart's ray cast ignores them from here on, so a dart that
+   *  went through a Foamer never meets its far side. Absent otherwise. */
+  foamerBodies?: number[];
 }
 
 /** Where a dart came to rest on a surface. `point` is the dart's own
@@ -98,6 +108,12 @@ interface Slot {
   inst: number;                   // index in list[type]
   shot: DartShot | null;         // GAME-09b: the shot it left on
   shotBuf: DartShot;             // its own copy, so the next pull cannot change it
+  /** GAME-09e: the Foamers this dart has already pierced (their keys), at
+   *  most the type's pierce. Empty unless the type pierces. */
+  pierced: number[];
+  /** GAME-09e: every body handle belonging to a pierced Foamer, ignored by
+   *  the ray cast while pierced is not empty. */
+  piercedBodies: number[];
 }
 
 export class DartSystem {
@@ -185,6 +201,8 @@ export class DartSystem {
         inst: 0,
         shot: null,
         shotBuf: { id: 0, muzzle: new THREE.Vector3(), chunk: null },
+        pierced: [],
+        piercedBodies: [],
       });
       this.free.push(i);
     }
@@ -220,6 +238,8 @@ export class DartSystem {
     s.order = this.seq++;
     s.body = null;
     s.coll = null;
+    s.pierced.length = 0;
+    s.piercedBodies.length = 0;
     this.count[FLYING]++;
     // A copy: the blaster reuses one shot object, and its next trigger pull
     // must not rewrite the id and muzzle of darts still in flight.
@@ -341,7 +361,15 @@ export class DartSystem {
       // again: a default collider's membership has every bit set).
       (c) => {
         const g = c.collisionGroups();
-        return g !== RAGDOLL_GROUPS && g !== CAPSULE_GROUPS;
+        if (g === RAGDOLL_GROUPS || g === CAPSULE_GROUPS) return false;
+        // GAME-09e: a dart that has pierced a Foamer ignores that Foamer's
+        // colliders for the rest of its flight, so it never meets the same
+        // one twice (the far side of the one it just went through).
+        if (s.pierced.length > 0) {
+          const h = c.parent()?.handle;
+          if (h !== undefined && s.piercedBodies.includes(h)) return false;
+        }
+        return true;
       },
     );
     if (hit) {
@@ -364,6 +392,7 @@ export class DartSystem {
         collider: hit.collider,
         material: null,
         shot: s.shot,
+        foamerKey: null,
       };
       this.onHit(dartHit);
       // After the onHit chain, so the sounds read the material.
@@ -386,6 +415,21 @@ export class DartSystem {
           { x: this._hp.x, y: this._hp.y, z: this._hp.z },
           true,
         );
+      }
+      // GAME-09e: a piercing dart that met a live Foamer part it has not
+      // hit yet, and still has pierce to spend, carries on through: the
+      // damage and the carve above already ran for this hit. A wall or the
+      // floor (no foamerKey), or the same Foamer again, stops it, and so
+      // does a dart that has used up its pierce. The step past the surface
+      // is along the flight line, so the entry face is not met twice.
+      const key = dartHit.foamerKey;
+      const pierce = s.spec.pierce;
+      if (pierce > 0 && typeof key === "number" && !s.pierced.includes(key) && s.pierced.length < pierce) {
+        s.pierced.push(key);
+        for (const h of dartHit.foamerBodies ?? []) if (!s.piercedBodies.includes(h)) s.piercedBodies.push(h);
+        s.pos.copy(this._hp).addScaledVector(this._dn, 0.03);
+        if (s.pos.y < KILL_Y) this.killSlot(s);
+        return;
       }
       // A body removed inside onHit (a popped Foamer) has nothing left to
       // stick to: the dart bounces off where it was and, like a released

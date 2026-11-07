@@ -44,7 +44,13 @@ describe("GAME-09 models", () => {
       for (const m of spec.muzzles) expect(names.has(m), `${id}: missing muzzle ${m}`).toBe(true);
       // Mode specific moving parts.
       if (spec.mode === "pump") {
-        expect(names.has("pump"), `${id}: no pump`).toBe(true);
+        // GAME-09e: a pump blaster works a pump (B01) or, for the bolt
+        // action B05, a bolt. Either is the moving part; the viewmodel
+        // animates whichever the file has (B05's bolt animation is ART-05).
+        expect(
+          names.has("pump") || names.has("bolt"),
+          `${id}: no pump and no bolt`,
+        ).toBe(true);
         expect(names.has("mag"), `${id}: no mag`).toBe(true);
       } else if (spec.mode === "auto") {
         // GAME-09d: an auto blaster spins a pair of flywheels (B04) or
