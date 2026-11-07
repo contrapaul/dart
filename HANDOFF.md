@@ -541,6 +541,32 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: GAME-10h review, merged (Claude)
+
+- The Spark (dgx-spark) committed stage 1 and stopped answering mid stage
+  2; Qwen 3.8-27B on qwen-machine took the uncommitted stage 2 over,
+  fixed its three tests (they waited for the attack choice, not the
+  wall leaving the launchers) and wrote the docs. Two of its commit
+  messages had the Co-Authored-By trailer with no blank line before it;
+  reworded on the branch before the merge.
+- Read the diff: `src/foamers/wall.ts` (the spec, the seeded slots, the
+  wall kind), `launchWall` and a shared `spawnBall` in
+  `projectiles.ts` (the old per-field defaults now one
+  `SHARED_BALL_KIND`), the strike branch in `foamers.ts`, the launcher
+  multiplier. The gap uses the existing `makeRng`, never `Math.random`.
+- Main merged in (PLAN and HANDOFF conflicts, both kept; the LVL-04a
+  Status paragraph corrected to "merged locally"). `tsc`, the full
+  suite (598 pass, 2 skipped) and the build pass.
+- Played on the range: from 16 m it holds near 12 m and fires a row of
+  10 slots 0.6 m apart at chest height, two side by side left out (the
+  gap), the two centre balls hitting the player for 8; on screen the
+  row of orange balls and the gap read clearly. With both launchers
+  broken it fires nothing, walks in at its slow speed and picks the
+  stomp at 1.4 m.
+- Not checked: crossing a gap by hand, one launcher's half wall in play,
+  the stomp's damage landing, the three sounds by ear, shoulder spikes
+  (not built; the rig keeps nubs).
+
 ### 2026-11-07: LVL-04a review, merged (Claude)
 
 - Read the diff: `data/levels/1-4.json`, the level list, a new test file
