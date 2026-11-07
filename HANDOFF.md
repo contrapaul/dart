@@ -18,16 +18,19 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
-GAME-10l stage 1 code done 2026-11-07, one stage commit on `game-10l`,
-not reviewed, not merged, not pushed (DeepSeek V4.1 Flash via Pi): the
-F13 Biomechanic, look, type and tank only. The palette with a purple
-hood over the crown, a lime tank on the back and a purple wand with a
-foam-core tip in the right hand; the `F13` type on the keep-distance
-brain with a 10 m ring and the tank a 2x weak point. The stream heals
-nothing yet and fires nothing: its attack is declared so the type gets
-the right brain, and stage 2 fills it in. The look was not seen by eye
-and nothing was played (no browser in that session); the hood, the tank
-and the wand were checked by script from the rest pose.
+GAME-10l stages 1 and 2 code done 2026-11-07, two stage commits on
+`game-10l`, not reviewed, not merged, not pushed (DeepSeek V4.1 Flash
+via Pi): the F13 Biomechanic, look, type, tank and healing stream. The
+palette with a purple hood over the crown, a lime tank on the back and a
+purple wand with a foam-core tip in the right hand; the `F13` type on the
+keep-distance brain with a 10 m ring and the tank a 2x weak point; and
+the healing stream, the most hurt ally in range and in sight gaining 5
+health a second from a chain of foam-core blobs off the wand tip, one
+ally at a time, halved range without the antenna, none without the tank.
+It still fires nothing at the player: stage 3 fills in the short spray.
+The look was not seen by eye and nothing was played (no browser in either
+session); the hood, the tank and the wand were checked by script from the
+rest pose, and the blob chain by test only.
 GAME-10k code done 2026-11-07, three stage commits on `game-10k`, not
 reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): the F11
 Seawall. The palette look (deep lime armour, purple mace, orange tower
@@ -702,6 +705,48 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10l stage 2 (DeepSeek V4.1 Flash via Pi): the Biomechanic's healing stream
+
+- **Asked for** (`tasks/GAME-10l.md`): stage 2 only, the healing stream.
+  Stage 3 (the short spray at the player, and the docs) is next.
+- **What it does.** Every `heal.pickSeconds` (0.5 s) F13 looks for the ally
+  with the lowest health share that is below full, inside its 7 m heal
+  range and in sight, turns to it and pours `heal.perSecond` (5) health a
+  second into it, one ally at a time and never above its maximum. The
+  stream is a chain of foam-core blobs from the wand tip to the ally's
+  chest, at most `heal.blobCap` (12), drawn only while it is healing.
+  Without the antenna the range halves to 3.5 m; without the tank there is
+  no healing and it closes in to bonk, as before.
+- **Moving.** With nobody in reach it walks its ring toward a hurt ally it
+  can see, taking the stride side that closes on the ally, and it never
+  steps inside its 10 m kept distance (the circle branch of
+  `steerAgent` refuses the inward step for a healing type).
+- **Numbers** live in F13's `heal` block in `data/foamers.json` and are
+  read by the new `src/foamers/heal.ts` (`healOf`, `canHeal`, `healRange`,
+  `healthShare`, `HealStream`, `wandTipPoint`). No number is in code except
+  the blob spacing and drift speed, which are look constants.
+- **Two decisions.** Aim is by health share, not by health missing: a 5 of
+  35 F06 outranks a 20 of 25 F13. The target is held until it is full, dying,
+  out of range or out of sight rather than re-picked every look, because
+  two equally hurt allies otherwise traded the stream on every look and
+  neither healed (seen in the tests).
+- **Sight.** The ray is cast the full length and accepts a first hit on the
+  ally's own capsule; a ray to a standing body cannot stop short of it the
+  way the player's sight stops short of the player, so the shared margin
+  gave no ally ever (the first version's bug, caught by the tests).
+- **Tests.** New `tests/foamers/biomechanic-heal.test.ts`, nine: the
+  numbers and the cap, the most hurt ally by share and the turn to it, no
+  target when full, stopping at the maximum, one ally at a time, out of
+  range and out of sight, the antenna halving the range, the tank ending
+  it plus the ring closing to the bonk, and the blob cap at the far edge.
+  `npx tsc --noEmit`, `npx vitest run` (757 passed, 2 skipped) and
+  `npm run build` are green.
+- **Not checked by eye:** the blob chain, its drift, and the moment the
+  stream appears and goes. No browser and no images in this session, so
+  the stream was checked by test only. Nothing was played.
+- Stage 2 is committed on `game-10l`, not reviewed, not merged, not
+  pushed.
 
 ### 2026-11-07: GAME-10l stage 1 (DeepSeek V4.1 Flash via Pi): the F13 Biomechanic's look, type and tank
 
