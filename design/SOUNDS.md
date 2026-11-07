@@ -322,6 +322,8 @@ The other Foamers (IDs given when each is built):
 | LV-arena-clear | Arena cleared, doors open | Yes | 2 | Code plus Foley |
 | LV-door | Door opening and closing | Yes | 2 each | Foley |
 | LV-switch | Switch or button | Yes | 3 | Foley |
+| ENV-button-press | Toy button pressed, cap squashes and lights | ENV-02 | 3 | Code: a click over a short rising tone |
+| ENV-button-dead | Toy button pressed again, nothing happens | ENV-02 | 2 | Code: a flat dull click |
 | LV-key | Key picked up | Later | 2 | Code |
 | LV-secret | Secret found | Later | 1 | Code |
 | LV-wall-break | Wall blasted through to a secret | Later | 3 | Foley: crumble a big polystyrene sheet |
