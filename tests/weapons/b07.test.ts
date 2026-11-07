@@ -129,9 +129,6 @@ describe("GAME-09f: B07 Collateral reads its spec", () => {
     b.update(DT, TAP, AIM);           // the shot
     b.update(DT, NO_FIRE, AIM);
     expect(darts.count).toBe(1);
-    // The round is live (remote mod); clear that so these presses are
-    // firing presses, not detonations (the remote path is test 8).
-    darts.live = 0;
     // Held or pressed again through the priming: nothing leaves the drum.
     for (let i = 0; i < 30; i++) b.update(DT, TAP, AIM);
     expect(darts.count).toBe(1);
@@ -408,6 +405,15 @@ describe("GAME-09f mod 1: remote detonate", () => {
 });
 
 describe("GAME-09f mod 2: cluster", () => {
+  it("13b. review: with the cluster mod alone, a round that blasts on its hit still clusters", () => {
+    const C = explosionTuning.cluster;
+    const r = liveRig();
+    const blaster = new Blaster(resolveSpec("B07", ["cluster"]), r.darts as DartFiring, (i) => MUZ[i], lcg(13));
+    blaster.update(DT, TAP, new THREE.Vector3(0, -0.35, -1).normalize());
+    for (let i = 0; i < 180; i++) { r.darts.update(DT); r.world.step(); }
+    expect(r.boom.length).toBe(1 + C.count); // the round's blast and its four
+  });
+
   it("13. a clustered blast throws four smaller blasts at the sides after the delay", () => {
     const C = explosionTuning.cluster;
     expect(C.count).toBe(4);

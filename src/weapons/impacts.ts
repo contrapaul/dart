@@ -61,8 +61,9 @@ export class DartImpacts {
       darts.onUpdate = (dt: number) => this.explosion!.tick(dt);
       // GAME-09f: a launcher round blasts in the launcher profile, every
       // other explosive dart (B06's) keeps the dart profile it always had.
+      // A clustered round (B07's cluster mod) throws its four on this hit too.
       darts.onExplosiveHit = (hit) =>
-        this.explosion!.explode(hit.point, profileFor(hit.type));
+        this.explosion!.explode(hit.point, profileFor(hit.type), hit.shot?.clustered ?? false);
       // GAME-09f mod 1: a remote round's detonation (a fire press, or the
       // cap popping the oldest) blasts where the round stopped.
       darts.onDetonate = (point, type, clustered) =>
