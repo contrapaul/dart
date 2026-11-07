@@ -726,6 +726,24 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: GAME-09g review, merged (Claude Opus 5.5): B08 Firehose on a placeholder model
+
+- Reviewed dgx-spark's run: the data lines are hand-edited in main's
+  layout, the slow multiplies beside the shield's own, and Twin
+  alternates the muzzles. Fixed in review: a ball that had used its
+  bounces stopped dead where it touched, so it could hang on a wall. It
+  now takes the ordinary dart path after its budget and falls to rest.
+- Played in env-03 (the loop stepped by hand, the pane hidden): the first
+  ball leaves 0.78 s into the spin-up, then about 29 a second (36 in the
+  next 1.2 s); `firing` is on while held; all 36 balls ricocheted and
+  came to rest on the floor (highest at 0.06 m).
+- For Paul: B08 still needs its card brief and model (ART-01, ART-04);
+  the gameplay uses B04's model until then, a one-line swap. Twin names
+  `muzzle_1` twice until B08's model has two muzzles.
+- Not checked by eye: the ball's look, the recoil at 29 a second, the
+  slow in hand, the sounds.
+- tsc, vitest (843 passed, 2 skipped), build green.
+
 ### 2026-11-08: GAME-09g: B08 Firehose gameplay on a placeholder model (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `game-09g`, three commits, not reviewed, not merged)
 
 - Task card `tasks/GAME-09g.md`: the last blaster. Paul's order is every
