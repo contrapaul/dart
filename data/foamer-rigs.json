@@ -3719,15 +3719,15 @@
           "kind": "weapon",
           "shape": "tube",
           "size": [
-            4,
-            12,
-            4
+            3,
+            8,
+            3
           ],
           "parent": "foreArmR",
           "at": [
-            0,
-            -0.9,
-            0
+            1.2,
+            -0.6,
+            0.4
           ],
           "pivot": [
             0,
@@ -3735,13 +3735,13 @@
             0
           ],
           "rest": [
-            -0.6,
+            -1.35,
             0,
             0
           ],
           "tip": {
             "material": "foam-core",
-            "length": 3
+            "length": 2
           },
           "material": "foam-purple"
         }
