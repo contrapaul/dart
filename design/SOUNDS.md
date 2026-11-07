@@ -69,7 +69,8 @@ and the tool are unnamed so far).
 | B02-mag-out | Magazine out | Later | 3 | Blaster |
 | B02-mag-in | Magazine in | Later | 3 | Blaster |
 | B02-burst | Burst mod: three quick shots as one sound | Later | 3 | Blaster: layered |
-| B02-heavy-fire | Heavy rounds mod: slow, big thud | Later | 4 | Blaster |
+| B02-fire-heavy | Heavy rounds mod: slow, big thud | Later | 4 | Blaster |
+| B02-reload | Magazine in, the never empty reserve | Later | 3 | Blaster |
 
 ### 2.4 B03 Leviathan (break-action double barrel)
 

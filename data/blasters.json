@@ -52,6 +52,10 @@
     "fireInterval": 0.15, "reloadTime": 1.0, "autoReload": true,
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.16, -0.2, -0.3], "rotationDeg": [0, 4, 0], "scale": 0.45 },
-    "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1 }
+    "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1 },
+    "mods": {
+      "burst": { "_note": "GAME-09c: mod 1. One press fires three darts, burstGap apart, then the cooldown.", "mode": "burst", "burstCount": 3, "burstGap": 0.07, "burstCooldown": 0.3 },
+      "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit.", "dartType": "slug", "fireInterval": 0.45, "chunk": { "rangeMetres": 6, "carveRadius": 0.2, "push": 1.0 } }
+    }
   }
 }

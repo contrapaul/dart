@@ -240,9 +240,10 @@ export class Viewmodel {
         if (r) wr.rotation.set(r[0], r[1] - this.wheelA, r[2]);
       }
       this.applyMagDrop(blaster, m.magDrop ?? 0);
-    } else if (sp.mode === "semi") {
+    } else if (sp.mode === "semi" || sp.mode === "burst") {
       // GAME-09c: a sidearm: the magazine drops on the reload like the
-      // pump's; there is no pump travel and no wheel.
+      // pump's; there is no pump travel and no wheel. Burst looks the
+      // same and just fires faster.
       this.applyMagDrop(blaster, m.magDrop ?? 0);
     } else {
       this.breakAction(dt, blaster);

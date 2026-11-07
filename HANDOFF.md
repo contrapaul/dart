@@ -670,52 +670,73 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-07: GAME-09c stage 1: B02 Musketeer, semi-auto with a reserve that never runs out
+### 2026-11-07: GAME-09c: B02 Musketeer, both stages
 
-Built on `game-09c`, not reviewed, not merged, not pushed (Qwen 3.8-27B via Pi).
-Stages 2 (the burst and heavy mods, the B02 sounds) and all of the model
-work are not started.
+Built on `game-09c`, not reviewed, not merged, not pushed (Qwen 3.8-27B
+via Pi). All of the model work is not started.
 
 - **The weapon.** `data/blasters.json` gains `B02`: name Musketeer, mode
   `semi`, standard darts, one dart a shot, spread 1 degree, magazine 6,
-  reload 1.0 s, auto reload, `fireInterval` 0.15 s (the fast-click cap). The
-  placeholder model is the B01 `.glb` with `muzzle_1`; its `_note` says the
-  B02 model replaces it when ART-01 ships, with no code change.
+  reload 1.0 s, auto reload, `fireInterval` 0.15 s (the fast-click cap).
+  The placeholder model is the B01 `.glb` with `muzzle_1`; its `_note`
+  says the B02 model replaces it when ART-01 ships, with no code change.
 - **New mode `semi`** in `src/weapons/blaster.ts`: one dart per trigger
   press, never primes, and the fire clock caps presses faster than
-  `fireInterval`. Empty plus autoReload starts the reload. `BlasterControls`
-  unchanged; the viewmodel animates a semi like a small pump (magazine
-  drop on the reload, no pump travel).
+  `fireInterval`. Empty plus autoReload starts the reload. The viewmodel
+  animates a semi (and a burst, below) like a small pump: magazine drop
+  on the reload, no pump travel, no wheel.
 - **Never empty.** A data flag `reserveInfinite` on the resolved spec:
-  `finishReload` fills the magazine without touching a full reserve, the
+  `finishReload` fills the magazine without touching the reserve, the
   vacuum's refill (`Loadout.refillReserves`) and the ammo box
   (`PickupSystem.giveAmmo`) skip such blasters, and the HUD shows the
   reserve as an infinity sign, not a number. Every other blaster's
   reserve is untouched. I added one line to `src/ui/hud.ts` for the
   symbol: it is not in the card's file list, but the card asks for it.
+- **Stage 2, the burst mod.** A new mode `burst` on the blaster: one
+  press fires `burstCount` darts (3) at `burstGap` (0.07 s) on its own
+  gap clock, then the fireClock carries the `burstCooldown` (0.3 s).
+  Presses mid-burst or mid-cooldown do nothing, so no mash can beat the
+  data. A magazine that empties mid-burst (2 left fires 2, never a
+  third) ends the burst and starts the reload at once. Numbers in
+  `data/blasters.json`, not the code.
+- **Stage 2, the heavy mod.** Pure data: `slug` darts, the slower
+  `fireInterval` 0.45 s, and its own `chunk` (range 6 m, carve 0.2, push
+  1.0, larger than the standard dart's, smaller than B01's slug). The
+  shared chunk system turned it into a foam pop with no new code.
 - **In the game.** B02 is appended to the blaster `order` after B03 and
   takes weapon key 4, so B01, B04 and B03 keep keys 1 to 3 and no level
-  loses a blaster (the level only depends on the first three being in this
-  order); `game.ts` and the range's `WEAPON_KEYS` lists grow by one. The
-  range's blaster and mod rows are data driven, so B02 shows up with no
-  range code; the mod row is empty until stage 2 adds its mods. The
-  `models.test.ts` node check now reads the model the spec points at (the
-  B02 placeholder reads the B01 file, where `mag` and `muzzle_1` live) and
-  gets a `semi` branch; `env-03.test.ts`'s station list filters to
-  blasters that have mods, because B02 is the first without.
-- **Tests.** New `tests/weapons/b02.test.ts`: the spec, one press one
-  dart, a held trigger fires only that one, fast presses are capped by the
-  clock, spaced presses fire exactly one each, the reserve stays full over
-  four full magazines, and the vacuum's refill leaves it alone while a
-  real reserve (the B04) still takes its share. All other weapon tests ran
-  unchanged. `npx tsc --noEmit`, `npx vitest run` (721 passed, 2 skipped)
-  and `npm run build` pass; the dash check is clean.
+  loses a blaster (the level only depends on the first three being in
+  this order); `game.ts` and the range's `WEAPON_KEYS` lists grow by
+  one. The range's blaster and mod rows are data driven, so B02 shows up
+  with its two mods and no range code. `models.test.ts` node check reads
+  the model the spec points at and has a `semi`/`burst` branch
+  (placeholder reads the B01 file, where `mag` and `muzzle_1` live).
+  `data/levels/env-03.json` gains a fourth station (`B02` / `burst`, at
+  0, -4, between the start and the B03 station) because the env-03 test
+  offers one station per mod-carrying blaster and B02 has mods now.
+- **Sounds.** `data/sounds.json` gains the card's three placeholder IDs,
+  all synth for now (the files will land in AUD-02 when recorded):
+  `B02-fire` (light, quick), `B02-fire-heavy` (a slow, big thud),
+  `B02-reload` (a click and a soft noise). `SOUNDS.md` documents the
+  same three, renaming the earlier `B02-heavy-fire` draft. The fire
+  sound plays by the engine's `activeId + "-fire"` naming, so `B02-fire`
+  is live; `B02-reload` plays on the reload cue; `B02-fire-heavy` is
+  defined but not yet wired (a heavy shot still plays `B02-fire`).
+- **Tests.** `tests/weapons/b02.test.ts` (11 tests): the spec, one press
+  one dart, a held trigger fires only that one, fast presses are capped
+  by the clock, spaced presses fire exactly one each, the reserve stays
+  full over four full magazines, the vacuum's refill leaves it alone
+  while a real reserve still takes its share, the burst reads, the burst
+  fires 3 per press with the gap then waits the cooldown, a burst with 2
+  left fires 2 and reloads itself, the heavy mod reads, the heavy fires
+  slugs at the slower rate. All other weapon tests ran unchanged. `npx
+  tsc --noEmit`, `npx vitest run` (726 passed, 2 skipped) and `npm run
+  build` pass; the dash check is clean.
 - **Not checked by eye, I cannot see or run the game:** the B02 viewmodel
-  look and scale, the infinity sign render in the HUD, the semi feel in
-  the range and arena, and the sound of each shot (there is none yet; the
-  engine warns once on the missing `B02-fire`, which stage 2 adds as
-  `B02-fire`, `B02-fire-heavy` and `B02-reload`, the card's placeholder
-  IDs).
+  look and scale, the infinity sign render in the HUD, the semi and burst
+  feel and cadence in the range and arena, and whether the three sounds
+  sit right (the synth numbers are guessed); a heavy shot plays the
+  standard `B02-fire` until the heavy sound is wired.
 
 ### 2026-11-07: ENV-04 review, merged (Claude Opus 5.5): the crushing toy press
 

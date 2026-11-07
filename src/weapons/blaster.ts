@@ -7,7 +7,7 @@ import blastersJson from "../../data/blasters.json";
 // stays allocation-free. Scalar fields are one source per value; a mod
 // overrides a field, and a nested block such as `recoil` merges key by key.
 
-export type BlasterMode = "pump" | "auto" | "break" | "semi";
+export type BlasterMode = "pump" | "auto" | "break" | "semi" | "burst";
 export type BlasterState = "ready" | "priming" | "reloading";
 
 export interface RecoilSpec {
@@ -52,6 +52,12 @@ export interface BlasterSpec {
   reloadTime: number;
   primeTime: number;
   fireInterval: number;
+  /** GAME-09c: burst mode: darts per press, the gap between them, and
+   *  the wait after the last dart. Defaults cover a blaster without the
+   *  mod (count 1, so it is just one dart and no gap is measured). */
+  burstCount: number;
+  burstGap: number;
+  burstCooldown: number;
   spinUp: number;
   spinDown: number;
   autoReload: boolean;
@@ -89,12 +95,17 @@ let shotSeq = 0;
 
 // The raw shape of one entry in data/blasters.json before mods merge in.
 interface RawMod {
+  mode?: string;
   dartType?: string;
   dartsPerShot?: number;
   spreadDeg?: number;
   magSize?: number;
   muzzles?: string[];
   bothBarrels?: boolean;
+  fireInterval?: number;
+  burstCount?: number;
+  burstGap?: number;
+  burstCooldown?: number;
   recoil?: Partial<RecoilSpec>;
   show?: string[];
   hide?: string[];
@@ -148,6 +159,9 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     reloadTime: raw.reloadTime,
     primeTime: raw.primeTime ?? 0,
     fireInterval: raw.fireInterval ?? 0,
+    burstCount: 1,
+    burstGap: 0,
+    burstCooldown: 0,
     spinUp: raw.spinUp ?? 0,
     spinDown: raw.spinDown ?? 0,
     autoReload: raw.autoReload,
@@ -166,10 +180,15 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
   for (const m of activeMods) {
     const mod = raw.mods?.[m];
     if (!mod) continue;
+    if (mod.mode !== undefined) s.mode = mod.mode as BlasterMode;
     if (mod.dartType !== undefined) s.dartType = mod.dartType as DartTypeName;
     if (mod.dartsPerShot !== undefined) s.dartsPerShot = mod.dartsPerShot;
     if (mod.spreadDeg !== undefined) s.spreadDeg = mod.spreadDeg;
     if (mod.magSize !== undefined) s.magSize = mod.magSize;
+    if (mod.fireInterval !== undefined) s.fireInterval = mod.fireInterval;
+    if (mod.burstCount !== undefined) s.burstCount = mod.burstCount;
+    if (mod.burstGap !== undefined) s.burstGap = mod.burstGap;
+    if (mod.burstCooldown !== undefined) s.burstCooldown = mod.burstCooldown;
     if (mod.muzzles !== undefined) s.muzzles = [...mod.muzzles];
     if (mod.bothBarrels !== undefined) s.bothBarrels = mod.bothBarrels;
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
@@ -250,6 +269,12 @@ export class Blaster {
   private rng: () => number;
   private nextMuzzle = 0;   // pump: round-robin across the active muzzles
   private nextBarrel = 0;   // break: barrel to try next on a press
+  // GAME-09c: burst mode: the darts still to fire from the last press,
+  // and the seconds since the last dart of a running burst.
+  private burstLeft = 0;
+  private burstGapT = 0;
+  // GAME-09c: burst mode: the darts still to fire from the last press,
+  // and the seconds since the last dart of a burst (the gap clock).
   // Seconds since the last shot (auto, break). Starts at the interval in
   // the constructor so the very first press can fire.
   private fireClock = 0;
@@ -278,6 +303,9 @@ export class Blaster {
     this.mag = spec.magSize;
     this.reserve = spec.reserveStart;
     this.fireClock = spec.fireInterval;
+    // A fresh burst blaster can burst at once: the cooldown is the gate,
+    // not the shots' own interval.
+    if (spec.mode === "burst") this.fireClock = spec.burstCooldown;
     this.loaded = new Array(spec.muzzles.length).fill(false);
     if (spec.mode === "break") {
       for (let i = 0; i < spec.muzzles.length && i < spec.magSize; i++) this.loaded[i] = true;
@@ -345,6 +373,9 @@ export class Blaster {
         break;
       case "semi":
         this.updateSemi(controls);
+        break;
+      case "burst":
+        this.updateBurst(controls, dt);
         break;
     }
   }
@@ -427,11 +458,58 @@ export class Blaster {
       if (s.autoReload && this.reserve > 0) this.startReload();
       return;
     }
+    this.semiShot();
+  }
+
+  /** A semi dart: the shared bookkeeping behind one shot of one.
+   *  Resets the fire clock so the next press is capped at one per
+   *  interval (semi) or one burst per cooldown (burst). */
+  private semiShot(): void {
+    const s = this.spec;
     this.fireClock = 0;
     this.mag -= 1;
     this.shots += 1;
     this.beginShot();
     this.fireDart(0, s.spreadDeg);
+  }
+
+  /** GAME-09c: burst mode: one press fires burstCount darts burstGap
+   *  apart, then waits burstCooldown. A running burst ignores further
+   *  presses, and a magazine that runs out mid-burst ends it with what
+   *  is left. The cooldown clock is fireClock, counted from the last
+   *  dart. */
+  private updateBurst(controls: BlasterControls, dt: number): void {
+    const s = this.spec;
+    if (this.burstLeft > 0) {
+      if (this.mag === 0) {
+        // Empty mid-burst: it ends with what was left.
+        this.burstLeft = 0;
+        if (s.autoReload && this.reserve > 0) this.startReload();
+        return;
+      }
+      // A running burst fires on the gap clock and nothing else.
+      this.burstGapT += dt;
+      if (this.burstGapT < s.burstGap) return;
+      this.burstGapT = 0;
+      this.burstLeft -= 1;
+      this.semiShot();
+      // A burst that empties the magazine takes over at once: the reserve
+      // never runs out, so a reload is always possible.
+      if (this.mag === 0 && s.autoReload && this.reserve > 0) this.startReload();
+      return;
+    }
+    if (!controls.firePressed) return;
+    if (this.fireClock < s.burstCooldown) return;
+    if (this.mag === 0) {
+      if (s.autoReload && this.reserve > 0) this.startReload();
+      return;
+    }
+    // The first dart fires at once; the rest follow on the gap clock and
+    // the cooldown runs from that dart. A one dart burst starts a burst
+    // with burstLeft at zero, so the gap clock never runs.
+    this.burstLeft = Math.min(s.burstCount, this.mag) - 1;
+    this.burstGapT = 0;
+    this.semiShot();
   }
 
   /** Fire one dart from muzzle index `i` with a cone of `spreadDeg` around
