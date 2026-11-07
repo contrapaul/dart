@@ -26,6 +26,9 @@ export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): Ar
   return {
     voxels: level.voxels,
     voxelMesh: level.voxelMesh,
+    // ENV-01 review: the game counts carves against the level's crates
+    // only if the page hands them over.
+    crates: level.crates,
     navBounds: level.navBounds,
     spawn: new THREE.Vector3(...LEVEL.playerStart.pos),
     yaw: LEVEL.playerStart.yaw,

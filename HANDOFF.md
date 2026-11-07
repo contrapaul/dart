@@ -6,8 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design only, no
-code): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
+ENV-01 merged locally 2026-11-07, not pushed: foam cladding (E01) and toy
+crate stacks (E02) whose crates break whole when worn, in the test level
+`env-01`. ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design
+only): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
 (its section 0): mods at stations, ammo on the ground; moving floors
 paused; Act 1 hazards must be able to kill; looks for crates, buttons,
 targets and stations. Cards ENV-01 (cladding, crates), ENV-02 (button) and
@@ -631,6 +633,31 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: ENV-01 stage 3 review, merged (Claude Opus 5.5): crates break whole
+
+- **Bug, fixed in review: the rule never ran in play.** `buildArena`
+  (`src/arena/extras.ts`) handed the game the level's voxels and mesh but
+  not its crates, so `createGame` had none and no carve was counted: 60
+  darts left a crate's tally at 184 of 184. It now passes `level.crates`.
+  The unit tests call the crate code directly, so they could not see this;
+  no test builds the arena page (it reads its level from the URL).
+- **Played** (`arena.html?watch&level=env-01`, the Dartman): every crate
+  starts at 184 voxels; a dart that lands takes 1 to 14; stack B's bottom
+  crate broke after 7 darts and stack A's left crate after 12, and each
+  top crate fell (A's to the floor, B's tumbled off its plinth and rolled
+  about 2.6 m); stack A's right crate stayed whole at 184.
+- **Seen while testing, not changed:** with the browser pane hidden the
+  page's render frame does not run, so the voxel mesh is not rebuilt; a
+  falling piece is released after `islands.maxHoldTime` (0.5 s) onto the
+  old colliders, settles and sleeps, and nothing wakes it when they go.
+  In play the frame runs and the rebuild is far quicker than 0.5 s, so the
+  crates fell once the test ran the rebuild each step. But on a slow
+  machine a rebuild over 0.5 s would leave a piece floating: worth a bug
+  card (`src/voxel/pieces.ts`, wake a released piece when its source
+  finishes remeshing).
+- Not seen by eye: the pane was hidden, so the break and the fall were
+  read from the voxel volume and the piece bodies, not watched.
 
 ### 2026-11-07: ENV-01 stage 3, a crate breaks whole when worn (DeepSeek V4.1 Flash via Pi)
 
