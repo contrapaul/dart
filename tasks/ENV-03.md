@@ -11,11 +11,15 @@ Title:       E13 mod station: an arcade cabinet shaped machine styled
              like an early 1990s office computer, placed in level data,
              that grants one blaster mod once when the player holds use
              in front of it
-Owner:       Pi (model chosen at start)
+Owner:       Pi (Qwen 3.8-27B, qwen-machine, thinking medium)
 Reviewer:    Claude Opus 5.5
-Depends on:  ENV-01 (the test level pattern)
+Depends on:  ENV-01 (done: the test level pattern)
 Branch:      env-03, in its own worktree
 ```
+
+**Running at the same time:** ENV-02 (DeepSeek: the toy button, `Level.buttons`, doors, a new `data/levels/env-02.json`). You both add one optional field to `Level` in `src/level/format.ts`, one line to `src/arena/levels.ts` and the key list in `tests/level/ring-load.test.ts`, and sound IDs to `data/sounds.json` and `design/SOUNDS.md`: keep those edits small and in their own lines so the merge is easy. Stay out of each other's files.
+
+**Lesson from ENV-01:** its crate rule passed every unit test and never ran in play, because `buildArena` in `src/arena/extras.ts` did not hand the crates to the game. Whatever you add to the level must reach the arena page: trace it from `buildLevel` through `buildArena` to `createGame` (`src/game/game.ts`), and write in HANDOFF the path it takes.
 
 ## Read first
 

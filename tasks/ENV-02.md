@@ -9,11 +9,15 @@ ID:          ENV-02
 Title:       E08 toy button: a flat box with a cylinder button (Paul's
              look) that a dart, a melee hit or the player's body presses
              once, wired in level data to open a door
-Owner:       Pi (model chosen at start)
+Owner:       Pi (DeepSeek V4.1 Flash, openrouter, thinking high)
 Reviewer:    Claude Opus 5.5
-Depends on:  ENV-01 (the test level pattern)
+Depends on:  ENV-01 (done: the test level pattern)
 Branch:      env-02, in its own worktree
 ```
+
+**Running at the same time:** ENV-03 (qwen-machine: the mod station, `Level.stations`, `src/weapons/loadout.ts`, a new `data/levels/env-03.json`). You both add one optional field to `Level` in `src/level/format.ts`, one line to `src/arena/levels.ts` and the key list in `tests/level/ring-load.test.ts`, and sound IDs to `data/sounds.json` and `design/SOUNDS.md`: keep those edits small and in their own lines so the merge is easy. Stay out of each other's files.
+
+**Lesson from ENV-01:** its crate rule passed every unit test and never ran in play, because `buildArena` in `src/arena/extras.ts` did not hand the crates to the game. Whatever you add to the level must reach the arena page: trace it from `buildLevel` through `buildArena` to `createGame` (`src/game/game.ts`), and write in HANDOFF the path it takes.
 
 ## Read first
 
