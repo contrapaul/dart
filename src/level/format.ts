@@ -44,7 +44,10 @@ export interface ShellBox extends Box {
 }
 
 export type PieceKind = "cover" | "plug" | "blast-wall" | "island" | "growth" | "ceiling";
-export type Anchor = "floor" | "wall" | "ceiling";
+/** BUG-12 review: `none` is a piece that hangs from nothing, so the first
+ *  carve that reaches it drops it whole (a plug you shoot open). The others
+ *  turn their contact layer into bedrock (`fillPieces`). */
+export type Anchor = "floor" | "wall" | "ceiling" | "none";
 
 export interface PieceVolume extends Box {
   material: MaterialName;

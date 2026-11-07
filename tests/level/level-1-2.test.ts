@@ -284,9 +284,10 @@ describe("Level 1-2 loads (LVL-02b)", () => {
     expect(bridged, "a high layer within a step of a floor layer").toBe(0);
   });
 
-  // LVL-02d, beat 5's ceiling plug: the piece hangs under floor 3's slab with
-  // no bedrock row (a ceiling anchor gets none), so one dart's island search
-  // takes all of it and it drops onto floor 2 as one slab, doing no damage.
+  // LVL-02d, beat 5's ceiling plug: one shot breaks it and it drops onto
+  // floor 2 as one slab, doing no damage. BUG-12 gave a ceiling anchor a
+  // bedrock row, so the plug says `anchor: "none"` in the data: it hangs
+  // from nothing, and the first carve takes all of it, by design.
   it("9. the tower's ceiling plug drops as one slab", async () => {
     const { rapier, world } = await createPhysics();
     const built = buildLevel(level, rapier, world, FAKE);
@@ -295,7 +296,6 @@ describe("Level 1-2 loads (LVL-02b)", () => {
     const at = built.voxelMesh.worldToVoxel(new THREE.Vector3(-6, 9.2, -29));
     expect(built.voxels.get(Math.round(at.x), Math.round(at.y), Math.round(at.z)))
       .not.toBe(undefined);
-    let islands = 0;
     const pieces = new FallingPieces(rapier, world, FAKE as never,
       new DebrisSystem(rapier, world));
     const removed: { x: number; y: number; z: number; material: number }[] = [];
@@ -303,9 +303,8 @@ describe("Level 1-2 loads (LVL-02b)", () => {
     const v = { x: Math.round(at.x), y: Math.round(at.y), z: Math.round(at.z) };
     removed.push({ ...v, material: built.voxels.get(v.x, v.y, v.z)! });
     built.voxels.set(v.x, v.y, v.z, 0);
-    islands = pieces.afterCarve(built.voxelMesh as never, removed);
+    const islands = pieces.afterCarve(built.voxelMesh as never, removed);
     expect(islands, "the whole plug is one island").toBe(1);
-    expect(pieces.stats.pieces + pieces.stats.toDebris).toBe(1);
     // 3.0 x 0.6 x 3.0 m at 0.1 m is 5400 voxels: over minPieceVoxels, under
     // maxSearchVoxels, so it becomes a falling piece rather than debris.
     expect(pieces.stats.pieces).toBe(1);

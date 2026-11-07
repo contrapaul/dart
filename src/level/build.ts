@@ -9,7 +9,7 @@ import { material, materialId } from "../voxel/materials";
 import { Crates, type CrateBox } from "../voxel/crates";
 import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
-import type { Door, DoorState, Level, ShellBox } from "./format";
+import type { Door, DoorState, Level, PieceVolume, ShellBox } from "./format";
 
 // Turns a validated level into meshes, colliders and voxels. Shell boxes are
 // fixed colliders like src/main.ts's addBox. Every piece volume goes into one
@@ -119,6 +119,32 @@ function addRamp(
   );
 }
 
+/** The voxel coordinates of a volume's bounds: inclusive index low and high
+ *  per axis, in the shared volume's grid. */
+function voxelBounds(v: PieceVolume, origin: THREE.Vector3): [[number, number, number], [number, number, number]] {
+  const lo: [number, number, number] = [0, 0, 0];
+  const hi: [number, number, number] = [0, 0, 0];
+  for (let a = 0; a < 3; a++) {
+    const c = origin.getComponent(a);
+    lo[a] = Math.round((v.pos[a] - v.size[a] / 2 - c) / VOXEL);
+    hi[a] = Math.round((v.pos[a] + v.size[a] / 2 - c) / VOXEL) - 1;
+  }
+  return [lo, hi];
+}
+
+/** Paint one layer of a volume (all voxels with `layer` on `axis`) bedrock. */
+function bedLayer(
+  voxels: VoxelVolume, v: PieceVolume, origin: THREE.Vector3,
+  axis: 0 | 1 | 2, layer: number,
+) {
+  const [lo, hi] = voxelBounds(v, origin);
+  const a: [number, number, number] = [lo[0], lo[1], lo[2]];
+  const b: [number, number, number] = [hi[0], hi[1], hi[2]];
+  a[axis] = layer;
+  b[axis] = layer;
+  voxels.fillBox(a[0], a[1], a[2], b[0], b[1], b[2], materialId("bedrock"));
+}
+
 /** Paints a piece's world-space volumes into the shared voxel volume. */
 function fillPieces(
   level: Level, voxels: VoxelVolume, origin: THREE.Vector3, crates: CrateBox[],
@@ -132,25 +158,51 @@ function fillPieces(
       // here, from the same rounding the fill uses, so the crate's bounds
       // and its filled voxels cannot disagree.
       const tag = v.crate;
-      const x0 = Math.round((v.pos[0] - v.size[0] / 2 - origin.x) / VOXEL);
-      const x1 = Math.round((v.pos[0] + v.size[0] / 2 - origin.x) / VOXEL) - 1;
-      const y0 = Math.round((v.pos[1] - v.size[1] / 2 - origin.y) / VOXEL);
-      const y1 = Math.round((v.pos[1] + v.size[1] / 2 - origin.y) / VOXEL) - 1;
-      const z0 = Math.round((v.pos[2] - v.size[2] / 2 - origin.z) / VOXEL);
-      const z1 = Math.round((v.pos[2] + v.size[2] / 2 - origin.z) / VOXEL) - 1;
-      voxels.fillBox(x0, y0, z0, x1, y1, z1, materialId(v.material));
-      if (tag) crates.push({ id: tag, min: [x0, y0, z0], max: [x1, y1, z1] });
+      const [lo, hi] = voxelBounds(v, origin);
+      voxels.fillBox(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2], materialId(v.material));
+      if (tag) crates.push({ id: tag, min: lo, max: hi });
     }
-    if (piece.anchor === "floor") {
-      // The lowest row is bedrock: it is the anchor the rest hangs from.
+    // The anchor row or layer is bedrock: the indestructible voxels the rest
+    // of the piece hangs from, which is what findIslands looks for.
+    let top = -Infinity;
+    for (const v of piece.volumes) top = Math.max(top, v.pos[1] + v.size[1] / 2);
+    if (piece.anchor === "floor" || piece.anchor === "ceiling") {
+      // The lowest row for a floor anchor, the highest for a ceiling one.
+      const at = piece.anchor === "floor" ? bottom : top;
+      const layer = Math.round((at - origin.y) / VOXEL) + (piece.anchor === "floor" ? 0 : -1);
       for (const v of piece.volumes) {
-        if (Math.abs(v.pos[1] - v.size[1] / 2 - bottom) > 1e-6) continue;
-        const x0 = Math.round((v.pos[0] - v.size[0] / 2 - origin.x) / VOXEL);
-        const x1 = Math.round((v.pos[0] + v.size[0] / 2 - origin.x) / VOXEL) - 1;
-        const y = Math.round((bottom - origin.y) / VOXEL);
-        const z0 = Math.round((v.pos[2] - v.size[2] / 2 - origin.z) / VOXEL);
-        const z1 = Math.round((v.pos[2] + v.size[2] / 2 - origin.z) / VOXEL) - 1;
-        voxels.fillBox(x0, y, z0, x1, y, z1, materialId("bedrock"));
+        const edge = piece.anchor === "floor" ? v.pos[1] - v.size[1] / 2 : v.pos[1] + v.size[1] / 2;
+        if (Math.abs(edge - at) > 1e-6) continue;
+        bedLayer(voxels, v, origin, 1, layer);
+      }
+    }
+    if (piece.anchor === "wall") {
+      // Wall anchor: the voxels the wall is built into become bedrock, the
+      // indestructible voxels findIslands holds the rest of the piece by. A
+      // voxel's cell counts as built in when it meets an axis-aligned shell
+      // box on all three axes (a ramp or a turned box is not a grid of
+      // voxels, so it is never a wall).
+      const bed = materialId("bedrock");
+      for (const box of level.shell) {
+        if (box.shape === "ramp" || (box.rotY ?? 0) !== 0) continue;
+        for (const v of piece.volumes) {
+          const [lo, hi] = voxelBounds(v, origin);
+          // The cell's own extent on axis `a` is origin + [i, i+1]*VOXEL: it
+          // meets the box when its top is past the box's low side and its
+          // bottom is short of the box's high side, flush contact included.
+          const a: [number, number, number] = [0, 0, 0];
+          const b: [number, number, number] = [0, 0, 0];
+          let any = true;
+          for (let ax = 0; ax < 3; ax++) {
+            const c = origin.getComponent(ax);
+            const t0 = (box.pos[ax] - box.size[ax] / 2 - c) / VOXEL;
+            const t1 = (box.pos[ax] + box.size[ax] / 2 - c) / VOXEL;
+            a[ax] = Math.max(lo[ax], Math.ceil(t0 - 1 - 1e-6));
+            b[ax] = Math.min(hi[ax], Math.floor(t1 + 1e-6));
+            if (a[ax] > b[ax]) any = false;
+          }
+          if (any) voxels.fillBox(a[0], a[1], a[2], b[0], b[1], b[2], bed);
+        }
       }
     }
   }
