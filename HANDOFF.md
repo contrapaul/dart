@@ -6,6 +6,33 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10i done 2026-11-07, not merged (card `tasks/GAME-10i.md`, Qwen 3.8-27B
+via Pi, branch `game-10i`): the F07 Brawler carries its lime foam sword.
+Stage 1: the greybox right fist is gone; a 1.5 m rounded capsule blade (six
+voxels wide: 0.3 m) is parented to `foreArmR` so it moves with the arm, a
+lime hilt and an orange cross guard ride on it as children, and the left
+fist stays. The sword is a breakable weapon part with its own health (11 on
+a 45 hp Brawler, the weapon share in `data/foamers.json`), the way F09's
+gun is. A new `swing` attack takes the right-hand punch's place: windup
+0.8 s, strike 0.25 s, damage 16, it needs the sword, and it pins `range
+2.4` on the attack, 0.7 m beyond the punch's `attackRange` 1.7 plus the
+0.3 m grace (PLAN.md section 14 says how). With the blade gone
+`chooseAttack` falls to the left-fist punch, whose `needs` are
+`foreArmL` only. The leap slam, its crouch and the shockwave are
+untouched. `windupMotion` / `strikeMotion` got a `swing` case: a wide
+horizontal arc (back-left, across the body), rest at both ends. Stage 2:
+`F07-swing` (whoosh, in place of the old punch sound while swinging) and
+`F07-sword-break` (a bright snap over the generic part-off, a new
+`sword-break` kind off `breakPart`) are placeholder synth IDs in
+design/SOUNDS.md. New tests in `tests/foamers/brawler.test.ts`: the rig
+shape, the sword taking dart damage and breaking off with hilt and
+shield, at 2.2 m (inside the swing, outside the punch) it is a swing, and sword-less it is the left-fist punch. The leap and shockwave tests from GAME-10f pass unchanged.
+`npx tsc --noEmit`, full `npx vitest run` (606 pass, 2 skipped) and
+`npm run build` clean. Not verified: the turnaround render and the
+windup and strike pose renders exist (design/foamers/,
+tools/render-rig.ts) but were not checked by eye (no browser here); the moving
+swing in play was not checked; the two placeholder sounds were not heard.
+
 LVL-04b stage 1 merged locally 2026-11-07, not pushed (card
 `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi, branch `lvl-04b`):
 the A1 Pit and breather 2 in `data/levels/1-4.json`. The ring's north
@@ -554,6 +581,33 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10i, the Brawler's foam sword (Qwen 3.8-27B via Pi, branch `game-10i`)
+
+- Stage 1, the sword: `fistR` in the F07 rig is gone; a `sword` weapon
+capsule (0.3 m wide, 1.5 m long, the card proposed about 1.2 m) is
+parented to `foreArmR` at the fist, with a `swordHilt` and a
+`swordGuard` as children, so `breakPart` drops all three in one piece.
+The left fist stays. The `swing` attack (data/foamers.json) needs the
+sword and pins `range: 2.4`, 0.7 m past the punch's 1.7 plus the 0.3 m
+grace; the punch's `needs` are now `foreArmL` only, so `chooseAttack`
+falls to it when the blade is gone. No melee code changed: `needs`
+carrying does the fallback. `windupMotion` and `strikeMotion` got a
+`swing` case, a wide horizontal arc. Stage 2: `F07-swing` and
+`F07-sword-break` in data/sounds.json and design/SOUNDS.md; the
+`attack` sound picks the swing over the punch, and `breakPart` got a
+`sword-break` kind (the shield-break's pattern). Four tests in
+`tests/foamers/brawler.test.ts`: the rig shape (sword, no `fistR`, part-
+own health), the blade darts away in 20 hits with hilt and guard, a
+player at 2.2 m is bonked by a `swing` (outside the punch's reach), and
+sword-less the next bonk is the left-fist `punch`. The GAME-10f leap and
+shockwave tests pass unchanged.
+- `npx tsc --noEmit`, `npx vitest run` (606 pass, 2 skipped) and
+`npm run build` all pass; no em or en dashes in the files touched.
+- Not checked by eye (no browser here): the turnaround renders and the
+windup and strike pose renders in `design/foamers/` (faced right in
+render-rig.ts), the moving swing in play, and the two placeholder
+sounds by ear.
 
 ### 2026-11-07: LVL-04b stage 1 review, merged (Claude)
 

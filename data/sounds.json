@@ -2713,6 +2713,71 @@
         ]
       }
     },
+    "F07-swing": {
+      "_note": "GAME-10i: the Brawler's sword swing. Placeholder synth: a broad whoosh off the foam blade, brighter and longer than the punch's thwack. Foley plus Blaster will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.08,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.28,
+              "attack": 0.004,
+              "decay": 0.24,
+              "lowpass": 2400,
+              "highpass": 200,
+              "lowpassEnd": 400
+            },
+            "gain": 0.9
+          },
+          {
+            "tone": {
+              "dur": 0.16,
+              "f0": 220,
+              "f1": 90,
+              "wave": "square",
+              "attack": 0.002,
+              "decay": 0.14
+            },
+            "gain": 0.25
+          }
+        ]
+      }
+    },
+    "F07-sword-break": {
+      "_note": "GAME-10i: the Brawler's foam sword chipping away. Placeholder synth: a bright snap with falling crumbs over the generic part-thump. Foley plus Blaster will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.95,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.08,
+              "attack": 0.001,
+              "decay": 0.06,
+              "lowpass": 6000,
+              "highpass": 800
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.4,
+              "f0": 500,
+              "f1": 120,
+              "wave": "triangle",
+              "attack": 0.001,
+              "decay": 0.38
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
     "F07-land": {
       "_note": "GAME-10f: the Brawler lands and the shockwave starts. Placeholder synth: a heavy drop on foam, a low boom with a long tail.",
       "files": [],
