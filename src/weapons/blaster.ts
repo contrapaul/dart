@@ -78,6 +78,12 @@ export interface BlasterSpec {
   burstCooldown: number;
   spinUp: number;
   spinDown: number;
+  /** GAME-09g: B08's movement slow: while the blaster is firing (the
+   *  trigger held, the wheels up to speed) the player walks and sprints at
+   *  this share of their speed. 1 for every other blaster. The page feeds
+   *  it to the controller's fireMoveScale, a second scale that multiplies
+   *  in beside the shield's own speedScale, not a replacement for it. */
+  fireMoveShare: number;
   autoReload: boolean;
   recoil: RecoilSpec;
   bothBarrels: boolean;
@@ -137,6 +143,8 @@ interface RawMod {
   magSize?: number;
   /** GAME-09d: the rate mod (B06) overrides the auto interval. */
   fireInterval?: number;
+  /** GAME-09g: B08's Control mod eases the firing movement slow. */
+  fireMoveShare?: number;
   muzzles?: string[];
   bothBarrels?: boolean;
   burstCount?: number;
@@ -175,6 +183,9 @@ interface RawBlaster {
   fireInterval?: number;
   spinUp?: number;
   spinDown?: number;
+  /** GAME-09g: the firing movement slow (B08), overridable by a mod
+   *  (B08's Control mod eases it). */
+  fireMoveShare?: number;
   bothBarrels?: boolean;
   recoil?: Partial<RecoilSpec>;
   muzzles: string[];
@@ -214,6 +225,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     burstCooldown: 0,
     spinUp: raw.spinUp ?? 0,
     spinDown: raw.spinDown ?? 0,
+    fireMoveShare: raw.fireMoveShare ?? 1,
     autoReload: raw.autoReload,
     recoil: {
       spreadPerShot: 0, spreadMax: 0, climbDegPerShot: 0, climbDegMax: 0, recover: 0,
@@ -239,6 +251,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     if (mod.spreadDeg !== undefined) s.spreadDeg = mod.spreadDeg;
     if (mod.magSize !== undefined) s.magSize = mod.magSize;
     if (mod.fireInterval !== undefined) s.fireInterval = mod.fireInterval;
+    if (mod.fireMoveShare !== undefined) s.fireMoveShare = mod.fireMoveShare;
     if (mod.burstCount !== undefined) s.burstCount = mod.burstCount;
     if (mod.burstGap !== undefined) s.burstGap = mod.burstGap;
     if (mod.burstCooldown !== undefined) s.burstCooldown = mod.burstCooldown;
@@ -313,6 +326,10 @@ export class Blaster {
   climbDegNow = 0;
   /** B04: flywheel speed, 0 to 1. 0 for the other modes. */
   wheelSpeed = 0;
+  /** GAME-09g: true while an auto blaster is actually shooting: the
+   *  trigger held and the wheels up to speed (B08's movement slow reads
+   *  this through the page). */
+  firing = false;
   /** B03: which barrels hold a shell, in muzzle order. Empty for other modes. */
   readonly loaded: boolean[];
   /** Called once per dart that leaves a muzzle, with the muzzle index,
@@ -618,6 +635,9 @@ export class Blaster {
   private updateAuto(dt: number, fireHeld: boolean): void {
     const s = this.spec;
     const r = s.recoil;
+    // GAME-09g: the firing flag for the movement slow: the trigger held
+    // and the wheels up to speed. Cleared for every other mode in update.
+    this.firing = fireHeld && this.wheelSpeed >= 1 && this.st === "ready";
     if (fireHeld) {
       this.wheelSpeed = Math.min(1, this.wheelSpeed + dt / Math.max(s.spinUp, 1e-6));
       this.recoving = false;
@@ -661,7 +681,11 @@ export class Blaster {
     this.beginShot();
     this.spreadNow = Math.min(r.spreadMax, this.spreadNow + r.spreadPerShot);
     this.climbDegNow = Math.min(r.climbDegMax, this.climbDegNow + r.climbDegPerShot);
-    this.fireDart(0, s.spreadDeg + this.spreadNow);
+    // GAME-09g: with B08's Twin mod the spec lists two muzzles and the
+    // auto shot alternates them; a one-muzzle blaster always fires from 0.
+    const n = s.muzzles.length;
+    this.fireDart(this.nextMuzzle % n, s.spreadDeg + this.spreadNow);
+    this.nextMuzzle = (this.nextMuzzle + 1) % n;
   }
 
   /** B03: one press fires the next loaded barrel (all of them with
