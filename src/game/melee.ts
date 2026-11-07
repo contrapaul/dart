@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import { CAPSULE_GROUPS, SIGHT_QUERY_GROUPS, type Rapier } from "../physics/world";
-import { carveSphere } from "../voxel/carve";
+import { carveSphere, type RemovedVoxel } from "../voxel/carve";
 import type { VoxelTarget } from "../weapons/impacts";
 import type { DebrisSystem } from "../voxel/debris";
 import type { FoamerSystem } from "../foamers/foamers";
@@ -40,6 +40,12 @@ const T = meleeJson as unknown as {
 const EXCLUDE_SENSORS = 8; // QueryFilterFlags.EXCLUDE_SENSORS (as shield.ts)
 const DEG = Math.PI / 180;
 
+/** ENV-01 stage 3: one carve the swing made, with the volume it came from. */
+export interface Carve {
+  target: VoxelTarget;
+  removed: RemovedVoxel[];
+}
+
 /** What one press did, for the page's sounds and HUD. */
 export interface MeleeEvents {
   /** The combo hit that swung this step (0 is the first), -1 for a bash,
@@ -51,6 +57,10 @@ export interface MeleeEvents {
   hits: Foamer[];
   /** Where a carve happened, for the carve sound. */
   carved: THREE.Vector3[];
+  /** ENV-01 stage 3: what the swing carved, with the volume it came from,
+   *  so the shared game can count level voxels against a crate (the darts
+   *  report theirs through `impacts.onCarve`). */
+  carves: Carve[];
   /** Charges a parry or the timer gave back this step. */
   refills: number;
 }
@@ -113,7 +123,7 @@ export class Melee {
   /** One fixed step: the timers. The parry refill reads the shield's own
    *  count, so the page just hands over the shield it already has. */
   update(dt: number, shield: Shield): MeleeEvents {
-    const e = { swung: null, empty: false, hits: [], carved: [], refills: 0 } as MeleeEvents;
+    const e = { swung: null, empty: false, hits: [], carved: [], carves: [], refills: 0 } as MeleeEvents;
     this.time += dt;
     if (this.swingLeft > 0) this.swingLeft = Math.max(0, this.swingLeft - dt);
     if (this.bashLeft > 0) this.bashLeft = Math.max(0, this.bashLeft - dt);
@@ -150,7 +160,7 @@ export class Melee {
    *  page's, and a running swing swallows nothing: the page calls this
    *  only when it wants the press spent. Returns what happened. */
   press(eye: THREE.Vector3, forward: THREE.Vector3, shield: Shield): MeleeEvents {
-    const e = { swung: null, empty: false, hits: [], carved: [], refills: 0 } as MeleeEvents;
+    const e = { swung: null, empty: false, hits: [], carved: [], carves: [], refills: 0 } as MeleeEvents;
     if (this.swinging) return e;
     if (shield.state === "raised" || shield.charging) return e;
     this.debrisThisSwing = 0;
@@ -270,6 +280,7 @@ export class Melee {
     const removed = carveSphere(target.volume, _carve.x, _carve.y, _carve.z, r / vs);
     if (removed.length === 0) return;
     this.debrisThisSwing += Math.min(room, removed.length);
+    e.carves.push({ target, removed });
     _dir.copy(eye).addScaledVector(forward, hit.timeOfImpact);
     this.debris.spawn(removed.slice(0, room), _dir, vs, (v) => target.voxelToWorld(v));
     e.carved.push(_dir.clone());

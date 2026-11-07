@@ -36,6 +36,8 @@ import { DebrisSystem } from "../voxel/debris";
 import { MesherPool } from "../voxel/mesher-pool";
 import type { VolumeMesh } from "../voxel/volume-mesh";
 import { FallingPieces } from "../voxel/pieces";
+import { Crates, burstCrate } from "../voxel/crates";
+import type { RemovedVoxel } from "../voxel/carve";
 import renderJson from "../../data/render.json";
 import { carveBounds } from "./shared";
 import { damageOf } from "./attack";
@@ -67,6 +69,8 @@ export interface BuildInput {
 export interface BuiltGame {
   voxels: VoxelVolume;
   voxelMesh: VolumeMesh;
+  /** ENV-01 stage 3: the level's crates, or none (see `src/voxel/crates.ts`). */
+  crates?: Crates;
   navBounds: NavBounds;
   spawn: THREE.Vector3;
   yaw?: number;
@@ -180,7 +184,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const mesherPool = new MesherPool();
 
   const built = hooks.build({ rapier, world, scene, mesherPool });
-  const { voxels, voxelMesh } = built;
+  const { voxels, voxelMesh, crates } = built;
+  const voxelSize = voxels.voxelSize;
   const debris = new DebrisSystem(rapier, world);
   scene.add(debris.mesh);
   // Loose islands cut by a carve break off and fall as their own bodies.
@@ -228,14 +233,27 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   pieces.onBreak = (c, r) => darts.releaseInSphere(c, r);
   // A piece that comes to rest may block a cell: re-bake its patch.
   pieces.onRest = (c, r) => levelAI.pieceRested(c, r);
-  // Islands only form in a voxel wall, so isolate the carve notification.
   impacts.onCarve = (target, removed) => {
     if (target !== voxelMesh) return;
-    pieces.afterCarve(voxelMesh, removed);
+    carveReport(removed);
+  };
+  // ENV-01 stage 3: one carve path for everything that reports a carve
+  // (darts through impacts.onCarve, melee through `carved` below). A crate
+  // worn past its share goes whole here, and the island search runs on all
+  // of it, so the crate above falls as it does when a crate is shot out.
+  const carveReport = (removed: RemovedVoxel[]) => {
+    let gone = removed;
+    if (crates) {
+      const res = crates.take(removed);
+      for (const b of res.breaks)
+        burstCrate(debris, b.voxels, voxelSize, (v) => voxelMesh.voxelToWorld(v));
+      gone = res.removed;
+    }
+    pieces.afterCarve(voxelMesh, gone);
     // The grid re-bakes only where the carve was (ENG-08 stage 3b); the
     // removed voxels are in the volume's own coordinates and carveBounds
     // turns them into the world patch (src/game/shared.ts).
-    const box = carveBounds(voxelMesh, removed);
+    const box = carveBounds(voxelMesh, gone);
     if (box) levelAI.carveChanged(box[0], box[1], box[2], box[3]);
   };
   // Foamer system: spawn, bonk, dart damage, pop. This is the first enemy,
@@ -588,6 +606,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
               if (me.empty) audio.play("ML-empty");
               for (const f of me.hits) audio.play("ML-hit", { position: f.centre });
               for (const p of me.carved) audio.play("DT-carve", { position: p });
+              // ENV-01 stage 3: a melee carve counts against a crate too,
+              // through the same path the darts use.
+              for (const c of me.carves)
+                if (c.target === voxelMesh) carveReport(c.removed);
               if (me.refills > 0) hud.meleePips(melee.charges, melee.maxCharges, true);
             }
           }

@@ -6,6 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+ENV-01 merged locally 2026-11-07, not pushed: foam cladding (E01) and toy
+crate stacks (E02) whose crates break whole when worn, in the test level
+`env-01`. ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design
+only): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
 GAME-10j merged locally 2026-11-07, not pushed (Qwen 3.8-27B via Pi,
 branch `game-10j`): the F10 Turbo. Stage 1: the palette look (purple
 body and arms, lime visor, wings and blaster trim, orange jets), the
@@ -28,8 +32,10 @@ code): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
 (its section 0): mods at stations, ammo on the ground; moving floors
 paused; Act 1 hazards must be able to kill; looks for crates, buttons,
 targets and stations. Cards ENV-01 (cladding, crates), ENV-02 (button) and
-ENV-03 (mod station) are written, not started. The killing hazard waits on
-Paul's choice. No terrain element is built yet.
+ENV-03 (mod station) are written. ENV-01 (the `env-01` test room,
+E01 foam cladding and E02 crate stacks, branch `env-01`) is built in both
+stages and tested, not merged and not pushed; ENV-02 and ENV-03 are not
+started. The killing hazard waits on Paul's choice.
 
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
@@ -646,6 +652,190 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: ENV-01 stage 3 review, merged (Claude Opus 5.5): crates break whole
+
+- **Bug, fixed in review: the rule never ran in play.** `buildArena`
+  (`src/arena/extras.ts`) handed the game the level's voxels and mesh but
+  not its crates, so `createGame` had none and no carve was counted: 60
+  darts left a crate's tally at 184 of 184. It now passes `level.crates`.
+  The unit tests call the crate code directly, so they could not see this;
+  no test builds the arena page (it reads its level from the URL).
+- **Played** (`arena.html?watch&level=env-01`, the Dartman): every crate
+  starts at 184 voxels; a dart that lands takes 1 to 14; stack B's bottom
+  crate broke after 7 darts and stack A's left crate after 12, and each
+  top crate fell (A's to the floor, B's tumbled off its plinth and rolled
+  about 2.6 m); stack A's right crate stayed whole at 184.
+- **Seen while testing, not changed:** with the browser pane hidden the
+  page's render frame does not run, so the voxel mesh is not rebuilt; a
+  falling piece is released after `islands.maxHoldTime` (0.5 s) onto the
+  old colliders, settles and sleeps, and nothing wakes it when they go.
+  In play the frame runs and the rebuild is far quicker than 0.5 s, so the
+  crates fell once the test ran the rebuild each step. But on a slow
+  machine a rebuild over 0.5 s would leave a piece floating: worth a bug
+  card (`src/voxel/pieces.ts`, wake a released piece when its source
+  finishes remeshing).
+- Not seen by eye: the pane was hidden, so the break and the fall were
+  read from the voxel volume and the piece bodies, not watched.
+
+### 2026-11-07: ENV-01 stage 3, a crate breaks whole when worn (DeepSeek V4.1 Flash via Pi)
+
+Task: stage 3 of `tasks/ENV-01.md`, after the review found the topple never
+happens in play (a dart cuts a crater in the near face; the back panel and
+bars keep the top crate tied to its plinth unless a full ring is cut).
+
+- A crate is the set of volumes tagged with one `crate` id. All five crates'
+eighteen volumes are tagged in `data/levels/env-01.json` (`cr-a-l`,
+`cr-a-r`, `cr-a-top`, `cr-b-bottom`, `cr-b-top`); the three wood plinths are
+untagged, so no plinth is ever part of a crate and no bedrock row is ever
+counted.
+- New `src/voxel/crates.ts`: `Crates` counts each crate's destructible
+voxels at load, tallies every carve against it, and once it has lost
+`crate.breakShare` of them (0.25 in `data/destruction.json`) it empties the
+rest at once and returns those voxels in the carve's removed list, so the
+existing island search sees the whole crate go and the crate above falls.
+`burstCrate` turns a break into debris through `DebrisSystem.spawn`, which
+keeps the `debris.max` and `debris.perCarveMax` caps.
+- Counting is over each crate's union box, once, not per volume. Counting the
+  18 volumes separately gave 384 for a 216 voxel crate: the six panels and
+twelve frame bars overlap. The union box is 184 voxels a crate (the panels
+and bars, not the hollow inside).
+- `src/level/build.ts` records one `CrateBox` per tagged volume (same
+rounding as the fill) and puts `crates` on `BuiltLevel`.
+- One carve path: `carveReport` in `src/game/game.ts` runs the crate tally,
+the break debris, the islands and the nav patch. `impacts.onCarve` (darts)
+and the new `MeleeEvents.carves` (melee, `Melee.press` now reports
+`{target, removed}`) both feed it, so no carve source counts twice or
+misses.
+- Tests: `tests/voxel/crates.test.ts`, 8 tests, all green: tags and plinths,
+  counting, under and over the share, the crate above becoming an island at
+  the right height, an untagged volume unchanged, the union box count, the
+  debris caps, and a real melee swing's carve counting once against a crate.
+- `npx tsc --noEmit`, `npx vitest run` (641 pass, 2 skipped) and
+`npm run build` are clean. No em or en dashes in the files touched.
+- Not checked by eye (no browser here): the break in play, whether 184
+voxels split into the six panels and twelve bars reads as a crate
+collapsing, and whether one swing past the share feels right at 0.25. The
+melee carve was proved in a unit rig, not in the page.
+
+### 2026-11-07: ENV-01 review (Claude Opus 5.5)
+
+- Stage 1, the cladding, passes: tsc, 633 tests and the build are green,
+  and in the page eight darts took 82 voxels off the coat's east face and
+  nothing else moved. The pane was hidden, so this was read from the voxel
+  volume, not seen.
+- Colours changed in review. The crate frame was `foam-orange` and orange
+  means a weak point (Paul, 2026-11-07); it is `foam-ink` now. The coat was
+  `foam-yellow` and yellow is the player's darts; it is `foam-white` now.
+  Both are Paul's to change.
+- Crates are now hollow (six 0.1 m cardboard panels inside the same frame)
+  and the offset top crate of `stack-a` sits on the 0.1 m grid at x -5.6
+  (it was at -5.45, half a voxel off, so one edge was rounded away).
+- **Not working in play: the topple.** The tests pass because they delete a
+  whole bottom crate at once. In the page, 150 Dartman darts on a solid
+  crate, 40 slugs on another, and 120 darts on a hollow one all left the
+  top crate standing: darts carve the near face and the back panel and
+  bars keep the top crate tied to its plinth. A stack only falls if a full
+  ring through the bottom crate is cut from every side. Needs Paul's call:
+  a crate that breaks whole after a share of its voxels is gone (a small
+  rule in the voxel code), or crates stay cover to chew through and only
+  explosions topple them.
+- The wall and ceiling anchors write no bedrock (DeepSeek's finding, true:
+  `fillPieces` in `src/level/build.ts`). A wall or ceiling piece under the
+  6000 voxel island search budget drops whole on its first carve.
+  `store-window` and `tower-plug` (1-2) and `pit-island` (1-4) use them;
+  not checked yet whether any is small enough to drop.
+
+ENV-01 stage 2 merged locally 2026-11-07, not pushed (card `tasks/ENV-01.md`,
+DeepSeek V4.1 Flash via Pi, branch `env-01`): E02, the toy crate stacks, in
+`data/levels/env-01.json`. A crate is 0.6 m: a 0.4 m `cardboard` body with
+twelve `foam-ink` bars on its edges, each bar 0.2 m thick so it overlaps
+the body by 0.1 m and stands 0.1 m proud of the panel it frames (one 0.1 m
+voxel, per the reviewer's correction; the card said 0.08 m). Thirteen
+volumes per crate, which costs one KIT 5 zone: the room is now 3 of 6 (the
+coat 2, the stacks 1 each), counted in the test by the chunks the built
+volume actually allocates, not by volume entries.
+
+Each stack is ONE `floor` anchored piece, and that is what makes the topple
+work. `fillPieces` writes a bedrock row under a floor anchor only, so the
+bottom of the piece is a hidden 0.6 x 0.1 x 0.6 wood plinth and every crate
+above it hangs from that row through its own voxels. Carve a bottom crate
+out and the crate above has no path to bedrock, so `findIslands` returns it
+as one island carrying both its frame and its panel: the crate breaks as one
+crate and falls. Three separate floor anchored crates would each get their
+own bedrock bottom row and could never fall; three unanchored crates would
+be free islands that drop the first time anything touched them.
+
+`stack-a` (x -5.3 / -4.7, z 1.4) is two bottom crates with the top over the
+left one only at x -5.45, so it touches the right crate only along an edge
+(the islands search is 6-connected, faces only) and cannot stay up on the
+right crate when the left one goes. `stack-b` (x 2.5, z 1.0) is a plain
+column of two. A top crate bridging both bottom crates was rejected: it
+shares faces with both, so shooting one out leaves it tied to the other,
+which is correct but shows nothing.
+
+The frame is foam (`foam-ink` after review) rather than `wood` because a standard dart carves
+0.12 m and `carveSphere` divides that by hardness: against wood (2.5) the
+effective radius is 0.048 m, under `minEffectiveRadius` 0.5, so a dart
+could not remove a single frame voxel and the stack would be permanent. The
+body stays `cardboard` (0.7, so 0.17 m, a few darts per panel).
+
+Tests in `tests/level/env-01-crates.test.ts`: the level validates, the zone
+count is 3 (of the cap 6), each crate is 13 volumes spanning 0.6 m on every
+axis with a 0.4 m body and twelve bars, a stack tops out at 1.3 m (under the
+1.5 m mantle), only the plinth is on the lowest row, and carving a bottom
+crate leaves exactly one island, 0.7 m to 1.3 m up, with both materials and
+fewer boxes than `maxCollidersPerPiece`. Both stacks are tested, and the
+right bottom crate of `stack-a` is proved still standing. Stage 1's
+`tests/level/env-01.test.ts` was narrowed to judge the coat on its own (it
+had asserted the room held exactly one piece). `npx tsc --noEmit`, full
+`npx vitest run` (633 pass, 2 skipped) and `npm run build` clean; no em or
+en dashes.
+
+Not checked by eye (no browser here): how the frame reads at 0.6 m, whether
+the 0.1 m proud bars look like a frame or like a bulkier box, the stack
+silhouette in the room, the fall itself in play (only the island search is
+proved, not the rigid body's tumble and rest), and whether a settling crate
+lands on the nav grid sensibly.
+
+### 2026-11-07: ENV-01 stage 1, the cladding test room and E01 (DeepSeek V4.1 Flash via Pi)
+
+- Card `tasks/ENV-01.md`, branch `env-01`, stage 1 only. Stage 2 (E02
+  crates) is not started.
+- `data/levels/env-01.json`: one plain lit room, 16 x 16 m inside walls,
+  5 m ceiling, a player start at `[0, 0, 6]` facing north and an exit pad
+  at `[3, 0.01, -6]` with its box. `arenas: []`, so no lock: the
+  `LevelRunner` is `complete` from the first frame and the pad ends the
+  level on touch. Registered as `"env-01"` in `src/arena/levels.ts`, and
+  `arena.html?level=env-01` picks it.
+- E01: `col-shell` is a shell box, 0.8 x 3 x 0.8 m at `[-3, 1.5, 0]`,
+  indestructible. `col-coat` is one `cover` piece of four volumes, 0.3 m
+  thick on all four sides, `foam-white` (yellow after the review: yellow is the player's darts) so it reads softer than the
+  greybox shell, and each volume touches the next at the corners. It is
+  floor anchored on purpose: a wall anchor gets no bedrock row from
+  `fillPieces`, so the first carve would drop the whole coat as one
+  island. See the PLAN section 14 rows.
+- Zone count against KIT 5: **4 volumes, cap 6**, all in the one room.
+  The validator does not count them (its rule 3 counts volumes inside an
+  arena, and this level has none), so `tests/level/env-01.test.ts`
+  asserts the count itself.
+- Tests, all new or one line changed: `tests/level/env-01.test.ts` (7
+  tests: it registers and validates clean, the runner completes with no
+  arena, floor under the start and pad, no coat volume shares space with
+  the shell column, the coat stops a side shot, and carving the whole
+  west face away leaves the shell column solid, the bedrock anchor row
+  in place and the other three sides standing). `tests/level/ring-load`
+  test 5's level list gains `env-01`. No `src/voxel/` or `src/level/`
+  code changed.
+- `npx tsc --noEmit`, `npx vitest run` (626 pass, 2 skipped) and
+  `npm run build` clean; no em or en dashes in the files touched
+  (checked with perl).
+- Not checked by eye (no browser here): whether the room reads as lit
+  and empty at all, whether the coat's four sides show the 0.1 m gap at
+  the top and bottom the file note describes, whether a dart's real
+  carve radius chews the coat at the rate the test's 4 voxel spheres
+  model, and whether the exit pad ending the level on touch works in a
+  running page rather than in the runner's model.
 
 ### 2026-11-07: GAME-10j review, merged (Claude Opus 5.5): the F10 Turbo
 
