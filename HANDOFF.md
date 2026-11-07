@@ -681,6 +681,17 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: B05 Shrike and B06 The Standard models (ART-04, Claude Opus 5.5)
+
+- Briefs approved by Paul with his changes (B05 deep red and a
+  rectangular scope; B06 teal like the reference, no bipod, a chunky
+  house-shaped magazine). Models built in Blender from
+  `art/blasters/B05/build.py` and `art/blasters/B06/build.py`; renders,
+  changes made by eye and checks in each folder's `NOTES.md`. Both pass
+  every glb contract check and export byte-identically.
+- Not done: gameplay for both (precision dart, mega dart, bolt action,
+  zoom, explosive rounds), their animations, and Paul's look.
+
 ### 2026-11-07: B02 Musketeer model (ART-04, Claude Opus 5.5)
 
 - `art/blasters/B02/build.py` builds `public/models/blasters/B02.glb`
