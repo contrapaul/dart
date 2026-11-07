@@ -1,5 +1,17 @@
 # ART-04 notes: B06 The Standard
 
+## Round 2 (Claude Opus 5.5, 2026-11-07)
+
+Paul's changes after Round 1: the magazine turned 90 degrees, so the house
+shape faces forward and the side shows a plain block; opaque lime, no darts,
+no black frames on its faces; the shroud rectangular for most of its length
+(square collars, round vents, a short round section at the muzzle).
+
+Checks: `art/blasters/check_glb.py` passes: 7,772 triangles (down from
+12,852), 410,112 bytes, 6 materials. 96.6 cm long, 32 cm tall, 16 cm
+across the magazine. Two builds byte-identical, SHA-256 `da86408d52227d03d72266fc01a749e39e6f583ed91def1e75c3511d56e5af8f`.
+Waiting for Paul's look.
+
 ## Round 1 (Claude Opus 5.5, 2026-11-07)
 
 Built from `design/blasters/B06.md` (approved by Paul 2026-11-07 with

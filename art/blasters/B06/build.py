@@ -19,7 +19,6 @@ ORANGE = "#ff7a1a"
 LIME = "#b6ff3b"
 BACKGROUND = (0.72, 0.72, 0.72, 1.0)
 ROUGHNESS = 0.4
-MAG_ALPHA = 0.45
 BEVEL = 0.003
 SMALL_BEVEL = 0.001
 
@@ -28,9 +27,13 @@ SMALL_BEVEL = 0.001
 REC_BACK, REC_FRONT = -0.060, 0.220
 REC_BOTTOM, REC_TOP, REC_W = 0.045, 0.145, 0.070
 BORE_Z = 0.098
-SHROUD_FRONT, SHROUD_R, CORE_R = 0.600, 0.0325, 0.024
+SHROUD_FRONT, SHROUD_R = 0.600, 0.0325
+# Most of the shroud is rectangular (Paul); a short round section at the
+# muzzle end.
+SHROUD_W, SHROUD_H, ROUND_L = 0.060, 0.064, 0.045
+CORE_W, CORE_H = 0.044, 0.048
 VENTS, VENT_R, VENT_Y0, VENT_STEP = 7, 0.008, 0.270, 0.045
-RING_YS, RING_L = (0.300, 0.420, 0.540), 0.012
+RING_YS, RING_L = (0.300, 0.415, 0.530), 0.012
 TIP_Y1, TIP_R = 0.628, 0.018
 BUMPER_Y0, BUMPER_Y1, BUMPER_R, BUMPER_INNER = 0.624, 0.654, 0.025, 0.015
 MUZZLE_Y = BUMPER_Y1
@@ -47,12 +50,11 @@ GUARD_W = 0.024
 TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.025, 0.012, 0.008
 TRIGGER_ORIGIN = (0.0, 0.013, 0.047)
 
-# The house-shaped magazine (Paul): side-on, square walls with a roof whose
-# peak feeds up into the receiver.
-MAG_Y0, MAG_Y1, MAG_W = 0.085, 0.245, 0.090
+# The house-shaped magazine (Paul): seen from the front, square walls with
+# a roof whose peak feeds up into the receiver; opaque, no darts.
+MAG_MID_Y, MAG_L, MAG_HALF_W, MAG_RIDGE = 0.165, 0.090, 0.080, 0.015
 MAG_BOTTOM, MAG_EAVES = -0.125, -0.015
 MAG_PEAK = REC_BOTTOM + 0.004
-DART_R, DART_L, DART_TIP = 0.009, 0.075, 0.014
 
 STOCK_BACK, STOCK_W, PAD_L = -0.300, 0.046, 0.012
 
@@ -305,7 +307,7 @@ def build_model():
     grip_charcoal = grip_material()
     yellow = material("Foam yellow", YELLOW)
     orange = material("Safety orange", ORANGE)
-    clear_lime = material("Clear lime", LIME, MAG_ALPHA)
+    lime = material("Foam lime", LIME)
     static = []
 
     rec_points = [
@@ -332,21 +334,26 @@ def build_model():
         static.append(box("Rear sight ear", (x, HANDLE_Y0 + 0.010, HANDLE_TOP + 0.005),
                           (0.006, 0.010, 0.010), yellow, SMALL_BEVEL))
 
-    # Shroud: thick and round, a row of round vents each side showing a
-    # yellow core, three raised charcoal rings, a front post sight.
-    shroud_len = SHROUD_FRONT - REC_FRONT
-    shroud = cylinder("Shroud", (0, REC_FRONT + shroud_len / 2, BORE_Z), SHROUD_R,
-                      shroud_len, teal, 40, 0)
+    # Shroud: mostly rectangular (Paul), a row of round vents each side
+    # showing a yellow core, three raised charcoal collars, then a short round
+    # section at the muzzle end and a front post sight.
+    box_front = SHROUD_FRONT - ROUND_L
+    box_len = box_front - REC_FRONT
+    shroud = box("Shroud", (0, REC_FRONT + box_len / 2, BORE_Z),
+                 (SHROUD_W, box_len, SHROUD_H), teal, 0)
     cutters = [x_cylinder("Vent cutter", (0, VENT_Y0 + i * VENT_STEP, BORE_Z),
                           VENT_R, 0.1, teal, 20, 0) for i in range(VENTS)]
     cut(shroud, join_at(cutters, "Vent cutters", (0, 0, 0)))
-    bevel(shroud, 0.0008, 2)
+    bevel(shroud, 0.004, 2)
     static.append(shroud)
-    static.append(cylinder("Yellow core", (0, REC_FRONT + shroud_len / 2, BORE_Z),
-                           CORE_R, shroud_len - 0.01, yellow, 24, 0))
+    static.append(box("Yellow core", (0, REC_FRONT + box_len / 2, BORE_Z),
+                      (CORE_W, box_len - 0.01, CORE_H), yellow, 0))
     for y in RING_YS:
-        static.append(tube("Raised ring", (0, y, BORE_Z), SHROUD_R + 0.004,
-                           SHROUD_R - 0.003, RING_L, charcoal, 40))
+        static.append(box("Raised collar", (0, y, BORE_Z),
+                          (SHROUD_W + 0.008, RING_L, SHROUD_H + 0.008), charcoal,
+                          SMALL_BEVEL))
+    static.append(cylinder("Round shroud end", (0, box_front + ROUND_L / 2, BORE_Z),
+                           SHROUD_R, ROUND_L + 0.002, teal, 32))
     static.append(box("Front sight post", (0, SHROUD_FRONT - 0.03,
                                            BORE_Z + SHROUD_R + 0.009),
                       (0.006, 0.010, 0.020), yellow, SMALL_BEVEL))
@@ -410,33 +417,19 @@ def build_model():
 
     cock = box("bolt", COCK_POS, (0.022, 0.030, 0.020), yellow, 0.004)
 
-    # The house-shaped magazine: a chunky pentagon side-on, see-through,
-    # a raised charcoal frame on each face, mega darts in rows inside.
-    mid = (MAG_Y0 + MAG_Y1) / 2
-    house = [(MAG_Y0, MAG_BOTTOM), (MAG_Y1, MAG_BOTTOM), (MAG_Y1, MAG_EAVES),
-             (mid + 0.015, MAG_PEAK), (mid - 0.015, MAG_PEAK), (MAG_Y0, MAG_EAVES)]
-    mag_parts = [profile("Magazine shell", house, MAG_W, clear_lime, 0.008)]
-    # A raised charcoal frame on each face (a plain cross read as a sight's
-    # crosshair, so it is a frame).
-    fy0, fy1 = MAG_Y0 + 0.018, MAG_Y1 - 0.018
-    fz0, fz1 = MAG_BOTTOM + 0.014, MAG_EAVES - 0.006
-    bar = 0.009
-    for side in (-1, 1):
-        x = side * (MAG_W / 2 + 0.0015)
-        for z in (fz0, fz1):
-            mag_parts.append(box("Panel frame", (x, (fy0 + fy1) / 2, z),
-                                 (0.004, fy1 - fy0, bar), charcoal, SMALL_BEVEL))
-        for y in (fy0, fy1):
-            mag_parts.append(box("Panel frame", (x, y, (fz0 + fz1) / 2),
-                                 (0.004, bar, fz1 - fz0 + bar), charcoal, SMALL_BEVEL))
-    for x in (-0.022, 0.022):
-        for z in (MAG_BOTTOM + 0.022, MAG_BOTTOM + 0.050, MAG_BOTTOM + 0.078):
-            mag_parts.append(cylinder("Mega dart", (x, mid - DART_TIP / 2, z), DART_R,
-                                      DART_L - DART_TIP, charcoal, 12, 0.0005))
-            mag_parts.append(cylinder("Mega dart tip",
-                                      (x, mid + (DART_L - DART_TIP) / 2, z), DART_R,
-                                      DART_TIP, orange, 12, 0.0005))
-    mag = join_at(mag_parts, "mag", (0, mid, (MAG_BOTTOM + MAG_PEAK) / 2))
+    # The house-shaped magazine, seen from the front (Paul: turned 90
+    # degrees): a chunky pentagon across the blaster, opaque lime, extruded
+    # front to back. Built across Y, then turned onto X.
+    house = [(-MAG_HALF_W, MAG_BOTTOM), (MAG_HALF_W, MAG_BOTTOM),
+             (MAG_HALF_W, MAG_EAVES), (MAG_RIDGE, MAG_PEAK),
+             (-MAG_RIDGE, MAG_PEAK), (-MAG_HALF_W, MAG_EAVES)]
+    shell = profile("Magazine shell", house, MAG_L, lime, 0.008)
+    shell.rotation_euler = (0, 0, math.pi / 2)
+    activate(shell)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    shell.location = (0, MAG_MID_Y, 0)
+    mag_parts = [shell]
+    mag = join_at(mag_parts, "mag", (0, MAG_MID_Y, (MAG_BOTTOM + MAG_PEAK) / 2))
 
     for obj in static:
         if obj.name != "Smooth rounded grip":
@@ -525,11 +518,11 @@ def render_views():
         bpy.ops.render.render(write_still=True)
         print("Rendered", scene.render.filepath)
 
-    cam = add_camera("Magazine closeup", (-0.9, 0.165, -0.03), (0, 0.165, -0.03))
+    cam = add_camera("Magazine closeup", (0.0, 0.9, -0.03), (0, 0.165, -0.03))
     cam.data.ortho_scale = 0.30
     scene.camera = cam
     scene.render.resolution_x, scene.render.resolution_y = (512, 512)
-    scene.render.filepath = str(RENDER_DIR / "magazine-closeup.png")
+    scene.render.filepath = str(RENDER_DIR / "magazine-front.png")
     bpy.ops.render.render(write_still=True)
     print("Rendered", scene.render.filepath)
 
