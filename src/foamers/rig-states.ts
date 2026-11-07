@@ -92,6 +92,13 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     out.pitch = (w["pitch"] ?? 0) * DEG * e;
     out.turn = (w["turn"] ?? 0) * DEG * e; // the body turns a little away
     out.y = 0.03 * e;
+  } else if (attack === "swing") {
+    // GAME-10i: the Brawler draws the sword back (the arm swings it out to
+    // the right), the body turning with it, so it ends at the strike's
+    // start pose, no snap at the handover.
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [0.2 * e, 0, 1.4 * e]);
+    out.turn = 0.25 * e;
+    out.pitch = 0.1 * e;
   }
 }
 
@@ -131,6 +138,16 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     out.pitch = (s["pitch"] ?? 0) * DEG * Math.sin(k * Math.PI) + ((w["pitch"] ?? 0) * (1 - wp)) * DEG;
     out.turn = ((w["turn"] ?? 0) + ((s["turn"] ?? 0) - (w["turn"] ?? 0)) * wp) * DEG; // turns through the throw
     out.y = 0.03 * Math.sin(k * Math.PI);
+  } else if (attack === "swing") {
+    // GAME-10i: the wide horizontal strike: the drawn-back arm swings
+    // across the body, side to side, fast for the first 70%, then the
+    // follow-through settles to rest, so the recover starts clean.
+    const u = k < 0.7 ? (k / 0.7) ** 1.6 : 1;
+    const back = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+    if (rig.parts.some((p) => p.id === "armR"))
+      out.rot.set("armR", [(0.2 - 0.5 * u) * back, 0, (1.4 - 2.7 * u) * back]);
+    out.turn = (0.25 - 0.45 * u) * back;
+    out.pitch = (0.1 - 0.25 * u) * back;
   }
 }
 
