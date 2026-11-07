@@ -22,6 +22,11 @@ function springKick(dt: number, rate: number, kickMax: number,
   void that.j;
 }
 
+/** ART-05a: progress p through the window [t0, t1], clamped to 0..1. */
+function seg(p: number, t0: number, t1: number): number {
+  return Math.max(0, Math.min(1, (p - t0) / (t1 - t0)));
+}
+
 export class Viewmodel {
   /** Added to under the camera. */
   readonly group = new THREE.Group();
@@ -329,14 +334,12 @@ export class Viewmodel {
       ? b.state === "priming"
       : this.spec.mode === "auto" && b.state === "reloading";
     const p = cycling ? b.progress : 1;
-    const seg = (t0: number, t1: number): number =>
-      Math.max(0, Math.min(1, (p - t0) / (t1 - t0)));
     const off = (m.boltTravel ?? 0)
       * (this.spec.mode === "pump"
-        ? seg(0.2, 0.5) - seg(0.5, 0.8)
-        : seg(0, 0.15) - seg(0.85, 1.0));
+        ? seg(p, 0.2, 0.5) - seg(p, 0.5, 0.8)
+        : seg(p, 0, 0.15) - seg(p, 0.85, 1.0));
     const lift = this.spec.mode === "pump"
-      ? (m.boltLiftDeg ?? 0) * DEG * (seg(0, 0.2) - seg(0.8, 1.0))
+      ? (m.boltLiftDeg ?? 0) * DEG * (seg(p, 0, 0.2) - seg(p, 0.8, 1.0))
       : 0;
     n.position.set(rp[0], rp[1], rp[2] + off);
     n.quaternion.copy(rq).multiply(this._q.setFromAxisAngle(this._axisZ, lift));

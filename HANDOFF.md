@@ -693,6 +693,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: ART-05a review, merged (Claude Opus 5.5): B02 slide, B05 bolt, B06 handle
+
+- Reviewed dgx-spark's run: clean, the data lines hand-edited in main's
+  layout. One change: the per-frame `seg` closure in `applyBolt` became a
+  module function, since the viewmodel allocates nothing per frame.
+- Checked on the real glbs in env-03 (the pane was hidden, so the loop was
+  stepped by hand): B02's slide goes back 2.1 cm on the shot frame and is
+  home within 10 frames; B05's bolt lifts 60 deg, goes back 4 cm at mid
+  priming and is home at rest when ready, and the lift raises the lever
+  (its top rises from 0.101 to 0.137 in the blaster's frame), so the
+  direction is right; B06's handle goes back 4 cm through the reload and
+  returns at the end.
+- Not checked by eye: how the three look on screen.
+- tsc, vitest (800 passed, 2 skipped), build green.
+
 ### 2026-11-08: ART-05a (Qwen 3.8 Flash Next via Pi, dgx-spark): B02 slide, B05 bolt, B06 cocking handle
 
 - Asked for: the three viewmodel motions the approved models have waiting
