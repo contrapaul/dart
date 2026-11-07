@@ -20,7 +20,9 @@ Branch:      lvl-04b, in its own worktree
 `src/ai/`, the F08 entry in `data/foamers.json`, `tests/foamers/`). Your
 files are `data/levels/1-4.json`, `src/level/`, `src/arena/`,
 `tests/level/`, and in `data/foamers.json` only a new top-level
-`promoted` block (stage 2). Do not edit `src/ai/`, `src/foamers/`,
+`promoted` block (stage 2), plus the smallest change in `src/foamers/`
+that applies a promoted spawn's health and plates (stage 2, once
+GAME-10h is merged; it is). Do not edit `src/ai/`,
 `src/player/`, `data/ai.json`, or any type entry in `data/foamers.json`.
 
 ## Read first
@@ -60,14 +62,15 @@ Write the JSON with short python scripts, never as one big reply.
 - **Promoted Foamers:** the page's `spawn` ignores `promoted`. Make a
   promoted spawn have more health, from a new top-level `promoted` block
   in `data/foamers.json` (`healthMultiplier`, start 1.5, so a Darter has
-  45). If setting the health needs a change in `src/foamers/`, stop and
-  say so in HANDOFF instead of making it. **The look (Paul,
-  2026-11-07):** a promoted Darter has light purple plates (its `chest`
-  and `brow` parts, lime on the plain one). Swapping part materials needs
-  `src/foamers/`, which GAME-10h owns, so it is a later step after
-  GAME-10h merges: write the swap into the `promoted` block as data
-  (`F05: { chest: "foam-purple-light", brow: "foam-purple-light" }`) and leave the
-  code for that step.
+  45). If setting the health needs a change in `src/foamers/`, make it,
+  as small as you can. **The look (Paul,
+  2026-11-07):** a promoted Darter has light purple plates: its `chest`
+  and `brow` parts are `foam-purple-light` instead of lime. Write it as
+  data in the block (`F05: { chest: "foam-purple-light", brow:
+  "foam-purple-light" }`) and apply it at spawn: GAME-10h is merged, so
+  the smallest change in `src/foamers/` that swaps a part's material for
+  a promoted spawn is allowed. Never orange, pink, blue or yellow: they
+  mean weak point, parryable and the player's darts.
 - **The Ring (A2, 30 x 30 m, 10 x 8 m centre block 3.5 m tall, 6 m ring,
   8 m ceiling, all four shutters):** wave 1: 2 promoted Darters from
   opposite rifts. Wave 2: 6 Swarmers from two floor rifts, started when
@@ -105,5 +108,5 @@ Write the JSON with short python scripts, never as one big reply.
 
 ## Not in this task
 
-The promoted look in code (a later step), stations, secrets, health pickups, a blaster pickup,
+Stations, secrets, health pickups, a blaster pickup,
 the act boss, the level's name and setting.
