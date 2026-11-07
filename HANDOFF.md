@@ -6,7 +6,35 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-LVL-04a done 2026-11-07, not reviewed, not merged (card
+GAME-10h on branch `game-10h` 2026-11-07 (card `tasks/GAME-10h.md`; stage 1
+by Qwen 3.8 Flash Next via Pi, dgx-spark; stage 2 and the docs by Qwen
+3.8-27B via Pi): the F08 Trawler, finished. Deep lime body and legs,
+purple drum and shoulder nubs, orange launchers (turnaround sheets in
+design/foamers/). The rig format has a cone shape, so shoulder spikes are
+not blocked by the format, but the built Trawler does not have them: it
+keeps the ellipsoid shoulder nubs as a shield look from CONTENT-PLAN 3.4
+and the seen trio of limbs. It holds about 12 m on the Roamer's brain
+(decideF02, no brain code change) and from 19 m winds up both launchers
+for 1.0 s, fires one wall, and recovers 2.5 s. The wall is one flat row
+across the aim line at the player's chest: 2 x 5 balls at 0.6 m apart,
+9 m/s, flat, damage 8, orange, bursts on any geometry, not parryable
+(CONTENT-PLAN gives F08 no P), 40 live at most. Two side-by-side balls
+are left out at a seeded position (data seed plus the wall's number; the
+same PRNG as the pellet stream; never at the row's ends), so a player
+who reads it can step through. Each launcher is a weak point x2 and owns
+its half: one gone means a half row (the gap still applies), both gone
+means no wall, a walk in, and a stomp for 12 at base melee range. Three
+placeholder sounds: F08-windup (both lift), F08-wall (one per wall, not
+per ball), F08-step. Every other type is untouched (tests). tsc, all 588
+tests and npm run build pass; no em or en dashes.
+
+Not checked by eye (no browser here): the Trawler on the range, and in
+particular the wall itself, reading and crossing a gap in play, the stomp
+with both launchers gone, and the three sounds are not heard. The look is
+the rendered turnaround sheets; play tuned nothing (the numbers are
+proposals for Paul).
+
+LVL-04a merged locally 2026-11-07, not pushed (card
 `tasks/LVL-04a.md`, DeepSeek V4.1 Flash via Pi, branch `lvl-04a`):
 Level 1-4 beats 1 to 5 in `data/levels/1-4.json`, loaded by
 `arena.html?level=1-4` through a new entry in `src/arena/levels.ts`.
@@ -512,6 +540,32 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10h review, merged (Claude)
+
+- The Spark (dgx-spark) committed stage 1 and stopped answering mid stage
+  2; Qwen 3.8-27B on qwen-machine took the uncommitted stage 2 over,
+  fixed its three tests (they waited for the attack choice, not the
+  wall leaving the launchers) and wrote the docs. Two of its commit
+  messages had the Co-Authored-By trailer with no blank line before it;
+  reworded on the branch before the merge.
+- Read the diff: `src/foamers/wall.ts` (the spec, the seeded slots, the
+  wall kind), `launchWall` and a shared `spawnBall` in
+  `projectiles.ts` (the old per-field defaults now one
+  `SHARED_BALL_KIND`), the strike branch in `foamers.ts`, the launcher
+  multiplier. The gap uses the existing `makeRng`, never `Math.random`.
+- Main merged in (PLAN and HANDOFF conflicts, both kept; the LVL-04a
+  Status paragraph corrected to "merged locally"). `tsc`, the full
+  suite (598 pass, 2 skipped) and the build pass.
+- Played on the range: from 16 m it holds near 12 m and fires a row of
+  10 slots 0.6 m apart at chest height, two side by side left out (the
+  gap), the two centre balls hitting the player for 8; on screen the
+  row of orange balls and the gap read clearly. With both launchers
+  broken it fires nothing, walks in at its slow speed and picks the
+  stomp at 1.4 m.
+- Not checked: crossing a gap by hand, one launcher's half wall in play,
+  the stomp's damage landing, the three sounds by ear, shoulder spikes
+  (not built; the rig keeps nubs).
 
 ### 2026-11-07: LVL-04a review, merged (Claude)
 

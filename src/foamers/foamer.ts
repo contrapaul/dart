@@ -224,6 +224,10 @@ export class Foamer {
    *  now. Both turn where the attack really happens. */
   pelletTurn = 0;
   pelletFired = 0;
+  /** GAME-10h: walls this Trawler has fired (the gap's PRNG mixes in the
+   *  wall number), and whether the wall running now has left the launchers. */
+  wallTurn = 0;
+  wallFired = false;
   attack() {
     return this.attackId ? this.spec.attacks.find((a) => a.id === this.attackId) ?? null : null;
   }
