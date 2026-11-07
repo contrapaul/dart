@@ -693,6 +693,29 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: ART-05b review, merged (Claude Opus 5.5): reload tilts, B07's reload drum, mod motion, and the fire kick
+
+- Reviewed dgx-spark's run. Fixed in review:
+  - B07's reload drum turned smoothly through the whole reload, so it sat
+    between chambers part way through. Each round now has an equal slot:
+    the drum turns its chamber over the first half and sits on it for
+    the second (test 5b).
+  - The run flagged a real bug it was told not to touch: `springKick` was
+    handed a fresh object literal and its result dropped, so no blaster
+    ever kicked back or tipped up on a shot. Fixed in its own commit: the
+    spring works on a member and snaps to rest within a thousandth of the
+    kick; the B01 test now checks the kick shows.
+- For Paul: the spring as written peaks near kick / e (B01: 0.9 cm for a
+  `kick` of 0.04), not at `kick`, so every blaster's kick reads about a
+  third of its brief's number. Raise the `kick` values, or say if `kick`
+  should mean the peak and I will change the spring.
+- Checked on the real glbs in env-03 (the loop stepped by hand, the pane
+  hidden): B01 kicks back 0.9 cm; B02 rolls 8 deg right and B04 8 deg
+  left at mid reload, both back to exactly rest; B07 reloading three
+  rounds turns 60, 120, 180 deg, holding on each chamber.
+- Not checked by eye: how the tilts and the kick look on screen.
+- tsc, vitest (809 passed, 2 skipped), build green.
+
 ### 2026-11-08: ART-05b (Qwen 3.8 Flash Next via Pi, dgx-spark): reload tilts, B07's reload drum, B02 heavy's motion
 
 - Asked for: the rest of the "Motion (for ART-05)" briefs after ART-05a
