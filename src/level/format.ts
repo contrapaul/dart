@@ -84,6 +84,10 @@ export interface Wave {
   delaySeconds: number;
   /** Optional stagger between spawns inside the wave. */
   holdSeconds?: number;
+  /** LVL-04b: start this wave while the one before it is still up, once the
+   *  Foamers still alive hold this share (0 to 1) of the health they had when
+   *  the wave started. The Ring's adds come in when the pair is at 50%. */
+  startsWithHealthShare?: number;
 }
 
 export type DoorState = "open" | "locked" | "sealed";

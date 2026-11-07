@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { World } from "@dimforge/rapier3d-compat";
 import levelJson from "../../data/levels/1-4.json";
+import foamerData from "../../data/foamers.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { LevelRunner, type LevelEvents } from "../../src/level/level-runner";
@@ -9,9 +10,15 @@ import { makeLevelAI } from "../../src/ai/level";
 import { makePath } from "../../src/ai/nav-grid";
 import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
-import { linearColorTable } from "../../src/voxel/materials";
+import { linearColorTable, materialId } from "../../src/voxel/materials";
 import type { Level } from "../../src/level/format";
 import { chosenLevel } from "../../src/arena/levels";
+import * as THREE from "three";
+import { DebrisSystem } from "../../src/voxel/debris";
+import { DartSystem } from "../../src/weapons/darts";
+import type { VoxelTarget } from "../../src/weapons/impacts";
+import { FoamerSystem } from "../../src/foamers/foamers";
+import type { VoxelVolume } from "../../src/voxel/chunk";
 
 // LVL-04a: Level 1-4 beats 1 to 5 (the forecourt, explore 1 with the first
 // Darter, the A4 hall, the mid-hall alcove and the A8 bridge over the ring,
@@ -69,8 +76,8 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     const arenas = level.arenas!;
-    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "hall", "bridge", "pit"]);
-    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A4", "A8", "A1"]);
+    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "hall", "bridge", "pit", "ring"]);
+    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A4", "A8", "A1", "A2"]);
     // Beat 2: one Darter, alone, in one wave: the room teaches one charge.
     expect(arenas[0]!.waves).toHaveLength(1);
     expect(arenas[0]!.waves[0]!.spawns).toEqual([{ foamer: "F05", count: 1 }]);
@@ -88,10 +95,11 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     expect(bridge.noLock).toBe(true);
     expect(bridge.doors).toEqual([]);
     expect(bridge.escape).toBeDefined();
-    // Beat 1: one ammo box; beat 3: A2 at the third column; beat 6: A3.
+    // Beat 1: one ammo box; beat 3: A2 at the third column; beat 6: A3;
+    // LVL-04b stage 2: A4 in the Ring and A5 on its block.
     expect(level.pickups!.map((p) => [p.id, p.count]))
-      .toEqual([["a1-ammo", 24], ["a2-ammo", 8], ["a3-ammo", 8]]);
-    // The temporary exit pad is past the Pit's north door, in breather 2.
+      .toEqual([["a1-ammo", 24], ["a2-ammo", 8], ["a3-ammo", 8], ["a4-ammo", 10], ["a5-ammo", 6]]);
+    // The temporary exit pad is past the Ring's north door now.
     expect(level.exit.pos[1]).toBeLessThan(-5);
     expect(Math.abs(level.exit.pos[0])).toBeLessThan(2);
   });
@@ -134,6 +142,21 @@ describe("Level 1-4 loads (LVL-04a)", () => {
         // The bridge has no floor under it but the ring, 9 m down.
         expect(floorBelow(world, x, z, 0, 3), `no deck-only floor at ${x}, ${z}`).toBe(true);
       }
+    }
+    // LVL-04b: and on north from the Pit to the exit pad, on the -9 floor:
+    // breather 2, the Ring's 30 m, and the pad's room past its north door.
+    for (const [x, z] of walk(
+      [0, -202], // the pit's north ledge
+      [0, -204], // breather 2
+      [0, -210], // the corridor on to the Ring
+      [0, -220], // the Ring, south of the block
+      [-9, -229], // round its west side
+      [-9, -238],
+      [0, -242], // back to the north door
+      [0, -246], // the pad's room
+      [0, -248],
+    )) {
+      expect(floorBelow(world, x, z, -4, 6), `floor at ${x}, ${z}`).toBe(true);
     }
   });
 
@@ -291,7 +314,7 @@ describe("Level 1-4 loads (LVL-04a)", () => {
       expect(runner.state.arenasCleared).toBe(i + 1);
     }
     expect(runner.state.phase).toBe("waiting");
-    expect(runner.state.arenaId).toBe("pit");
+    expect(runner.state.arenaId).toBe("ring");
     const last = level.arenas![level.arenas!.length - 1]!;
     clear([last.trigger.pos[0], last.trigger.pos[1] - 0.5, last.trigger.pos[2]]);
     expect(runner.state.phase).toBe("complete");
@@ -408,8 +431,192 @@ describe("the Pit and breather 2 (LVL-04b stage 1)", () => {
       expect(mark.pos[1], id).toBeGreaterThan(-9.5);
       expect(Math.abs(mark.pos[0]), id).toBeLessThan(5);
     }
-    // A3 stays on the Pit's ring, per the concept's section 6: no ammo here.
-    const near = level.pickups!.filter((p) => p.pos[2] < -203);
+    // A3 stays on the Pit's ring, per the concept's section 6: no ammo in
+    // breather 2 itself (the Ring's A4 and A5 are past its north end).
+    const near = level.pickups!.filter((p) => p.pos[2] > -211 && p.pos[2] < -202);
     expect(near).toEqual([]);
+  });
+});
+
+// LVL-04b stage 2: the mini-boss Ring (A2). 30 x 30 m inside, 8 m to the
+// ceiling, a 10 x 8 m centre block 3.5 m tall and a 6 m ring round it. Two
+// promoted Darters, then six Swarmers at half their health, no third wave.
+describe("the mini-boss Ring (LVL-04b stage 2)", () => {
+  async function ringGrid() {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
+    world.step();
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
+    return { world, g, path: makePath() };
+  }
+
+  it("15. the Ring is a 6 m loop round a 10 x 8 m block, 8 m high, and it is walkable", async () => {
+    const { g, path } = await ringGrid();
+    const shell = new Map(level.shell.map((s) => [s.id, s]));
+    // Floor top -9, ceiling bottom -1: 8 m of headroom, the KIT's A2.
+    expect(shell.get("ring2-floor")!.pos[1] - shell.get("ring2-floor")!.size[1] / 2).toBeCloseTo(-10, 5);
+    expect(shell.get("ring2-ceiling")!.pos[1] - shell.get("ring2-ceiling")!.size[1] / 2).toBeCloseTo(-1, 5);
+    expect(shell.get("ring2-floor")!.size[0]).toBeCloseTo(30, 5);
+    expect(shell.get("ring2-floor")!.size[2]).toBeCloseTo(30, 5);
+    // The centre block: 10 x 8 m in plan, 3.5 m tall, standing on the floor.
+    const block = shell.get("ring2-block")!;
+    expect(block.size[0]).toBeCloseTo(10, 5);
+    expect(block.size[2]).toBeCloseTo(8, 5);
+    expect(block.size[1]).toBeCloseTo(3.5, 5);
+    expect(block.pos[1] - block.size[1] / 2).toBeCloseTo(-9, 5);
+    // The ring round it, block to wall, is what the room leaves: 1-3 ships
+    // the same 30 x 30 m A2 with the same 10 x 8 m block, and the concept's
+    // "6 m ring" cannot coexist with both, so this matches the shipped room
+    // (PLAN.md section 14).
+    const north = block.pos[2] - block.size[2] / 2 - (shell.get("ring2-wall-n-w")!.pos[2] + 0.5);
+    expect(north).toBeCloseTo((30 - block.size[2]) / 2 - 0.5, 5);
+    // Walk the loop: in from breather 2, round both long sides, back to the
+    // south door. The block is not walkable, the ring is.
+    for (const [x, z] of [
+      [0, -211], [0, -213], [0, -216], [-9, -229], [-9, -239], [0, -242], [9, -229],
+    ] as const) {
+      expect(g.canStandAt(x, z, -9), `ring at ${x}, ${z}`).toBe(true);
+    }
+    expect(g.canStandAt(0, -229, -9), "the block is solid").toBe(false);
+    expect(g.findPath({ x: 0, z: -216 }, { x: 0, z: -242 }, path, -9, -9), "round the ring")
+      .toBeGreaterThan(1);
+    // Both doors are on the walls and shut when the fight starts.
+    const ring = level.arenas!.find((a) => a.id === "ring")!;
+    expect(ring.archetype).toBe("A2");
+    expect(ring.doors.map((d) => [d.id, d.state]))
+      .toEqual([["ring-in", "open"], ["ring-out", "locked"]]);
+    expect(ring.unlockOnClear).toEqual(["ring-in", "ring-out"]);
+  });
+
+  it("16. two promoted Darters, then six Swarmers at half their health, and no third wave", () => {
+    const ring = level.arenas!.find((a) => a.id === "ring")!;
+    expect(ring.waves).toHaveLength(2);
+    const [w1, w2] = ring.waves;
+    expect(w1!.spawns).toEqual([{ foamer: "F05", count: 2, promoted: true }]);
+    // Opposite: the west and east rifts, one each, the wave's rift list in
+    // its spawn order.
+    expect(w1!.rifts).toEqual(["ring-rift-w", "ring-rift-e"]);
+    expect(w2!.spawns).toEqual([{ foamer: "F03", count: 6 }]);
+    expect(w2!.startsWithHealthShare).toBe(0.5);
+    // Two floor rifts for the Swarmers, alternating.
+    expect(new Set(w2!.rifts)).toEqual(new Set(["ring-rift-floor-w", "ring-rift-floor-e"]));
+    expect(w2!.rifts).toHaveLength(6);
+    // 2, then 6: under the KIT's 12 alive at once.
+    for (const w of ring.waves) {
+      const alive = w.spawns.reduce((n, s) => n + s.count, 0);
+      expect(alive).toBeLessThanOrEqual(12);
+      expect(alive).toBeLessThanOrEqual(8); // and under the KIT's A2 note
+    }
+    // Wave 2 starts with wave 1 still up, so the pair and the adds can be
+    // alive together: 2 + 6 is still under the KIT's 12 at once.
+    const both = w1!.spawns.reduce((n, s) => n + s.count, 0)
+      + w2!.spawns.reduce((n, s) => n + s.count, 0);
+    expect(both).toBeLessThanOrEqual(12);
+    expect(ring.checkpoint).toBe(true);
+  });
+
+  it("17. the four pillars stand in the ring, and A4 and A5 are where the concept puts them", async () => {
+    const { g } = await ringGrid();
+    const pillars = level.pieces!.filter((p) => p.id.startsWith("ring2-pillar"));
+    expect(pillars).toHaveLength(4);
+    for (const p of pillars) {
+      const v = p.volumes[0]!;
+      expect(v.size).toEqual([1.6, 2.8, 1.6]);
+      // Cover height and standing on the ring floor, and not on the block.
+      expect(v.pos[1] - v.size[1] / 2).toBeCloseTo(-9, 5);
+      expect(Math.abs(v.pos[0])).toBeGreaterThan(5);
+      // The pillar is cover on the ring floor, and leaves the rest of the
+      // ring (and the loop past it) walkable.
+      expect(g.canStandAt(v.pos[0] + 2.4, v.pos[2], -9), `beside ${p.id}`).toBe(true);
+      expect(g.canStandAt(v.pos[0], v.pos[2] - 2.4, -9), `past ${p.id}`).toBe(true);
+      expect(g.canStandAt(v.pos[0], v.pos[2], -8.0), `over ${p.id}`).toBe(false);
+    }
+    const pickups = new Map(level.pickups!.map((p) => [p.id, p]));
+    expect(pickups.get("a4-ammo")!.count).toBe(10);
+    expect(pickups.get("a5-ammo")!.count).toBe(6);
+    // A4 in the ring, A5 on the block's top (-5.5 is the 3.5 m block's top).
+    const a4 = pickups.get("a4-ammo")!.pos;
+    expect(Math.max(Math.abs(a4[0]), Math.abs(a4[2] + 229))).toBeLessThan(15);
+    expect(a4[1]).toBeCloseTo(-8.6, 1);
+    const a5 = pickups.get("a5-ammo")!.pos;
+    expect(Math.abs(a5[0])).toBeLessThan(5);
+    expect(Math.abs(a5[2] + 229)).toBeLessThan(4);
+    expect(a5[1]).toBeCloseTo(-5.1, 1);
+    // Nothing is picked up through the block: both stand on their own surface.
+    expect(g.canStandAt(a5[0], a5[2], -5.5)).toBe(true);
+  });
+
+  it("18. the exit pad is past the Ring, and the Ring is between it and the Pit", () => {
+    const shell = new Map(level.shell.map((s) => [s.id, s]));
+    const ringFloor = shell.get("ring2-floor")!;
+    // The pad's room is north of the Ring's north wall.
+    expect(level.exit.pos[2]).toBeLessThan(shell.get("ring2-wall-n-w")!.pos[2] - 1);
+    expect(shell.get("exit5-floor")).toBeDefined();
+    // The Ring is north of the Pit and south of the pad.
+    expect(ringFloor.pos[2]).toBeLessThan(shell.get("pit-floor")!.pos[2]);
+    expect(ringFloor.pos[2]).toBeGreaterThan(level.exit.pos[2]);
+    // The first arena the level is on is not the Ring: it is still last.
+    const ids = level.arenas!.map((a) => a.id);
+    expect(ids[ids.length - 1]).toBe("ring");
+  });
+});
+
+// LVL-04b stage 2: the promotion. A promoted spawn is the same Foamer with
+// more health and, for a Darter, light purple plates; an ordinary spawn keeps
+// the rig's lime plates and its 30 health, so the two read apart on sight.
+describe("promoted Foamers (LVL-04b stage 2)", () => {
+  /** The materials a part's voxel volume is made of, as a set. */
+  function materialsOf(volume: VoxelVolume) {
+    const set = new Set<number>();
+    for (const c of volume.chunks.values()) for (const m of c.data) if (m) set.add(m);
+    return set;
+  }
+
+  async function spawnDarter(promoted: boolean) {
+    const { world } = await createPhysics();
+    world.createCollider(RAPIER.ColliderDesc.cuboid(40, 0.5, 40).setTranslation(0, -0.5, 0));
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    const ignore = world.createCollider(
+      RAPIER.ColliderDesc.capsule(0.5, 0.3).setTranslation(0, 0, 200),
+      body,
+    );
+    const darts = new DartSystem(new THREE.Scene(), world, RAPIER, ignore);
+    const debris = new DebrisSystem(RAPIER, world);
+    const targets: VoxelTarget[] = [];
+    const foamers = new FoamerSystem(RAPIER, world, FAKE, debris, darts, targets);
+    world.step();
+    return { foamers, world, f: foamers.spawn(new THREE.Vector3(0, 0, 0), undefined, "F05", promoted) };
+  }
+
+  it("19. a promoted spawn has 1.5x the health and the light purple plates, an ordinary one neither", async () => {
+    // The block's own number, so the test fails if the data drifts from 1.5.
+    expect(foamerData.promoted.healthMultiplier).toBe(1.5);
+    const purple = materialId("foam-purple-light");
+    const lime = materialId("foam-lime");
+
+    const plain = await spawnDarter(false);
+    expect(plain.f!.maxHealth).toBe(30);
+    expect(plain.f!.health).toBe(30);
+    for (const id of ["chest", "brow"]) {
+      const mats = materialsOf(plain.f!.parts.get(id)!.volume);
+      expect(mats.has(lime), `ordinary ${id} is lime`).toBe(true);
+      expect(mats.has(purple), `ordinary ${id} is not purple`).toBe(false);
+    }
+
+    const promoted = await spawnDarter(true);
+    expect(promoted.f!.maxHealth).toBe(45);
+    expect(promoted.f!.health).toBe(45);
+    for (const id of ["chest", "brow"]) {
+      expect(materialsOf(promoted.f!.parts.get(id)!.volume).has(purple), `promoted ${id} is purple`)
+        .toBe(true);
+    }
+    // The rest of the rig keeps its own colours: only the named parts swapped.
+    expect(materialsOf(promoted.f!.parts.get("weakpoint")!.volume).has(materialId("foam-orange")))
+      .toBe(true);
+    // The shared rig is not changed for every other spawn.
+    const after = await spawnDarter(false);
+    expect(after.f!.maxHealth).toBe(30);
+    expect(materialsOf(after.f!.parts.get("chest")!.volume).has(lime)).toBe(true);
   });
 });
