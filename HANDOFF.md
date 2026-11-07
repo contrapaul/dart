@@ -690,7 +690,8 @@ github.com/contrapaul/dart (public), MIT licence.
   changes made by eye and checks in each folder's `NOTES.md`. Both pass
   every glb contract check and export byte-identically.
 - Not done: gameplay for both (precision dart, mega dart, bolt action,
-  zoom, explosive rounds), their animations, and Paul's look.
+  zoom, explosive rounds) and their animations. Paul approved both looks
+  the same day (B06 after a second round).
 
 ### 2026-11-07: B02 Musketeer model (ART-04, Claude Opus 5.5)
 

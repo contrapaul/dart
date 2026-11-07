@@ -10,7 +10,7 @@ no black frames on its faces; the shroud rectangular for most of its length
 Checks: `art/blasters/check_glb.py` passes: 7,772 triangles (down from
 12,852), 410,112 bytes, 6 materials. 96.6 cm long, 32 cm tall, 16 cm
 across the magazine. Two builds byte-identical, SHA-256 `da86408d52227d03d72266fc01a749e39e6f583ed91def1e75c3511d56e5af8f`.
-Waiting for Paul's look.
+Paul approved the look on 2026-11-07.
 
 ## Round 1 (Claude Opus 5.5, 2026-11-07)
 
@@ -34,4 +34,4 @@ and 30, the stock and bumper add length). Two builds byte-identical,
 SHA-256 `18f69ec06f09e62230b5e5e41ff716a3e1f97e71b90dc6b9a0315a445d2efb58`.
 
 Not done: the fire kick and reload animation (ART-05), the mega dart and
-the explosive rounds (gameplay). Waiting for Paul's look.
+the explosive rounds (gameplay). Paul approved the look on 2026-11-07.

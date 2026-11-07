@@ -179,8 +179,8 @@ Unlock point:  [level]
 | B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Gameplay on a placeholder model in GAME-09c (Paul, 2026-11-07); card and brief approved by Paul 2026-11-07 (`design/blasters/B02.md`); model built 2026-11-07 by Claude (`public/models/blasters/B02.glb`, built by `art/blasters/B02/build.py`), contract checks pass, look approved by Paul 2026-11-07 |
 | B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Model approved 2026-11-01 (`public/models/blasters/B03.glb`, built by `art/blasters/B03/build.py`); in game with GAME-09 |
 | B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Model approved 2026-11-01 (`public/models/blasters/B04.glb`, built by `art/blasters/B04/build.py`); in game with GAME-09 |
-| B05 | Shrike | Precision, zoom, piercing | Precision dart | Card and brief approved by Paul 2026-11-07 with his changes (`design/blasters/B05.md`: deep red, a rectangular scope); model built 2026-11-07 by Claude (`public/models/blasters/B05.glb`, built by `art/blasters/B05/build.py`), contract checks pass, waiting for Paul's look; gameplay not started |
-| B06 | The Standard | Heavy full-auto | Mega dart | Card and brief approved by Paul 2026-11-07 with his changes (`design/blasters/B06.md`: teal like the reference, no bipod, a house-shaped magazine); model built 2026-11-07 by Claude (`public/models/blasters/B06.glb`, built by `art/blasters/B06/build.py`), contract checks pass, waiting for Paul's look; gameplay not started |
+| B05 | Shrike | Precision, zoom, piercing | Precision dart | Card and brief approved by Paul 2026-11-07 with his changes (`design/blasters/B05.md`: deep red, a rectangular scope); model built 2026-11-07 by Claude (`public/models/blasters/B05.glb`, built by `art/blasters/B05/build.py`), contract checks pass, look approved by Paul 2026-11-07; gameplay not started |
+| B06 | The Standard | Heavy full-auto | Mega dart | Card and brief approved by Paul 2026-11-07 with his changes (`design/blasters/B06.md`: teal like the reference, no bipod, a house-shaped magazine); model built 2026-11-07 by Claude (`public/models/blasters/B06.glb`, built by `art/blasters/B06/build.py`), contract checks pass, look approved by Paul 2026-11-07; gameplay not started |
 | B07 | Collateral | Launcher, arcing, explosive | Mega dart | Details in CONTENT-PLAN 4; card and model not started |
 | B08 | Firehose | Gatling, spin-up, ricochets | Foam ball | Details in CONTENT-PLAN 4; card and model not started |
 
@@ -670,6 +670,7 @@ All twelve answered 2026-10-29.
 
 | Date | Decision | Section |
 |---|---|---|
+| 2026-11-07 | B05 Shrike and B06 The Standard models approved (Paul), B06 after his second round: the house-shaped magazine faces forward, opaque, no darts; the shroud mostly rectangular. | 5 |
 | 2026-11-07 | B05 and B06 briefs approved with Paul's changes. B05 Shrike: a deep red lead colour and a rectangular scope. B06 The Standard: teal like the reference, no bipod, and a chunky house-shaped magazine in place of the round drum. | 5 |
 | 2026-11-07 | B02 Musketeer model approved (Paul), from the renders in `art/blasters/B02/renders/`: yellow frame and slide, charcoal grip with the magazine end showing below it, a plain round orange bumper. | 5 |
 | 2026-11-07 | B02 Musketeer brief approved as drafted (Paul): a compact semi-auto pistol with a grip magazine and a kicking slide, a foam yellow lead colour, and a plain round muzzle bumper (Paul dropped the flared one the same day). Whether heavy rounds show a thicker barrel sleeve is still open. | 5 |

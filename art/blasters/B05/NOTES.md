@@ -22,4 +22,4 @@ bytes, 7 materials, nodes `body`, `bolt`, `trigger`, `mag`,
 bumper add length). SHA-256 `a90ea48c0041731244994019f7addf02d7bfa03ec91eb5ec97e91d15bb82db2c`.
 
 Not done: the bolt's lift-and-slide animation and the zoom (ART-05 and the
-gameplay card), and the precision dart (gameplay). Waiting for Paul's look.
+gameplay card), and the precision dart (gameplay). Paul approved the look on 2026-11-07.
