@@ -18,6 +18,19 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+GAME-09g code done 2026-11-08, three commits on `game-09g`, not reviewed,
+not merged, not pushed (Qwen 3.8 Flash Next via Pi): B08 Firehose gameplay
+on B04's model as a placeholder. The `ball` dart type (`data/darts.json`,
+restitution 0.6, `bounces` 2) ricochets off a hard surface and rests after
+its budget (the ricochet code in `src/weapons/darts.ts`); B08 (auto, ball,
+120/240, spinUp 0.8 to about 28 a second, heavy recoil) joins the end of
+the order at key 8; the firing movement slow is the controller's new
+`fireMoveScale`, multiplied in beside the shield's `speedScale`; the
+`control` and `twin` mods are data. Twin's two muzzles both name
+`muzzle_1` until B08's own model exists. The ball's look, the ricochet
+feel, the viewmodel, the recoil, the spin-up, the slow and both placeholder
+sounds were not seen or heard by eye (no browser, no dev server).
+
 GAME-10k code done 2026-11-07, three stage commits on `game-10k`, not
 reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): the F11
 Seawall. The palette look (deep lime armour, purple mace, orange tower
@@ -692,6 +705,84 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-08: GAME-09g: B08 Firehose gameplay on a placeholder model (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `game-09g`, three commits, not reviewed, not merged)
+
+- Task card `tasks/GAME-09g.md`: the last blaster. Paul's order is every
+  enemy and weapon first, so B08 runs on **B04's model**
+  (`/models/blasters/B04.glb`, whose flywheels already spin); ART-01 and
+  ART-04 give it its own card and model after this. The swap is one data
+  line in `data/blasters.json`.
+- **Stage 1** (commit 1). The `ball` dart type in `data/darts.json`: speed
+  30, gravityScale 0.45, drag 0.25, radius 0.06, `shape: "ball"`,
+  restitution 0.6, `bounces` 2, carve 0.12, impulse 0.8, and its one line
+  in `data/foamers.json`'s shared `damage` block (`ball`: 1.5). It is a
+  sphere in `src/weapons/dart-model.ts` (a `shape` branch, the dart shape
+  otherwise untouched). The ricochet in `src/weapons/darts.ts`: a ball
+  bounces off a hard surface with restitution of its speed up to `bounces`
+  times; the contact after the budget ends it, so it stops where it
+  touched, on any surface, and falls into the resting state like a dart
+  that has landed. It does **not** fire `onDartRest` there: that event is
+  a spent dart landing on the floor (the DT-floor sound), not a ball
+  stopped against a wall. On a Foamer it damages once and bounces off with
+  what is left. `maxLive` still holds: at 28 a second the pool fills and
+  the oldest goes, as today.
+- **B08 entry:** Firehose, auto, ball, 1/shot, 120 / 240 (start 120),
+  `spinUp` 0.8, `fireInterval` 0.035 (about 28 a second), `spinDown` 1.2,
+  reload 3.0, heavy recoil (spread 0.9/shot to 14, climb 0.6/shot to 10,
+  well above B04's), `fireMoveShare` 0.6, key 8, at the end of `order`.
+- **The movement slow, and the decision behind it.** The controller gains
+  `fireMoveScale`, a second scale multiplied in beside `speedScale`, which
+  `src/player/shield.ts` owns and rewrites every step, so B08 never writes
+  there and the two slows combine rather than replace. `src/game/game.ts`
+  feeds it: `loadout.active.firing ? spec.fireMoveShare : 1`, and 1 while
+  switching. `Blaster.firing` is new: true for an auto blaster with the
+  trigger held and the wheels up to speed, cleared for every other mode.
+  A test walks the player on a floor with each scale and checks the product
+  (`tests/weapons/b08.test.ts` 7 and 8).
+- **Stage 2** (commit 2). `control` (Paul: recoil control, reduced movement
+  penalty): `spreadPerShot` 0.2 / `spreadMax` 6 / `climbDegPerShot` 0.15 /
+  `climbDegMax` 4, `fireMoveShare` 0.85, recovery kept (the block merges
+  key by key). `twin` (Paul: second barrel, 2x rate): `fireInterval`
+  0.0175 and a two-entry `muzzles` list; the auto shot already round-robins
+  `spec.muzzles`, so a one-muzzle blaster is unchanged and Twin needs no
+  new mode. Measured: 115 balls in 2 s against the bare 58.
+- **Says so in the record, per the card:** the placeholder model has one
+  muzzle node, so **both of Twin's entries name `muzzle_1`**. Both barrels
+  draw from the same point until B08's own model exists, and
+  `tests/weapons/b08.test.ts` says it too. The test's muzzle callback maps
+  any index onto the one point for the same reason.
+- Sounds `B08-fire` (a fast soft thud, `maxVoices` 10 because the rate is
+  high) and `B08-spin-up` (a rising whirr over the 0.8 s spin-up) in
+  `data/sounds.json`: synth placeholders, `files: []`. `B08-fire` plays
+  through the page's existing `<id>-fire` convention (`watchFire`);
+  `B08-spin-up` plays nothing yet, exactly as `B06-spin` does, because
+  `src/audio/game-sounds.ts` has no per-blaster spin loop. That wiring
+  belongs to the audio pass.
+- env-03 gains `station-b08` (B08's `control`) so the per-mod-station test
+  in `tests/arena/stations.test.ts` stays green with eight blasters.
+- **Tests:** 11 in `tests/weapons/b08.test.ts` (the ball reads its type;
+  it bounces off a wall at restitution and rests on the third contact;
+  a Foamer takes the ball damage once and the ball goes on flying; B08
+  reads its spec; nothing fires until spun up, then about 1 / `fireInterval`
+  a second; release spins down; each mod does what the card says; B04's
+  numbers untouched). `tests/weapons/b05.test.ts` had one line to update:
+  its `order` expectation (B08 joins at the end, key 8), the same line each
+  blaster task has touched before. Gate at every stage: `npx tsc --noEmit` clean, `npx vitest
+  run` 115 files / 820 passed, 2 skipped, `npm run build` clean, no em or
+  en dash in any file touched.
+- **Not checked by eye (this run has no browser, and starting a dev server
+  was out of scope):** the ball's round look on screen and its colour, the
+  ricochet feel and whether 2 bounces reads right at 28 a second, whether
+  balls bouncing in a small room feel chaotic or noisy, the viewmodel (it
+  is B04's model at scale 0.8, so its placement numbers are a first guess
+  and its flywheels are B04's, not gatling barrels), the recoil pattern and
+  whether the climb at 28 shots a second is uncontrollable, the spin-up
+  timing in the hand, the movement slow against the shield's slow, and
+  every B08 sound (neither has been heard).
+- Open for the review: `bounces` 2 ends the ball on the **third** contact
+  (the third is the one that stops it). If Paul wants exactly two visible
+  hops and a drop, that is a one-line change in `src/weapons/darts.ts`.
 
 ### 2026-11-08: ART-05b review, merged (Claude Opus 5.5): reload tilts, B07's reload drum, mod motion, and the fire kick
 
