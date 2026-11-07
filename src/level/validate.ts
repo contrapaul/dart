@@ -96,6 +96,8 @@ function pieceAnchored(piece: Piece, errors: string[]) {
     errors.push(`piece ${piece.id}: volume ${boxes.findIndex((_, i) => !reached.has(i))} has no path to the anchor`);
     return;
   }
+  // BUG-12 review: a piece anchored to nothing has no anchor side to reach.
+  if (piece.anchor === "none") return;
   // The anchor side is the extreme of the piece along the anchor's axis.
   const axis = piece.anchor === "floor" || piece.anchor === "ceiling" ? 1 : 0;
   const wantMax = piece.anchor === "ceiling" || piece.anchor === "wall";

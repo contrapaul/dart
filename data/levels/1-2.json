@@ -1941,7 +1941,7 @@
     {
       "id": "tower-plug",
       "kind": "plug",
-      "anchor": "ceiling",
+      "anchor": "none",
       "volumes": [
         {
           "pos": [
