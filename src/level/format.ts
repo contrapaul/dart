@@ -172,6 +172,22 @@ export interface Station {
   mod: string;
 }
 
+/** ENV-04: a crushing toy press (E14): a toy stamp over a floor pad that
+ *  rests, telegraphs, slams and rises on a timer, and crushes the player or
+ *  a Foamer under it (`src/level/presses.ts`). The cycle's times and the
+ *  damage are in data/press.json. */
+export interface Press {
+  id: string;
+  /** The centre of the floor pad. */
+  pos: Vec3;
+  /** The pad's full extent, x and z. */
+  size: [number, number];
+  /** How high the head's face rests above the pad's top. */
+  height: number;
+  /** Seconds, so two presses can run off beat. */
+  phase: number;
+}
+
 /** ENV-02: what pressing a button does. The only action for now, and the
  *  same verb the lock-in uses: a door id, set to open. */
 export interface ButtonAction {
@@ -197,6 +213,8 @@ export interface Level {
   arenas?: Arena[];
   /** ENV-02: buttons, each wired to one action. */
   buttons?: Button[];
+  /** ENV-04: the crushing toy presses. */
+  presses?: Press[];
   pickups?: Pickup[];
   stations?: Station[];
   playerStart: PlayerStart;

@@ -4,6 +4,7 @@ import dartsData from "../../data/darts.json";
 import blastersData from "../../data/blasters.json";
 import type { Arena, Level, Piece, PieceVolume, ShellBox } from "./format";
 import buttonData from "../../data/buttons.json";
+import pressTuning from "../../data/press.json";
 
 // Checks a level file against design/levels/BLOCKOUT.md section 5. Rule 7
 // (secrets) is for a thing LVL-01 does not load yet; the dart type names of
@@ -35,6 +36,14 @@ const dartNames = new Set(Object.keys(dartsData.types));
 const rigIds = new Set(rigData.rigs.filter((r) => typeof r.health === "number" && r.health > 0).map((r) => r.id));
 
 type Vec3 = [number, number, number];
+
+/** ENV-04: the stamp of a full press, for the phase check. Computed here
+ *  from the same data the system reads, because the validator is pure
+ *  data: no Three.js, no physics. */
+const PRESS_CYCLE_TOTAL = (() => {
+  const c = (pressTuning as { cycle: { up: number; telegraph: number; slam: number; down: number; rise: number } }).cycle;
+  return c.up + c.telegraph + c.slam + c.down + c.rise;
+})();
 
 function isVec3(v: unknown): v is Vec3 {
   return Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === "number" && Number.isFinite(n));
@@ -337,6 +346,40 @@ export function validateLevel(level: Level): ValidationResult {
       const b = boxBounds(level.shell[j].pos, level.shell[j].size);
       const overlap = [0, 1, 2].every((k) => overlap1D(a.min[k], a.max[k], b.min[k], b.max[k]));
       if (overlap) errors.push(`shell ${level.shell[i].id} overlaps shell ${level.shell[j].id}`);
+    }
+  }
+
+  // ENV-04 (E14): a press sits on the floor of the shell, its pad is flat
+  // (the pad's height, from data, is small), it does not reach the ceiling,
+  // and its phase is inside its own cycle. The head's lowest point at rest
+  // is the pad top plus the spec's height, so the rest state must clear the
+  // player: a level that names a height under the player's reach would
+  // close in on a standing player and the card's level is 3 m high.
+  const seenPresses = new Set<string>();
+  for (const p of level.presses ?? []) {
+    const what = `press ${p.id}`;
+    if (seenPresses.has(p.id)) errors.push(`${what}: id used twice`);
+    seenPresses.add(p.id);
+    if (!isVec3(p.pos)) {
+      errors.push(`${what}: pos must be three numbers`);
+      continue;
+    }
+    if (!Array.isArray(p.size) || p.size.length !== 2
+      || !p.size.every((n) => typeof n === "number" && n > 0)) {
+      errors.push(`${what}: size must be two positive numbers, x and z`);
+      continue;
+    }
+    if (typeof p.height !== "number" || p.height <= 0) {
+      errors.push(`${what}: height must be positive`);
+    }
+    if (typeof p.phase !== "number" || p.phase < 0 || p.phase >= PRESS_CYCLE_TOTAL) {
+      errors.push(`${what}: phase must be in [0, ${PRESS_CYCLE_TOTAL})`);
+    }
+    if (!outsideShell(p.pos)) {
+      for (const s of solid) {
+        if (s.name.startsWith("shell ")) continue;
+        if (inside(s.bounds, p.pos)) errors.push(`${what}: inside ${s.name}`);
+      }
     }
   }
 

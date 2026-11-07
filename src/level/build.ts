@@ -8,6 +8,7 @@ import type { Mesher } from "../voxel/pieces";
 import { material, materialId } from "../voxel/materials";
 import { Crates, type CrateBox } from "../voxel/crates";
 import { buildButton, type ButtonHandle } from "./buttons";
+import { buildPress, type PressHandle } from "./presses";
 import type { Door, DoorState, Level, ShellBox } from "./format";
 
 // Turns a validated level into meshes, colliders and voxels. Shell boxes are
@@ -57,6 +58,10 @@ export interface BuiltLevel {
   /** ENV-02: the level's buttons, in file order. The page wires their
    *  action; a level with none gives an empty list. */
   readonly buttons: ButtonHandle[];
+  /** ENV-04: the level's crushing toy presses, in file order. The page
+   *  owns their timer and the crush (src/arena/extras.ts); a level with
+   *  none gives an empty list. */
+  readonly presses: PressHandle[];
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -214,9 +219,16 @@ export function buildLevel(
     (b) => buildButton(b, group, rapier, world),
   );
 
+  // ENV-04: the crushing toy presses. The heads are kinematic bodies: the
+  // page's timer moves them, and the collider with them is what keeps
+  // nothing standing inside the head while it is down.
+  const presses = (level.presses ?? []).map(
+    (p) => buildPress(p, group, rapier, world),
+  );
+
   if (scene) scene.add(group);
   return {
-    group, voxels, voxelMesh, doors, buttons,
+    group, voxels, voxelMesh, doors, buttons, presses,
     crates: new Crates(voxels, crateBoxes),
     navBounds: navBoundsOf(level),
   };
