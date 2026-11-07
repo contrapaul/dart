@@ -142,10 +142,13 @@ describe("the Turbo's homing shot (GAME-10j stage 2)", () => {
   });
 
   it("4. it turns to a player who has moved aside, then flies straight", () => {
-    const r = rig(new THREE.Vector3(0, 1, 8));
-    const f = r.foamers.spawn(new THREE.Vector3(0, 3, 0), new THREE.Vector3(0, 1, 8), "F10")!;
+    // Review: the player stands 40 m off and the ball leaves 9 m up, so it
+    // is still in the air when its steer seconds run out (at 8 m and 3 m up
+    // it could hit the player or the floor first and be gone).
+    const r = rig(new THREE.Vector3(0, 1, 40));
+    const f = r.foamers.spawn(new THREE.Vector3(0, 9, 0), new THREE.Vector3(0, 1, 40), "F10")!;
     // Aim it at +x: the player (at +z) is a quarter-turn to its left.
-    r.projectiles.launch(f, new THREE.Vector3(4, 3, 0), 0, homingShotKind(H));
+    r.projectiles.launch(f, new THREE.Vector3(4, 9, 0), 0, homingShotKind(H));
     const b = r.projectiles.list[0]!;
     for (let i = 0; i < 30; i++) r.projectiles.update(DT);
     expect(aimError(b, r.playerAt), "it has turned toward the player, some way around")
@@ -168,10 +171,12 @@ describe("the Turbo's homing shot (GAME-10j stage 2)", () => {
       return m;
     };
     expect(turnSeen(40), "still turning while the seconds run").toBeGreaterThan(0);
-    for (let i = 0; i < Math.ceil(H.seconds / DT) + 60; i++) r.projectiles.update(DT);
+    for (let i = 0; i < 600 && b.homingLeft > 0; i++) r.projectiles.update(DT);
     expect(b.homingLeft, "the steer has run out").toBe(0);
+    for (let i = 0; i < 5; i++) r.projectiles.update(DT);
+    expect(r.projectiles.list.includes(b), "the ball is still flying").toBe(true);
     // After the seconds: no turning at any tick, whatever the position is.
-    expect(turnSeen(60), "after the seconds it flies straight")
+    expect(turnSeen(30), "after the seconds it flies straight")
       .toBeLessThanOrEqual(1e-5);
   });
 
