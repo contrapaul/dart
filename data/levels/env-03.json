@@ -1,5 +1,5 @@
 {
-  "_note": "ENV-03: a test level, not a level to ship. The same room as env-01, no columns or crates: three E13 mod stations, one per blaster that has mods (B01 slug, B04 suppress, B03 both), each facing the player start (facing pi looks toward +z). The loadout always carries all three blasters, so the not-carried case lives in the station's unit test (tests/arena/stations.test.ts). An empty arenas list, so no lock ever shuts anything. [Paul] the meta fields, the station positions and which mod each station offers.",
+  "_note": "ENV-03: a test level, not a level to ship. The same room as env-01, no columns or crates: five E13 mod stations, one per blaster that has mods (B01 slug, B04 suppress, B03 both, B06 rate, B05 explosive), each facing the player start (facing pi looks toward +z). The loadout always carries all of them, so the not-carried case lives in the station's unit test (tests/arena/stations.test.ts). An empty arenas list, so no lock ever shuts anything. [Paul] the meta fields, the station positions and which mod each station offers.",
   "meta": {
     "id": "env-03",
     "name": "[Paul]",
@@ -23,7 +23,8 @@
     { "id": "station-b01", "pos": [-4, 0, -3], "facing": 3.1415926, "blaster": "B01", "mod": "slug" },
     { "id": "station-b04", "pos": [4, 0, -3], "facing": 3.1415926, "blaster": "B04", "mod": "suppress" },
     { "id": "station-b03", "pos": [0, 0, -5.5], "facing": 3.1415926, "blaster": "B03", "mod": "both" },
-    { "id": "station-b06", "pos": [-4, 0, -5.5], "facing": 3.1415926, "blaster": "B06", "mod": "rate" }
+    { "id": "station-b06", "pos": [-4, 0, -5.5], "facing": 3.1415926, "blaster": "B06", "mod": "rate" },
+    { "id": "station-b05", "pos": [0, 0, -3], "facing": 3.1415926, "blaster": "B05", "mod": "explosive" }
   ],
 
   "arenas": [],
