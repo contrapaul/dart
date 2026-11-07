@@ -6,9 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-ENV-02 stage 1 done 2026-11-07, not merged and not pushed: the toy button
+ENV-02 both stages done 2026-11-07, not merged and not pushed: the toy button
 (E08), pressed by a dart, a swing or a step and wired to a door through
-`src/arena/extras.ts`. ENV-01 merged locally 2026-11-07, not pushed: foam
+`src/arena/extras.ts`, and the test level `env-02` (two rooms, one door that
+only a button opens). ENV-01 merged locally 2026-11-07, not pushed: foam
 cladding (E01) and toy crate stacks (E02) whose crates break whole when worn, in the test level
 `env-01`. ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design
 only): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
@@ -654,6 +655,49 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: ENV-02 stage 2 (DeepSeek V4.1 Flash via Pi): the button test level
+
+Task: `tasks/ENV-02.md`, E08, stage 2 only (a test level). Branch `env-02`,
+not merged and not pushed.
+
+What was built: `data/levels/env-02.json`, registered as `env-02` in
+`src/arena/levels.ts` and in the key list of `tests/level/ring-load.test.ts`.
+Two 10 x 10 m rooms sharing a 1 m divider at z = 0, joined by one 2 m wide,
+3 m tall door (a 1 m lintel above it). The door `env-02-door` is `locked` in
+its arena's file state, so it is shut from the first frame. The single arena
+`env-02-chamber` has `noLock: true` and no waves: nothing ever re-states the
+door, the trigger clears the arena at once, and the exit pad (north room,
+z = -8) ends the level. The player starts in the south room at [0, 0, 8], so
+the level can only be finished by opening the door. Two buttons, both wired
+to `env-02-door`: `door-button`, a wall button at [-1.6, 1.3, 0.56] facing +z
+(chest height beside the door), and `floor-button` at [3.5, 0.06, 4.5], off
+the walking line across the south room.
+
+Path into play, the ENV-01 lesson: `chosenLevel` (`src/arena/levels.ts`) ->
+`buildArena` (`src/arena/extras.ts`) -> `buildLevel` (`src/level/build.ts`,
+which builds one plate, cap and collider per entry in `level.buttons`) ->
+`ButtonSystem(level.buttons, events.setDoor)` -> the dart's `onHit`, the
+melee's `pressNear` and the per-frame `step` -> `events.setDoor(id, "open")`
+-> `level.doors.get(id).setState("open")`. The arena's `locked` door is set
+by the same `setDoor` the runner's reset uses, so a retry shuts it again and
+`buttons.reset()` makes the buttons able to open it.
+
+Tests: 5 in `tests/level/env-02.test.ts`, all through `buildLevel` and the
+real `LevelRunner`. It validates with no errors; the door blocks the walk
+north and clearing the arena does not open it; the wall button opens it by a
+swing and the way then reads clear; the floor button opens it by a step; the
+doorway is clear air with floor under the start and the exit.
+
+`npx tsc --noEmit`, `npx vitest run` (672 pass, 2 skipped) and `npm run build`
+pass. No em or en dashes in the new and touched files.
+
+Not checked by eye (no browser here): that the two rooms read as two rooms in
+play, that the door's yellow slab reads as shut and then gone, that the wall
+button at 1.3 m looks chest height from the player's eye at 1.6 m, that the
+plate sits flush against the divider rather than in it, that the floor button
+is clear of the walking line, that the cap lights after a press, and the two
+sounds. The geometry numbers were reasoned from the data, not looked at.
 
 ### 2026-11-07: ENV-02 stage 1 (DeepSeek V4.1 Flash via Pi): the toy button, wired into play
 
