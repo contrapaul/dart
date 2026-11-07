@@ -69,8 +69,8 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     const arenas = level.arenas!;
-    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "hall", "bridge"]);
-    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A4", "A8"]);
+    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "hall", "bridge", "pit"]);
+    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A4", "A8", "A1"]);
     // Beat 2: one Darter, alone, in one wave: the room teaches one charge.
     expect(arenas[0]!.waves).toHaveLength(1);
     expect(arenas[0]!.waves[0]!.spawns).toEqual([{ foamer: "F05", count: 1 }]);
@@ -88,9 +88,10 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     expect(bridge.noLock).toBe(true);
     expect(bridge.doors).toEqual([]);
     expect(bridge.escape).toBeDefined();
-    // Beat 1: one ammo box; beat 3: A2 at the third column.
-    expect(level.pickups!.map((p) => [p.id, p.count])).toEqual([["a1-ammo", 24], ["a2-ammo", 8]]);
-    // The exit pad is on the ring below the bridge, not behind a door.
+    // Beat 1: one ammo box; beat 3: A2 at the third column; beat 6: A3.
+    expect(level.pickups!.map((p) => [p.id, p.count]))
+      .toEqual([["a1-ammo", 24], ["a2-ammo", 8], ["a3-ammo", 8]]);
+    // The temporary exit pad is past the Pit's north door, in breather 2.
     expect(level.exit.pos[1]).toBeLessThan(-5);
     expect(Math.abs(level.exit.pos[0])).toBeLessThan(2);
   });
@@ -259,11 +260,13 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     for (let n = 0; n < 60; n++) runner.update(DT, { playerPos: [0, 0, -124], aliveCount: 3 });
     expect(locked).toBe(0);
     expect(doors.size).toBe(0);
-    // The ring: the arena is over with its Darters still up.
+    // The ring: the arena is over with its Darters still up. LVL-04b put
+    // the Pit after it, so the level is not over: the next arena starts.
     runner.update(DT, { playerPos: [0, -9, -147], aliveCount: 2 });
     expect(escaped).toBe(1);
     expect(cleared).toBe(0);
-    expect(runner.state.phase).toBe("complete");
+    expect(runner.state.arenaId).toBe("pit");
+    expect(runner.state.arenasCleared).toBe(3);
   });
 
   it("9. the exit pad does nothing until the last arena ends", () => {
@@ -288,7 +291,7 @@ describe("Level 1-4 loads (LVL-04a)", () => {
       expect(runner.state.arenasCleared).toBe(i + 1);
     }
     expect(runner.state.phase).toBe("waiting");
-    expect(runner.state.arenaId).toBe("bridge");
+    expect(runner.state.arenaId).toBe("pit");
     const last = level.arenas![level.arenas!.length - 1]!;
     clear([last.trigger.pos[0], last.trigger.pos[1] - 0.5, last.trigger.pos[2]]);
     expect(runner.state.phase).toBe("complete");
@@ -302,5 +305,111 @@ describe("Level 1-4 loads (LVL-04a)", () => {
         expect(alive, `${arena.id} ${wave.id}`).toBeLessThanOrEqual(12);
       }
     }
+  });
+});
+
+// LVL-04b stage 1: the Pit (A1) and breather 2. The Pit hangs 4 m below the
+// ring the bridge drops onto, so it is the first place in the level with two
+// floors over one footprint: the ramps are what join them, and the nav grid
+// has to find both (BUG-01's two layers).
+describe("the Pit and breather 2 (LVL-04b stage 1)", () => {
+  async function pitGrid() {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
+    world.step();
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
+    return { world, g, path: makePath() };
+  }
+
+  it("11. the Pit joins the ring and breather 2, on both floors", async () => {
+    const { g, path } = await pitGrid();
+    // The ring the bridge drops onto, the corridor under the far yard, the
+    // pit's south ledge, then its floor 4 m down.
+    for (const [x, z, y] of [
+      [0, -170, -9], [0, -174, -9], // ring and the corridor out of it
+      [0, -177, -9], [0, -179, -9], // the pit's south ledge
+      [0, -181, -13], [0, -184, -13], [0, -195, -13], // its floor
+      [0, -199, -9], // the pit's north ledge
+    ] as const) {
+      expect(g.canStandAt(x, z, y), `stand at ${x}, ${y}, ${z}`).toBe(true);
+    }
+    expect(g.findPath({ x: 0, z: -170 }, { x: 0, z: -190 }, path, -9, -13), "ring to pit floor")
+      .toBeGreaterThan(1);
+    // Past the north ledge the pit's north door is shut until the arena is
+    // cleared: the way on through it is tested in stage 3, when the lift does
+    // not need a door that opens on clear.
+    const pit = level.arenas!.find((a) => a.id === "pit")!;
+    expect(pit.doors.every((d) => d.state === "locked" || d.id === "pit-in")).toBe(true);
+    // Breather 2 itself is walkable: the exit pad's room.
+    for (const [x, z] of [[0, -203], [0, -205], [0, -207], [-4, -208], [4, -208]] as const) {
+      expect(g.canStandAt(x, z, -9), `breather 2 at ${x}, ${z}`).toBe(true);
+    }
+  });
+
+  it("12. the Pit's two ramps are walkable, and the island waits over its hole", async () => {
+    const { g, path } = await pitGrid();
+    // Each ramp rises 4 m over 7 m from the pit floor to a short end's ledge:
+    // sample the slope, then walk it.
+    for (const ramp of [{ x: 9.5, from: -13, to: 12 }, { x: -9.5, from: -12, to: 13 }]) {
+      for (const z of [-187, -189, -191]) {
+        const y = g.groundAt(ramp.x, z, -11);
+        expect(y, `ramp at ${ramp.x}, ${z}`).toBeGreaterThan(-13.5);
+        expect(y, `ramp at ${ramp.x}, ${z}`).toBeLessThan(-8.5);
+      }
+    }
+    // Across the pit floor, clear of the centre block, then up each ramp.
+    expect(g.findPath({ x: 4, z: -186 }, { x: 14, z: -189 }, path, -13, -9), "floor up the east ramp")
+      .toBeGreaterThan(1);
+    expect(g.findPath({ x: -4, z: -186 }, { x: -14, z: -189 }, path, -13, -9), "floor up the west ramp")
+      .toBeGreaterThan(1);
+    // The island sits on the west ledge over the hole it drops into: the
+    // hole is the shell gap at x -13.2..-16.8, z -187.4..-190.6, so a player
+    // who carves the island falls to the pit floor, not onto bedrock. Its
+    // anchor is "wall" because a floor piece fills its own bottom row with
+    // bedrock (src/level/build.ts fillPieces) and would plug the hole.
+    const island = level.pieces!.find((p) => p.id === "pit-island")!;
+    expect(island.anchor).toBe("wall");
+    expect(island.volumes[0]!.size).toEqual([3.2, 0.4, 3.2]);
+    expect(g.canStandAt(-15, -189, -9), "the island, till it is carved").toBe(true);
+  });
+
+  it("13. the Pit's waves are the concept's, from the rifts it names", () => {
+    const pit = level.arenas!.find((a) => a.id === "pit")!;
+    expect(pit.archetype).toBe("A1");
+    expect(pit.waves.map((w) => w.spawns)).toEqual([
+      [{ foamer: "F05", count: 2 }, { foamer: "F03", count: 6 }],
+      [{ foamer: "F05", count: 3 }, { foamer: "F02", count: 6 }],
+    ]);
+    // Wave 1: the two Darters come from the north-east and north-west seams,
+    // the six Swarmers from the floor. A wave's rift list is one slot per
+    // spawn, filled in order, so the first two slots are the Darters'.
+    expect(pit.waves[0]!.rifts.slice(0, 2)).toEqual(["pit-rift-ne", "pit-rift-nw"]);
+    const w1Floor = pit.waves[0]!.rifts.slice(2);
+    expect(w1Floor.every((r) => r === "pit-rift-floor")).toBe(true);
+    // The lock trigger sits on the pit floor, inside the room.
+    expect(pit.trigger.pos[1]).toBeLessThan(-11);
+    expect(pit.unlockOnClear).toEqual(["pit-in", "pit-out"]);
+    expect(pit.checkpoint).toBe(true);
+  });
+
+  it("14. breather 2 is above the pit, with the U2 and S3 marks empty", () => {
+    const shell = new Map(level.shell.map((s) => [s.id, s]));
+    expect(shell.get("b2-floor")).toBeDefined();
+    expect(shell.get("b2-floor")!.size[0]).toBeCloseTo(10, 5);
+    expect(shell.get("b2-floor")!.size[2]).toBeCloseTo(8, 5);
+    // North of the pit, on the pit's own ring level.
+    expect(shell.get("b2-floor")!.pos[2]).toBeLessThan(shell.get("pit-floor")!.pos[2]);
+    expect(shell.get("b2-floor")!.pos[1]).toBeCloseTo(-9.5, 5);
+    // Both marks are on the floor and inside the room's footprint.
+    for (const id of ["u2-marking", "s3-marking"]) {
+      const mark = shell.get(id)!;
+      expect(mark, id).toBeDefined();
+      expect(mark.pos[1], id).toBeGreaterThan(-9.5);
+      expect(Math.abs(mark.pos[0]), id).toBeLessThan(5);
+    }
+    // A3 stays on the Pit's ring, per the concept's section 6: no ammo here.
+    const near = level.pickups!.filter((p) => p.pos[2] < -203);
+    expect(near).toEqual([]);
   });
 });

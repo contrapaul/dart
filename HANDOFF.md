@@ -6,7 +6,21 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-GAME-10h on branch `game-10h` 2026-11-07 (card `tasks/GAME-10h.md`; stage 1
+LVL-04b stage 1 merged locally 2026-11-07, not pushed (card
+`tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi, branch `lvl-04b`):
+the A1 Pit and breather 2 in `data/levels/1-4.json`. The ring's north
+wall opens into a 4 m corridor under the far yard; the Pit is 34 x 26 m
+with the ring ledge at -9 and its floor at -13, a 7 m ramp up at each
+short end, the centre block, two ring pillars and the west island over
+a hole; two waves and a floor lock; A3 ammo on the west ledge. Breather
+2 is 10 x 8 m past the north door, with the U2 and S3 marks, and the
+temporary exit pad is there now. Stages 2 (the promoted-Darter Ring)
+and 3 (the Yard and the lit lift) are later runs.
+`npx tsc --noEmit`, full `npx vitest run` (589 pass, 2 skipped) and
+`npm run build` clean. Not checked by eye: the whole Pit, both ramps,
+the island over its hole, the corridor under the far yard, breather 2.
+
+GAME-10h merged locally 2026-11-07, not pushed (card `tasks/GAME-10h.md`; stage 1
 by Qwen 3.8 Flash Next via Pi, dgx-spark; stage 2 and the docs by Qwen
 3.8-27B via Pi): the F08 Trawler, finished. Deep lime body and legs,
 purple drum and shoulder nubs, orange launchers (turnaround sheets in
@@ -540,6 +554,73 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-04b stage 1 review, merged (Claude)
+
+- DeepSeek's first LVL-04b run spent 86 minutes and 143 tool calls
+  reading with no edit and was stopped. A fresh run limited to stage 1,
+  with its first edit due by its sixth reply, built it in one commit.
+- Read the diff: `data/levels/1-4.json`, its test file, PLAN, HANDOFF
+  and the card. The older tests it changed follow the level going on
+  past the bridge (the arena list, the pickups, the bridge escape now
+  starting the Pit instead of ending the level); none loosened.
+- Main merged in (HANDOFF Status and Log conflicts, both kept; the
+  GAME-10h Status paragraph corrected to "merged locally"). `tsc`, the
+  full suite (602 pass, 2 skipped) and the build pass.
+- Played by script on `arena.html?watch&level=1-4`, starting at the
+  Pit: the floor 4 m below the ring locks it; wave 1 is 2 Darters and 6
+  Swarmers, wave 2 is 3 Darters and 6 Roamers arriving staggered; the
+  north door opens on the clear and the pad in breather 2 shows "Level
+  complete".
+- Not checked: walking the ramps by hand (the player was moved by
+  script; the nav test covers them), the west island over its hole, the
+  Pit's look (the camera faced a wall), the frame time with 9 Foamers.
+
+### 2026-11-07: LVL-04b stage 1, the Pit and breather 2 (DeepSeek V4.1 Flash via Pi)
+
+- Built in `data/levels/1-4.json` only, plus the stage's tests in
+  `tests/level/level-1-4.test.ts` (10 tests became 14). No shared game
+  code changed.
+- The ring's north wall is now a doorway (`ring-wall-n-w`,
+  `-e`, `-lintel`) into a 4 m corridor (`corr4-*`) under the far yard.
+  The far yard's floor is at -9 and the corridor's is too, so the way
+  south to the Pit is flat and then drops 4 m.
+- The Pit: 34 x 26 m over x -17..17, z -176..-202. South and north
+  ledges at -9, pit floor at -13, a 7 m ramp up at each short end
+  (`pit-ramp-e` at x 9.5, `pit-ramp-w` at x -9.5, 4 m rise, 0.57
+  slope). Its doorways are floor-to-lintel openings 8 m tall so the
+  bakes keep the ledge layer as well as the floor layer: a wall pier
+  from the ledge down reads as a 4 m step the agent cannot climb.
+- Pieces: the centre block (three 2 m columns of foam-orange, a
+  3.2 m volume each), two ring pillars 1.6 m square, and the west
+  island (3.2 x 0.4 x 3.2 m) anchored `wall` over the shell gap at
+  x -13.2..-16.8, z -187.4..-190.6. `wall`, not `floor`: a floor
+  piece's lowest voxel row is filled with bedrock in
+  `src/level/build.ts fillPieces`, which would plug the hole.
+- Arena `pit` (A1): trigger on the pit floor 3 m in from the south
+  door, `pit-in` open, `pit-out` locked, both open on the clear.
+  Wave 1: 2 F05 from the north-east and north-west rifts plus 6 F03
+  from the floor rift. Wave 2: 3 F05 plus 6 F02, the first two from
+  the north seams and the rest from the floor and a south rift. Both
+  waves use one rift slot per spawn, filled in order, so the list is
+  spelled out in the JSON.
+- `a3-ammo` (8 standard darts) on the west ledge. `s3-marking` and
+  `u2-marking` in breather 2, no pickups there.
+- `exit` moved from the ring to breather 2 `[0, -7.5, -207]` so the
+  level still ends. Stage 3 replaces it with the lift.
+- Tests: the walk ring -> corridor -> south ledge -> floor -> east
+  ramp -> east ledge, the two ramps' ground heights, the island's
+  anchor, the waves' spawns and rifts, the trigger, breather 2's size
+  and marks, and no ammo in breather 2. Two older tests were updated
+  because the level no longer ends on the ring: after the escape the
+  runner now starts the Pit, and the last arena is `pit`.
+- Decided: the north door stays locked until the Pit clears, so stage
+  3 has to open it (or the lift pads the way) rather than walking
+  through it; the card says the lift waits for that.
+- Not checked: everything by eye. The pit's proportions, whether the
+  centre block reads as cover, the ramps' feel, the corridor's height,
+  and the actual arena fight (waves, rifts, timing) are only tested
+  through the runner and the grid, never played.
 
 ### 2026-11-07: GAME-10h review, merged (Claude)
 
