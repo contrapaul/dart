@@ -399,12 +399,23 @@
       },
       "attacks": [
         {
+          "_note": "GAME-10i: the sword swing. It needs the sword (the left fist stays free); with the sword gone it falls to the left-fist punch below. Its range is pinned per attack, so the fallback punch still measures to the spec's attackRange (1.7).",
+          "id": "swing",
+          "damage": 16,
+          "token": "melee",
+          "needs": [
+            "sword"
+          ],
+          "range": 2.4,
+          "windup": 0.8,
+          "strike": 0.25
+        },
+        {
           "id": "punch",
           "damage": 14,
           "token": "melee",
           "needs": [
-            "foreArmL",
-            "foreArmR"
+            "foreArmL"
           ],
           "windup": 0.7,
           "strike": 0.2

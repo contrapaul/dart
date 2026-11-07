@@ -247,7 +247,10 @@ export type FoamerSoundKind =
   | "pellet"
   // GAME-10h, the Trawler: one wall of foam balls leaving the launchers
   // (one sound per wall, not per ball).
-  | "wall";
+  | "wall"
+  // GAME-10i, the Brawler: its foam sword chipping away. The generic
+  // part-off still plays under it, the way the shield-break does.
+  | "sword-break";
 
 /** GAME-10f: the Brawler's shockwave ring, one material for every ring. */
 const WAVE_MATERIAL = new THREE.MeshStandardMaterial({
@@ -2283,6 +2286,9 @@ export class FoamerSystem {
     sound(this, "part-off", f, partPoint(part));
     // GAME-10e: the Blocker shield coming away is its own, bigger sound.
     if (part.spec.id === "shield") sound(this, "shield-break", f, partPoint(part));
+    // GAME-10i: the Brawler's sword breaking is a blade snap, not a part
+    // losing.
+    if (part.spec.id === "sword") sound(this, "sword-break", f, partPoint(part));
     // The part's last pose change over a step (the fling), plus 1.5 m/s
     // outward from the Foamer and up.
     const out2 = _v.set(st2.x - f.centre.x, 0, st2.z - f.centre.z);

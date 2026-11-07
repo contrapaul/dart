@@ -203,3 +203,93 @@ describe("the F07 leap slam (GAME-10f stage 2)", () => {
     expect(g.state, "one arm gone still leaps").toBe("leaping");
   });
 });
+
+describe("the F07 foam sword (GAME-10i stage 1)", () => {
+  /** Record the attack id of every bonk this Foamer lands.
+  *  (The harness does not wire the default bonk, which is the player
+  *  damage; the recorder stands for it, the way the Roamer tests do.) */
+  function bonks(r: Rig, f: Foamer): string[] {
+    const ids: string[] = [];
+    r.foamers.onBonk = (foamer, attack) => {
+      if (foamer === f) ids.push(attack);
+    };
+    return ids;
+  }
+
+  /** Fire one standard dart at a part the way the darts do it: a small
+  *  probe collider on the part's body, so the hit lands on it. The
+  *  trawler wall test drives the weak point this way. */
+  function dartAt(r: Rig, f: Foamer, id: string): void {
+    const part = f.parts.get(id)!;
+    const probe = r.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(0.1, 0.1, 0.1).setTranslation(0.2, 0.2, 0.2),
+      part.body,
+    );
+    f.health = f.maxHealth;
+    r.darts.onHit({
+      point: part.voxelToWorld(new THREE.Vector3(3, 15, 3)),
+      normal: new THREE.Vector3(-1, 0, 0),
+      direction: new THREE.Vector3(1, 0, 0),
+      speed: 25,
+      type: "standard",
+      collider: probe,
+      material: null,
+      shot: null,
+    });
+  }
+
+  it("1. the sword replaces the right fist, and the left fist stays", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = brawler(r, 8, player);
+    const sword = f.parts.get("sword");
+    expect(sword, "the sword part").toBeTruthy();
+    expect(sword!.spec.kind, "it is a weapon part").toBe("weapon");
+    expect(sword!.spec.parent, "held in the right hand").toBe("foreArmR");
+    expect(f.parts.has("fistR"), "no right fist any more").toBe(false);
+    expect(f.parts.has("fistL"), "the left fist stays").toBe(true);
+  });
+
+  it("2. the sword takes dart damage and breaks off", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = brawler(r, 8, player);
+    const before = f.health;
+    for (let i = 0; i < 20 && f.parts.has("sword"); i++) dartAt(r, f, "sword");
+    expect(f.parts.has("sword"), "chipped away").toBe(false);
+    // The hilt and the cross guard fell off with it (they are its children).
+    expect(f.parts.has("swordHilt")).toBe(false);
+    expect(f.parts.has("swordGuard")).toBe(false);
+    expect(f.health, "the breaks hurt too").toBeLessThan(before);
+    // The sword is a weapon part, so it has its own health, the way the
+    // Crawler's gun does, and the Brawler survives its loss.
+    const g = brawler(r, 8, player);
+    const blade = g.parts.get("sword")!;
+    expect(blade.hp, "its own health, not the body's").toBeGreaterThan(1);
+    expect(blade.hp).toBeLessThan(g.maxHealth);
+  });
+
+  it("3. with the sword it swings, and reaches farther than the punch", () => {
+    const r = rig();
+    // 2.2 metres: inside the swing's reach (range 2.4 + 0.3), outside the
+    // old punch's (attackRange 1.7 + 0.3). It is under the leap minimum,
+    // so the leap has no claim on it.
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = brawler(r, 2.2, player);
+    const ids = bonks(r, f);
+    run(r, player, () => ids.length > 0, 60 * 8);
+    expect(ids[0], "one swing lands").toBe("swing");
+  });
+
+  it("4. with the sword gone it punches with the left fist", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = brawler(r, 1.5, player);
+    f.parts.delete("sword");
+    f.parts.delete("swordHilt");
+    f.parts.delete("swordGuard");
+    const ids = bonks(r, f);
+    run(r, player, () => ids.length > 0, 60 * 8);
+    expect(ids[0], "the left-fist punch steps in").toBe("punch");
+  });
+});
