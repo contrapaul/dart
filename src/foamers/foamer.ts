@@ -416,19 +416,17 @@ export class Foamer {
     return this.parts.has(id);
   }
 
-  /** Attached legs (kind leg whose parent is the root part), by id. */
+  /** Attached legs, by id: parts of kind leg whose parent is not itself a
+   *  leg (a thigh, not a shin), so a leg on a hips part counts. */
   legs(): string[] {
-    const bodyId = this.rig.parts.find((p) => p.parent === null)!.id;
-    return this.rig.parts
-      .filter((p) => p.kind === "leg" && p.parent === bodyId && this.parts.has(p.id))
-      .map((p) => p.id);
+    return this.startLegs().filter((id) => this.parts.has(id));
   }
 
   /** Legs before any could break, by id. */
   startLegs(): string[] {
-    const bodyId = this.rig.parts.find((p) => p.parent === null)!.id;
+    const kind = new Map(this.rig.parts.map((p) => [p.id, p.kind]));
     return this.rig.parts
-      .filter((p) => p.kind === "leg" && p.parent === bodyId)
+      .filter((p) => p.kind === "leg" && (p.parent === null || kind.get(p.parent) !== "leg"))
       .map((p) => p.id);
   }
 

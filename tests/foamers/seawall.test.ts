@@ -26,6 +26,8 @@ function fakeMesher(): Mesher {
 
 function rig() {
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+  // A floor: on its legs (since the legs() fix) the Seawall falls without one.
+  world.createCollider(RAPIER.ColliderDesc.cuboid(40, 0.5, 40).setTranslation(0, -0.5, 0));
   const debris = new DebrisSystem(RAPIER, world);
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   const ignore = world.createCollider(

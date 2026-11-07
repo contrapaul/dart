@@ -744,6 +744,22 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: fix: the F11 Seawall read as legless (Claude Opus 5.5)
+
+- Found in the GAME-10m review: `Foamer.legs()` counted only legs whose
+  parent is the root part. The F11 hangs its legs from a `hips` part, so
+  every Seawall read as legless from the start and walked at the no-legs
+  speed. A leg is now a part of kind leg whose parent is not itself a leg
+  (a thigh, not a shin). Every other rig gives the same answer as before.
+- New test `tests/foamers/legs.test.ts`: every rig with legs starts on
+  them (failed on F11 before the fix).
+- The Seawall tests had no floor and passed only because the legless
+  Seawall did not fall; they now have the floor the other Foamer tests use.
+- The F12's legs on the body (GAME-10m) are no longer needed for this,
+  and do no harm.
+- 863 tests pass (2 skipped), tsc and build green. Not seen in play: the
+  Seawall now walks at its full speed, Paul to judge the feel.
+
 ### 2026-11-08: GAME-10m stages 1 and 2 review, merged (Claude Opus 5.5): the F12 Ambusher's look and pounce
 
 - **Look fix.** The first render had both arms pointing straight up over
