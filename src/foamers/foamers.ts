@@ -36,6 +36,7 @@ import { FoamerAgent } from "../ai/agent";
 import { steer, type Neighbour, type Velocity } from "../ai/steer";
 import { makePath, type NavGrid } from "../ai/nav-grid";
 import type { ProjectileSystem } from "./projectiles";
+import { homingOf, homingShotKind } from "./homing";
 import { SIGHT_QUERY_GROUPS } from "../physics/world";
 
 // Spawning, per-part dart damage with foam-core wounds, breaking,
@@ -941,11 +942,12 @@ export class FoamerSystem {
                     (s - (blob.count - 1) / 2) * blob.spreadDeg, smallBlobKind(blob));
               }
             } else if (atk.id === "homingShot") {
-              // GAME-10j: the F10's card goes here. In this stage the type's
-              // attack is wired but the pink parryable homing ball is not
-              // built yet, so the windup and throw pose play and nothing
-              // flies (the same as the no-projectile-system path above).
-              // Stage 2: launch the homingShotKind from the blaster tip.
+              // GAME-10j: the F10's single shot: the pink parryable homing
+              // ball from the blaster tip (its numbers are `homing` in
+              // data, and the parry sees it by the shared material). With
+              // no homing block the windup plays and nothing flies.
+              const h = homingOf(f.spec);
+              if (h) this.projectiles?.launch(f, player, 0, homingShotKind(h));
             } else {
               const volley = atk as { shots?: number; spreadDeg?: number };
               const shots = Math.max(1, volley.shots ?? 1);
@@ -1254,6 +1256,14 @@ export class FoamerSystem {
     // land, so while it can only stomp the brain closes like a bonker's.
     // GAME-10h: the same for a Trawler with both launchers gone.
     if ((pelletOf(f.spec) || wallOf(f.spec)) && this.chooseAttack(f) === "stomp") {
+      input.throwRange = input.attackRange;
+      input.preferredDistance = input.attackRange;
+      input.retreatDistance = input.attackRange;
+    }
+    // GAME-10j: with its blaster gone the Turbo can only bonk, and the
+    // ring it would keep is 12 m from a bonk it can never land: the
+    // brain closes like a bonker's while there is no ranged shot.
+    else if (homingOf(f.spec) && !f.parts.has("blaster")) {
       input.throwRange = input.attackRange;
       input.preferredDistance = input.attackRange;
       input.retreatDistance = input.attackRange;

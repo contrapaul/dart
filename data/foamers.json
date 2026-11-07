@@ -590,7 +590,7 @@
     },
     "F10": {
       "rig": "F10",
-      "_note": "GAME-10j: the Turbo. On the Roamer's brain (see the F06), a ring it keeps at preferredDistanceMetres. Health 30 and speed 3.5 come from the rig. It flies on its jets (fly, the float's path); with one gone it flies lower and slower, with both gone it is on the floor walking. The jets are the weak points (weakpoint). The shot's numbers (homing) arrive with stage 2.",
+      "_note": "GAME-10j: the Turbo. On the Roamer's brain (see the F06), a ring it keeps at preferredDistanceMetres. Health 30 and speed 3.5 come from the rig. It flies on its jets (fly, the float's path); with one gone it flies lower and slower, with both gone it is on the floor walking. The jets are the weak points (weakpoint). The shot's numbers (homing): slow, light, and it steers at the player's chest for its seconds at its turn rate.",
       "turnRate": 4,
       "preferredDistanceMetres": 12,
       "retreatDistanceMetres": 8,
@@ -605,6 +605,17 @@
           "jetR"
         ]
       },
+      "homing": {
+        "_note": "GAME-10j: the homing shot's ball. Slower and lighter than a thrown ball (the base spec's ball); it steers toward the player's chest for `seconds` at `turnDegPerSecond` (the step never turns more than that times dt) and then flies straight. A parry kills the steer on the player (the parry's own steer takes over). maxLive is the cap: not more than this many in the air.",
+        "speed": 7,
+        "gravity": 1,
+        "radius": 0.1,
+        "lifetime": 6,
+        "chunks": 3,
+        "maxLive": 6,
+        "seconds": 2.5,
+        "turnDegPerSecond": 90
+      },
       "weakpoint": {
         "_note": "GAME-10j: CONTENT-PLAN 3.1, the jets are the weak points. A dart on one takes damage x damage.",
         "parts": [
@@ -618,7 +629,7 @@
           "id": "homingShot",
           "damage": 10,
           "token": "ranged",
-          "_note": "GAME-10j: one homing ball from the blaster tip (the numbers and the ball are stage 2). With the blaster gone, chooseAttack falls through to the bonk.",
+          "_note": "GAME-10j: one homing ball from the blaster tip (the ball's numbers are `homing` above). With the blaster gone, chooseAttack falls through to the bonk.",
           "needs": [
             "blaster"
           ],

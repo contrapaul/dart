@@ -66,6 +66,12 @@ export interface LiveBall {
   /** GAME-10c: the attack that made it, for the page's damage lookup
    *  (damageOf(attack, thrower.spec)). "throw" for a Roamer's ball. */
   attack: string;
+  /** GAME-10j: seconds of homing steer left; 0 flies straight. Cleared
+   *  the moment a parry takes over. */
+  homingLeft: number;
+  /** GAME-10j: the per-step turn the homing steer may not exceed, in
+   *  degrees per second. */
+  turnRateDegrees: number;
   /** GAME-10c: bounces left off geometry for a Floater's small blob; 0 for
    *  every ball that bursts on the first touch. */
   bounceLeft: number;
@@ -94,6 +100,10 @@ export interface BallKind {
   mesh: THREE.MeshStandardMaterial;
   bounces: number;
   maxLive: number;
+  /** GAME-10j: when set, the ball steers toward the player's chest for
+   *  seconds at turnDegPerSecond (the step never turns more than that
+   *  fraction of a turn), then flies straight. Cleared on the parry. */
+  homing?: { seconds: number; turnDegPerSecond: number };
 }
 
 export type ProjectileSound = "burst" | "parryHit" | "blobBounce";
@@ -151,7 +161,8 @@ export class ProjectileSystem {
    *  gone. The launch and the flight check share this, so the two start at
    *  the same point. */
   handAt(f: Foamer, out: THREE.Vector3): THREE.Vector3 {
-    const hand = f.parts.get("ball");
+    // GAME-10j: the F10's wrist launcher is named blaster, not ball.
+    const hand = f.parts.get("ball") ?? f.parts.get("blaster");
     if (!hand) return out.copy(f.centre).setY(f.centre.y + f.height * 0.7);
     const t = hand.body.translation();
     return out.set(t.x, t.y, t.z);
@@ -247,8 +258,34 @@ export class ProjectileSystem {
    *  (the page checked blocksAttackFrom and Shield.canParry; this does
    *  not check the arc). The ball keeps going (not removed) and flies out
    *  at the new speed. */
+  /** GAME-10j: one step of the homing steer: the ball turns its heading
+   *  toward the player, in the flat plane, by at most turnRateDegrees
+   *  times dt this step (the speed stays: only the heading changes). */
+  private steerHoming(b: LiveBall, dt: number): void {
+    const pc = this.playerCollider.translation();
+    this._aim.set(pc.x, pc.y, pc.z).sub(b.pos);
+    const flat = Math.hypot(this._aim.x, this._aim.z);
+    if (flat < 0.35) return;
+    const hSpeed = Math.hypot(b.vel.x, b.vel.z);
+    if (hSpeed < 1e-3) return;
+    const cur = Math.atan2(b.vel.z, b.vel.x);
+    const want = Math.atan2(this._aim.z, this._aim.x);
+    let delta = want - cur;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    const maxTurn = (b.turnRateDegrees * Math.PI / 180) * dt;
+    const turned = delta > maxTurn ? maxTurn : delta < -maxTurn ? -maxTurn : delta;
+    const nx = Math.cos(cur + turned);
+    const nz = Math.sin(cur + turned);
+    b.vel.x = nx * hSpeed;
+    b.vel.z = nz * hSpeed;
+  }
+
   bounce(b: LiveBall): void {
     b.bounced = true;
+    // GAME-10j: the parry is what kills the homing steer on the player's
+    // ball: the turn left is cleared and then the parry's own steer is set.
+    b.homingLeft = 0;
     // Keep the current step's position, but turn the speed to the
     // bounce-back's and its arc to fly at the thrower's chest.
     b.flatSpeed = Math.hypot(b.vel.x, b.vel.z) * PARRY.speedShare;
@@ -321,6 +358,7 @@ export class ProjectileSystem {
     this.group.add(mesh);
     this.list.push({
       pos: at.clone(), vel, age: 0, mesh, thrower: f, bounced: false, flatSpeed: 0, steerLeft: 0,
+      homingLeft: kind.homing?.seconds ?? 0, turnRateDegrees: kind.homing?.turnDegPerSecond ?? 0,
       attack: kind.attack,
       bounceLeft: kind.bounces,
       gravity: kind.gravity,
@@ -347,6 +385,12 @@ export class ProjectileSystem {
       if (b.bounced && b.steerLeft > 0) {
         b.steerLeft = Math.max(0, b.steerLeft - dt);
         this.steerBounce(b);
+      }
+      // GAME-10j: a homing ball steers to the player's chest while its time
+      // runs; then it flies straight. The parry clears it (bounce).
+      if (!b.bounced && b.homingLeft > 0) {
+        b.homingLeft = Math.max(0, b.homingLeft - dt);
+        this.steerHoming(b, dt);
       }
       b.vel.y -= b.gravity * dt;
       const speed = b.vel.length();

@@ -6,15 +6,21 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-GAME-10j stage 1 in progress 2026-11-07 (Qwen 3.8-27B via Pi, branch
-`game-10j`): the F10 Turbo has its palette look, its type (the health
-30 jet flyer, hover 4 m, the jets a weak point, the bonk as fallback) and
-its flight on the F06's float path, with four legs to walk on when both
-jets are gone. New tests in `tests/foamers/f10-fly.test.ts` and
-`tests/ai/f10-brain.test.ts`. `npx tsc --noEmit`, `npx vitest run`
-(626 pass, 2 skipped) and `npm run build` clean. Not checked by eye:
-the palette, the flight, the pose of the shot (no browser here). Stage 2
-(its homing ball, its sounds) is next.
+GAME-10j complete except stage 3 docs 2026-11-07 (Qwen 3.8-27B via Pi,
+branch `game-10j`): the F10 Turbo. Stage 1: the palette look (purple
+body and arms, lime visor, wings and blaster trim, orange jets), the
+`F10` type (health 30, speed 3.5, hover 4 m) and its flight on the
+F06's float path, four legs to walk on when both jets are gone, the
+jets a weak point (x2), the f02 brain holding at 12 m. Stage 2: the
+homing shot: one slow (7 m/s) light (gravity 1) pink parryable ball
+from the blaster tip, damage 10, steering to the player for 2.5 s at
+at most 90 deg/s per step and then straight; a parry ends the steer on
+the player; the launcher gone it closes and bonks and does not shoot;
+live cap 6; sounds F10-jet (loop) / F10-shot / F10-fall.
+`npx tsc --noEmit`, `npx vitest run` (634 pass, 2 skipped) and `npm run
+build` clean; the dash check is clean. Not checked by eye: the PNGs
+and the palette in play, the flight, the homing ball in play, the
+poses, the three new sounds (no browser here).
 
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
@@ -631,6 +637,55 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10j stage 2, committed (Qwen 3.8-27B via Pi): the F10 Turbo's homing shot
+
+- Stage 2 of `tasks/GAME-10j.md` on branch `game-10j` (stage 1 is
+  `7c0fd04`; the card's stage order: look + flight, then homing,
+  then docs).
+- **Shot:** `data/foamers.json` type F10 gets the `homing` block (the
+  card's starting numbers: speed 7, gravity 1, radius 0.1, lifetime
+ 6, chunks 3, maxLive 6, seconds 2.5, turnDegPerSecond 90), and
+  `src/foamers/homing.ts` adds `homingShotKind` (the pink parryable
+  `BALL_MATERIAL`, the flight times and turn rate live on the
+  ball: `BallKind.homing`). `foamers.ts` fires it at the
+  windup/strike handoff. The launch comes from the blaster's part:
+  `handAt` in `projectiles.ts` now tries `ball` and then tries
+  `blaster` (the F07's sword set that precedent).
+- **Homing:** `steerHoming` turns the horizontal velocity toward the
+  player, and by no more than `turnDegPerSecond * dt` in a given step
+  (the speed is retained, this is the card's limit); after
+  `seconds` run out the ball flies straight. Parry (`bounce`) zeroes
+  `homingLeft`, so the parry's own steering is the next steer, and
+  the ball never goes after the player again.
+- **Launcher gone:** `chooseAttack` falls through via data `needs`
+  (no code). The brain has the single line GAME-10g/h gave the
+  Crawler and the Trawler: while only the bonk remains, the brain
+  walks in like a bonker's (otherwise the 12 m ring carries it from
+  the bonk it can never reach).
+- **Pose:** `homingShot` cases in `rig-states.ts`: the windup raises
+  the wrist launcher, the strike whips it forward through the ~60%
+  mark, and both land on rest. Rendered to
+  `design/foamers/poses/F10-{windup,strike}-t0.5-*.png` (unverified
+  by eye: no browser).
+- **Sounds:** `data/sounds.json` and `design/SOUNDS.md` get
+  `F10-jet` (looping, follows the F06-hum pattern; the hum block now
+  reads `floatOf ?? flyOf`, so both flyers share one loop path and
+  the F06's hum stops on the same line as always), `F10-shot` (one
+  per firing), `F10-fall` (one, when the jet hiss stops). None of
+  them was audible.
+- **New tests** in `tests/foamers/f10-homing.test.ts`: the type
+  reads its own numbers, it's pink and parryable; a launch from the
+  blaster's tip (the F02 still from the ball hand); a real attack
+  fires one of that kind; it steers toward the player and then
+  flies straight, the turn rate holds per step over the whole
+  flight; a parried shot does not go after the player; launcher
+  gone means bonk and no shot; live cap of 6 holds.
+- `npx tsc --noEmit`, full `npx vitest run` (634 pass, 2 skipped),
+  `npm run build` clean; perl dash check clean on every file
+  changed.
+- Stage 3 (docs check) is next: re-check the card's done list, the
+  PLAN row, and a room one-liner.
 
 ### 2026-11-07: GAME-10j stage 1, committed (Qwen 3.8-27B via Pi): the F10 Turbo's look, type and flight
 
