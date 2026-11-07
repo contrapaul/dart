@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-LVL-04b stage 1 done 2026-11-07, not reviewed, not merged (card
+LVL-04b stage 1 merged locally 2026-11-07, not pushed (card
 `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi, branch `lvl-04b`):
 the A1 Pit and breather 2 in `data/levels/1-4.json`. The ring's north
 wall opens into a 4 m corridor under the far yard; the Pit is 34 x 26 m
@@ -554,6 +554,27 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-04b stage 1 review, merged (Claude)
+
+- DeepSeek's first LVL-04b run spent 86 minutes and 143 tool calls
+  reading with no edit and was stopped. A fresh run limited to stage 1,
+  with its first edit due by its sixth reply, built it in one commit.
+- Read the diff: `data/levels/1-4.json`, its test file, PLAN, HANDOFF
+  and the card. The older tests it changed follow the level going on
+  past the bridge (the arena list, the pickups, the bridge escape now
+  starting the Pit instead of ending the level); none loosened.
+- Main merged in (HANDOFF Status and Log conflicts, both kept; the
+  GAME-10h Status paragraph corrected to "merged locally"). `tsc`, the
+  full suite (602 pass, 2 skipped) and the build pass.
+- Played by script on `arena.html?watch&level=1-4`, starting at the
+  Pit: the floor 4 m below the ring locks it; wave 1 is 2 Darters and 6
+  Swarmers, wave 2 is 3 Darters and 6 Roamers arriving staggered; the
+  north door opens on the clear and the pad in breather 2 shows "Level
+  complete".
+- Not checked: walking the ramps by hand (the player was moved by
+  script; the nav test covers them), the west island over its hole, the
+  Pit's look (the camera faced a wall), the frame time with 9 Foamers.
 
 ### 2026-11-07: LVL-04b stage 1, the Pit and breather 2 (DeepSeek V4.1 Flash via Pi)
 
