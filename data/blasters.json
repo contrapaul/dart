@@ -1,92 +1,431 @@
 {
   "_note": "The three slice blasters (GAME-09), keyed by id, in level order. Units: metres, seconds, degrees. Common fields, then one block for the fire mode: pump (primeTime), auto (fireInterval, spinUp, spinDown, recoil), break (fireInterval). A mod's fields override the blaster's; nested blocks (recoil) merge key by key. Starting values from the blaster cards, marked to tune on the range. Viewmodel placement numbers are first guesses; the reviewer sets them.",
-  "order": ["B01", "B04", "B03", "B06", "B02", "B05"],
+  "order": [
+    "B01",
+    "B04",
+    "B03",
+    "B06",
+    "B02",
+    "B05",
+    "B07"
+  ],
   "switchTime": 0.35,
   "B01": {
-    "name": "The Dartman", "model": "/models/blasters/B01.glb",
-    "mode": "pump", "dartType": "standard", "dartsPerShot": 3, "spreadDeg": 2.5,
-    "magSize": 8, "reserveMax": 40, "reserveStart": 40,
-    "primeTime": 0.45, "reloadTime": 1.4, "autoReload": true,
-    "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3"],
-    "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.85 },
-    "motion": { "kick": 0.04, "tiltDeg": 5, "return": 12, "triggerDeg": 15, "pumpTravel": 0.06, "magDrop": 0.15 },
+    "name": "The Dartman",
+    "model": "/models/blasters/B01.glb",
+    "mode": "pump",
+    "dartType": "standard",
+    "dartsPerShot": 3,
+    "spreadDeg": 2.5,
+    "magSize": 8,
+    "reserveMax": 40,
+    "reserveStart": 40,
+    "primeTime": 0.45,
+    "reloadTime": 1.4,
+    "autoReload": true,
+    "muzzles": [
+      "muzzle_1",
+      "muzzle_2",
+      "muzzle_3"
+    ],
+    "viewmodel": {
+      "position": [
+        0.2,
+        -0.26,
+        -0.36
+      ],
+      "rotationDeg": [
+        2,
+        5,
+        0
+      ],
+      "scale": 0.85
+    },
+    "motion": {
+      "kick": 0.04,
+      "tiltDeg": 5,
+      "return": 12,
+      "triggerDeg": 15,
+      "pumpTravel": 0.06,
+      "magDrop": 0.15
+    },
     "mods": {
-      "slug": { "dartType": "slug", "dartsPerShot": 1, "spreadDeg": 0,
-        "chunk": { "_note": "GAME-09b: the slug is one heavy dart, so it reaches further than the Leviathan's close blast, with a smaller hole.", "rangeMetres": 8, "carveRadius": 0.3, "push": 1.6 } },
-      "double": { "dartsPerShot": 6, "magSize": 12, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4", "muzzle_5", "muzzle_6"], "show": ["mod_double"] }
+      "slug": {
+        "dartType": "slug",
+        "dartsPerShot": 1,
+        "spreadDeg": 0,
+        "chunk": {
+          "_note": "GAME-09b: the slug is one heavy dart, so it reaches further than the Leviathan's close blast, with a smaller hole.",
+          "rangeMetres": 8,
+          "carveRadius": 0.3,
+          "push": 1.6
+        }
+      },
+      "double": {
+        "dartsPerShot": 6,
+        "magSize": 12,
+        "muzzles": [
+          "muzzle_1",
+          "muzzle_2",
+          "muzzle_3",
+          "muzzle_4",
+          "muzzle_5",
+          "muzzle_6"
+        ],
+        "show": [
+          "mod_double"
+        ]
+      }
     }
   },
   "B04": {
-    "name": "Shredder", "model": "/models/blasters/B04.glb",
-    "mode": "auto", "dartType": "standard", "dartsPerShot": 1, "spreadDeg": 1,
-    "magSize": 35, "reserveMax": 175, "reserveStart": 105,
-    "fireInterval": 0.1, "spinUp": 0.15, "spinDown": 1.0, "reloadTime": 1.8, "autoReload": true,
-    "recoil": { "spreadPerShot": 0.4, "spreadMax": 6, "climbDegPerShot": 0.25, "climbDegMax": 4, "recover": 0.4 },
-    "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.75 },
-    "motion": { "kick": 0.01, "tiltDeg": 1, "return": 18, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.18 },
+    "name": "Shredder",
+    "model": "/models/blasters/B04.glb",
+    "mode": "auto",
+    "dartType": "standard",
+    "dartsPerShot": 1,
+    "spreadDeg": 1,
+    "magSize": 35,
+    "reserveMax": 175,
+    "reserveStart": 105,
+    "fireInterval": 0.1,
+    "spinUp": 0.15,
+    "spinDown": 1.0,
+    "reloadTime": 1.8,
+    "autoReload": true,
+    "recoil": {
+      "spreadPerShot": 0.4,
+      "spreadMax": 6,
+      "climbDegPerShot": 0.25,
+      "climbDegMax": 4,
+      "recover": 0.4
+    },
+    "muzzles": [
+      "muzzle_1"
+    ],
+    "viewmodel": {
+      "position": [
+        0.2,
+        -0.26,
+        -0.36
+      ],
+      "rotationDeg": [
+        2,
+        5,
+        0
+      ],
+      "scale": 0.75
+    },
+    "motion": {
+      "kick": 0.01,
+      "tiltDeg": 1,
+      "return": 18,
+      "triggerDeg": 15,
+      "wheelSpin": 60,
+      "magDrop": 0.18
+    },
     "mods": {
-      "suppress": { "recoil": { "spreadPerShot": 0.12, "climbDegPerShot": 0.08 } },
-      "bounce": { "_note": "Every 5th shot bounces to another target: GAME-09b. Data only for now." }
+      "suppress": {
+        "recoil": {
+          "spreadPerShot": 0.12,
+          "climbDegPerShot": 0.08
+        }
+      },
+      "bounce": {
+        "_note": "Every 5th shot bounces to another target: GAME-09b. Data only for now."
+      }
     }
   },
   "B06": {
     "_note": "GAME-09d: The Standard (design/blasters/B06.md). Heavy full-auto on mega darts: slower than B04, each shot much harder. The approved model has no flywheels: its moving part is bolt, so wheelSpin drives nothing and is left at 0. Start values for Paul to tune on the range.",
-    "name": "The Standard", "model": "/models/blasters/B06.glb",
-    "mode": "auto", "dartType": "mega", "dartsPerShot": 1, "spreadDeg": 1.5,
-    "magSize": 60, "reserveMax": 120, "reserveStart": 60,
-    "fireInterval": 0.17, "spinUp": 0.25, "spinDown": 1.2,
-    "reloadTime": 2.4, "autoReload": true,
-    "recoil": { "spreadPerShot": 0.5, "spreadMax": 7, "climbDegPerShot": 0.35, "climbDegMax": 5, "recover": 0.5 },
-    "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.22, -0.3, -0.42], "rotationDeg": [2, 5, 0], "scale": 0.7 },
-    "motion": { "kick": 0.03, "tiltDeg": 3, "return": 12, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.2 },
+    "name": "The Standard",
+    "model": "/models/blasters/B06.glb",
+    "mode": "auto",
+    "dartType": "mega",
+    "dartsPerShot": 1,
+    "spreadDeg": 1.5,
+    "magSize": 60,
+    "reserveMax": 120,
+    "reserveStart": 60,
+    "fireInterval": 0.17,
+    "spinUp": 0.25,
+    "spinDown": 1.2,
+    "reloadTime": 2.4,
+    "autoReload": true,
+    "recoil": {
+      "spreadPerShot": 0.5,
+      "spreadMax": 7,
+      "climbDegPerShot": 0.35,
+      "climbDegMax": 5,
+      "recover": 0.5
+    },
+    "muzzles": [
+      "muzzle_1"
+    ],
+    "viewmodel": {
+      "position": [
+        0.22,
+        -0.3,
+        -0.42
+      ],
+      "rotationDeg": [
+        2,
+        5,
+        0
+      ],
+      "scale": 0.7
+    },
+    "motion": {
+      "kick": 0.03,
+      "tiltDeg": 3,
+      "return": 12,
+      "triggerDeg": 15,
+      "wheelSpin": 0,
+      "magDrop": 0.2
+    },
     "mods": {
-      "rate": { "_note": "GAME-09d mod 1 (Paul): increased rate of fire, about 8 a second.", "fireInterval": 0.12 },
-      "explosive": { "_note": "GAME-09d mod 2 (Paul): every 5th mega dart explodes where it first hits, through the shared ExplosionSystem. The count is on the blaster (Blaster.beginShot reads explosiveEvery).", "explosiveEvery": 5 }
+      "rate": {
+        "_note": "GAME-09d mod 1 (Paul): increased rate of fire, about 8 a second.",
+        "fireInterval": 0.12
+      },
+      "explosive": {
+        "_note": "GAME-09d mod 2 (Paul): every 5th mega dart explodes where it first hits, through the shared ExplosionSystem. The count is on the blaster (Blaster.beginShot reads explosiveEvery).",
+        "explosiveEvery": 5
+      }
     }
   },
   "B05": {
     "_note": "GAME-09e: Shrike (design/blasters/B05.md). Precision bolt action on precision darts: one dart, no spread, the bolt (primeTime) is the limit on the rate. pierce is on the dart type in data/darts.json. The approved model's moving part is bolt (the pump node of B01 is its own); the bolt's animation belongs to the viewmodel work (ART-05). Start values for Paul to tune on the range. zoom: the share of the player's own field of view while the zoom action is held, with the look sensitivity scaled the same way (src/game/zoom.ts).",
-    "name": "Shrike", "model": "/models/blasters/B05.glb",
-    "mode": "pump", "dartType": "precision", "dartsPerShot": 1, "spreadDeg": 0,
-    "magSize": 5, "reserveMax": 30, "reserveStart": 15,
-    "primeTime": 0.9, "reloadTime": 1.8, "autoReload": true,
-    "zoom": { "fovShare": 0.4, "easeTime": 0.12 },
-    "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.22, -0.3, -0.5], "rotationDeg": [2, 5, 0], "scale": 0.62 },
-    "motion": { "kick": 0.05, "tiltDeg": 6, "return": 12, "triggerDeg": 15, "pumpTravel": 0.05, "magDrop": 0.12 },
+    "name": "Shrike",
+    "model": "/models/blasters/B05.glb",
+    "mode": "pump",
+    "dartType": "precision",
+    "dartsPerShot": 1,
+    "spreadDeg": 0,
+    "magSize": 5,
+    "reserveMax": 30,
+    "reserveStart": 15,
+    "primeTime": 0.9,
+    "reloadTime": 1.8,
+    "autoReload": true,
+    "zoom": {
+      "fovShare": 0.4,
+      "easeTime": 0.12
+    },
+    "muzzles": [
+      "muzzle_1"
+    ],
+    "viewmodel": {
+      "position": [
+        0.22,
+        -0.3,
+        -0.5
+      ],
+      "rotationDeg": [
+        2,
+        5,
+        0
+      ],
+      "scale": 0.62
+    },
+    "motion": {
+      "kick": 0.05,
+      "tiltDeg": 6,
+      "return": 12,
+      "triggerDeg": 15,
+      "pumpTravel": 0.05,
+      "magDrop": 0.12
+    },
     "mods": {
-      "explosive": { "_note": "GAME-09e mod 1 (Paul): every shot explodes where it first hits, through the shared ExplosionSystem (the count is on the blaster: Blaster.beginShot reads explosiveEvery).", "explosiveEvery": 1 },
-      "heavy": { "_note": "GAME-09e mod 2 (Paul): heavier rounds: the precisionHeavy dart, which pierces three Foamers and hits a little harder.", "dartType": "precisionHeavy" }
+      "explosive": {
+        "_note": "GAME-09e mod 1 (Paul): every shot explodes where it first hits, through the shared ExplosionSystem (the count is on the blaster: Blaster.beginShot reads explosiveEvery).",
+        "explosiveEvery": 1
+      },
+      "heavy": {
+        "_note": "GAME-09e mod 2 (Paul): heavier rounds: the precisionHeavy dart, which pierces three Foamers and hits a little harder.",
+        "dartType": "precisionHeavy"
+      }
     }
   },
   "B03": {
-    "name": "Leviathan", "model": "/models/blasters/B03.glb",
-    "mode": "break", "dartType": "standard", "dartsPerShot": 8, "spreadDeg": 7,
-    "magSize": 2, "reserveMax": 24, "reserveStart": 12,
-    "fireInterval": 0.25, "reloadTime": 1.6, "autoReload": true,
-    "muzzles": ["muzzle_1", "muzzle_2"],
-    "viewmodel": { "position": [0.2, -0.24, -0.38], "rotationDeg": [2, 5, 0], "scale": 0.75 },
-    "motion": { "kick": 0.06, "tiltDeg": 8, "return": 8, "triggerDeg": 15, "breachOpenDeg": -40, "latchDeg": 30 },
-    "chunk": { "_note": "GAME-09b: eight darts at once, close in. rangeMetres from the muzzle to the hit. carveRadius is the hole's radius in metres, the biggest carve in the game. push multiplies the ragdoll's kill push.", "rangeMetres": 5, "carveRadius": 0.35, "push": 2.0 },
+    "name": "Leviathan",
+    "model": "/models/blasters/B03.glb",
+    "mode": "break",
+    "dartType": "standard",
+    "dartsPerShot": 8,
+    "spreadDeg": 7,
+    "magSize": 2,
+    "reserveMax": 24,
+    "reserveStart": 12,
+    "fireInterval": 0.25,
+    "reloadTime": 1.6,
+    "autoReload": true,
+    "muzzles": [
+      "muzzle_1",
+      "muzzle_2"
+    ],
+    "viewmodel": {
+      "position": [
+        0.2,
+        -0.24,
+        -0.38
+      ],
+      "rotationDeg": [
+        2,
+        5,
+        0
+      ],
+      "scale": 0.75
+    },
+    "motion": {
+      "kick": 0.06,
+      "tiltDeg": 8,
+      "return": 8,
+      "triggerDeg": 15,
+      "breachOpenDeg": -40,
+      "latchDeg": 30
+    },
+    "chunk": {
+      "_note": "GAME-09b: eight darts at once, close in. rangeMetres from the muzzle to the hit. carveRadius is the hole's radius in metres, the biggest carve in the game. push multiplies the ragdoll's kill push.",
+      "rangeMetres": 5,
+      "carveRadius": 0.35,
+      "push": 2.0
+    },
     "mods": {
-      "both": { "bothBarrels": true },
-      "quad": { "magSize": 4, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4"], "show": ["mod_quad"], "hide": ["fore-end"] }
+      "both": {
+        "bothBarrels": true
+      },
+      "quad": {
+        "magSize": 4,
+        "muzzles": [
+          "muzzle_1",
+          "muzzle_2",
+          "muzzle_3",
+          "muzzle_4"
+        ],
+        "show": [
+          "mod_quad"
+        ],
+        "hide": [
+          "fore-end"
+        ]
+      }
     }
   },
   "B02": {
     "_note": "GAME-09c: semi-auto sidearm. The review pointed it at its own approved model (public/models/blasters/B02.glb, ART-04), which replaced the B01 placeholder with no code change.",
-    "name": "Musketeer", "model": "/models/blasters/B02.glb",
-    "mode": "semi", "dartType": "standard", "dartsPerShot": 1, "spreadDeg": 1,
-    "magSize": 6, "reserveMax": 1, "reserveStart": 1, "reserveInfinite": true,
-    "fireInterval": 0.15, "reloadTime": 1.0, "autoReload": true,
-    "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 4, 0], "scale": 0.85 },
-    "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1 },
+    "name": "Musketeer",
+    "model": "/models/blasters/B02.glb",
+    "mode": "semi",
+    "dartType": "standard",
+    "dartsPerShot": 1,
+    "spreadDeg": 1,
+    "magSize": 6,
+    "reserveMax": 1,
+    "reserveStart": 1,
+    "reserveInfinite": true,
+    "fireInterval": 0.15,
+    "reloadTime": 1.0,
+    "autoReload": true,
+    "muzzles": [
+      "muzzle_1"
+    ],
+    "viewmodel": {
+      "position": [
+        0.18,
+        -0.22,
+        -0.32
+      ],
+      "rotationDeg": [
+        2,
+        4,
+        0
+      ],
+      "scale": 0.85
+    },
+    "motion": {
+      "kick": 0.02,
+      "tiltDeg": 3,
+      "return": 14,
+      "triggerDeg": 10,
+      "magDrop": 0.1
+    },
     "mods": {
-      "burst": { "_note": "GAME-09c: mod 1. One press fires three darts, burstGap apart, then the cooldown.", "mode": "burst", "burstCount": 3, "burstGap": 0.07, "burstCooldown": 0.3 },
-      "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit.", "dartType": "slug", "fireInterval": 0.45, "chunk": { "rangeMetres": 6, "carveRadius": 0.2, "push": 1.0 } }
+      "burst": {
+        "_note": "GAME-09c: mod 1. One press fires three darts, burstGap apart, then the cooldown.",
+        "mode": "burst",
+        "burstCount": 3,
+        "burstGap": 0.07,
+        "burstCooldown": 0.3
+      },
+      "heavy": {
+        "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit.",
+        "dartType": "slug",
+        "fireInterval": 0.45,
+        "chunk": {
+          "rangeMetres": 6,
+          "carveRadius": 0.2,
+          "push": 1.0
+        }
+      }
+    }
+  },
+  "B07": {
+    "_note": "GAME-09f: Collateral (design/blasters/B07.md). Pump-action single launcher round: slow, high arc, explodes where it first hits. Both mods are on: remote detonate (rounds stop where they hit, a fire press detonates them all) and cluster (the blast throws four small ones around it). Start values for Paul to tune on the range.",
+    "name": "Collateral",
+    "model": "/models/blasters/B07.glb",
+    "mode": "pump",
+    "dartType": "launcher",
+    "dartsPerShot": 1,
+    "spreadDeg": 1.0,
+    "magSize": 6,
+    "reserveMax": 18,
+    "reserveStart": 12,
+    "primeTime": 0.9,
+    "reloadTime": 2.5,
+    "autoReload": true,
+    "recoil": {
+      "spreadPerShot": 1.2,
+      "spreadMax": 6,
+      "climbDegPerShot": 0.8,
+      "climbDegMax": 4,
+      "recover": 0.6
+    },
+    "muzzles": [
+      "muzzle_1"
+    ],
+    "explosiveEvery": 1,
+    "viewmodel": {
+      "position": [
+        0.21,
+        -0.29,
+        -0.4
+      ],
+      "rotationDeg": [
+        2,
+        5,
+        0
+      ],
+      "scale": 0.78
+    },
+    "motion": {
+      "kick": 0.05,
+      "tiltDeg": 4,
+      "return": 12,
+      "triggerDeg": 15,
+      "pumpTravel": 0.07,
+      "drumStepDeg": 60,
+      "magDrop": 0.18
+    },
+    "mods": {
+      "longrange": {
+        "_note": "Start placeholder (Paul to write): flatter faster round.",
+        "spreadDeg": 0.4
+      },
+      "rapid": {
+        "_note": "Start placeholder (Paul to write): quicker pump.",
+        "primeTime": 0.6
+      }
     }
   }
 }

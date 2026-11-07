@@ -687,7 +687,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // muzzle from the active viewmodel, the aim 50 m down the view, and
       // the loadout's fixed step, then the darts.
       for (let i = 0; i < loadout.ids.length; i++) {
-        const key = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5", "weapon6"][i];
+        const key = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5", "weapon6", "weapon7"][i];
         if (input.wasPressed(key as "weapon1")) loadout.select(i);
       }
       if (input.wasPressed("weaponNext")) loadout.next();

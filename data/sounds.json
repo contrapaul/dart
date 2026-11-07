@@ -710,7 +710,10 @@
       "synth": {
         "layers": [
           {
-            "click": { "dur": 0.06, "freq": 700 },
+            "click": {
+              "dur": 0.06,
+              "freq": 700
+            },
             "gain": 0.7
           },
           {
@@ -768,7 +771,10 @@
       "synth": {
         "layers": [
           {
-            "click": { "dur": 0.05, "freq": 1100 },
+            "click": {
+              "dur": 0.05,
+              "freq": 1100
+            },
             "gain": 0.6
           },
           {
@@ -793,7 +799,10 @@
       "synth": {
         "layers": [
           {
-            "click": { "dur": 0.06, "freq": 800 },
+            "click": {
+              "dur": 0.06,
+              "freq": 800
+            },
             "gain": 0.6
           },
           {
@@ -863,7 +872,11 @@
             "gain": 0.8
           },
           {
-            "crackle": { "dur": 0.35, "rate": 40, "decay": 0.06 },
+            "crackle": {
+              "dur": 0.35,
+              "rate": 40,
+              "decay": 0.06
+            },
             "gain": 0.5
           }
         ]
@@ -3606,6 +3619,99 @@
           }
         ]
       }
+    },
+    "B07-fire": {
+      "_note": "GAME-09f (Paul): the launcher's launch: a hollow thoomp, deeper and slower than FX-explode.",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.08,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.16,
+              "attack": 0.001,
+              "decay": 0.14,
+              "lowpass": 900,
+              "highpass": 50,
+              "lowpassEnd": 200
+            },
+            "gain": 0.6
+          },
+          {
+            "tone": {
+              "dur": 0.2,
+              "f0": 170,
+              "f1": 45,
+              "wave": "sine",
+              "attack": 0.002,
+              "decay": 0.18
+            },
+            "gain": 1.0
+          }
+        ]
+      }
+    },
+    "B07-pump": {
+      "_note": "GAME-09f (Paul): the pump back and forward: a plastic clack.",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.1,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.03,
+              "freq": 800
+            },
+            "gain": 0.7
+          },
+          {
+            "noise": {
+              "dur": 0.05,
+              "attack": 0.001,
+              "decay": 0.04,
+              "lowpass": 2500,
+              "highpass": 300
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "B07-reload": {
+      "_note": "GAME-09f (Paul): a launcher round pushed into the drum: a soft thud.",
+      "files": [],
+      "volume": 0.75,
+      "jitter": 0.1,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.07,
+              "attack": 0.001,
+              "decay": 0.06,
+              "lowpass": 700,
+              "highpass": 60
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.05,
+              "f0": 120,
+              "f1": 70,
+              "wave": "sine",
+              "attack": 0.001,
+              "decay": 0.045
+            },
+            "gain": 0.6
+          }
+        ]
+      }
     }
   },
   "blasterCues": {
@@ -3709,6 +3815,33 @@
         "state": "reloading",
         "at": 0.75,
         "sound": "B06-reload"
+      }
+    ],
+    "B07": [
+      {
+        "state": "priming",
+        "at": 0.05,
+        "sound": "B07-pump"
+      },
+      {
+        "state": "priming",
+        "at": 0.95,
+        "sound": "B07-pump"
+      },
+      {
+        "state": "reloading",
+        "at": 0.15,
+        "sound": "B07-reload"
+      },
+      {
+        "state": "reloading",
+        "at": 0.5,
+        "sound": "B07-reload"
+      },
+      {
+        "state": "reloading",
+        "at": 0.85,
+        "sound": "B07-reload"
       }
     ]
   },

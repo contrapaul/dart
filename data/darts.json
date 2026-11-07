@@ -52,6 +52,22 @@
       "carveRadius": 0.2,
       "pierce": 0
     },
+    "launcher": {
+      "_note": "GAME-09f: B07's launcher round (D14, Paul: five ammo types: a mega dart with a foam warhead). Slow (18 m/s) with much more drop than a mega dart, so it comes in on a high arc; big and heavy, so a lot of impulse. It explodes at its first hit, every shot (the blaster tags every shot). Start values for Paul to tune on the range.",
+      "speed": 18,
+      "gravityScale": 1.0,
+      "drag": 0.15,
+      "length": 0.24,
+      "radius": 0.036,
+      "bodyColor": "#2ec4ff",
+      "tipColor": "#ff4fa3",
+      "sticks": false,
+      "restitution": 0.2,
+      "impulse": 3.0,
+      "fireInterval": 0.1,
+      "carveRadius": 0.24,
+      "pierce": 0
+    },
     "precision": {
       "_note": "GAME-09e: the precision dart, B05's whistler (design/blasters/B05.md): fast, flat, thin, a small carve, high damage (the damage table in data/foamers.json). pierce: how many Foamers it flies through before it stops (a wall or the floor always stops it). The heavier-rounds mod reads pierce 3 there. Start values for Paul to tune on the range.",
       "speed": 60,

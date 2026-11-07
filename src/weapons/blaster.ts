@@ -32,6 +32,9 @@ export interface MotionSpec {
   pumpTravel?: number;
   magDrop?: number;
   wheelSpin?: number;
+  /** GAME-09f: B07's drum: degrees the drum node turns per shot (one
+   *  chamber), eased over the pump time by the viewmodel. */
+  drumStepDeg?: number;
   breachOpenDeg?: number;
   latchDeg?: number;
 }
