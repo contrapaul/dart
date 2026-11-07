@@ -71,11 +71,13 @@ describe("the env-01 test room", () => {
   });
 
   it("keeps its destructible pieces inside the KIT zone cap", () => {
-    const volumes = (level.pieces ?? []).flatMap((p) => p.volumes);
-    expect(volumes.length).toBeLessThanOrEqual(ZONE_CAP);
-    // The coat is one piece (so it breaks as one coat) of four sides.
-    expect(level.pieces!.length).toBe(1);
-    expect(volumes.length).toBe(4);
+    // The coat is the stage 1 piece. Stage 2 added the two crate stacks,
+    // whose zone count is in tests/level/env-01-crates.test.ts (a stack is
+    // many volumes but one 3.2 m zone). The coat is judged on its own: one
+    // piece, so it breaks as one coat, of four sides.
+    const coat = level.pieces!.find((p) => p.id === "col-coat")!;
+    expect(coat.volumes.length).toBe(4);
+    expect(coat.volumes.length).toBeLessThanOrEqual(ZONE_CAP);
   });
 
   it("has floor under the player start and under the exit pad", async () => {
@@ -89,7 +91,7 @@ describe("the env-01 test room", () => {
   });
 
   it("puts the coat outside the shell column, not inside it", () => {
-    for (const v of level.pieces![0]!.volumes) {
+    for (const v of level.pieces!.find((p) => p.id === "col-coat")!.volumes) {
       const min = [v.pos[0] - v.size[0] / 2, v.pos[1] - v.size[1] / 2, v.pos[2] - v.size[2] / 2];
       const max = [v.pos[0] + v.size[0] / 2, v.pos[1] + v.size[1] / 2, v.pos[2] + v.size[2] / 2];
       // The shell column's own box, from the file.

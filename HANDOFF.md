@@ -11,10 +11,10 @@ code): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
 (its section 0): mods at stations, ammo on the ground; moving floors
 paused; Act 1 hazards must be able to kill; looks for crates, buttons,
 targets and stations. Cards ENV-01 (cladding, crates), ENV-02 (button) and
-ENV-03 (mod station) are written. ENV-01 stage 1 (the `env-01` test room
-and E01 foam cladding, branch `env-01`, not merged) is built; ENV-01 stage
-2 (E02 crates) and the other two cards are not started. The killing
-hazard waits on Paul's choice.
+ENV-03 (mod station) are written. ENV-01 (the `env-01` test room,
+E01 foam cladding and E02 crate stacks, branch `env-01`) is built in both
+stages and tested, not merged and not pushed; ENV-02 and ENV-03 are not
+started. The killing hazard waits on Paul's choice.
 
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
@@ -631,6 +631,58 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+ENV-01 stage 2 merged locally 2026-11-07, not pushed (card `tasks/ENV-01.md`,
+DeepSeek V4.1 Flash via Pi, branch `env-01`): E02, the toy crate stacks, in
+`data/levels/env-01.json`. A crate is 0.6 m: a 0.4 m `cardboard` body with
+twelve `foam-orange` bars on its edges, each bar 0.2 m thick so it overlaps
+the body by 0.1 m and stands 0.1 m proud of the panel it frames (one 0.1 m
+voxel, per the reviewer's correction; the card said 0.08 m). Thirteen
+volumes per crate, which costs one KIT 5 zone: the room is now 3 of 6 (the
+coat 2, the stacks 1 each), counted in the test by the chunks the built
+volume actually allocates, not by volume entries.
+
+Each stack is ONE `floor` anchored piece, and that is what makes the topple
+work. `fillPieces` writes a bedrock row under a floor anchor only, so the
+bottom of the piece is a hidden 0.6 x 0.1 x 0.6 wood plinth and every crate
+above it hangs from that row through its own voxels. Carve a bottom crate
+out and the crate above has no path to bedrock, so `findIslands` returns it
+as one island carrying both its frame and its panel: the crate breaks as one
+crate and falls. Three separate floor anchored crates would each get their
+own bedrock bottom row and could never fall; three unanchored crates would
+be free islands that drop the first time anything touched them.
+
+`stack-a` (x -5.3 / -4.7, z 1.4) is two bottom crates with the top over the
+left one only at x -5.45, so it touches the right crate only along an edge
+(the islands search is 6-connected, faces only) and cannot stay up on the
+right crate when the left one goes. `stack-b` (x 2.5, z 1.0) is a plain
+column of two. A top crate bridging both bottom crates was rejected: it
+shares faces with both, so shooting one out leaves it tied to the other,
+which is correct but shows nothing.
+
+The frame is `foam-orange` rather than `wood` because a standard dart carves
+0.12 m and `carveSphere` divides that by hardness: against wood (2.5) the
+effective radius is 0.048 m, under `minEffectiveRadius` 0.5, so a dart
+could not remove a single frame voxel and the stack would be permanent. The
+body stays `cardboard` (0.7, so 0.17 m, a few darts per panel).
+
+Tests in `tests/level/env-01-crates.test.ts`: the level validates, the zone
+count is 3 (of the cap 6), each crate is 13 volumes spanning 0.6 m on every
+axis with a 0.4 m body and twelve bars, a stack tops out at 1.3 m (under the
+1.5 m mantle), only the plinth is on the lowest row, and carving a bottom
+crate leaves exactly one island, 0.7 m to 1.3 m up, with both materials and
+fewer boxes than `maxCollidersPerPiece`. Both stacks are tested, and the
+right bottom crate of `stack-a` is proved still standing. Stage 1's
+`tests/level/env-01.test.ts` was narrowed to judge the coat on its own (it
+had asserted the room held exactly one piece). `npx tsc --noEmit`, full
+`npx vitest run` (633 pass, 2 skipped) and `npm run build` clean; no em or
+en dashes.
+
+Not checked by eye (no browser here): how the frame reads at 0.6 m, whether
+the 0.1 m proud bars look like a frame or like a bulkier box, the stack
+silhouette in the room, the fall itself in play (only the island search is
+proved, not the rigid body's tumble and rest), and whether a settling crate
+lands on the nav grid sensibly.
 
 ### 2026-11-07: ENV-01 stage 1, the cladding test room and E01 (DeepSeek V4.1 Flash via Pi)
 
