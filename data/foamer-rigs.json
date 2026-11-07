@@ -3485,7 +3485,7 @@
       "movement": "support",
       "speed": 1.6,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-orange",
       "parts": [
         {
           "id": "body",
@@ -3522,6 +3522,32 @@
           "mouth": "grin"
         },
         {
+          "id": "hood",
+          "kind": "detail",
+          "shape": "ellipsoid",
+          "size": [
+            15,
+            9,
+            15
+          ],
+          "parent": "head",
+          "at": [
+            0,
+            0.6,
+            -0.1
+          ],
+          "pivot": [
+            0,
+            -0.4,
+            0
+          ],
+          "taper": [
+            1,
+            0.6
+          ],
+          "material": "foam-purple"
+        },
+        {
           "id": "tank",
           "kind": "ability",
           "shape": "cylinder",
@@ -3541,7 +3567,7 @@
             0,
             1
           ],
-          "material": "greybox-dark"
+          "material": "foam-lime"
         },
         {
           "id": "antenna",
@@ -3568,7 +3594,7 @@
             0,
             -0.2
           ],
-          "material": "foam-core"
+          "material": "foam-purple"
         },
         {
           "id": "armL",
@@ -3626,7 +3652,8 @@
             -0.45,
             -0.8,
             0
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "armR",
@@ -3684,22 +3711,23 @@
             0.45,
             -0.8,
             0
-          ]
+          ],
+          "material": "foam-purple"
         },
         {
           "id": "wand",
           "kind": "weapon",
           "shape": "tube",
           "size": [
-            4,
-            12,
-            4
+            3,
+            8,
+            3
           ],
           "parent": "foreArmR",
           "at": [
-            0,
-            -0.9,
-            0
+            1.2,
+            -0.6,
+            0.4
           ],
           "pivot": [
             0,
@@ -3707,15 +3735,15 @@
             0
           ],
           "rest": [
-            -0.6,
+            -1.35,
             0,
             0
           ],
           "tip": {
             "material": "foam-core",
-            "length": 3
+            "length": 2
           },
-          "material": "greybox-dark"
+          "material": "foam-purple"
         }
       ],
       "health": 25

@@ -8,6 +8,7 @@ import type { FoamerSystem, FoamerSoundKind } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
 import { floatOf } from "../foamers/float";
 import { flyOf } from "../foamers/fly";
+import { healOf, canHeal } from "../foamers/heal";
 import type { LoopHandle } from "./sink";
 
 // FX-topple is heard at go-down; FX-fizz-out lands this much later.
@@ -34,6 +35,9 @@ export class FoamerSounds {
   private plantSeen = new WeakMap<Foamer, number>();
   /** GAME-10c: the float hum per flying Floater, stopped when it lands. */
   private hums = new Map<Foamer, LoopHandle>();
+  /** GAME-10l stage 3: the wand's heal loop per streaming Biomechanic,
+   *  stopped when the stream hides. */
+  private healLoops = new Map<Foamer, LoopHandle>();
 
   constructor(sink: AudioSink, system: FoamerSystem | null) {
     this.sink = sink;
@@ -116,6 +120,29 @@ export class FoamerSounds {
       if (!sys.list.includes(f)) {
         hum.stop();
         this.hums.delete(f);
+      }
+    }
+    // GAME-10l stage 3, the Biomechanic: the wand's F13-heal loop runs
+    // while the stream actually draws (an ally held under the wand tip,
+    // so a broken wand draws no stream and sounds none), and stops the
+    // moment the stream hides (a broken tank, an ally out of reach, the
+    // Foamer down). Capped by the entry's maxVoices.
+    for (const f of sys.list) {
+      const healing = healOf(f.spec) !== null && canHeal(f.spec, f)
+        && f.healTarget !== null
+        && f.healStream?.group.visible === true;
+      const loop = this.healLoops.get(f);
+      if (healing && !loop) {
+        this.healLoops.set(f, this.sink.loop("F13-heal", { position: f.centre }));
+      } else if (!healing && loop) {
+        loop.stop();
+        this.healLoops.delete(f);
+      } else if (loop) loop.setPosition(f.centre);
+    }
+    for (const [f, loop] of this.healLoops) {
+      if (!sys.list.includes(f)) {
+        loop.stop();
+        this.healLoops.delete(f);
       }
     }
   }
@@ -201,6 +228,16 @@ export class FoamerSounds {
       // part-off (the shield-break's pattern).
       case "sword-break":
         this.sink.play("F07-sword-break", p);
+        break;
+      // GAME-10l, the Biomechanic: the spray lays on (one puff as the run
+      // starts, not one per tick: the run is short and bright), and the
+      // tank breaking (placeholder IDs, design/SOUNDS.md). The F13-heal
+      // loop is state-owned, started in update while the stream draws.
+      case "spray":
+        this.sink.play("F13-spray", p);
+        break;
+      case "tank-break":
+        this.sink.play("F13-tank-break", p);
         break;
       case "fall":
         // GAME-11: it toppled, but it is not down, so no fizz-out.
