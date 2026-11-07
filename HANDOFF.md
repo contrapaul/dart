@@ -656,6 +656,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-02 review, merged (Claude Opus 5.5): the toy button
+
+- **Bug, fixed in review: a swing pressed a button through a wall.**
+  `ButtonSystem.pressNear` was a reach and angle test only (its comment
+  said the swing's own line had proved a clear path; it had not). The
+  divider in `env-02` is 1 m thick and the melee reach is 2.2 m, so a
+  swing in the north room pressed the button on the south face. It now
+  casts a sight ray from the eye to the cap (the player's own capsule
+  excluded) and presses only if the cap is the first thing met. New test
+  3b in `tests/level/env-02.test.ts` failed before and passes after.
+- **Played** (`arena.html?watch&level=env-02`): the door is locked on
+  load; a dart on the wall button presses it and opens the door; the walk
+  through to the pad completes the level; standing on the floor button
+  presses it and opens the door; a swing from in front presses the wall
+  button (after the fix too).
+- Not checked: walking onto the floor button rather than landing on it
+  (the watch helper only places the player), the look of the plate, cap
+  and lit colour (the pane was hidden), the two sounds. With the pane
+  hidden the camera does not turn with the watch's look, so swing tests
+  that face anything but the start direction are not valid there.
+
 ### 2026-11-07: ENV-02 stage 2 (DeepSeek V4.1 Flash via Pi): the button test level
 
 Task: `tasks/ENV-02.md`, E08, stage 2 only (a test level). Branch `env-02`,

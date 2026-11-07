@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
-import type { Rapier } from "../physics/world";
+import { SIGHT_QUERY_GROUPS, type Rapier } from "../physics/world";
 import { material, materialId } from "../voxel/materials";
 import type { Button } from "./format";
 import tuning from "../../data/buttons.json";
@@ -97,9 +97,12 @@ export class ButtonSystem {
   /** Each cap's own unlit material, put back by `reset`. */
   private readonly dark = new Map<ButtonHandle, THREE.Material>();
 
+  /** Review: the world, for the swing's sight line to a cap. Without one
+   *  (a test that wants the bare reach and angle) no line is checked. */
   constructor(
     private readonly buttons: ButtonHandle[],
     private readonly action: ButtonAction,
+    private readonly world?: RAPIER.World,
   ) {
     this.lit = new THREE.MeshStandardMaterial({
       color: colourOf(T.cap.litMaterial), roughness: 0.5,
@@ -140,10 +143,14 @@ export class ButtonSystem {
     return b ? this.press(b, at) : null;
   }
 
-  /** A melee swing inside reach of a cap and inside its arc. The swing's
-   *  own line already proved it had a clear path, and a swing is one press,
-   *  so this is a plain distance and angle test against the cap. */
-  pressNear(eye: THREE.Vector3, forward: THREE.Vector3, reach: number, arcDeg: number): PressEvent | null {
+  /** A melee swing inside reach of a cap and inside its arc, with a clear
+   *  line from the eye to the cap (review: without the line a swing pressed
+   *  a button through a 1 m wall). `exclude` is the player's own capsule,
+   *  which the line starts inside. */
+  pressNear(
+    eye: THREE.Vector3, forward: THREE.Vector3, reach: number, arcDeg: number,
+    exclude?: RAPIER.Collider,
+  ): PressEvent | null {
     const cone = Math.cos((arcDeg / 2) * (Math.PI / 180));
     let best: ButtonHandle | null = null;
     let bestD = Infinity;
@@ -151,10 +158,22 @@ export class ButtonSystem {
       const d = b.up.distanceTo(eye);
       if (d > reach || d >= bestD) continue;
       if (_n.copy(b.up).sub(eye).normalize().dot(forward) < cone) continue;
+      if (!this.inSight(eye, b, d, exclude)) continue;
       best = b;
       bestD = d;
     }
     return best ? this.press(best, undefined) : null;
+  }
+
+  /** The first thing a ray from the eye to the cap meets is the cap. */
+  private inSight(eye: THREE.Vector3, b: ButtonHandle, d: number, exclude?: RAPIER.Collider): boolean {
+    if (!this.world) return true;
+    _ray.origin = { x: eye.x, y: eye.y, z: eye.z };
+    _ray.dir = { x: _n.x, y: _n.y, z: _n.z };
+    const hit = this.world.castRay(
+      _ray as RAPIER.Ray, d + 0.05, true, undefined, SIGHT_QUERY_GROUPS, exclude,
+    );
+    return hit !== null && hit.collider === b.collider;
   }
 
   /** The player's feet against every floor button: standing within the cap's
@@ -188,6 +207,8 @@ export class ButtonSystem {
 }
 
 const _n = new THREE.Vector3();
+/** A ray-shaped scratch: Rapier reads only origin and dir. */
+const _ray = { origin: { x: 0, y: 0, z: 0 }, dir: { x: 0, y: 0, z: 1 } };
 function normalOf(spec: Button): THREE.Vector3 {
   return _n.set(spec.facing[0], spec.facing[1], spec.facing[2]).normalize();
 }

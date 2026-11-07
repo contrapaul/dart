@@ -156,7 +156,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   // ENV-02: the level's buttons, wired to the door verb above. The press
   // runs the action through `events.setDoor`, so a button opens a door the
   // same way the lock-in does, sound and all.
-  const buttons = new ButtonSystem(level.buttons, (open) => events.setDoor(open, "open"));
+  const buttons = new ButtonSystem(level.buttons, (open) => events.setDoor(open, "open"), g.world);
   function playPress(e: PressEvent | null): void {
     if (!e) return;
     audio.play(e.opened ? "ENV-button-press" : "ENV-button-dead", { position: e.pos });
@@ -268,7 +268,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
         swingsSeen = melee.presses;
         const eye = player.eye(1, _playerPos);
         const fwd = camera.getWorldDirection(_aimDir);
-        playPress(buttons.pressNear(eye, fwd, melee.reach, melee.arcDeg));
+        playPress(buttons.pressNear(eye, fwd, melee.reach, melee.arcDeg, player.collider));
       }
       playPress(buttons.step(at));
     },

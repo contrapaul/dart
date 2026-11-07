@@ -49,7 +49,7 @@ async function rig() {
   const buttons = new ButtonSystem(built.buttons, (open) => {
     opened.push(open);
     events.setDoor(open, "open");
-  });
+  }, world);
   return { world, built, runner, buttons, opened };
 }
 
@@ -103,6 +103,20 @@ describe("the env-02 button test level", () => {
     // A second press only clicks.
     expect(r.buttons.pressNear(eye, fwd, 2, 90)?.opened).toBe(false);
     expect(r.opened).toEqual([DOOR]);
+  });
+
+  it("3b. a swing on the far side of the wall does not press it", async () => {
+    // Review: the swing's press was a reach and angle test only, and the
+    // divider is 1 m thick against a 2.2 m reach, so a swing from the north
+    // room pressed the button on the south face through the wall.
+    const r = await rig();
+    r.world.step();
+    const cap = r.built.buttons.find((b) => b.id === "door-button")!;
+    const eye = new THREE.Vector3(cap.up.x, 1.6, -1.3);
+    const fwd = cap.up.clone().sub(eye).normalize();
+    expect(eye.distanceTo(cap.up)).toBeLessThan(2.2);
+    expect(r.buttons.pressNear(eye, fwd, 2.2, 70)).toBeNull();
+    expect(r.opened).toEqual([]);
   });
 
   it("4. the floor button across the room opens the same door by a step", async () => {
