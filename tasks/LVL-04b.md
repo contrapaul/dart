@@ -61,10 +61,13 @@ Write the JSON with short python scripts, never as one big reply.
   promoted spawn have more health, from a new top-level `promoted` block
   in `data/foamers.json` (`healthMultiplier`, start 1.5, so a Darter has
   45). If setting the health needs a change in `src/foamers/`, stop and
-  say so in HANDOFF instead of making it. **The look is [Paul]:** the
-  concept says "deep purple body with lime plate", which is the plain
-  Darter's own palette, so do not invent a colour; leave a `[Paul]`
-  note in the block.
+  say so in HANDOFF instead of making it. **The look (Paul,
+  2026-11-07):** a promoted Darter has light purple plates (its `chest`
+  and `brow` parts, lime on the plain one). Swapping part materials needs
+  `src/foamers/`, which GAME-10h owns, so it is a later step after
+  GAME-10h merges: write the swap into the `promoted` block as data
+  (`F05: { chest: "foam-purple-light", brow: "foam-purple-light" }`) and leave the
+  code for that step.
 - **The Ring (A2, 30 x 30 m, 10 x 8 m centre block 3.5 m tall, 6 m ring,
   8 m ceiling, all four shutters):** wave 1: 2 promoted Darters from
   opposite rifts. Wave 2: 6 Swarmers from two floor rifts, started when
@@ -102,5 +105,5 @@ Write the JSON with short python scripts, never as one big reply.
 
 ## Not in this task
 
-The promoted look, stations, secrets, health pickups, a blaster pickup,
+The promoted look in code (a later step), stations, secrets, health pickups, a blaster pickup,
 the act boss, the level's name and setting.
