@@ -3,6 +3,7 @@
   "maxPushSpeed": 4,
   "maxLive": 150,
   "maxStuck": 100,
+  "maxLiveRounds": 3,
   "maxResting": 60,
   "lifetime": 8,
   "types": {

@@ -23,13 +23,19 @@ export interface ShotChunk {
  *  id groups the darts of one trigger pull; muzzle is where they left. */
 /** GAME-09d: what a shot's darts carry so a hit can run the explosion.
  *  explodes: this dart explodes where it first hits (B06's explosive mod).
- *  exploded: set once the blast has run, so a bounce never doubles it. */
+ *  exploded: set once the blast has run, so a bounce never doubles it.
+ *  GAME-09f: clustered: the blast also throws four small blasts around it
+ *  (B07's cluster mod). liveRound: the round stops where it first hits and
+ *  stays live until it is detonated (B07's remote mod), instead of blasting
+ *  on the hit. */
 export interface DartShot {
   id: number;
   muzzle: THREE.Vector3;
   chunk: ShotChunk | null;
   explodes?: boolean;
   exploded?: boolean;
+  clustered?: boolean;
+  liveRound?: boolean;
 }
 
 export interface DartHit {
@@ -80,6 +86,9 @@ const FLYING = 0;
 const STUCK = 1;
 const RESTING = 2;
 const FADING = 3;
+// GAME-09f: a remote round that hit something and sits where it stopped,
+// waiting to be detonated. Not simulated: it does not fall or bounce.
+const LIVE = 4;
 
 const AXIS_Z = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
@@ -135,17 +144,28 @@ export class DartSystem {
    *  it to the shared ExplosionSystem when the page passes one. */
   onExplosiveHit: (hit: DartHit) => void = () => {};
 
+  /** GAME-09f: called once per remote round that goes off, with where it
+   *  sits, its dart type (the blast's profile) and its cluster flag. Fires
+   *  when the blaster detonates the live rounds and when a round past the
+   *  live cap goes off to make room. DartImpacts wires it to the shared
+   *  ExplosionSystem when the page passes one. */
+  onDetonate: (point: THREE.Vector3, type: DartTypeName, clustered: boolean) => void =
+    () => {};
+
   private world: RAPIER.World;
   private ignore: RAPIER.Collider;
   private capFly = TUNE.maxLive;
   private capStick = TUNE.maxStuck;
   private capRest = TUNE.maxResting;
+  /** GAME-09f: live remote rounds at once (B07's cap); firing past it
+   *  detonates the oldest. */
+  private capLive = TUNE.maxLiveRounds;
   private life = TUNE.lifetime;
 
   private slots: Slot[] = [];
   private free: number[] = [];
   private list = {} as Record<DartTypeName, number[]>;
-  private count: Record<number, number> = { [FLYING]: 0, [STUCK]: 0, [RESTING]: 0, [FADING]: 0 };
+  private count: Record<number, number> = { [FLYING]: 0, [STUCK]: 0, [RESTING]: 0, [FADING]: 0, [LIVE]: 0 };
   private meshes: Record<DartTypeName, THREE.InstancedMesh> =
     {} as Record<DartTypeName, THREE.InstancedMesh>;
   private seq = 0;
@@ -217,6 +237,15 @@ export class DartSystem {
   ): void {
     const spec = TUNE.types[type];
     if (this.count[FLYING] >= this.capFly) this.killOldest(FLYING);
+    // GAME-09f: a live cap already full: the oldest live round goes off to
+    // make room before this one flies (the card: a fourth is fired).
+    while (shot?.liveRound && this.count[LIVE] >= this.capLive) {
+      const oldest = this.oldest(LIVE);
+      if (oldest < 0) break;
+      const o = this.slots[oldest];
+      this.onDetonate(o.pos.clone(), o.type, o.shot?.clustered ?? false);
+      this.kill(oldest);
+    }
     const i = this.free.pop();
     if (i === undefined) return; // every slot busy; drop this shot
     const s = this.slots[i];
@@ -252,6 +281,8 @@ export class DartSystem {
       // inherits a blast that already ran.
       s.shotBuf.explodes = shot.explodes ?? false;
       s.shotBuf.exploded = false;
+      s.shotBuf.clustered = shot.clustered ?? false;
+      s.shotBuf.liveRound = shot.liveRound ?? false;
       s.shot = s.shotBuf;
     } else s.shot = null;
     s.inst = this.list[type].length;
@@ -276,6 +307,7 @@ export class DartSystem {
         this.stepStuck(s);
         continue;
       }
+      if (s.state === LIVE) continue; // a waiting remote round is not simulated
       if (s.state === FLYING) {
         this.stepFlying(s, dt);
         continue;
@@ -327,6 +359,27 @@ export class DartSystem {
       stuck: this.count[STUCK],
       resting: this.count[RESTING],
     };
+  }
+
+  /** GAME-09f: the live remote rounds waiting to be detonated (B07's
+   *  remote mod). The blaster reads this on a fire press: any live round
+   *  turns the press into a detonation instead of a shot. */
+  liveRounds(): number {
+    return this.count[LIVE];
+  }
+
+  /** GAME-09f: every live remote round goes off at its own spot, oldest
+   *  first, each through onDetonate. Returns how many went off. */
+  detonateLive(): number {
+    let n = 0;
+    for (let i = 0; i < this.slots.length; i++) {
+      const s = this.slots[i];
+      if (!s.alive || s.state !== LIVE) continue;
+      this.onDetonate(s.pos.clone(), s.type, s.shot?.clustered ?? false);
+      this.kill(i);
+      n++;
+    }
+    return n;
   }
 
   // -- steps ------------------------------------------------------------
@@ -399,9 +452,20 @@ export class DartSystem {
       this.onDartHit(dartHit);
       // GAME-09d: an explosive dart blasts on its first hit whatever it
       // hit. The flag lives on the slot's own shot copy, so a bounce off a
-      // hard surface never fires a second blast.
+      // hard surface never fires a second blast. GAME-09f: a remote round
+      // does not blast here: it stops where it hit and stays live until
+      // detonated (the round's own copy keeps the exploded flag, so it
+      // never blasts twice even after a detonation).
       if (s.shot && s.shot.explodes && !s.shot.exploded) {
         s.shot.exploded = true;
+        if (s.shot.liveRound) {
+          s.pos.copy(this._hp);
+          s.vel.set(0, 0, 0);
+          s.state = LIVE;
+          this.count[FLYING]--;
+          this.count[LIVE]++;
+          return;
+        }
         this.onExplosiveHit(dartHit);
       }
       // Push dynamic bodies along the flight direction at the impact point.
@@ -559,7 +623,7 @@ export class DartSystem {
 
   // Oldest-first recycle: the stale dart in this state is freed when a cap is
   // reached. Called at most once per step and only then.
-  private killOldest(state: number) {
+  private oldest(state: number): number {
     let best = -1;
     let bestOrd = Infinity;
     for (let i = 0; i < this.slots.length; i++) {
@@ -569,6 +633,11 @@ export class DartSystem {
         best = i;
       }
     }
+    return best;
+  }
+
+  private killOldest(state: number) {
+    const best = this.oldest(state);
     if (best >= 0) this.kill(best);
   }
 

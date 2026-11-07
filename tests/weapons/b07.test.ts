@@ -31,6 +31,8 @@ function lcg(seed: number): () => number {
 class FakeDarts implements DartFiring {
   readonly types: DartTypeName[] = [];
   readonly shots: { liveRound?: boolean; clustered?: boolean; explodes?: boolean }[] = [];
+  live = 0;
+  detonated = 0;
   now = 0;
   fire(
     _o: THREE.Vector3, _d: THREE.Vector3, t: DartTypeName,
@@ -38,6 +40,14 @@ class FakeDarts implements DartFiring {
   ): void {
     this.types.push(t);
     this.shots.push(shot ?? {});
+    if (shot?.liveRound) this.live++;
+  }
+  liveRounds(): number { return this.live; }
+  detonateLive(): number {
+    const n = this.live;
+    this.detonated += n;
+    this.live = 0;
+    return n;
   }
   get count(): number { return this.types.length; }
 }
@@ -106,6 +116,8 @@ describe("GAME-09f: B07 Collateral reads its spec", () => {
     expect(b.reloadTime).toBe(2.5);
     expect(b.muzzles).toEqual(["muzzle_1"]);
     expect(b.motion.drumStepDeg).toBe(60);
+    expect(b.remote).toBe(true);
+    expect(b.cluster).toBe(true);
     expect(b.explosiveEvery).toBe(1); // every round explodes at its first hit
   });
 
@@ -114,6 +126,9 @@ describe("GAME-09f: B07 Collateral reads its spec", () => {
     b.update(DT, TAP, AIM);           // the shot
     b.update(DT, NO_FIRE, AIM);
     expect(darts.count).toBe(1);
+    // The round is live (remote mod); clear that so these presses are
+    // firing presses, not detonations (the remote path is test 8).
+    darts.live = 0;
     // Held or pressed again through the priming: nothing leaves the drum.
     for (let i = 0; i < 30; i++) b.update(DT, TAP, AIM);
     expect(darts.count).toBe(1);
@@ -128,13 +143,17 @@ describe("GAME-09f: B07 Collateral reads its spec", () => {
     b.update(DT, TAP, AIM);
     expect(darts.types[0]).toBe("launcher");
     expect(darts.shots[0].explodes).toBe(true);
+    expect(darts.shots[0].liveRound).toBe(true);  // mod 1: it stops where it hits
+    expect(darts.shots[0].clustered).toBe(true);  // mod 2: its blast clusters
   });
 
   it("6. B01 (no drumStepDeg, no remote) is unchanged", () => {
     const { b, darts } = make("B01");
     expect(resolveSpec("B01", []).motion.drumStepDeg ?? 0).toBe(0);
+    expect(resolveSpec("B01", []).remote).toBe(false);
     b.update(DT, TAP, AIM);
     expect(darts.count).toBe(3); // the Dartman's three darts in one pump
+    expect(darts.shots[0].liveRound).toBeFalsy();
   });
 });
 
@@ -143,6 +162,7 @@ describe("GAME-09f: B07 Collateral reads its spec", () => {
 import { VoxelVolume } from "../../src/voxel/chunk";
 import { materialId } from "../../src/voxel/materials";
 import { DebrisSystem } from "../../src/voxel/debris";
+import { DartImpacts } from "../../src/weapons/impacts";
 import { ExplosionSystem, type ExplosionTarget } from "../../src/weapons/explosion";
 import { Viewmodel } from "../../src/weapons/viewmodel";
 
@@ -277,7 +297,8 @@ it("10. the drum turns one chamber per shot, eased over the pump", () => {
       const rel = restD.clone().invert().multiply(drum.quaternion);
       return THREE.MathUtils.radToDeg(2 * Math.acos(Math.min(1, Math.abs(rel.w))));
     };
-    const b = new Blaster(spec, new FakeDarts() as DartFiring, (i) => MUZ[i], lcg(3));
+    const fd = new FakeDarts();
+    const b = new Blaster(spec, fd as DartFiring, (i) => MUZ[i], lcg(3));
     b.onShot = (i) => vm.onShot(i);
     expect(turned()).toBeCloseTo(0, 6);
     b.update(DT, TAP, AIM);   // shot one: the pump starts
@@ -287,8 +308,10 @@ it("10. the drum turns one chamber per shot, eased over the pump", () => {
     expect(mid).toBeLessThan(60);
     for (let i = 0; i < 20; i++) { b.update(DT, NO_FIRE, AIM); vm.animate(DT, b, false); }
     expect(turned()).toBeCloseTo(60, 4);       // one chamber
-    // A second shot turns it another chamber.
+    // A second shot turns it another chamber (clearing the live round
+    // first: with rounds live a press detonates, test 11).
     for (let i = 0; i < 40; i++) b.update(DT, NO_FIRE, AIM);
+    fd.live = 0;
     b.update(DT, TAP, AIM);
     for (let i = 0; i < 70; i++) { b.update(DT, NO_FIRE, AIM); vm.animate(DT, b, false); }
     expect(turned()).toBeCloseTo(120, 4);
@@ -297,8 +320,131 @@ it("10. the drum turns one chamber per shot, eased over the pump", () => {
   });
 });
 
+// ---- mod 1: remote detonate, mod 2: cluster (real dart system) --------
+
+function liveRig() {
+  const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+  world.createCollider(RAPIER.ColliderDesc.cuboid(40, 0.5, 40).setTranslation(0, -0.5, 0));
+  const pb = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  const ignore = world.createCollider(
+    RAPIER.ColliderDesc.capsule(0.5, 0.3).setTranslation(0, 0, 200), pb,
+  );
+  const darts = new DartSystem(new THREE.Scene(), world, RAPIER, ignore);
+  const debris = new DebrisSystem(RAPIER, world);
+  const volume = block(1); // no carving here: a voxel at the origin only
+  const explosion = new ExplosionSystem(world, debris, [targetOf(volume)]);
+  const boom: { point: THREE.Vector3; profile?: string }[] = [];
+  explosion.onExplode = (p) => { boom.push({ point: p.clone() }); };
+  new DartImpacts(darts, debris, [], explosion);
+  return { world, darts, explosion, boom };
+}
+
+function launcherShot() {
+  return { id: 1, muzzle: new THREE.Vector3(), chunk: null, explodes: true, exploded: false,
+    liveRound: true, clustered: false };
+}
+
+describe("GAME-09f mod 1: remote detonate", () => {
+  it("11. the round stops where it first hit and stays live; no blast until the press", () => {
+    const r = liveRig();
+    const blaster = new Blaster(resolveSpec("B07", []), r.darts as DartFiring, (i) => MUZ[i], lcg(11));
+    blaster.update(DT, TAP, new THREE.Vector3(0, -0.35, -1).normalize());
+    const rest = { y: 0, z: 0 };
+    for (let i = 0; i < 180; i++) {
+      r.darts.update(DT);
+      r.world.step();
+    }
+    expect(r.darts.liveRounds()).toBe(1);
+    expect(r.boom.length).toBe(0); // nothing went off on the hit
+    const slot = (r.darts as unknown as { slots: { alive: boolean; state: number; pos: THREE.Vector3 }[] })
+      .slots.find((s) => s.alive)!;
+    // It met the floor and stayed exactly there (a flying or rolling dart
+    // moves on): the LIVE state does not simulate.
+    rest.y = slot.pos.y; rest.z = slot.pos.z;
+    for (let i = 0; i < 60; i++) { r.darts.update(DT); r.world.step(); }
+    expect(slot.pos.y).toBeCloseTo(rest.y, 6);
+    expect(slot.pos.z).toBeCloseTo(rest.z, 6);
+    // The press (a ready blaster): every live round goes off at its spot.
+    for (let i = 0; i < 70; i++) blaster.update(DT, NO_FIRE, AIM); // pump home
+    blaster.update(DT, TAP, AIM);
+    expect(r.darts.liveRounds()).toBe(0);
+    expect(r.boom.length).toBe(1);
+    expect(r.boom[0].point.y).toBeCloseTo(rest.y, 5);
+    expect(r.boom[0].point.z).toBeCloseTo(rest.z, 5);
+  });
+
+  it("12. the live cap holds: past three, the oldest goes off as the next fires", () => {
+    const r = liveRig();
+    const fire = () => {
+      r.darts.fire(new THREE.Vector3(0, 1.4, -i * 1.5), new THREE.Vector3(0, -0.35, -1).normalize(),
+        "launcher", launcherShot());
+    };
+    let i = 0;
+    fire(); i += 2;
+    for (let k = 0; k < 120; k++) { r.darts.update(DT); r.world.step(); }
+    fire(); i += 2;
+    for (let k = 0; k < 120; k++) { r.darts.update(DT); r.world.step(); }
+    fire(); i += 2;
+    for (let k = 0; k < 120; k++) { r.darts.update(DT); r.world.step(); }
+    expect(r.darts.liveRounds()).toBe(3);
+    expect(r.boom.length).toBe(0);
+    // The fourth round cannot join them: the oldest goes off to make room.
+    fire();
+    for (let k = 0; k < 120; k++) { r.darts.update(DT); r.world.step(); }
+    expect(r.boom.length).toBe(1);
+    expect(r.darts.liveRounds()).toBe(3);
+    // And the press still takes them all.
+    expect(r.darts.detonateLive()).toBe(3);
+    expect(r.boom.length).toBe(4);
+  });
+});
+
+describe("GAME-09f mod 2: cluster", () => {
+  it("13. a clustered blast throws four smaller blasts at the sides after the delay", () => {
+    const C = explosionTuning.cluster;
+    expect(C.count).toBe(4);
+    const r = liveRig();
+    const at = new THREE.Vector3(5, 1, 5);
+    r.explosion.explode(at, "launcher", true);
+    expect(r.boom.length).toBe(1); // the main one now, none before the delay
+    // Before the delay: nothing.
+    r.explosion.tick(C.delaySeconds - 0.05);
+    expect(r.boom.length).toBe(1);
+    r.explosion.tick(0.1);
+    expect(r.boom.length).toBe(1 + C.count);
+    // At the four sides, distanceMetres out, in world axes.
+    const offs = r.boom.slice(1).map((b) => ({
+      x: +(b.point.x - at.x).toFixed(3),
+      z: +(b.point.z - at.z).toFixed(3),
+    }));
+    for (const o of offs) {
+      expect(Math.abs(o.x) + Math.abs(o.z)).toBeCloseTo(C.distanceMetres, 3);
+    }
+    expect(offs).toContainEqual({ x: C.distanceMetres, z: 0 });
+    expect(offs).toContainEqual({ x: -C.distanceMetres, z: 0 });
+    expect(offs).toContainEqual({ x: 0, z: C.distanceMetres });
+    expect(offs).toContainEqual({ x: 0, z: -C.distanceMetres });
+  });
+
+  it("14. the cluster runs through the shared per-second cap, so the data leaves room for one round", () => {
+    // One B07 round is 1 + 4 = 5 blasts. The cap must not cut a round's
+    // cluster short (the card): maxPerSecond leaves room for a full round.
+    expect(explosionTuning.maxPerSecond).toBeGreaterThanOrEqual(5);
+    const C = explosionTuning.cluster;
+    const r = liveRig();
+    r.explosion.explode(new THREE.Vector3(5, 1, 5), "launcher", true);
+    r.explosion.tick(C.delaySeconds + 0.1);
+    expect(r.boom.length).toBe(5); // nothing dropped
+    // The cap still bites on top of it: a second full round in the same
+    // second only lands what fits.
+    r.explosion.explode(new THREE.Vector3(20, 1, 5), "launcher", true);
+    r.explosion.tick(C.delaySeconds + 0.1);
+    expect(r.boom.length).toBe(Math.min(10, explosionTuning.maxPerSecond));
+  });
+});
+
 describe("GAME-09f: the launcher ammo box", () => {
-  it("11. a darts-launcher box refills B07's reserve like the other types", async () => {
+  it("15. a darts-launcher box refills B07's reserve like the other types", async () => {
     const { PickupSystem } = await import("../../src/pickups/pickups");
     const { PlayerHealth } = await import("../../src/player/health");
     const pickupData = (await import("../../data/pickups.json")).default;

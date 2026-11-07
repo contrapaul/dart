@@ -57,6 +57,7 @@ export interface BlastDamageTargets {
 // Shared scratch: explode allocates nothing per blast after construction.
 const _c = new THREE.Vector3();
 const _push = new THREE.Vector3();
+const _side = new THREE.Vector3();
 
 export class ExplosionSystem {
   /** Called after each carve that removed voxels, with the removed ones,
@@ -72,6 +73,8 @@ export class ExplosionSystem {
   /** Simulation seconds, advanced by tick. */
   time = 0;
   readonly stats = { blasts: 0, dropped: 0, damage: 0 };
+  /** GAME-09f: blasts pending in simulation time (a cluster's follow-ups). */
+  private pending: { point: THREE.Vector3; profile: BlastProfileName; at: number }[] = [];
   private bucket = -1;
   private bucketCount = 0;
   private _ignore: RAPIER.Collider | null = null;
@@ -82,10 +85,24 @@ export class ExplosionSystem {
     private targets: ExplosionTarget[],
   ) {}
 
-  /** Advance the cap's clock. Chained onto the dart system's update by
-   *  DartImpacts, so it ticks whenever the game steps. */
+  /** Advance the cap's clock and fire due pending blasts. Chained onto the
+   *  dart system's update by DartImpacts, so it ticks whenever the game
+   *  steps. No wall clock anywhere: a test run under load behaves like the
+   *  game. */
   tick(dt: number): void {
     this.time += dt;
+    for (let i = this.pending.length - 1; i >= 0; i--) {
+      const p = this.pending[i];
+      if (p.at > this.time) continue;
+      this.pending.splice(i, 1);
+      this.explode(p.point, p.profile);
+    }
+  }
+
+  /** GAME-09f mod 2: queue a blast at a future simulation time (the
+   *  cluster's four small blasts after their delay). */
+  private schedule(point: THREE.Vector3, profile: BlastProfileName, at: number): void {
+    this.pending.push({ point: point.clone(), profile, at });
   }
 
   /** Ignore this collider's body in the outward push (the player's own
@@ -97,8 +114,9 @@ export class ExplosionSystem {
 
   /** The blast at a world point, in a profile (default: the dart's, so
    *  B05's and B06's blasts are unchanged). Over the per-second cap (shared
-   *  across profiles) it does nothing. */
-  explode(point: THREE.Vector3, profile: BlastProfileName = "dart"): void {
+   *  across profiles) it does nothing. clustered: also queue the four
+   *  small cluster blasts (GAME-09f mod 2). */
+  explode(point: THREE.Vector3, profile: BlastProfileName = "dart", clustered = false): void {
     const second = Math.floor(this.time);
     if (second !== this.bucket) {
       this.bucket = second;
@@ -174,6 +192,19 @@ export class ExplosionSystem {
     // 4. A foam burst of chunks at the point. The debris system's ring is
     // the cap on chunks (destruction.json debris.max), as everywhere else.
     this.debris.burst(point, T.burstChunks, T.burstSize, materialId(T.burstMaterial));
+
+    // 5. GAME-09f mod 2 (Paul): a clustered blast throws four small blasts
+    // of the data's cluster profile around it, distanceMetres out at the
+    // four sides (world axes), after delaySeconds. They run through the
+    // same system and the same per-second cap as everything else.
+    if (clustered) {
+      const c = tuning.cluster;
+      const at = this.time + c.delaySeconds;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        _side.set(dx * c.distanceMetres, 0, dz * c.distanceMetres);
+        this.schedule(_c.copy(point).add(_side), c.profile as BlastProfileName, at);
+      }
+    }
 
     this.onExplode(point);
   }

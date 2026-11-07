@@ -63,6 +63,10 @@ export class DartImpacts {
       // other explosive dart (B06's) keeps the dart profile it always had.
       darts.onExplosiveHit = (hit) =>
         this.explosion!.explode(hit.point, profileFor(hit.type));
+      // GAME-09f mod 1: a remote round's detonation (a fire press, or the
+      // cap popping the oldest) blasts where the round stopped.
+      darts.onDetonate = (point, type, clustered) =>
+        this.explosion!.explode(point, profileFor(type), clustered);
     }
   }
 

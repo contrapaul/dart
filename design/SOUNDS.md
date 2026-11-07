@@ -141,6 +141,7 @@ wiring yet (game-sounds.ts has no per-dart loop, as with B06-spin).
 | B07-fire | Launch: big air thump | Later | 5 | Blaster: a mega dart blaster, layered |
 | B07-pump | Pump back and forward | Later | 3 each | Blaster |
 | B07-reload | GAME-09f: a round pushed into the drum (placeholder synth) | Later | 3 | Foley |
+| B07-detonate | GAME-09f: the remote detonate press (placeholder synth) | Later | 2 | Foley: a clicker |
 | B07-load | A round pushed in | Later | 3 | Foley |
 | B07-flight | Round in flight (loop) | Later | 2 | Code or Foley: a whoosh |
 | B07-detonate-click | Remote detonate mod: the button | Later | 2 | Foley: a clicker |

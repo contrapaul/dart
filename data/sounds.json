@@ -3712,6 +3712,19 @@
           }
         ]
       }
+    },
+    "B07-detonate": {
+      "_note": "GAME-09f (Paul): the remote detonate press: a firm click, the boom itself is FX-explode.",
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "click": {
+          "dur": 0.02,
+          "freq": 1600
+        }
+      }
     }
   },
   "blasterCues": {

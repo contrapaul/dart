@@ -417,6 +417,8 @@
       "drumStepDeg": 60,
       "magDrop": 0.18
     },
+    "remote": true,
+    "cluster": true,
     "mods": {
       "longrange": {
         "_note": "Start placeholder (Paul to write): flatter faster round.",
