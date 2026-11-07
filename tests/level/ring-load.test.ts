@@ -91,8 +91,9 @@ describe("the Ring loads (GAME-10b)", () => {
   it("5. the level choice plays the Ring by name and the Pit otherwise", () => {
     // LVL-04a adds 1-4, the Darter's level up to the bridge. The Ring's test
     // file still keeps its own id, a 90 s test space.
-    // ENV-01 adds env-01, the cladding test room.
-    expect(Object.keys(ARENA_LEVELS).sort()).toEqual(["1-1-pit", "1-2", "1-3", "1-4", "1-4-ring", "env-01"]);
+    // ENV-01 adds env-01, the cladding test room; ENV-03 adds env-03, the
+    // stations test room, the same room without its column and crates.
+    expect(Object.keys(ARENA_LEVELS).sort()).toEqual(["1-1-pit", "1-2", "1-3", "1-4", "1-4-ring", "env-01", "env-03"]);
     expect(chosenLevel("?level=1-4-ring").level.meta.id).toBe("1-4");
     expect(chosenLevel("").level.meta.id).toBe("1-1");
     expect(chosenLevel("?level=9-9-nope").level.meta.id).toBe("1-1");
