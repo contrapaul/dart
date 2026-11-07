@@ -1,0 +1,36 @@
+{
+  "_note": "ENV-03: the E13 mod station, an arcade cabinet shape styled like an early 1990s office computer (design/levels/ENVIRONMENT.md E13). All sizes starting proposals for Paul to tune; the look copies no real machine. reach: metres from the player's head to the cabinet's use point before the use key works. hold: seconds the use key stays held before the mod is granted. allDist and coneCos gate the facing (the head's view onto the use point). The cabinet boxes sit in front of the case; pos z is the centre's depth in front of the case's front face (the bezel's centre is on the face, so the screen sits proud of the bezel's front and the slot and grille bars are half proud, all flush-stacked). The screen above the slot shows the mod name; the grille bars below it. Colours: case warm beige, bezel dark; screenFace the dark screen; accent the glow line and the screen text. spendScale darkens the face when the grant is spent.",
+  "session": {
+    "reach": 1.2,
+    "hold": 0.6,
+    "coneCos": 0.7,
+    "usePointHeight": 1.15
+  },
+  "cabinet": {
+    "width": 0.9,
+    "depth": 0.6,
+    "height": 1.55,
+    "baseHeight": 0.07,
+    "backWidth": 0.22,
+    "backDepth": 0.12,
+    "backRise": 0.35,
+    "topThickness": 0.06,
+    "bezel": [0.7, 0.5, 0.05],
+    "bezelPos": [0, 1.15, 0],
+    "screen": [0.6, 0.4, 0.01],
+    "screenPos": [0, 1.15, 0.03],
+    "slot": [0.4, 0.06, 0.02],
+    "slotPos": [0, 0.72, 0.01],
+    "grilleCount": 3,
+    "grilleSpacing": 0.07,
+    "grille": [0.5, 0.025, 0.015],
+    "grilleTopY": 0.62
+  },
+  "colors": {
+    "case": "#cfc0a2",
+    "bezel": "#3a332b",
+    "screenFace": "#0d120c",
+    "accent": "#7dffb0"
+  },
+  "spendScale": 0.12
+}

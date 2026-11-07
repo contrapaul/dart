@@ -1,6 +1,7 @@
 import type { Level } from "../level/format";
 import envOneJson from "../../data/levels/env-01.json";
 import envTwoJson from "../../data/levels/env-02.json";
+import envThreeJson from "../../data/levels/env-03.json";
 import fourJson from "../../data/levels/1-4.json";
 import pitJson from "../../data/levels/1-1-pit.json";
 import ringJson from "../../data/levels/1-4-ring.json";
@@ -19,6 +20,7 @@ import threeJson from "../../data/levels/1-3.json";
 // ENV-01 adds env-01, the test room for foam cladding: one room, no arena.
 // ENV-02 adds env-02, the test level for the toy button: two rooms, one
 // door that only a button opens.
+// ENV-03 adds env-03, the test room for the mod stations: the same room.
 
 /** Every level the arena page can play, keyed by its file name. */
 export const ARENA_LEVELS: Record<string, Level> = {
@@ -29,6 +31,7 @@ export const ARENA_LEVELS: Record<string, Level> = {
   "1-4-ring": ringJson as unknown as Level,
   "env-01": envOneJson as unknown as Level,
   "env-02": envTwoJson as unknown as Level,
+  "env-03": envThreeJson as unknown as Level,
 };
 
 /** The level the page should play: `?level=` when it names one, else the

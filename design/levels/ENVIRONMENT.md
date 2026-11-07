@@ -26,9 +26,9 @@ These override the proposal below wherever they disagree.
 | Q19 | Act 1 hazards must be able to kill the player: "Players must feel a sense of danger or they will not feel accomplished" | Every "it does no damage" below is replaced. E03 and E04 as written do not meet this |
 | Q20 | Looks (below, in each element) | E02, E08, E09 and E13 have their looks |
 
-**First set after the answers:** E01 cladding and E02 crates (one card,
-ENV-01), E08 button (ENV-02), E13 mod station (ENV-03), and one hazard
-that can kill. Which hazard, and how foam hurts, is still open.
+**First set after the answers:** E01 cladding and E02 crates (ENV-01),
+E08 button (ENV-02), E13 mod station (ENV-03), and E14 the crushing toy
+press (ENV-04), the hazard that can kill (Paul, 2026-11-07).
 
 ---
 
@@ -549,6 +549,29 @@ If two stations can grant the same mod the level must say which wins; the
 simple rule is one grant per mod per run. A mod that changes balance mid
 level needs a way to lose it: keep station mods for the run only, which
 is what the shield already does.
+
+---
+
+### E14 Crushing toy press (hazard, M)
+
+**Paul, 2026-11-07:** the first hazard that can kill (Q19). Added after
+ENV-00; not in its list.
+
+**What it is.** A heavy toy stamp hung over a floor pad. It rests up,
+gives a loud telegraph (a shake, a light, a wind-up sound), slams down
+fast, holds, then rises. Anyone under it when it lands is crushed. Look:
+a chunky toy block with a soft rounded foam face, on a thick post or
+guide rails [Paul: the colours and any print]. Not orange (weak point),
+pink (parryable), blue or yellow (the player's darts).
+
+**What it teaches.** Timing and danger: a lane the player must read and
+cross on the beat. Crossing under fire makes a fight hard; luring a
+Foamer under it is a reward for reading the room. Pairs with F03
+Swarmer and F05 Darter (fast walkers that chase the player through it).
+
+**Code.** A kinematic head on a timer, a footprint test on landing (not
+physics contact), damage through the player's health. Numbers in data.
+Built in ENV-04.
 
 ---
 

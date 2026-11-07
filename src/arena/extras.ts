@@ -1,10 +1,12 @@
 import * as THREE from "three";
+import blastersData from "../../data/blasters.json";
 import { buildLevel, type BuiltLevel } from "../level/build";
 import type { ArenaContext } from "../level/arena";
 import { LevelRunner, type LevelEvents } from "../level/level-runner";
 import { FALL_LIMIT } from "../game/shared";
 import type { BuildInput, BuiltGame, Game, GameHooks } from "../game/game";
 import { RiftVisuals } from "./rifts";
+import { Stations, useHeldForStations } from "./stations";
 import { chosenLevel } from "./levels";
 import { ButtonSystem, type PressEvent } from "../level/buttons";
 
@@ -46,7 +48,9 @@ export interface ArenaExtras {
 export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   const { audio, foamers, hud, health, player, loadout, built, scene, pickups, camera, melee } = g;
   // g.ui, not a destructured copy: the UI controller is built after this
-  // hook returns (src/game/game.ts).
+  // hook returns (src/game/game.ts). ENV-03: rapier and world come here too,
+  // for the mod stations; input, finisher and vacuum are read from g in the
+  // step hook, where the tools own the use key first.
   const { level } = built;
 
   // LVL-02a: the level file's ammo boxes: they refill the loadout's
@@ -170,6 +174,29 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     playPress(buttons.pressByCollider(hit.collider, hit.point));
   };
 
+  // ENV-03: the mod stations (E13). A level with none builds an empty set
+  // and the page never reads the use key for them, so a level without
+  // stations plays as before (the ENV-01 lesson: built here, in the same
+  // place the crates are handed to the game, so they reach the arena
+  // page and not only the unit tests). A grant is claimed (setMod on and
+  // on in the data), so it stays for the run, as the shield does; the
+  // restart's respawnAtEntry below resets the spent flags.
+  const stations = new Stations(g.rapier, g.world, scene, LEVEL.stations ?? []);
+  const blasterName = (id: string) =>
+    (blastersData as Record<string, { name?: string }>)[id]?.name ?? id;
+  stations.onGranted = (it) => {
+    showBanner(it.mod + " taken: " + blasterName(it.blaster), 2.2);
+    audio.play("ENV-station-grant", { position: it.point });
+  };
+  stations.onNeedBlaster = (it) => {
+    showBanner(blasterName(it.blaster) + " required", 2.2);
+    audio.play("ENV-station-spent", { position: it.point });
+  };
+  stations.onSpent = (it) => audio.play("ENV-station-spent", { position: it.point });
+
+  const _stationEye = new THREE.Vector3();
+  const _stationFwd = new THREE.Vector3();
+
   function doorMeshPos(id: string): THREE.Vector3 {
     const door = arenas.flatMap((a) => a.doors).find((d) => d.id === id);
     return new THREE.Vector3(...(door ? door.pos : [0, 0, 0]));
@@ -205,6 +232,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     foamers.clear();
     pickups.clear();
     pickups.loadLevelBoxes(LEVEL); // LVL-02a: the file boxes come back
+    stations.reset(); // ENV-03: the stations grant again on a restart
     hud.clearFlash();
     // Back to the ammo the player had at the start: there are no pickups
     // yet, so a retry with what was left could not win the arena.
@@ -271,6 +299,16 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
         playPress(buttons.pressNear(eye, fwd, melee.reach, melee.arcDeg, player.collider));
       }
       playPress(buttons.step(at));
+
+      // ENV-03: the stations take the use key only when no one else does
+      // (useHeldForStations: the finisher's press, the vacuum's target, or
+      // a tool mid-use takes the key first, so a tool with a target keeps
+      // it); a level without stations pays nothing for the call.
+      const eye = g.player.eye(1, _stationEye);
+      const fwd = g.camera.getWorldDirection(_stationFwd);
+      const held = useHeldForStations(
+        { finisher: g.finisher, vacuum: g.vacuum, useHeld: g.input.isDown("use") }, eye, fwd);
+      stations.update(dt, eye, fwd, held, loadout);
     },
     afterWorld(dt: number) {
       if (player.feet < FALL_LIMIT) {
@@ -294,6 +332,9 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     },
     render(dt: number) {
       for (const set of riftSets) set.update(dt);
+    },
+    stationPrompt(eye, fwd) {
+      return stations.prompt(eye, fwd)?.mod ?? null;
     },
     popEffect() {
       hud.popFlash();

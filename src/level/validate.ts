@@ -1,6 +1,7 @@
 import materialsData from "../../data/materials.json";
 import rigData from "../../data/foamer-rigs.json";
 import dartsData from "../../data/darts.json";
+import blastersData from "../../data/blasters.json";
 import type { Arena, Level, Piece, PieceVolume, ShellBox } from "./format";
 import buttonData from "../../data/buttons.json";
 
@@ -158,6 +159,19 @@ export function validateLevel(level: Level): ValidationResult {
     if (!dartNames.has(p.type.slice("darts-".length))) {
       errors.push(`pickup ${p.id}: ${p.type} is not a dart type in data/darts.json`);
     }
+  }
+
+  // ENV-03: a station names a blaster and one of that blaster's mods.
+  const blasters = blastersData as Record<string, { name?: string; mods?: Record<string, unknown> }>;
+  for (const s of level.stations ?? []) {
+    const mods = blasters[s.blaster]?.mods;
+    if (!mods) {
+      errors.push(`station ${s.id}: ${s.blaster} is not a blaster in data/blasters.json`);
+    } else if (!(s.mod in mods)) {
+      errors.push(`station ${s.id}: ${s.mod} is not a mod of ${s.blaster}`);
+    }
+    if (!Number.isFinite(s.facing)) errors.push(`station ${s.id}: facing must be a number`);
+    if (!isVec3(s.pos)) errors.push(`station ${s.id}: pos must be three numbers`);
   }
 
   // Rule 1 and rule 11: every volume is small enough and uses a real material.

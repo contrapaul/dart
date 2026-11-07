@@ -160,6 +160,21 @@ export interface PlayerStart {
   yaw: number;
 }
 
+/** ENV-03: a mod station (E13): an arcade cabinet that grants one mod of
+ *  its blaster's set once per run, when the player holds use in front of it
+ *  (`src/arena/stations.ts`). The mod is a key of the blaster's `mods` in
+ *  data/blasters.json. */
+export interface Station {
+  id: string;
+  pos: Vec3;
+  /** Radians about Y, the way the facing box looks at the player. */
+  facing: number;
+  /** A blaster id in data/blasters.json. */
+  blaster: string;
+  /** A key of that blaster's mods. */
+  mod: string;
+}
+
 /** ENV-02: what pressing a button does. The only action for now, and the
  *  same verb the lock-in uses: a door id, set to open. */
 export interface ButtonAction {
@@ -186,6 +201,7 @@ export interface Level {
   /** ENV-02: buttons, each wired to one action. */
   buttons?: Button[];
   pickups?: Pickup[];
+  stations?: Station[];
   playerStart: PlayerStart;
   /** The box that completes the level (the pad behind the last door). */
   exit: Box;
