@@ -18,19 +18,26 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
-GAME-10l stages 1 and 2 code done 2026-11-07, two stage commits on
-`game-10l`, not reviewed, not merged, not pushed (DeepSeek V4.1 Flash
-via Pi): the F13 Biomechanic, look, type, tank and healing stream. The
-palette with a purple hood over the crown, a lime tank on the back and a
-purple wand with a foam-core tip in the right hand; the `F13` type on the
-keep-distance brain with a 10 m ring and the tank a 2x weak point; and
-the healing stream, the most hurt ally in range and in sight gaining 5
-health a second from a chain of foam-core blobs off the wand tip, one
-ally at a time, halved range without the antenna, none without the tank.
-It still fires nothing at the player: stage 3 fills in the short spray.
-The look was not seen by eye and nothing was played (no browser in either
-session); the hood, the tank and the wand were checked by script from the
-rest pose, and the blob chain by test only.
+GAME-10l all stages done 2026-11-07 and 2026-11-08: stage 1 and 2 by
+DeepSeek V4.1 Flash via Pi, stage 3 (the short spray, the tank gone and
+the sounds) and stage 4 (the docs) by Qwen 3.8-27B via Pi, three stage
+commits on `game-10l`, not reviewed, not merged, not pushed: the F13
+Biomechanic, look, type, tank, healing stream and the short spray at
+the player. The palette with a purple hood over the crown, a lime tank
+on the back and a purple wand with a foam-core tip in the right hand;
+the `F13` type on the keep-distance brain with a 10 m ring and the tank
+a 2x weak point; the healing stream, the most hurt ally in range and in
+sight gaining 5 health a second from a chain of foam-core blobs off the
+wand tip, one ally at a time, halved range without the antenna, none
+without the tank or the wand; with nobody to heal and the player close,
+the short spray, 6 damage a second over its 1.2 s, the raised shield
+taking its share; the tank gone ending the healing and the spray, the
+wand closing in and bonking. Place-holder sounds in `data/sounds.json`
+(F13-heal, F13-spray, F13-tank-break); rows in `design/SOUNDS.md`.
+Nothing was seen by eye and nothing was played (no browser in any
+session); the hood, the tank and the wand were checked by script from
+the resolved rest pose, the blob chain and the spray by test only, and
+the three sounds have never been heard.
 GAME-10k code done 2026-11-07, three stage commits on `game-10k`, not
 reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): the F11
 Seawall. The palette look (deep lime armour, purple mace, orange tower
@@ -705,6 +712,70 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-08: GAME-10l stage 3 and 4 (Qwen 3.8-27B via Pi): the short spray, the tank gone, the sounds, the docs
+
+- **Asked for** (`tasks/GAME-10l.md`): stage 3 (the spray at the player,
+  the tank gone, the sounds) and stage 4 (the docs), plus two review fixes
+  from the stage 1 and 2 review, each with a test: the blob chain's
+  spacing and drift are tuning numbers in `data/foamers.json`, not in
+  code, and a Biomechanic with the wand broken off does not heal at all.
+- **The spray.** With no ally to heal and the player inside the spray's
+  range (5 m) it winds up (0.6 s, the telegraph, the player's window to
+  raise the shield) and lays on the spray for its own time (1.2 s): 6
+  damage a second, one hit (3.6, `round(seconds / tick)`, 2 of them) every
+  `tick` (0.6 s, past the player's 0.5 s post-hit grace so the run pours
+  through) through the page's ordinary hit path (the bonk path as
+  `src/game/game.ts` wires it: the shield's block and its share, the melee
+  parry decider, the player's health). The raised shield takes its share,
+  the spray is not parryable. The run is the strike, the `spray` attack in
+  the data (`windup`/`strike` read the block), the numbers in F13's `spray`
+  block read by the new `src/foamers/spray.ts` (`sprayOf`, `canSpray`, the
+  wand is the nozzle, the tank the press: either one missing is no spray).
+- **chooseAttack.** The `healStream` is the attack while there is an ally
+  to mend, one it holds or one it is walking in (the ring ride runs on
+  its 10 m windup: with it skipped the engagement range reads as
+  5, which stops the windup at the ring, and the ring walk toward a hurt
+  ally dies with it. Caught by stage 2 test 14, fixed; the traces of both
+  states were checked against each other). With no ally the wand is the
+  spray's; with the tank or the wand missing the bonk remains.
+- **The tank gone.** No healing (stage 2), no spray, and the brain's
+  distances close to the bonk's reach (stage 2), so the wand closes in
+  and bonks. The tank breaking plays `F13-tank-break`.
+- **Review fixes.** 1: the blob chain's spacing and drift went from
+  code constants (`BLOB_SPACING`, `BLOB_SPEED` in `src/foamers/heal.ts`)
+  to the `heal` block (`blobSpacingMetres`, `blobDriftMetres`); test 6
+  reads them. 2: `canHeal` now needs the wand as well: no tip to pour
+  from, and a stream nobody can see is no stream (a rule, PLAN section
+  14); test 15 covers it (the target is dropped, the chain is hidden, the
+  ally's health does not move, and the ring closes to the bonk's reach).
+- **The sounds.** `F13-heal` is a loop owned by the audio state
+  (`src/audio/foamer-sounds.ts`): it runs only while the chain is actually
+  drawn (the held target and the chain's visibility), so it starts and
+  stops with the stream. `F13-spray` is one puff as the run starts.
+  `F13-tank-break` plays on the break, over the generic part thump (the
+  sword-break's pattern). Placeholder synths in `data/sounds.json`, the
+  rows in `design/SOUNDS.md`.
+- **The docs (stage 4).** The GAME-10l row in PLAN.md reads that all
+  stages are done, and the section 14 decisions record the hit read as
+  perSecond over the seconds through the run's tick, the healStream's
+  ring-ride condition, the tank gone and the wand-gone no-heal rule.
+  The status above is updated.
+- **Tests.** A new `tests/foamers/biomechanic-spray.test.ts`, five: the
+  spray's numbers and its needs, the run landing in whole rounds of
+  perSecond-over-seconds, a raised shield taking the block share and the
+  spray not being parryable, no spray while the stream is held, and the
+  tank gone with no spray and the wand closing in to bonk. The heal tests
+  carry 6 (the blob numbers), 12 (tank gone) and 15 (wand gone). All 22
+  F13 tests are green. `npx tsc --noEmit`, `npx vitest run` (763 passed,
+  2 skipped) and `npm run build` are green, and the dash check comes back
+  empty. No dev server was run in this session (card rule).
+- **What I did not check by eye:** the stream's look and the spray's
+  moment. This session cannot see images and cannot open a browser, so
+  the spray is verified by the tests only. The three sounds were never
+  heard. Nothing was played.
+- Stage 3 and the docs (stage 4) are committed to `game-10l`, not
+  reviewed, not merged, not pushed. The task card is done in all stages.
 
 ### 2026-11-07: GAME-10l stage 2 (DeepSeek V4.1 Flash via Pi): the Biomechanic's healing stream
 
