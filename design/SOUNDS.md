@@ -235,6 +235,9 @@ The other Foamers (IDs given when each is built):
 | F09-spinup | GAME-10g placeholder ID: the Crawler's barrels spin up before the stream (the telegraph) | Yes | 2 | Foley: a ratchet winding, rising |
 | F09-pellet | GAME-10g placeholder ID: one pellet leaving the barrels (cheap; the cap is what bounds a storm) | Yes | 6 | Blaster: a pellet dry-firing, thinned |
 | F09-step | GAME-10g placeholder ID: the Crawler's heavy foot plant | Yes | 4 | Foley: boot on a foam mat, with a click |
+| F08-windup | GAME-10h placeholder ID: the Trawler lifts both launchers before the wall (the telegraph) | Yes | 2 | Foley: a heavy wind, with a rising clunk |
+| F08-wall | GAME-10h placeholder ID: one wall of foam balls leaving the launchers (one sound per wall, not per ball) | Yes | 3 | Blaster: a wide low thump, with a hiss of foam |
+| F08-step | GAME-10h placeholder ID: the Trawler's heavy foot plant (the heaviest: health 80, speed 0.9) | Yes | 4 | Foley: a big boot, low and slow |
 | F10 | Flyer with jets | Jet loop, homing shot, jets breaking (falls) | Later | Foley plus Code |
 | F11 | Armoured knight | Heavy armoured steps, mace swings, overhead slam, sweep, the slow parry wind-up (must be easy to hear), shield hits | Later | Foley |
 | F12 | Ambusher in foam growths | Rustle in a growth, pounce, landing | Later | Foley |

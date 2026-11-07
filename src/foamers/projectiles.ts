@@ -98,6 +98,15 @@ export interface BallKind {
 
 export type ProjectileSound = "burst" | "parryHit" | "blobBounce";
 
+/** The ball every ordinary throw launches: the shared `ball` numbers and the
+ *  parryable pink material. GAME-10h: the one place launch's old per-field
+ *  defaults live, so launch and the wall share one spawn path. */
+const SHARED_BALL_KIND: BallKind = {
+  attack: "throw", speed: BALL.speed, gravity: BALL.gravity, radius: BALL.radius,
+  lifetime: BALL.lifetime, chunks: BALL.chunks, material: materialId("foam-pink"),
+  mesh: BALL_MATERIAL, bounces: 0, maxLive: BALL.maxLive,
+};
+
 export class ProjectileSystem {
   /** Live balls, oldest first. Capped at ball.maxLive. */
   readonly list: LiveBall[] = [];
@@ -277,20 +286,47 @@ export class ProjectileSystem {
     // dip a hand's width by the time it arrives.
     const vel = new THREE.Vector3();
     if (!this.launchVelocity(at, playerEye, spreadDeg, vel, kind?.speed, kind?.gravity)) return; // thrown at its own position: skip the step
-    const cap = kind?.maxLive ?? BALL.maxLive;
-    while (this.list.length >= cap) this.remove(this.list[0]!);
-    const mesh = new THREE.Mesh(BALL_GEOMETRY, kind?.mesh ?? BALL_MATERIAL);
-    mesh.scale.setScalar(kind?.radius ?? BALL.radius);
+    this.spawnBall(at, vel, f, kind ?? SHARED_BALL_KIND);
+  }
+
+  /** GAME-10h: the Trawler's wall. One ball per slot index, the row across
+   *  the aim line: slot i sits (i - (count-1)/2) x spacingMetres to the
+   *  right of `from`, and every ball flies parallel to (dirX, dirZ) at the
+   *  kind's speed, flat. Parallel, not converging on the player: that is
+   *  what makes the gap a gap (a player who reads it steps into the missing
+   *  run and nothing touches them). The cap drops the oldest as launch does. */
+  launchWall(
+    f: Foamer, from: THREE.Vector3, dirX: number, dirZ: number,
+    slots: number[], count: number, spacingMetres: number, kind: BallKind,
+  ): void {
+    const d = Math.hypot(dirX, dirZ);
+    if (d < 1e-6) return;
+    const ux = dirX / d, uz = dirZ / d;
+    // The row's lateral axis, 90 degrees from the aim in the floor plane.
+    const rx = uz, rz = -ux;
+    for (const i of slots) {
+      const off = (i - (count - 1) / 2) * spacingMetres;
+      const at = new THREE.Vector3(from.x + rx * off, from.y, from.z + rz * off);
+      const vel = new THREE.Vector3(ux * kind.speed, 0, uz * kind.speed);
+      this.spawnBall(at, vel, f, kind);
+    }
+  }
+
+  /** The ball every launch path ends in: cap it, draw it, add it. */
+  private spawnBall(at: THREE.Vector3, vel: THREE.Vector3, f: Foamer, kind: BallKind): void {
+    while (this.list.length >= kind.maxLive) this.remove(this.list[0]!);
+    const mesh = new THREE.Mesh(BALL_GEOMETRY, kind.mesh);
+    mesh.scale.setScalar(kind.radius);
     mesh.position.copy(at);
     this.group.add(mesh);
     this.list.push({
       pos: at.clone(), vel, age: 0, mesh, thrower: f, bounced: false, flatSpeed: 0, steerLeft: 0,
-      attack: kind?.attack ?? "throw",
-      bounceLeft: kind?.bounces ?? 0,
-      gravity: kind?.gravity ?? BALL.gravity,
-      chunks: kind?.chunks ?? BALL.chunks,
-      material: kind?.material ?? materialId("foam-pink"),
-      lifetime: kind?.lifetime ?? BALL.lifetime,
+      attack: kind.attack,
+      bounceLeft: kind.bounces,
+      gravity: kind.gravity,
+      chunks: kind.chunks,
+      material: kind.material,
+      lifetime: kind.lifetime,
     });
     this.stats.thrown++;
   }

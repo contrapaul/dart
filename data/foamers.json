@@ -460,6 +460,57 @@
         }
       ]
     },
+    "F08": {
+      "rig": "F08",
+      "_note": "GAME-10h: the Trawler. A heavy slow tank: keep-distance like the Roamer (the F02 brain), holding at preferredDistanceMetres 12 and firing its wall of balls from up to throwRangeMetres. Health 80 and speed 0.9 come from the rig. The two arm launchers are the weak points (wall.launchers, wall.weakpointMultiplier); with one gone the wall is that launcher's half, with both gone it cannot fire and stomps. Look (CONTENT-PLAN 3.4): deep lime body, purple shields (the shoulder nubs and the drum), orange launchers.",
+      "turnRate": 1.6,
+      "attackRange": 1.6,
+      "throwRangeMetres": 20,
+      "preferredDistanceMetres": 12,
+      "retreatDistanceMetres": 6,
+      "wall": {
+        "_note": "GAME-10h stage 2: the wall of foam balls. ballsPerLauncher from EACH launcher, spacingMetres apart, so the row is about 6 m wide. Balls are slow (speed) and flat (gravity 0) so the wall can be read, and burst on any geometry. gapBalls side-by-side balls are left out at a position picked by a seeded PRNG (seed, mixed with the wall's number), never at the row's ends, so a player who reads it steps through. Not parryable: the wall has its own material, not BALL_MATERIAL (CONTENT-PLAN gives F08 no P). Each launcher owns its half of the row and is a weak point (weakpointMultiplier). The starting numbers are proposals for Paul to tune. See src/foamers/wall.ts.",
+        "ballsPerLauncher": 5,
+        "spacingMetres": 0.6,
+        "gapBalls": 2,
+        "muzzleMetres": 0.9,
+        "chestBelowEyeMetres": 0.35,
+        "speed": 9,
+        "gravity": 0,
+        "radius": 0.15,
+        "lifetime": 4,
+        "chunks": 3,
+        "maxLive": 40,
+        "seed": 11,
+        "launchers": [
+          "launcherL",
+          "launcherR"
+        ],
+        "weakpointMultiplier": 2
+      },
+      "recover": 2.5,
+      "attacks": [
+        {
+          "id": "wall",
+          "damage": 8,
+          "token": "ranged",
+          "_note": "range pins the wall's firing distance a little outside the ring it keeps (the F09 stream's pattern): the brain parks on preferredDistanceMetres, so an unpinned ranged range would sit exactly on it. row: true: it is a wide row, not one arc, so the flight check does not sample a centre arc. needs: either launcher fires (a wall needs at least one; the halves and the gap are the wall block and wallSlots in src/foamers/wall.ts).",
+          "range": 19,
+          "needs": [],
+          "windup": 1,
+          "strike": 0.3,
+          "row": true
+        },
+        {
+          "id": "stomp",
+          "damage": 12,
+          "token": "melee",
+          "needs": [],
+          "windup": 0.6,
+          "strike": 0.2
+        }
+      ]
+    },
     "F06": {
       "rig": "F06",
       "_note": "GAME-10c: the Floater. It has no legs and no head: it floats (see float), so the leg handicaps do not apply and its turn rate is the no-head half of this one. attackRange is the reach of a spit; the blobs fly from there. preferredDistanceMetres is the ring it keeps, retreatDistanceMetres how close the player must get before it backs off.",

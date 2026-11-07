@@ -220,7 +220,7 @@ proposals for Paul's looks, not designs.
 | F04 | Visored trooper, riot shield on the left forearm | Blaster on the right forearm, over the shield | Shield, blaster, arms, legs |
 | F05 | Low bull, head down, horns forward, armour plate, spined back | Horns | Horns, plate, legs |
 | F06 | Spiky floating ball, gaping mouth with a jaw, three tendrils | Mouth (jaw drops to spit) | Jaw, fins, tendrils |
-| F07 | Gorilla stance, tiny head sunk in the shoulders | Huge fists with knuckle nubs | Fists, arms, legs |
+| F07 | Gorilla stance, tiny head sunk in the shoulders | A foam sword (Paul, 2026-11-07; the greybox had huge fists with knuckle nubs) | Sword, arms, legs |
 | F08 | Huge, shoulder spikes, ammo drum on its back | Two launcher arms (orange muzzles) | Launchers, drum, legs |
 | F09 | Spider legs with knees, low body | Twin-barrel turret | Turret barrels, legs |
 | F10 | Visored flyer with jets and wings | Wrist launcher | Jets, wings, launcher arm |
