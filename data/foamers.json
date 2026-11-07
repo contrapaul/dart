@@ -587,6 +587,16 @@
       }
     }
   },
+  "promoted": {
+    "_note": "LVL-04b: a promoted spawn (the Ring's mini-boss pair). healthMultiplier scales the rig's health, so a Darter goes from 30 to 45. parts is per type id, then part id, then the voxel material that part wears instead of the rig's; Paul (2026-11-07) gives a promoted Darter light purple chest and brow plates. Never orange, pink, blue or yellow: those mean weak point, parryable and the player's darts.",
+    "healthMultiplier": 1.5,
+    "parts": {
+      "F05": {
+        "chest": "foam-purple-light",
+        "brow": "foam-purple-light"
+      }
+    }
+  },
   "spawner": {
     "count": 1,
     "max": 12,

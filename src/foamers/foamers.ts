@@ -84,6 +84,34 @@ function rigFor(spec: FoamerSpec): GameRig {
   return RIGS.find((r) => r.id === spec.rig) ?? RIGS[0]!;
 }
 
+/** LVL-04b: the mini-boss promotion, from the `promoted` block in
+ *  data/foamers.json: the health scale every promoted spawn gets, and the
+ *  parts it wears in another material (Paul, 2026-11-07: a promoted Darter's
+ *  chest and brow plates go light purple instead of lime). */
+const PROMOTED = foamerData.promoted as {
+  healthMultiplier: number;
+  parts: Record<string, Record<string, string>>;
+};
+
+/** The rig a spawn uses: the shared one, or for a promoted spawn a copy with
+ *  the scaled health and the swapped part materials. Built once per rig, like
+ *  the specs, so the shared rig is never changed for everyone. */
+function rigForSpawn(spec: FoamerSpec, promoted: boolean): GameRig {
+  const rig = rigFor(spec);
+  if (!promoted) return rig;
+  const cached = PROMOTED_RIGS.get(rig.id);
+  if (cached) return cached;
+  const parts = PROMOTED.parts[rig.id];
+  const copy: GameRig = {
+    ...rig,
+    health: Math.round(rig.health * PROMOTED.healthMultiplier),
+    parts: rig.parts.map((p) => (parts?.[p.id] ? { ...p, material: parts[p.id]! } : p)),
+  };
+  PROMOTED_RIGS.set(rig.id, copy);
+  return copy;
+}
+const PROMOTED_RIGS = new Map<string, GameRig>();
+
 /** BUG-07: a throw of one ball, the case the flight check can judge. A
  *  volley fans several arcs across `spreadDeg`, so its centre arc is not
  *  what it fires (F04's three-shot volley keeps its own behaviour). */
@@ -383,11 +411,12 @@ export class FoamerSystem {
   }
 
   /** Spawn at a feet position. Returns null at the `max` cap. With
-   *  `facing` (a world point), it starts turned toward that point. */
-  spawn(feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01"): Foamer | null {
+   *  `facing` (a world point), it starts turned toward that point.
+   *  `promoted` (LVL-04b) gives it the mini-boss health and plates. */
+  spawn(feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01", promoted = false): Foamer | null {
     if (this.list.length >= SPAWNER.max) return null;
     const spec = specFor(type);
-    const f = new Foamer(this.rapier, this.world, this.mesher, spec, rigFor(spec), feet);
+    const f = new Foamer(this.rapier, this.world, this.mesher, spec, rigForSpawn(spec, promoted), feet);
     if (facing) f.yaw = Math.atan2(facing.x - feet.x, facing.z - feet.z);
     f.setSystem(this);
     // ENG-08 stage 3b: the brain. Its token pool comes from what its attacks

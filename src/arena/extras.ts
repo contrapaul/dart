@@ -95,12 +95,13 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       door.setState(state);
       audio.play("LV-door", { position: doorMeshPos(id) });
     },
-    spawn(foamerId, rift) {
+    spawn(foamerId, rift, promoted) {
       // GAME-10a: the id in the file is the type (the validator checked it
       // exists in the rigs, and every rig id has a spec entry).
+      // LVL-04b: a promoted spawn gets the mini-boss health and plates.
       _riftFeet.set(rift.pos[0], rift.pos[1], rift.pos[2]);
       _riftFacing.copy(player.eye(1, _playerPos));
-      const f = foamers.spawn(_riftFeet, _riftFacing, foamerId);
+      const f = foamers.spawn(_riftFeet, _riftFacing, foamerId, promoted);
       if (!f) return false;
       audio.play("FX-spawn", { position: _riftFeet });
       return true;
@@ -151,7 +152,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     return new THREE.Vector3(...(door ? door.pos : [0, 0, 0]));
   }
 
-  const arenaCtx: ArenaContext = { playerPos: [0, 0, 0], aliveCount: 0 };
+  const arenaCtx: ArenaContext = { playerPos: [0, 0, 0], aliveCount: 0, aliveHealth: 0 };
 
   /** Reaching the exit pad ends the level (BLOCKOUT 4: a lit pad behind
    *  the locked door). A box test is enough; the pad is flat. */
@@ -228,6 +229,11 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       const at = feetPos(_playerPos);
       arenaCtx.playerPos = [at.x, at.y, at.z];
       arenaCtx.aliveCount = foamers.live - foamers.downed.length;
+      // LVL-04b: the Ring's second wave arrives at half the pair's health, so
+      // the runner is told what is left, downed ones excluded: theirs is spent.
+      let aliveHealth = 0;
+      for (const f of foamers.list) if (f.state !== "down") aliveHealth += Math.max(0, f.health);
+      arenaCtx.aliveHealth = aliveHealth;
       runner.update(dt, arenaCtx);
     },
     afterWorld(dt: number) {

@@ -6,7 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-GAME-10i done 2026-11-07, not merged (card `tasks/GAME-10i.md`, Qwen 3.8-27B
+GAME-10i merged locally 2026-11-07, not pushed (card `tasks/GAME-10i.md`, Qwen 3.8-27B
 via Pi, branch `game-10i`): the F07 Brawler carries its lime foam sword.
 Stage 1: the greybox right fist is gone; a 1.5 m rounded capsule blade (six
 voxels wide: 0.3 m) is parented to `foreArmR` so it moves with the arm, a
@@ -46,6 +46,26 @@ and 3 (the Yard and the lit lift) are later runs.
 `npx tsc --noEmit`, full `npx vitest run` (589 pass, 2 skipped) and
 `npm run build` clean. Not checked by eye: the whole Pit, both ramps,
 the island over its hole, the corridor under the far yard, breather 2.
+
+LVL-04b stage 2 merged locally 2026-11-07, not pushed (DeepSeek V4.1 Flash via Pi,
+branch `lvl-04b`), not merged and not pushed: promoted Foamers and the
+mini-boss Ring. A new top-level `promoted` block in
+`data/foamers.json` holds `healthMultiplier` 1.5 and the part material
+swaps (F05's chest and brow go `foam-purple-light`), and
+`FoamerSystem.spawn` takes a fourth `promoted` flag that builds a cached
+rig copy with that health and those plates, so ordinary spawns are
+unchanged. The Ring (A2) sits past breather 2: 30 x 30 m, 8 m ceiling,
+10 x 8 m block 3.5 m tall, doors in from the south and out to the north,
+four 1.6 x 1.6 x 2.8 m foam-orange pillars, A4 (10) in the ring and A5
+(6) on the block, two promoted Darters then six Swarmers at 50% of the
+pair's health (`Wave.startsWithHealthShare` and `ArenaContext.aliveHealth`,
+both new and optional), no third wave. The temporary exit pad moved from
+breather 2 to a room past the Ring's north door. `npx tsc --noEmit`,
+full `npx vitest run` (610 pass, 2 skipped) and `npm run build` clean.
+Not checked by eye: the promotion's light purple plates on a Darter, the
+Ring's ring and block, the four pillars, both ammo boxes, and that the
+adds really arrive at half health in play (the rule is only stepped in
+tests). Stage 3 (the A6 Yard and the lit lift) is to come.
 
 GAME-10h merged locally 2026-11-07, not pushed (card `tasks/GAME-10h.md`; stage 1
 by Qwen 3.8 Flash Next via Pi, dgx-spark; stage 2 and the docs by Qwen
@@ -608,6 +628,58 @@ shockwave tests pass unchanged.
 windup and strike pose renders in `design/foamers/` (faced right in
 render-rig.ts), the moving swing in play, and the two placeholder
 sounds by ear.
+
+### 2026-11-07: LVL-04b stage 2 review, merged (Claude)
+
+- Read the diff: a cached promoted rig copy in `FoamerSystem.spawn`
+  (1.5 times the health, chest and brow in `foam-purple-light`, from the
+  `promoted` block in `data/foamers.json`), the page passing the wave's
+  flag and the alive Foamers' health, and `Wave.startsWithHealthShare`
+  in the runner (optional: a page that reports no health keeps the old
+  rule). Small and in the files the card allowed.
+- Main merged in, no conflicts. `tsc`, the full suite (610 pass, 2
+  skipped) and the build pass.
+- Played by script at the Ring: both Darters spawn promoted, 45 health,
+  light purple plates, seen on screen against the deep purple body with
+  the orange back still the only orange. Wave 2 waits at 50 of 90 health
+  (55%) and starts at 42 (47%), all 6 Swarmers arriving with the pair
+  still up. Cleared, the north door opens and the pad shows "Level
+  complete".
+- For Paul, from the model's section 14 rows: the Ring is a through room
+  with two doors, not the concept's four shutters, and reuses 1-3's 30 x
+  30 m room with a 10 x 8 m block, so the ring is about 10 m wide, not
+  6 m.
+- Not checked: the fight by hand, the pillars and ammo by eye, the
+  frame time.
+
+### 2026-11-07: LVL-04b stage 2, promoted Foamers and the Ring (DeepSeek V4.1 Flash via Pi)
+
+- Card `tasks/LVL-04b.md`, stage 2 only, in two commits.
+- Promoted spawns are data: `data/foamers.json` gained a top-level
+  `promoted` block (`healthMultiplier` 1.5, `parts` per rig id), and
+  `src/foamers/foamers.ts` builds a cached rig copy from it inside
+  `rigForSpawn(spec, promoted)`. `spawn`'s new fourth argument defaults
+  to false, so every existing caller is unchanged; `src/arena/extras.ts`
+  passes the wave's flag through. Health is scaled on the rig, which the
+  Foamer's constructor also uses for part hit points, so plates and body
+  are 1.5x together.
+- The health-started wave is in `src/level/arena.ts` (a `peakHealth` the
+  runner tracks while a wave is up) and `src/level/format.ts`
+  (`Wave.startsWithHealthShare`). `ArenaContext.aliveHealth` is optional
+  so the other pages and tests keep compiling; the page adds the living
+  Foamers' health each step.
+- The Ring is a through-room, not the concept's sealed pit: doors on the
+  south and north walls, both locked in the fight and opened on the
+  clear, so the exit pad can sit past it and the level keeps one line
+  north. The four pillars match KIT 5's cover pillar; A4 and A5 counts
+  match the concept's station table.
+- Tests: `tests/level/level-1-4.test.ts` 19 (walk to the pad, the Ring's
+  shell and loop, its waves and the health share, the pillars and ammo,
+  the moved pad, the promoted health and plates) and
+  `tests/level/arena.test.ts` three for the runner rule.
+- Not checked by eye: everything visual listed in Status, and nothing
+  was played in a browser. Not touched: `src/ai/`, `src/player/`,
+  stages 3 to 5.
 
 ### 2026-11-07: LVL-04b stage 1 review, merged (Claude)
 
