@@ -636,7 +636,7 @@ export class Blaster {
     const s = this.spec;
     const r = s.recoil;
     // GAME-09g: the firing flag for the movement slow: the trigger held
-    // and the wheels up to speed. Cleared for every other mode in update.
+    // and the wheels up to speed. Only auto blasters set it.
     this.firing = fireHeld && this.wheelSpeed >= 1 && this.st === "ready";
     if (fireHeld) {
       this.wheelSpeed = Math.min(1, this.wheelSpeed + dt / Math.max(s.spinUp, 1e-6));

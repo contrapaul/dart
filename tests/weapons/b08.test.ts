@@ -133,11 +133,13 @@ describe("GAME-09g: the foam ball type", () => {
     expect(inSpeed).toBeGreaterThan(20); // came in fast
     // Each bounce keeps about restitution of the speed of the last.
     expect(outSpeed).toBeCloseTo(inSpeed * m.restitution, 1);
-    // After bounces (2) contacts the third one is the end: the ball rests.
+    // After its bounces (2) it falls like a dart and comes to rest on the
+    // floor, not stuck on the wall (review).
     const s0 = liveSlot(system);
     expect(s0.state).toBe(RESTING);
     expect(s0.bounceLeft).toBe(0);
-    expect(hits).toBe(3);
+    expect(hits).toBeGreaterThanOrEqual(3);
+    expect(s0.pos.y).toBeLessThan(0.5); // on the floor, not up the wall at 4 m
   });
 
   it("3. a ball that hits a Foamer damages it once and bounces off with what is left", async () => {

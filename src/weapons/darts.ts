@@ -513,12 +513,10 @@ export class DartSystem {
       }
       // GAME-09g: a foam ball (B08) ricochets off a hard surface: it
       // bounces with restitution of its speed up to its type's `bounces`
-      // times. When the budget runs out the next contact is the end: the
-      // ball stops where it touched (any surface) and falls into the
-      // resting state like a dart that has landed, then ages out the same
-      // way. The resting here skips onDartRest: that event is a spent dart
-      // landing on the floor (the DT-floor sound), not a ball stopped
-      // against a wall.
+      // times, never coming to rest on one of them. With the budget spent
+      // it takes the ordinary dart path below: it bounces off and falls,
+      // and rests on the floor like a dart (review: it used to stop dead
+      // where it touched, so a ball could hang on a wall).
       if (s.bounceLeft > 0) {
         s.bounceLeft -= 1;
         // Reflect the velocity about the surface normal, scaled by restitution.
@@ -529,15 +527,6 @@ export class DartSystem {
         s.vel.z = (s.vel.z - 2 * d * n.z) * s.spec.restitution;
         // Step off the surface a touch so it does not re-hit the same face.
         s.pos.copy(this._hp).addScaledVector(n, 0.004);
-        return;
-      }
-      if ("bounces" in s.spec) {
-        s.state = RESTING;
-        s.pos.copy(this._hp).addScaledVector(this._n3, s.spec.radius);
-        s.vel.set(0, 0, 0);
-        s.restT = 0;
-        this.count[FLYING]--;
-        this.count[RESTING]++;
         return;
       }
       // Reflect the velocity about the surface normal, scaled by restitution.
