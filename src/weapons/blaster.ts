@@ -70,6 +70,9 @@ export interface BlasterSpec {
   motion: MotionSpec;
   /** GAME-09b: null for a blaster and mod that cannot chunk. */
   chunk: ShotChunk | null;
+  /** GAME-09d: B06's explosive mod: every nth shot explodes at its first
+   *  hit through the shared ExplosionSystem. 0: no explosive shots. */
+  explosiveEvery: number;
 }
 
 export interface BlasterControls {
@@ -100,9 +103,10 @@ interface RawMod {
   dartsPerShot?: number;
   spreadDeg?: number;
   magSize?: number;
+  /** GAME-09d: the rate mod (B06) overrides the auto interval. */
+  fireInterval?: number;
   muzzles?: string[];
   bothBarrels?: boolean;
-  fireInterval?: number;
   burstCount?: number;
   burstGap?: number;
   burstCooldown?: number;
@@ -110,6 +114,8 @@ interface RawMod {
   show?: string[];
   hide?: string[];
   chunk?: ShotChunk | null;
+  /** GAME-09d: every nth shot of this mod explodes (the explosive mod). */
+  explosiveEvery?: number;
   _note?: string;
 }
 
@@ -136,6 +142,8 @@ interface RawBlaster {
   viewmodel: ViewmodelSpec;
   motion: MotionSpec;
   chunk?: ShotChunk | null;
+  /** GAME-09d: every nth shot explodes (B06's explosive mod). */
+  explosiveEvery?: number;
   mods?: Record<string, RawMod>;
 }
 
@@ -176,6 +184,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     viewmodel: raw.viewmodel,
     motion: raw.motion,
     chunk: raw.chunk ?? null,
+    explosiveEvery: raw.explosiveEvery ?? 0,
   };
   for (const m of activeMods) {
     const mod = raw.mods?.[m];
@@ -193,6 +202,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     if (mod.bothBarrels !== undefined) s.bothBarrels = mod.bothBarrels;
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
     if (mod.chunk !== undefined) s.chunk = mod.chunk;
+    if (mod.explosiveEvery !== undefined) s.explosiveEvery = mod.explosiveEvery;
     for (const n of mod.show ?? []) if (!s.show.includes(n)) s.show.push(n);
     for (const n of mod.hide ?? []) if (!s.hide.includes(n)) s.hide.push(n);
   }
@@ -273,8 +283,6 @@ export class Blaster {
   // and the seconds since the last dart of a running burst.
   private burstLeft = 0;
   private burstGapT = 0;
-  // GAME-09c: burst mode: the darts still to fire from the last press,
-  // and the seconds since the last dart of a burst (the gap clock).
   // Seconds since the last shot (auto, break). Starts at the interval in
   // the constructor so the very first press can fire.
   private fireClock = 0;
@@ -356,7 +364,12 @@ export class Blaster {
       }
       return;
     }
-    this.fireClock += dt;
+    // GAME-09d review: the clock stores at most one shot. Uncapped, it grew
+    // through every idle step and a full-auto blaster then emptied its
+    // magazine one dart per step after a pause.
+    // (Review, after merging B06: a burst's cooldown runs on this clock too,
+    // so the cap covers the longer of the two.)
+    this.fireClock = Math.min(this.fireClock + dt, Math.max(s.fireInterval, s.burstCooldown) + dt);
     if (controls.reloadPressed && this.mag < s.magSize && this.reserve > 0) {
       this.startReload();
       return;
@@ -528,6 +541,12 @@ export class Blaster {
   private beginShot(): void {
     this.shot.id = ++shotSeq;
     this.shot.chunk = this.spec.chunk;
+    // GAME-09d: with the explosive mod, every nth shot's darts blast on
+    // their first hit. Counted here, on the blaster, like the shot ids;
+    // callers increment shots just before calling this.
+    this.shot.explodes =
+      this.spec.explosiveEvery > 0 && this.shots % this.spec.explosiveEvery === 0;
+    this.shot.exploded = false;
   }
 
   // The aim for this step, set in update() so fireDart reads it.

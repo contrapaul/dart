@@ -120,6 +120,7 @@ and the tool are unnamed so far).
 | B06-rev-up | Motor spin-up, deeper than B04 | Later | 3 | Blaster |
 | B06-rev-loop | Motor at speed (loop) | Later | 2 long | Blaster |
 | B06-rev-down | Spin-down | Later | 3 | Blaster |
+| B06-spin | Motor at speed, deeper than B04 (GAME-09d placeholder id) | Later | 2 long | Blaster |
 | B06-fire | One mega dart, heavy | Later | 8 | Blaster: mega darts |
 | B06-belt | Drum or belt feeding (loop under fire) | Later | 2 long | Foley: a ratchet |
 | B06-reload | Drum or box out and in | Later | 3 each | Blaster |
@@ -165,6 +166,7 @@ and the tool are unnamed so far).
 | EX-big | Big blast (B07): deep foam boom | Later | 4 | Library plus Foley layer |
 | EX-cluster | Cluster bomblets, four small pops | Later | 3 | Layered from EX-small |
 | EX-debris | Voxel chunks raining down after a blast | Later | 4 | Foley: crumbled foam dropped on a board |
+| FX-explode | The shared explosion (GAME-09d): a foam pop with a puff | Later | 4 | Code plus Foley: pop a balloon full of foam bits |
 
 ## 4. Foamers
 
@@ -245,6 +247,9 @@ The other Foamers (IDs given when each is built):
 | F10-shot | GAME-10j placeholder ID: the homing ball leaving the wrist launcher (one per shot, the cap restricts side-by-side ones) | Yes | 4 | Blaster: a soft "pffft" on drylatch, with a small rising ring |
 | F10-fall | GAME-10j placeholder ID: the Turbo dropping to the floor when the last jet breaks (one, when the jet hiss stops) | Yes | 2 | Foley: a soft heavy flop of foam on the floor |
 | F10 | Flyer with jets | GAME-10j placeholder IDs: F10-jet (jet loop), F10-shot (homing shot), F10-fall (the drop to the floor) | Later | Foley plus Code |
+| F11-swing | GAME-10k placeholder ID: the Seawall's mace swing (the overhead and the sweep) | Yes | 3 | Foley plus Blaster: a heavy wooden whoosh, deeper than the Roamer's club |
+| F11-windup | GAME-10k placeholder ID: the Seawall's finisher: the slow high wind-up the player must hear to time the parry | Yes | 2 | Foley: a long low rising creak |
+| F11-shield-break | GAME-10k placeholder ID: the Seawall's tower shield breaking off after its parries | Yes | 2 | Foley: a hard crack, a board falling apart |
 | F11 | Armoured knight | Heavy armoured steps, mace swings, overhead slam, sweep, the slow parry wind-up (must be easy to hear), shield hits | Later | Foley |
 | F12 | Ambusher in foam growths | Rustle in a growth, pounce, landing | Later | Foley |
 | F13 | Medic | Spray wand (loop), healing sparkle on another Foamer, tank breaking | Later | Foley: spray bottle |

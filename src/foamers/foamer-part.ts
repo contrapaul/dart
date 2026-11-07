@@ -5,6 +5,7 @@ import { VoxelVolume } from "../voxel/chunk";
 import { VolumeMesh } from "../voxel/volume-mesh";
 import type { Mesher } from "../voxel/pieces";
 import type { VoxelTarget } from "../weapons/impacts";
+import { voxelFoamMaterial } from "../render/foam-material";
 import { buildPartVolume, type PartSpec } from "./rig";
 
 // One rig part of a game Foamer (ENG-10): its own voxel volume, its own
@@ -69,6 +70,15 @@ export class FoamerPart implements VoxelTarget {
 
   owns(collider: RAPIER.Collider) {
     return collider.parent()?.handle === this.body.handle;
+  }
+
+  /** GAME-10k: draw every chunk mesh with this material (the Seawall's
+   *  pink finisher tell), or null to go back to the shared foam material.
+   *  Called every step while the tell is on, so a mesh the mesher made
+   *  since the last call still gets it. */
+  setDrawMaterial(m: THREE.Material | null): void {
+    const mat = m ?? voxelFoamMaterial();
+    for (const child of this.mesh.group.children) (child as THREE.Mesh).material = mat;
   }
 
   /** World position to voxel coordinates (in place), through the body's

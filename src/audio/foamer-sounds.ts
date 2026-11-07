@@ -162,6 +162,14 @@ export class FoamerSounds {
           this.sink.play("F08-windup", p);
           break;
         }
+        if (f.spec.rig === "F11") {
+          // GAME-10k: the Seawall's mace. The finisher's long wind-up is
+          // the slow tell the player learns to read (and time the parry
+          // on); the other two attacks are plain swings (placeholder IDs,
+          // design/SOUNDS.md).
+          this.sink.play(f.attack()?.id === "finisher" ? "F11-windup" : "F11-swing", p);
+          break;
+        }
         this.sink.play(
           token === "ranged" ? "F02-windup" : token === "swarm" ? "F03-nibble" : "F01-swing",
           p,
@@ -224,7 +232,9 @@ export class FoamerSounds {
         this.sink.play("F04-shieldhit", p);
         break;
       case "shield-break":
-        this.sink.play("F04-shieldbreak", p);
+        // GAME-10k: the Seawall's tower shield going is its own crack
+        // (placeholder ID), the Blocker's keeps its sound.
+        this.sink.play(f.spec.rig === "F11" ? "F11-shield-break" : "F04-shieldbreak", p);
         break;
       // GAME-10b, the Darter's charge: the scrape, the run starting, and
       // the wall or player it hits (placeholder IDs, design/SOUNDS.md 4.2).

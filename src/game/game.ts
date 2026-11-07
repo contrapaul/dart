@@ -13,6 +13,7 @@ import { DartSystem } from "../weapons/darts";
 import { Loadout } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
 import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
+import { ExplosionSystem } from "../weapons/explosion";
 import { FoamerSystem } from "../foamers/foamers";
 import type { Foamer } from "../foamers/foamer";
 import { chargeOf } from "../foamers/charge";
@@ -41,6 +42,7 @@ import type { RemovedVoxel } from "../voxel/carve";
 import renderJson from "../../data/render.json";
 import { carveBounds } from "./shared";
 import { damageOf } from "./attack";
+import { decideMeleeParry } from "../foamers/combo";
 import { createAudio, type GameAudio } from "./audio";
 import type { LoopHandle } from "../audio/sink";
 import { createUI, type UIController } from "./ui";
@@ -222,8 +224,14 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // Voxel targets: the level's mesh, and every live Foamer (spawn and pop
   // keep it in step). Darts carve both.
   const voxelTargets: VoxelTarget[] = [voxelMesh];
+  // GAME-09d: the shared explosion (B06's explosive mod today; B05 and B07
+  // later). It carves the level's volume through the same carve and island
+  // path a dart carve uses (not the Foamer parts: their volumes remesh on
+  // the dart path only). The Foamer system is set below, where it exists.
+  const explosion = new ExplosionSystem(world, debris, [voxelMesh]);
+  explosion.ignore(player.collider); // never pushed, never hurt
   // Dart hits on a voxel wall carve a crater and throw foam debris.
-  const impacts = new DartImpacts(darts, debris, voxelTargets);
+  const impacts = new DartImpacts(darts, debris, voxelTargets, explosion);
   // ENG-08 stage 3b: one director and one nav grid for the level, baked
   // over the level's bounds and re-baked where a carve or a resting piece
   // changed the ground.
@@ -242,6 +250,11 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // A piece that comes to rest may block a cell: re-bake its patch.
   pieces.onRest = (c, r) => levelAI.pieceRested(c, r);
   impacts.onCarve = (target, removed) => {
+    if (target !== voxelMesh) return;
+    carveReport(removed);
+  };
+  // GAME-09d: an explosion's carve drops its islands the same way.
+  explosion.onCarve = (target, removed) => {
     if (target !== voxelMesh) return;
     carveReport(removed);
   };
@@ -267,6 +280,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // Foamer system: spawn, bonk, dart damage, pop. This is the first enemy,
   // GAME-03.
   const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
+  // GAME-09d: a blast damages Foamers through the non-dart path (see
+  // Foamers.blastDamage), and plays FX-explode at the point.
+  explosion.foamers = foamers;
+  explosion.onExplode = (p) => audio.play("FX-explode", { position: p });
   // GAME-10a: the F02's foam balls. They have no physics bodies (kinematic
   // raycasts), so they need no place of their own in the physics order.
   const projectiles = new ProjectileSystem(rapier, world, debris, player.collider, foamers);
@@ -407,6 +424,18 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // only its data share. A blocked hit is not a hit: no HUD flash, and
     // the disc's own sound plays instead of the hurt one.
     const blocked = shield.blocksAttackFrom(f.centre);
+    // GAME-10k: the melee parry (CONTENT-PLAN F11). An attack marked
+    // parryable in the type's data (the Seawall's finisher) that meets the
+    // raised disc inside the parry window is turned whole: the player
+    // takes nothing, the disc gets its parry feedback and the Seawall
+    // staggers and counts the parry on its shield. The decide is shared
+    // (src/foamers/combo.ts) so any later type may mark an attack too.
+    if (blocked && decideMeleeParry(f.spec, attack, true, shield.canParry()) === "parry") {
+      shield.noteParry();
+      foamers.parryAttack(f);
+      audio.play("SH-parry", { position: f.centre });
+      return;
+    }
     const share = blocked ? shield.damageShare : 1;
     const lost = health.damage(damageOf(attack, f.spec) * share, attack);
     if (lost <= 0) return;
@@ -649,7 +678,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // muzzle from the active viewmodel, the aim 50 m down the view, and
       // the loadout's fixed step, then the darts.
       for (let i = 0; i < loadout.ids.length; i++) {
-        const key = ["weapon1", "weapon2", "weapon3", "weapon4"][i];
+        const key = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5"][i];
         if (input.wasPressed(key as "weapon1")) loadout.select(i);
       }
       if (input.wasPressed("weaponNext")) loadout.next();

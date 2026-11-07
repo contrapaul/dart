@@ -59,8 +59,8 @@ describe("GAME-09c stage 1: the B02 Musketeer", () => {
     expect(s.reloadTime).toBe(1.0);
     expect(s.autoReload).toBe(true);
     expect(s.muzzles).toEqual(["muzzle_1"]);
-    // The placeholder body: the B01 model, until ART-01 ships the B02 one.
-    expect(s.model).toBe("/models/blasters/B01.glb");
+    // Its own approved model (ART-04), which replaced the B01 placeholder.
+    expect(s.model).toBe("/models/blasters/B02.glb");
   });
 
   it("one press fires one dart; a held trigger fires only that one", () => {
@@ -221,5 +221,20 @@ describe("GAME-09c stage 1: the B02 Musketeer", () => {
     step(b, PRESS);
     expect(darts.n).toBe(2);
     expect(darts.types[1]).toBe("slug");
+  });
+});
+
+describe("GAME-09c review: the burst cooldown and the capped fire clock", () => {
+  it("a second burst fires after the cooldown, though the clock is capped", () => {
+    // Review, after B06 (GAME-09d) capped the fire clock at the fire
+    // interval: the burst's 0.3 s cooldown runs on the same clock, and a cap
+    // at B02's 0.15 s interval would never let it reach the cooldown again.
+    const { b, darts } = make(["burst"]);
+    step(b, PRESS);
+    for (let i = 0; i < 40; i++) step(b, NO); // the burst, then the cooldown
+    expect(darts.n).toBe(3);
+    step(b, PRESS);
+    for (let i = 0; i < 40; i++) step(b, NO);
+    expect(darts.n, "the second burst fired").toBe(6);
   });
 });

@@ -6,6 +6,7 @@ import { carveSphere, type RemovedVoxel } from "../voxel/carve";
 import { material } from "../voxel/materials";
 import { DebrisSystem } from "../voxel/debris";
 import type { VoxelVolume } from "../voxel/chunk";
+import type { ExplosionSystem } from "./explosion";
 
 // Wires dart hits on voxel volumes into carving and foam debris. A
 // VoxelTarget is anything with a voxel volume and its own colliders; a
@@ -33,13 +34,25 @@ export class DartImpacts {
   onCarveAt: (point: THREE.Vector3) => void = () => {};
   private darts: DartSystem;
 
-  constructor(darts: DartSystem, private debris: DebrisSystem, private targets: VoxelTarget[]) {
+  constructor(
+    darts: DartSystem,
+    private debris: DebrisSystem,
+    private targets: VoxelTarget[],
+    /** GAME-09d: the shared explosion. With one, an explosive dart's first
+     *  hit blasts at its point, and the explosion system's cap clock ticks
+     *  with the dart system's update. */
+    private explosion: ExplosionSystem | null = null,
+  ) {
     this.darts = darts;
     const previous = darts.onHit;
     darts.onHit = (hit) => {
       previous(hit);
       this.handleHit(hit);
     };
+    if (this.explosion) {
+      darts.onUpdate = (dt: number) => this.explosion!.tick(dt);
+      darts.onExplosiveHit = (hit) => this.explosion!.explode(hit.point);
+    }
   }
 
   private handleHit(hit: DartHit): void {
