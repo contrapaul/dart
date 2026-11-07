@@ -5,13 +5,14 @@ import levelJson from "../../data/levels/1-4.json";
 import foamerData from "../../data/foamers.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
+import { ArenaRunner } from "../../src/level/arena";
 import { LevelRunner, type LevelEvents } from "../../src/level/level-runner";
 import { makeLevelAI } from "../../src/ai/level";
 import { makePath } from "../../src/ai/nav-grid";
 import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable, materialId } from "../../src/voxel/materials";
-import type { Level } from "../../src/level/format";
+import type { Arena, Level } from "../../src/level/format";
 import { chosenLevel } from "../../src/arena/levels";
 import * as THREE from "three";
 import { DebrisSystem } from "../../src/voxel/debris";
@@ -20,17 +21,17 @@ import type { VoxelTarget } from "../../src/weapons/impacts";
 import { FoamerSystem } from "../../src/foamers/foamers";
 import type { VoxelVolume } from "../../src/voxel/chunk";
 
-// LVL-04a: Level 1-4 beats 1 to 5 (the forecourt, explore 1 with the first
-// Darter, the A4 hall, the mid-hall alcove and the A8 bridge over the ring,
-// where a temporary exit pad stands), as the arena page loads it with
-// `?level=1-4`. Beat 6 onwards (the Pit, breather 2, the Ring, the Yard and
-// the lift) is a later card. On top of the load checks the card asks for:
-// the file validates with its arenas in order, there is floor under the
-// whole walk from the start to the exit, the hall and both bridge yards are
-// walkable on the nav grid built the way the arena page builds it, the
-// bridge joins the two yards, a straight line of at least 14 m runs along
-// the hall between the columns, the drop from the bridge lands on the ring
-// floor, and the exit pad does nothing until the last arena ends.
+// LVL-04a: Level 1-4 beat by beat, as the arena page loads it with
+// `?level=1-4`: the forecourt, explore 1 with the first Darter, the A4 hall,
+// the mid-hall alcove, the A8 bridge over the ring, then (LVL-04b) the Pit,
+// breather 2, the mini-boss Ring, the A6 Yard and the lift. On top of the
+// load checks the card asks for: the file validates with its arenas in
+// order, there is floor under the whole walk from the start to the exit,
+// the hall and both bridge yards are walkable on the nav grid built the way
+// the arena page builds it, the bridge joins the two yards, a straight line
+// of at least 14 m runs along the hall between the columns, the drop from
+// the bridge lands on the ring floor, and the exit does nothing until the
+// last arena ends.
 
 const level = levelJson as unknown as Level;
 const FAKE = {
@@ -71,13 +72,64 @@ function walk(...points: [number, number][]) {
   return out;
 }
 
+/** The KIT's Normal cap: Foamers alive at once (KIT section 6). */
+const ALIVE_CAP = 12;
+
+/** Run one arena the way the page does: the spawn call refuses past the cap,
+ *  and a slow player kills one Foamer every 15 s. Returns the most that ever
+ *  stood at once and how many each wave got onto the board. */
+function runArenaCap(arena: Arena) {
+  let alive = 0;
+  let peak = 0;
+  let issued = 0;
+  const perWave: number[] = [];
+  const runner = new ArenaRunner(arena, {
+    setDoor() {},
+    spawn() {
+      if (alive >= ALIVE_CAP) return false; // the page's own cap
+      alive++;
+      issued++;
+      peak = Math.max(peak, alive);
+      return true;
+    },
+    onLocked() {}, onWaveStart() {}, onCleared() {},
+  });
+  const DT = 1 / 60;
+  const at: [number, number, number] = [
+    arena.trigger.pos[0], arena.trigger.pos[1] - 0.5, arena.trigger.pos[2],
+  ];
+  let waveIndex = -1;
+  let killTimer = 15;
+  let time = 0;
+  while (runner.state.phase !== "cleared" && time < 900) {
+    if (runner.state.waveIndex !== waveIndex) {
+      waveIndex = runner.state.waveIndex;
+      issued = 0;
+      perWave[waveIndex] = 0;
+    }
+    runner.update(DT, { playerPos: at, aliveCount: alive });
+    time += DT;
+    perWave[waveIndex] = Math.max(perWave[waveIndex] ?? 0, issued);
+    if (alive > 0) {
+      killTimer -= DT;
+      if (killTimer <= 0) {
+        alive--;
+        killTimer = 15;
+      }
+    }
+  }
+  const cleared = runner.state.phase === "cleared";
+  return { peak, perWave, cleared };
+}
+
 describe("Level 1-4 loads (LVL-04a)", () => {
   it("1. validates with its arenas in order", () => {
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     const arenas = level.arenas!;
-    expect(arenas.map((a) => a.id)).toEqual(["explore-1", "hall", "bridge", "pit", "ring"]);
-    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A4", "A8", "A1", "A2"]);
+    expect(arenas.map((a) => a.id))
+      .toEqual(["explore-1", "hall", "bridge", "pit", "ring", "yard"]);
+    expect(arenas.map((a) => a.archetype)).toEqual(["A4", "A4", "A8", "A1", "A2", "A6"]);
     // Beat 2: one Darter, alone, in one wave: the room teaches one charge.
     expect(arenas[0]!.waves).toHaveLength(1);
     expect(arenas[0]!.waves[0]!.spawns).toEqual([{ foamer: "F05", count: 1 }]);
@@ -96,12 +148,17 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     expect(bridge.doors).toEqual([]);
     expect(bridge.escape).toBeDefined();
     // Beat 1: one ammo box; beat 3: A2 at the third column; beat 6: A3;
-    // LVL-04b stage 2: A4 in the Ring and A5 on its block.
-    expect(level.pickups!.map((p) => [p.id, p.count]))
-      .toEqual([["a1-ammo", 24], ["a2-ammo", 8], ["a3-ammo", 8], ["a4-ammo", 10], ["a5-ammo", 6]]);
-    // The temporary exit pad is past the Ring's north door now.
+    // LVL-04b stage 2: A4 in the Ring and A5 on its block; stage 3: A6 and
+    // A7 at the Yard's two long ends.
+    expect(level.pickups!.map((p) => [p.id, p.count])).toEqual([
+      ["a1-ammo", 24], ["a2-ammo", 8], ["a3-ammo", 8], ["a4-ammo", 10],
+      ["a5-ammo", 6], ["a6-ammo", 12], ["a7-ammo", 12],
+    ]);
+    // The exit is the lit lift past the Yard's north door, not the
+    // temporary pad that used to stand on the ring (PLAN.md section 14).
     expect(level.exit.pos[1]).toBeLessThan(-5);
     expect(Math.abs(level.exit.pos[0])).toBeLessThan(2);
+    expect(level.exit.pos[2]).toBeLessThan(-288);
   });
 
   it("2. the level choice plays 1-4 by name", () => {
@@ -143,8 +200,9 @@ describe("Level 1-4 loads (LVL-04a)", () => {
         expect(floorBelow(world, x, z, 0, 3), `no deck-only floor at ${x}, ${z}`).toBe(true);
       }
     }
-    // LVL-04b: and on north from the Pit to the exit pad, on the -9 floor:
-    // breather 2, the Ring's 30 m, and the pad's room past its north door.
+    // LVL-04b: and on north from the Pit to the lift, on the -9 floor:
+    // breather 2, the Ring's 30 m, the corridor, the Yard's 36 m and the
+    // short corridor to the lift room.
     for (const [x, z] of walk(
       [0, -202], // the pit's north ledge
       [0, -204], // breather 2
@@ -153,8 +211,14 @@ describe("Level 1-4 loads (LVL-04a)", () => {
       [-9, -229], // round its west side
       [-9, -238],
       [0, -242], // back to the north door
-      [0, -246], // the pad's room
-      [0, -248],
+      [0, -246], // the corridor to the Yard
+      [0, -253], // the Yard's south door
+      [0, -262], // down the yard's centre lane
+      [0, -284],
+      [0, -289], // its north door
+      [0, -295], // the corridor to the lift
+      [0, -299],
+      [0, -301], // the lift itself
     )) {
       expect(floorBelow(world, x, z, -4, 6), `floor at ${x}, ${z}`).toBe(true);
     }
@@ -314,7 +378,7 @@ describe("Level 1-4 loads (LVL-04a)", () => {
       expect(runner.state.arenasCleared).toBe(i + 1);
     }
     expect(runner.state.phase).toBe("waiting");
-    expect(runner.state.arenaId).toBe("ring");
+    expect(runner.state.arenaId).toBe("yard");
     const last = level.arenas![level.arenas!.length - 1]!;
     clear([last.trigger.pos[0], last.trigger.pos[1] - 0.5, last.trigger.pos[2]]);
     expect(runner.state.phase).toBe("complete");
@@ -323,9 +387,19 @@ describe("Level 1-4 loads (LVL-04a)", () => {
 
   it("10. no wave puts more than 12 Foamers alive at once", () => {
     for (const arena of level.arenas!) {
+      // What the file lists, and what actually stands: the Yard's second
+      // wave lists the concept's 13, so the cap is checked by running it
+      // with the page's spawn rule, the same as test 24.
+      const { peak, cleared } = runArenaCap(arena);
+      expect(cleared, `${arena.id} clears`).toBe(true);
+      expect(peak, `${arena.id} peak alive`).toBeLessThanOrEqual(ALIVE_CAP);
       for (const wave of arena.waves) {
-        const alive = wave.spawns.reduce((n, s) => n + s.count, 0);
-        expect(alive, `${arena.id} ${wave.id}`).toBeLessThanOrEqual(12);
+        const listed = wave.spawns.reduce((n, s) => n + s.count, 0);
+        if (listed <= ALIVE_CAP) continue;
+        // Modelled on the concept's 13 Foamer wave, and staggered so the cap
+        // holds: LVL-04b stage 3, the Yard.
+        expect(listed, `${arena.id} ${wave.id}`).toBe(13);
+        expect(wave.holdSeconds ?? 0, `${arena.id} ${wave.id} stagger`).toBeGreaterThan(0);
       }
     }
   });
@@ -547,18 +621,22 @@ describe("the mini-boss Ring (LVL-04b stage 2)", () => {
     expect(g.canStandAt(a5[0], a5[2], -5.5)).toBe(true);
   });
 
-  it("18. the exit pad is past the Ring, and the Ring is between it and the Pit", () => {
+  it("18. the exit is past the Ring, and the Ring is between it and the Pit", () => {
     const shell = new Map(level.shell.map((s) => [s.id, s]));
     const ringFloor = shell.get("ring2-floor")!;
-    // The pad's room is north of the Ring's north wall.
+    // The exit is north of the Ring's north wall, and its own room has a
+    // floor: LVL-04b stage 3 replaced the temporary pad's 6 x 6 m room with
+    // the Yard and the lift.
     expect(level.exit.pos[2]).toBeLessThan(shell.get("ring2-wall-n-w")!.pos[2] - 1);
-    expect(shell.get("exit5-floor")).toBeDefined();
-    // The Ring is north of the Pit and south of the pad.
+    expect(shell.get("exit5-floor")).toBeUndefined();
+    expect(shell.get("lift6-floor")).toBeDefined();
+    // The Ring is north of the Pit and south of the exit.
     expect(ringFloor.pos[2]).toBeLessThan(shell.get("pit-floor")!.pos[2]);
     expect(ringFloor.pos[2]).toBeGreaterThan(level.exit.pos[2]);
-    // The first arena the level is on is not the Ring: it is still last.
+    // The last arena is the Yard, not the Ring: the Yard is the gauntlet
+    // between the Ring's north door and the lift.
     const ids = level.arenas!.map((a) => a.id);
-    expect(ids[ids.length - 1]).toBe("ring");
+    expect(ids[ids.length - 1]).toBe("yard");
   });
 });
 
@@ -618,5 +696,165 @@ describe("promoted Foamers (LVL-04b stage 2)", () => {
     const after = await spawnDarter(false);
     expect(after.f!.maxHealth).toBe(30);
     expect(materialsOf(after.f!.parts.get("chest")!.volume).has(lime)).toBe(true);
+  });
+});
+
+// LVL-04b stage 3: the gauntlet. The A6 Yard is 44 x 36 m past the Ring's
+// north door, with six destructible islands and two waves, then the lit lift
+// that ends the level. The Yard is the last arena, so the exit out of it is
+// the level's exit, not a temporary pad.
+describe("the Yard and the lift (LVL-04b stage 3)", () => {
+  async function yardGrid() {
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(level, rapier, world, FAKE);
+    await settle(built);
+    world.step();
+    const g = makeLevelAI(rapier, world, built.navBounds, "normal", built.voxels, built.voxelMesh.group.position).grid;
+    return { world, g, path: makePath() };
+  }
+
+  it("20. the Yard is 44 x 36 m with a 9 m ceiling and six islands between 4 and 6.5 m apart", () => {
+    const shell = new Map(level.shell.map((s) => [s.id, s]));
+    const yard = level.arenas!.find((a) => a.id === "yard")!;
+    expect(yard.archetype).toBe("A6");
+    // The KIT's A6 footprint and ceiling: floor top -9, ceiling bottom 0.
+    const floor = shell.get("yard6-floor")!;
+    expect(floor.size[0]).toBeCloseTo(44, 5);
+    expect(floor.size[2]).toBeCloseTo(36, 5);
+    expect(floor.pos[1] + floor.size[1] / 2).toBeCloseTo(-9, 5);
+    const ceiling = shell.get("yard6-ceiling")!;
+    expect(ceiling.pos[1] - ceiling.size[1] / 2).toBeCloseTo(0, 5);
+    // Six islands, each one 3.2 m voxel volume (the per volume cap) 2.5 m
+    // tall, standing on the floor: a sprint jump clears a 6 m gap.
+    const islands = level.pieces!.filter((p) => p.id.startsWith("yard6-island"));
+    expect(islands).toHaveLength(6);
+    for (const island of islands) {
+      const v = island.volumes[0]!;
+      expect(island.kind).toBe("island");
+      expect(island.anchor).toBe("floor");
+      expect(v.size).toEqual([3.2, 2.5, 3.2]);
+      expect(v.pos[1] + v.size[1] / 2).toBeCloseTo(-6.5, 5);
+      // Inside the room, clear of its walls.
+      expect(Math.abs(v.pos[0])).toBeLessThan(19);
+      expect(v.pos[2]).toBeGreaterThan(-286);
+      expect(v.pos[2]).toBeLessThan(-254);
+    }
+    // The two chains of three: the gap from one island's edge to the next is
+    // 5 to 6.5 m, as the KIT gives it.
+    const at = (i: number) => islands[i]!.volumes[0]!;
+    for (const [a, b] of [[0, 1], [1, 2], [3, 4], [4, 5]] as const) {
+      const gap = Math.hypot(at(a).pos[0] - at(b).pos[0], at(a).pos[2] - at(b).pos[2]) - 3.2;
+      expect(gap, `island ${a} to ${b}`).toBeGreaterThanOrEqual(5);
+      expect(gap, `island ${a} to ${b}`).toBeLessThanOrEqual(6.5);
+    }
+    // The centre lane, where a Darter needs its charge line, stays clear.
+    for (const island of islands) {
+      expect(Math.abs(island.volumes[0]!.pos[0]), island.id).toBeGreaterThan(5);
+    }
+    // A6 and A7, 12 shells each, at the two long ends.
+    const pickups = new Map(level.pickups!.map((p) => [p.id, p]));
+    for (const [id, x] of [["a6-ammo", -1], ["a7-ammo", 1]] as const) {
+      const box = pickups.get(id)!;
+      expect(box.count).toBe(12);
+      expect(Math.sign(box.pos[0])).toBe(x);
+      expect(box.pos[2]).toBeGreaterThan(-288);
+      expect(box.pos[2]).toBeLessThan(-252);
+      expect(box.pos[1]).toBeCloseTo(-8.6, 1);
+    }
+  });
+
+  it("21. the Yard walks, and it joins the Ring's north door and the lift", async () => {
+    const { g, path } = await yardGrid();
+    // In from the Ring's north door, down the corridor, through the Yard's
+    // south door, along its centre lane, out of its north door, to the lift.
+    for (const [x, z] of [
+      [0, -246], [0, -250], // the corridor
+      [0, -254], [0, -262], [0, -270], [0, -280], [0, -286], // the yard
+      [0, -291], [0, -295], [0, -299], [0, -301], // the lift room
+      [-6, -258], [6, -268], [-6, -282], [6, -282], // off the centre lane
+    ] as const) {
+      expect(g.canStandAt(x, z, -9), `stand at ${x}, ${z}`).toBe(true);
+    }
+    expect(g.findPath({ x: 0, z: -246 }, { x: 0, z: -300 }, path, -9, -9), "Ring to the lift")
+      .toBeGreaterThan(1);
+    // The islands are high ground: their tops are walkable, the floor round
+    // them is, and the floor under an island is not (the island is solid).
+    for (const island of level.pieces!.filter((p) => p.id.startsWith("yard6-island"))) {
+      const v = island.volumes[0]!;
+      expect(g.canStandAt(v.pos[0], v.pos[2], -6.5), `on ${island.id}`).toBe(true);
+      expect(g.canStandAt(v.pos[0], v.pos[2], -9), `inside ${island.id}`).toBe(false);
+      expect(g.canStandAt(v.pos[0] + 3.6, v.pos[2], -9), `beside ${island.id}`).toBe(true);
+    }
+    // The islands are in the nav bake as high ground, so a jump from one
+    // chain's top to the next is a path the grid can find.
+    const chain = level.pieces!.filter((p) => p.id.startsWith("yard6-island")).map((p) => p.volumes[0]!);
+    expect(g.findPath(
+      { x: chain[0]!.pos[0], z: chain[0]!.pos[2] },
+      { x: chain[1]!.pos[0], z: chain[1]!.pos[2] },
+      path, -6.5, -6.5,
+    ), "island to island").toBeGreaterThan(1);
+  });
+
+  it("22. the Yard's two waves are the concept's, staggered under the 12 alive cap", () => {
+    const yard = level.arenas!.find((a) => a.id === "yard")!;
+    expect(yard.waves).toHaveLength(2);
+    const [w1, w2] = yard.waves;
+    // Beat 9: 2 Darter from the short ends, 8 Swarmer from the floor.
+    expect(w1!.spawns).toEqual([{ foamer: "F05", count: 2 }, { foamer: "F03", count: 8 }]);
+    expect(w1!.rifts.slice(0, 2)).toEqual(["yard6-rift-s", "yard6-rift-n"]);
+    expect(w1!.rifts).toHaveLength(10);
+    // Then 3 Darter, 6 Roamer and 4 Swarmer: 13, one past the cap. The
+    // stagger is what keeps it legal, so both waves hold their spawns and
+    // the second wave lists one rift slot per spawn.
+    expect(w2!.spawns).toEqual([
+      { foamer: "F05", count: 3 }, { foamer: "F02", count: 6 }, { foamer: "F03", count: 4 },
+    ]);
+    expect(w2!.rifts).toHaveLength(13);
+    for (const wave of yard.waves) {
+      expect(wave.holdSeconds, `${wave.id} hold`).toBeGreaterThan(0);
+      expect(wave.rifts.every((r) => yard.rifts.some((rift) => rift.id === r))).toBe(true);
+    }
+    // The doors: in is open, out is the locked one the clear opens.
+    expect(yard.doors.map((d) => [d.id, d.state]))
+      .toEqual([["yard6-in", "open"], ["yard6-out", "locked"]]);
+    expect(yard.unlockOnClear).toEqual(["yard6-in", "yard6-out"]);
+    expect(yard.checkpoint).toBe(true);
+  });
+
+  it("23. the lift is the exit: a 3 x 3 m lit pad 30 m from the yard centre", () => {
+    const shell = new Map(level.shell.map((s) => [s.id, s]));
+    const pad = shell.get("lift6-pad")!;
+    expect(pad.size[0]).toBeCloseTo(3, 5);
+    expect(pad.size[2]).toBeCloseTo(3, 5);
+    // The exit box sits on the pad, and the pad is under the yard's north
+    // door line so it is seen through the doorway.
+    expect(level.exit.pos[0]).toBeCloseTo(pad.pos[0], 5);
+    expect(level.exit.pos[2]).toBeCloseTo(pad.pos[2], 5);
+    expect(Math.abs(level.exit.pos[0])).toBeLessThan(1.5);
+    expect(Math.abs(level.exit.pos[2] - pad.pos[2])).toBeLessThan(1.5);
+    const yard = level.arenas!.find((a) => a.id === "yard")!;
+    const away = Math.hypot(level.exit.pos[0] - yard.trigger.pos[0], level.exit.pos[2] - -270);
+    expect(away, "the lift from the yard centre").toBeGreaterThan(28);
+    expect(away, "the lift from the yard centre").toBeLessThan(32);
+    // Brightest thing in the level: a lime-light pad and panel on white
+    // walls, where the rest of the level is grey and foam colours.
+    expect(pad.material).toBe("foam-lime-light");
+    const glow = shell.get("lift6-glow")!;
+    expect(glow.material).toBe("foam-lime-light");
+    expect(shell.get("lift6-wall-n")!.material).toBe("foam-white");
+    // And the old temporary pad's room is gone, not left behind.
+    expect(shell.get("exit5-floor")).toBeUndefined();
+  });
+
+  it("24. the Yard peaks at 12 alive, and all 13 of wave 2 still arrive", () => {
+    const yard = level.arenas!.find((a) => a.id === "yard")!;
+    const { peak, perWave, cleared } = runArenaCap(yard);
+    expect(cleared).toBe(true);
+    // Wave 2 lists 13, one past the cap: it fills the room, then the 13th
+    // waits for a slot, so no more than 12 stand and all 13 do arrive.
+    expect(yard.waves[1]!.spawns.reduce((n, s) => n + s.count, 0)).toBe(13);
+    expect(peak).toBe(ALIVE_CAP);
+    expect(perWave[0]).toBe(10);
+    expect(perWave[1]).toBe(13);
   });
 });
