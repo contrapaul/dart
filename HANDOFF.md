@@ -6,6 +6,22 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+LVL-04a done 2026-11-07, not reviewed, not merged (card
+`tasks/LVL-04a.md`, DeepSeek V4.1 Flash via Pi, branch `lvl-04a`):
+Level 1-4 beats 1 to 5 in `data/levels/1-4.json`, loaded by
+`arena.html?level=1-4` through a new entry in `src/arena/levels.ts`.
+The forecourt (four foam dummies and the A1 ammo box), the 14 m corridor
+and 16 x 12 m explore room (one Darter, one wave, locked in and out), the
+A4 hall (18 x 44 m, six staggered columns, four rifts, 4 Swarmers plus a
+Darter then 4 Roamers plus 2 Darters, A2 ammo at column 3), the mid-hall
+alcove with its U1 mark, and the A8 bridge (two 16 x 16 m yards, a
+4 x 24 m deck 9 m over an 8 m ring, `noLock`, two Darters, `escape` into
+the ring) with a temporary exit pad on the ring. Beats 6 to 10 (the Pit,
+breather 2, the mini-boss Ring, the Yard, the lift) are a later card.
+`npx tsc --noEmit`, full `npx vitest run` (585 pass, 2 skipped) and
+`npm run build` clean. Not checked by eye: every space, the charges down
+the hall, the shield charge on the bridge, the drop.
+
 LVL-03b merged locally 2026-11-07 (card `tasks/LVL-03b.md`, DeepSeek V4.1
 Flash via Pi, branch `lvl-03b`), not pushed:
 Level 1-3 beats 6 to 9 in `data/levels/1-3.json`: the hall chase (A4,
@@ -496,6 +512,46 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-04a, Level 1-4 beats 1 to 5 (DeepSeek V4.1 Flash via Pi)
+
+- Asked: build beats 1 to 5 of Level 1-4 from its approved LVL-00 concept
+  in a new `data/levels/1-4.json`, list it for `arena.html?level=1-4`,
+  and cover the card's done-when with tests. Beats 6 to 10 are out of
+  scope; GAME-10b's `1-4-ring` test file is untouched.
+- Built, all in the level file: forecourt with four foam dummies at 4, 6,
+  10 and 15 m and the A1 box (24); the 14 m corridor into a 16 x 12 m
+  room with two pillars and one Darter as a one-wave arena; the A4 hall
+  (18 x 44 m, 7 m ceiling, six columns, four rifts, two waves, A2 ammo at
+  column 3); the alcove off the corridor past the hall with the U1 mark;
+  the A8 bridge: two yards, a 4 x 24 m deck 9 m over an 8 m ring, no
+  doors, `noLock`, two Darters, an `escape` box over the ring, a blast
+  wall over a 3.2 m hole in the near yard's floor, and the S2 mark; a
+  temporary exit pad on the ring below the deck. `_notes` in the file say
+  what the card asked to be noted (the dummies, the missing fall damage,
+  the temporary exit, the [Paul] marks, nothing scaled).
+- Decided and why, in PLAN.md section 14: the explore pillars are 2.8 m
+  not 1.6 m (1.6 m hides nothing at eye height); the hall columns are
+  3.2 m zones at the KIT 5 cap, three foam and three shell as LVL-03b
+  did; the centre lane is held clear for the F05's 14 m `rangeMetres` and
+  18 m `metres`; the bridge yard floors are split into four pieces around
+  the hole so the hole is a real hole, not a decal; B03 comes from the
+  loadout order rather than a stand, the card's own fallback.
+- Tests: `tests/level/level-1-4.test.ts` (10) check validation with the
+  arenas in order, floor under the whole walk sampled every metre from
+  the start to the far yard, the hall and both yards walkable on a nav
+  grid baked the way the arena page bakes it with the path across the
+  bridge, the lane clear in both directions at every column's z, the drop
+  landing at -9 (and the yard's hole), every rift `canStandAt`, the
+  bridge ending on the escape with Darters up and no door shut, and the
+  exit pad doing nothing until the last arena ends. One line in
+  `tests/level/ring-load.test.ts` gained `1-4` in its expected key list;
+  nothing was loosened elsewhere.
+- Not checked by eye (no browser here): the four spaces' look and
+  reading, the dummies' placement against the walls, whether the Darter
+  actually charges down the hall lane between the waves, the shield
+  charge on the bridge, and the 9 m drop. The F05 windup against a real
+  player is untested.
 
 ### 2026-11-07: LVL-03b review (Claude)
 
