@@ -693,6 +693,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: GAME-09c review, merged (Claude Opus 5.5): B02 Musketeer
+
+- Merged with GAME-09d (B06): B02 joins the order after B06, so blasters
+  are B01, B04, B03, B06, B02 on keys 1 to 5 (index-based tests keep
+  their slots; level order can be set later). B06's fire-clock cap would
+  have stopped B02's burst after its first burst (the cooldown runs on
+  the same clock, longer than B02's interval); the cap now covers the
+  longer of the two. New test: a second burst fails with the old cap and
+  passes with the new.
+- B02 now uses its own approved model (`public/models/blasters/B02.glb`),
+  viewmodel scale 0.85; the spec test that pinned the placeholder moved
+  with it. A duplicate mod field and comment from the two branches went.
+- **Played** (`arena.html?watch&level=env-01`): B02 loads with its
+  `body`, `slide`, `trigger`, `mag` and `muzzle_1` nodes; one dart per
+  press, six then an automatic reload back to six; the HUD reads
+  "Musketeer AMMO 6 / ∞".
+- Not checked: the slide's kick (not animated yet: the viewmodel moves
+  only the magazine for semi and burst), the look in hand (pane hidden),
+  the three sounds.
+
 ### 2026-11-07: GAME-09c: B02 Musketeer, both stages
 
 Built on `game-09c`, not reviewed, not merged, not pushed (Qwen 3.8-27B
