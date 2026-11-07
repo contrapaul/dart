@@ -7,6 +7,7 @@ import { VolumeMesh } from "../voxel/volume-mesh";
 import type { Mesher } from "../voxel/pieces";
 import { material, materialId } from "../voxel/materials";
 import { Crates, type CrateBox } from "../voxel/crates";
+import { buildButton, type ButtonHandle } from "./buttons";
 import type { Door, DoorState, Level, ShellBox } from "./format";
 
 // Turns a validated level into meshes, colliders and voxels. Shell boxes are
@@ -53,6 +54,9 @@ export interface BuiltLevel {
   readonly doors: Map<string, DoorHandle>;
   /** ENV-01: the level's crates, counted once the volume is filled. */
   readonly crates: Crates;
+  /** ENV-02: the level's buttons, in file order. The page wires their
+   *  action; a level with none gives an empty list. */
+  readonly buttons: ButtonHandle[];
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -204,9 +208,15 @@ export function buildLevel(
     doors.set(door.id, handle);
   }
 
+  // ENV-02: buttons. Their caps are fixed colliders here, so the darts and
+  // the melee meet them like any shell box.
+  const buttons = (level.buttons ?? []).map(
+    (b) => buildButton(b, group, rapier, world),
+  );
+
   if (scene) scene.add(group);
   return {
-    group, voxels, voxelMesh, doors,
+    group, voxels, voxelMesh, doors, buttons,
     crates: new Crates(voxels, crateBoxes),
     navBounds: navBoundsOf(level),
   };

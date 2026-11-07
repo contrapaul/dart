@@ -6,6 +6,7 @@ import { FALL_LIMIT } from "../game/shared";
 import type { BuildInput, BuiltGame, Game, GameHooks } from "../game/game";
 import { RiftVisuals } from "./rifts";
 import { chosenLevel } from "./levels";
+import { ButtonSystem, type PressEvent } from "../level/buttons";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -43,7 +44,7 @@ export interface ArenaExtras {
 }
 
 export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
-  const { audio, foamers, hud, health, player, loadout, built, scene, pickups } = g;
+  const { audio, foamers, hud, health, player, loadout, built, scene, pickups, camera, melee } = g;
   // g.ui, not a destructured copy: the UI controller is built after this
   // hook returns (src/game/game.ts).
   const { level } = built;
@@ -77,6 +78,8 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   const _riftFeet = new THREE.Vector3();
   const _riftFacing = new THREE.Vector3();
   const _padPos = new THREE.Vector3();
+  const _aimDir = new THREE.Vector3();
+  let swingsSeen = 0;
 
   /** The player's feet as a vector: the controller exposes the height as
    *  a number, and the eye helper is the only way to read x and z. */
@@ -150,6 +153,23 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
 
   const runner = new LevelRunner(arenas, events);
 
+  // ENV-02: the level's buttons, wired to the door verb above. The press
+  // runs the action through `events.setDoor`, so a button opens a door the
+  // same way the lock-in does, sound and all.
+  const buttons = new ButtonSystem(level.buttons, (open) => events.setDoor(open, "open"));
+  function playPress(e: PressEvent | null): void {
+    if (!e) return;
+    audio.play(e.opened ? "ENV-button-press" : "ENV-button-dead", { position: e.pos });
+  }
+  // The dart's own hit chain ends with this: a cap that stopped the dart is
+  // a press. `impacts` and the Foamers wrap `onHit` in front of it, so this
+  // runs after them and does not disturb them.
+  const dartOnHit = g.darts.onHit;
+  g.darts.onHit = (hit) => {
+    dartOnHit(hit);
+    playPress(buttons.pressByCollider(hit.collider, hit.point));
+  };
+
   function doorMeshPos(id: string): THREE.Vector3 {
     const door = arenas.flatMap((a) => a.doors).find((d) => d.id === id);
     return new THREE.Vector3(...(door ? door.pos : [0, 0, 0]));
@@ -197,6 +217,9 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     } else {
       runner.resetCurrent();
     }
+    // ENV-02: the doors are back to the file's states, so the buttons are
+    // back to unpressed, lit again and able to open them.
+    buttons.reset();
     setRifts("dim");
   }
 
@@ -238,6 +261,16 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       for (const f of foamers.list) if (f.state !== "down") aliveHealth += Math.max(0, f.health);
       arenaCtx.aliveHealth = aliveHealth;
       runner.update(dt, arenaCtx);
+      // ENV-02: a swing presses a button within its own reach and arc, and
+      // a step presses a floor one. The melee counts its presses, so a held
+      // key does not press a button every step: only a new swing asks.
+      if (melee.presses !== swingsSeen) {
+        swingsSeen = melee.presses;
+        const eye = player.eye(1, _playerPos);
+        const fwd = camera.getWorldDirection(_aimDir);
+        playPress(buttons.pressNear(eye, fwd, melee.reach, melee.arcDeg));
+      }
+      playPress(buttons.step(at));
     },
     afterWorld(dt: number) {
       if (player.feet < FALL_LIMIT) {
@@ -287,6 +320,8 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       complete: complete.hidden === false,
       // LVL-02a: the ammo boxes are still on the floor.
       ammoBoxes: pickups.count("ammo"),
+      // ENV-02: which buttons have been pressed.
+      buttons: Object.fromEntries(buttons.ids.map((id) => [id, buttons.isPressed(id)])),
     }),
   };
 

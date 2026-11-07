@@ -6,8 +6,10 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
-ENV-01 merged locally 2026-11-07, not pushed: foam cladding (E01) and toy
-crate stacks (E02) whose crates break whole when worn, in the test level
+ENV-02 stage 1 done 2026-11-07, not merged and not pushed: the toy button
+(E08), pressed by a dart, a swing or a step and wired to a door through
+`src/arena/extras.ts`. ENV-01 merged locally 2026-11-07, not pushed: foam
+cladding (E01) and toy crate stacks (E02) whose crates break whole when worn, in the test level
 `env-01`. ENV-00 wrote `design/levels/ENVIRONMENT.md` 2026-11-07 (design
 only): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
 GAME-10j merged locally 2026-11-07, not pushed (Qwen 3.8-27B via Pi,
@@ -652,6 +654,59 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: ENV-02 stage 1 (DeepSeek V4.1 Flash via Pi): the toy button, wired into play
+
+Task: `tasks/ENV-02.md`, E08, stage 1 only (the button and its wiring).
+Branch `env-02`, not merged and not pushed.
+
+- **Data.** `data/buttons.json`: a 0.5 x 0.12 x 0.5 m `plastic` plate, a
+  0.25 m diameter, 0.08 m tall `foam-ink` cap that sinks 0.06 m and lights
+  `foam-lime-light` when pressed, and `stepTolerance` 0.06 m. Orange and
+  yellow are avoided, as ENV-01's review resolved (orange is a weak point,
+  yellow is the player's darts). Two new sounds in `data/sounds.json`,
+  `ENV-button-press` (a click and a rising chirp) and `ENV-button-dead` (a
+  click), listed in `design/SOUNDS.md`.
+- **Level data.** `Level.buttons?: Button[]` in `src/level/format.ts`:
+  `id`, `pos`, a unit `facing`, `action.open`. Sizes are global, so a
+  button entry carries no `size`, unlike a door. `src/level/build.ts` gives
+  `BuiltLevel.buttons`, and `src/level/validate.ts` checks the ids, that
+  `facing` is a single unit axis, that `action.open` names a door of the
+  level, and that the raised cap stays under the ceiling.
+- **The press.** `src/level/buttons.ts` builds the plate, the cap and one
+  cylinder collider round the cap. `ButtonSystem` turns a dart collider
+  (`pressByCollider`), a melee swing (`pressNear`, tested at the melee's own
+  `reach` and `arcDeg`) or a step (`step`, floor buttons only) into one
+  press: the action runs on the first press, every later press returns
+  `opened: false` and only clicks.
+- **Wiring, the ENV-01 lesson.** The button reaches the arena page through
+  `src/arena/extras.ts`, not only the tests: the dart's `onHit` chain
+  presses a cap, the melee's new `presses` counter asks `pressNear` when it
+  changes (so a held key presses once and a bash presses too), `step` runs
+  each frame, and the door opens through `events.setDoor`, the same verb the
+  lock-in uses, so the door's sound and mesh move come with it. A retry
+  calls `buttons.reset()` after the runner re-locks the doors, or a lit
+  button could never open them again. `watchState` reports `buttons`.
+- **Shared game code touched:** `src/game/melee.ts` gained `presses` (a
+  count of swings and bashes, zeroed by `reset()`) and the `reach` and
+  `arcDeg` getters. No other game module changed.
+- **Tests.** `tests/level/buttons.test.ts`, 10 tests, every one built
+  through `buildLevel` so the collider a dart meets is the one that exists
+  in play: a level with buttons validates and builds one handle each; a
+  fired dart presses a cap and opens the door once; a second press clicks
+  and changes nothing; a swing in reach presses, out of arc and out of
+  reach do not; the cap squashes into the plate and lights; a step on a
+  floor button presses and a step beside it does not; a wall button is
+  never pressed by walking; a level with no buttons loads exactly as
+  before; a retry's reset lets the re-locked door be opened again; an
+  unknown door name is a validation error.
+- `npx tsc --noEmit` clean, `npx vitest run` 98 files and 667 passed with 2
+  skipped, `npm run build` clean, the em dash check clean on every file
+  touched.
+- **Not checked by eye:** there is no browser in this run. Nobody has seen
+  the plate and cap in the world, the cap's squash and lit colour, the two
+  sounds, or a real dart, swing or step pressing one in `arena.html`. The
+  stage 2 room is not built, so there is no place in a level to do that yet.
 
 ### 2026-11-07: ENV-01 stage 3 review, merged (Claude Opus 5.5): crates break whole
 
