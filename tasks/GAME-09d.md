@@ -76,8 +76,8 @@ All numbers in data, proposals for Paul to tune.
   the centre, range 2.5 m), through the same non-dart damage path
   `parryDamage` uses, so it can down or pop, (3) push loose debris and
   pieces outward, (4) a foam burst of chunks inside the debris caps, and
-  a sound `FX-explode`. No damage to the player (a proposal; say so in
-  HANDOFF for Paul). A hard cap on explosions per second (start 6).
+  a sound `FX-explode`. No damage to the player (Paul, 2026-11-07: the
+  player's own explosions never hurt the player). A hard cap on explosions per second (start 6).
 - **Mod 2:** every fifth mega dart B06 fires is explosive: it explodes
   where it first hits (a wall, the floor or a Foamer). Count shots on
   the blaster, like B04's bounce counter would.
