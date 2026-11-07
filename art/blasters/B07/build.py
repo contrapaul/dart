@@ -22,24 +22,27 @@ SMALL_BEVEL = 0.001
 
 # Blender axes: +Y forward (the muzzle), +Z up, +X to the right. Origin at
 # the top of the grip, where the trigger hand holds it. Metres, true size.
-REC_BACK, REC_FRONT = -0.050, 0.190
-REC_BOTTOM, REC_TOP, REC_W = 0.045, 0.135, 0.065
-TUBE_Z, TUBE_R, TUBE_FRONT = 0.110, 0.040, 0.525
-BAND_YS, BAND_L = (0.330, 0.470), 0.012
-BUMPER_Y0, BUMPER_Y1, BUMPER_R, BUMPER_INNER = 0.522, 0.552, 0.045, 0.030
+REC_BACK, REC_FRONT = -0.105, 0.175
+REC_BOTTOM, REC_TOP, REC_W = 0.045, 0.125, 0.062
+# Round 3 (Paul): the photo's silhouette. No stock; a slimmer barrel; the
+# drum pushed down so it hangs below the body; a top strap running over the
+# drum to a sight at the front; the pump handle near the front.
+TUBE_Z, TUBE_R, TUBE_FRONT = 0.078, 0.026, 0.505
+BAND_YS, BAND_L = (0.340, 0.440), 0.010
+BUMPER_Y0, BUMPER_Y1, BUMPER_R, BUMPER_INNER = 0.500, 0.528, 0.031, 0.019
 MUZZLE_Y = BUMPER_Y1
 
-# A large revolving drum (Paul): its axis along the bore, the top chamber in
-# line with the launch tube, six warheads showing in its front face.
-DRUM_Y0, DRUM_Y1, DRUM_R = 0.180, 0.290, 0.066
-DRUM_Z = TUBE_Z - 0.040
-ROUNDS, ROUND_R, CHAMBER_R = 6, 0.017, 0.040
-# A vertical pump handle (Paul) under the launch tube, on a rod.
-ROD_Y0, ROD_Y1, ROD_R = 0.290, 0.480, 0.007
-ROD_Z = TUBE_Z - TUBE_R - 0.010
-HANDLE_Y, HANDLE_L, HANDLE_W, HANDLE_D = 0.400, 0.095, 0.030, 0.038
+DRUM_Y0, DRUM_Y1, DRUM_R = 0.175, 0.290, 0.066
+CHAMBER_R = 0.038
+DRUM_Z = TUBE_Z - CHAMBER_R
+ROUNDS, ROUND_R = 6, 0.016
+STRAP_Y0, STRAP_Y1, STRAP_Z0, STRAP_Z1 = 0.150, 0.470, 0.112, 0.128
+STRAP_W = 0.034
+ROD_Y0, ROD_Y1, ROD_R = 0.300, 0.470, 0.006
+ROD_Z = TUBE_Z - TUBE_R - 0.009
+HANDLE_Y, HANDLE_L, HANDLE_W, HANDLE_D = 0.415, 0.095, 0.030, 0.036
 
-LADDER_Y, LADDER_H = 0.150, 0.050
+LADDER_Y, LADDER_H = 0.440, 0.040
 
 GRIP_H, GRIP_D, GRIP_W = 0.10, 0.045, 0.032
 GRIP_ANGLE = math.radians(15)
@@ -49,10 +52,9 @@ GUARD_W = 0.024
 TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.025, 0.012, 0.008
 TRIGGER_ORIGIN = (0.0, 0.013, 0.047)
 
-STOCK_BACK, STOCK_W, PAD_L = -0.230, 0.040, 0.012
 
 RESOLUTION = (1280, 720)
-ORTHO_SCALE = 0.85
+ORTHO_SCALE = 0.78
 EYE_CAMERA_LOC = (-0.12, -0.40, 0.22)
 EYE_CAMERA_LENS = 40
 LIGHT_ENERGY = (26.0, 19.0, 22.0)
@@ -294,35 +296,49 @@ def build_model():
     yellow = material("Foam yellow", YELLOW)
     static = []
 
+    # Receiver: long, ending in a block just behind the grip (no stock),
+    # its back rounded off like the photo's.
     rec_points = [
-        (REC_BACK, REC_BOTTOM), (REC_FRONT - 0.020, REC_BOTTOM),
-        (REC_FRONT, REC_BOTTOM + 0.020), (REC_FRONT, REC_TOP),
-        (REC_BACK + 0.006, REC_TOP), (REC_BACK, REC_TOP - 0.006),
+        (REC_BACK + 0.012, REC_BOTTOM), (REC_FRONT, REC_BOTTOM),
+        (REC_FRONT, REC_TOP), (REC_BACK + 0.020, REC_TOP),
+        (REC_BACK, REC_TOP - 0.020), (REC_BACK, REC_BOTTOM + 0.012),
     ]
     static.append(profile("Receiver", rec_points, REC_W, navy))
+    # A rear handle loop on top at the back, as on the photo's top rail.
+    loop_points = [(REC_BACK + 0.010, REC_TOP - 0.004), (REC_BACK + 0.070, REC_TOP - 0.004),
+                   (REC_BACK + 0.070, REC_TOP + 0.022), (REC_BACK + 0.010, REC_TOP + 0.022)]
+    loop = profile("Rear loop", loop_points, 0.016, navy)
+    cut(loop, box("Loop opening", (0, REC_BACK + 0.040, REC_TOP + 0.010),
+                  (0.04, 0.044, 0.016), navy, 0))
+    bevel(loop, 0.0008, 2)
+    static.append(loop)
+    for x in (-0.008, 0.008):
+        static.append(box("Rear sight ear", (x, REC_BACK + 0.085, REC_TOP + 0.006),
+                          (0.006, 0.010, 0.012), red, SMALL_BEVEL))
 
-    # Wide launch tube with two red bands and a plain round bumper.
-    tube_len = TUBE_FRONT - DRUM_Y1 + 0.01
-    static.append(cylinder("Launch tube", (0, DRUM_Y1 - 0.01 + tube_len / 2, TUBE_Z),
-                           TUBE_R, tube_len, navy, 40, 0.002))
-    for y in BAND_YS:
-        static.append(tube("Red band", (0, y, TUBE_Z), TUBE_R + 0.003, TUBE_R - 0.004,
-                           BAND_L, red, 40))
-    static.append(tube("Round muzzle bumper", (0, (BUMPER_Y0 + BUMPER_Y1) / 2, TUBE_Z),
-                       BUMPER_R, BUMPER_INNER, BUMPER_Y1 - BUMPER_Y0, orange, 40))
-    static.append(cylinder("Bore shadow", (0, BUMPER_Y1 - 0.02, TUBE_Z), BUMPER_INNER,
-                           0.004, charcoal, 32, 0))
-
-    # Ladder sight on the receiver's front: two posts and three red rungs.
-    for x in (-0.018, 0.018):
-        static.append(box("Ladder post", (x, LADDER_Y, REC_TOP + LADDER_H / 2),
+    # Top strap over the drum to the front, a ladder sight near its end.
+    static.append(box("Top strap", (0, (STRAP_Y0 + STRAP_Y1) / 2, (STRAP_Z0 + STRAP_Z1) / 2),
+                      (STRAP_W, STRAP_Y1 - STRAP_Y0, STRAP_Z1 - STRAP_Z0), navy))
+    static.append(box("Strap front post", (0, STRAP_Y1 - 0.012, (TUBE_Z + STRAP_Z1) / 2),
+                      (STRAP_W - 0.006, 0.024, STRAP_Z1 - TUBE_Z), navy))
+    for x in (-0.014, 0.014):
+        static.append(box("Ladder post", (x, LADDER_Y, STRAP_Z1 + LADDER_H / 2),
                           (0.005, 0.008, LADDER_H), navy, SMALL_BEVEL))
     for i in range(3):
-        static.append(box("Ladder rung", (0, LADDER_Y, REC_TOP + 0.015 + i * 0.015),
-                          (0.036, 0.006, 0.004), red, SMALL_BEVEL))
-    for x in (-0.008, 0.008):
-        static.append(box("Rear sight ear", (x, REC_BACK + 0.012, REC_TOP + 0.006),
-                          (0.006, 0.010, 0.012), red, SMALL_BEVEL))
+        static.append(box("Ladder rung", (0, LADDER_Y, STRAP_Z1 + 0.012 + i * 0.012),
+                          (0.028, 0.006, 0.004), red, SMALL_BEVEL))
+
+    # A slimmer barrel from the drum's front, two red bands, the bumper.
+    tube_len = TUBE_FRONT - DRUM_Y1 + 0.01
+    static.append(cylinder("Barrel", (0, DRUM_Y1 - 0.01 + tube_len / 2, TUBE_Z),
+                           TUBE_R, tube_len, navy, 32, 0.002))
+    for y in BAND_YS:
+        static.append(tube("Red band", (0, y, TUBE_Z), TUBE_R + 0.003, TUBE_R - 0.004,
+                           BAND_L, red, 32))
+    static.append(tube("Round muzzle bumper", (0, (BUMPER_Y0 + BUMPER_Y1) / 2, TUBE_Z),
+                       BUMPER_R, BUMPER_INNER, BUMPER_Y1 - BUMPER_Y0, orange, 32))
+    static.append(cylinder("Bore shadow", (0, BUMPER_Y1 - 0.02, TUBE_Z), BUMPER_INNER,
+                           0.004, charcoal, 24, 0))
 
     static.append(rounded_grip(grip_charcoal))
     guard_outer = [(-0.006, 0.018), (0.008, 0.007), (0.038, 0.007),
@@ -335,18 +351,6 @@ def build_model():
     cut(guard, profile("Guard opening", guard_inner, GUARD_W + 0.02, charcoal, 0))
     bevel(guard, 0.0006, 2)
     static.append(guard)
-
-    # Slimmer than the receiver, its underside sloping up to the butt.
-    stock_points = [
-        (REC_BACK + 0.004, REC_TOP - 0.014), (STOCK_BACK + 0.016, REC_TOP - 0.020),
-        (STOCK_BACK, REC_TOP - 0.030), (STOCK_BACK, 0.045),
-        (STOCK_BACK + 0.016, 0.036), (-0.100, 0.046), (REC_BACK + 0.004, REC_BOTTOM + 0.006),
-    ]
-    stock = profile("Stock", stock_points, STOCK_W, navy)
-    bevel(stock, 0.0008, 2)
-    static.append(stock)
-    static.append(box("Rubber butt pad", (0, STOCK_BACK - PAD_L / 2, 0.078),
-                      (STOCK_W + 0.006, PAD_L, 0.072), charcoal, 0.005))
 
     trigger_points = []
     for i in range(9):
@@ -362,8 +366,8 @@ def build_model():
     # Local X points left, so positive glTF local X rotation pulls rearward.
     trigger.rotation_euler.y = math.pi
 
-    # The drum: a big cylinder along the bore, red rims, a charcoal hub,
-    # six yellow warheads in its front face. It turns about its own axis.
+    # The drum, pushed down: it hangs below the body, its top chamber in
+    # line with the barrel, six warheads in its front face.
     drum_len = DRUM_Y1 - DRUM_Y0
     drum_cy = (DRUM_Y0 + DRUM_Y1) / 2
     drum_parts = [cylinder("Drum", (0, drum_cy, DRUM_Z), DRUM_R, drum_len, navy, 48, 0.004)]
@@ -379,8 +383,7 @@ def build_model():
                                    0.014, yellow, 24, 0.003))
     drum = join_at(drum_parts, "drum", (0, drum_cy, DRUM_Z))
 
-    # The pump handle: a rod under the launch tube, a vertical grip on a
-    # sleeve that slides along it.
+    # The pump handle near the front, on a rod under the barrel.
     rod_len = ROD_Y1 - ROD_Y0
     static.append(cylinder("Pump rod", (0, (ROD_Y0 + ROD_Y1) / 2, ROD_Z), ROD_R, rod_len,
                            navy, 16))
@@ -393,8 +396,7 @@ def build_model():
                                              ROD_Z - 0.030 - i * 0.022),
                               (HANDLE_W - 0.006, 0.004, 0.006), red, SMALL_BEVEL))
     pump = join_at(pump_parts, "pump", (0, HANDLE_Y, ROD_Z))
-    # The contract wants the pump's origin at its rest centre (its bounds),
-    # and the handle hangs well below the rod.
+    # The contract wants the pump's origin at its rest centre (its bounds).
     activate(pump)
     bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
 
@@ -465,13 +467,13 @@ def render_views():
     world.node_tree.nodes["Background"].inputs["Color"].default_value = BACKGROUND
     world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.5
     scene.world = world
-    target = (0, 0.15, 0.07)
+    target = (0, 0.20, 0.05)
     area_light("Key softbox", (0.8, 0.5, 1.1), LIGHT_ENERGY[0], target)
     area_light("Fill softbox", (-0.9, 0.2, 0.5), LIGHT_ENERGY[1], target)
     area_light("Rear softbox", (0.1, -0.9, 0.8), LIGHT_ENERGY[2], target)
 
     views = [
-        ("side", add_camera("Side camera", (1.4, 0.15, 0.07), target)),
+        ("side", add_camera("Side camera", (1.4, 0.20, 0.05), target)),
         ("three-quarter", add_camera("Three quarter camera", (0.9, 1.0, 0.6), target)),
         ("top", add_camera("Top camera", (0, 0.15, 1.4))),
     ]
@@ -485,7 +487,7 @@ def render_views():
         bpy.ops.render.render(write_still=True)
         print("Rendered", scene.render.filepath)
 
-    cam = add_camera("Drum closeup", (0.35, 0.75, 0.10), (0, 0.29, 0.07), ortho=False)
+    cam = add_camera("Drum closeup", (0.35, 0.72, 0.06), (0, 0.29, 0.04), ortho=False)
     scene.camera = cam
     scene.render.resolution_x, scene.render.resolution_y = (640, 360)
     scene.render.filepath = str(RENDER_DIR / "drum-closeup.png")
