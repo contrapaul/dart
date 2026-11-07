@@ -656,6 +656,70 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: BUG-12, done, not yet reviewed (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `bug-12`): the wall and ceiling anchors, and the sleeping piece
+
+- **Task (card `tasks/BUG-12.md`).** Two fixes: `fillPieces` wrote a
+  bedrock row only for `anchor: "floor"`, so a wall or ceiling anchored
+  piece had nothing for `findIslands` to find and a small one dropped
+  whole on its first carve; and a falling piece let go at
+  `islands.maxHoldTime` while its source was still remeshing could
+  settle on the source's old chunk colliders, sleep there, and float
+  when they were replaced.
+- **Stage 1 (`src/level/build.ts`, commit "BUG-12 stage 1").** Ceiling
+  anchor: the piece's top row becomes bedrock, the mirror of the floor
+  row. Wall anchor: every piece voxel whose cell meets an axis-aligned
+  shell box on all three axes becomes bedrock, flush contact included
+  (PLAN 14). A ramp or a box with `rotY` is never a wall: its drawn
+  shape is not axis-aligned. `fillPieces` now takes the voxel bounds
+  through one `voxelBounds` helper shared by the fill, the crate boxes
+  and the anchor layers. Floor behaviour unchanged.
+- **Stage 2 (`src/voxel/pieces.ts`, commit "BUG-12 stage 2").** On
+  release, `FallingPieces` sets `wakeWhenSourceDone` when
+  `source.busy` is still true; the first update after the source goes
+  quiet calls `wakeUp()` on the body. The hold itself is untouched.
+- **Tests.** New `tests/level/anchors.test.ts` (7 tests): each anchor
+  kind beds only its layer, a carve that leaves a piece touching its
+  anchor breaks nothing off, a part cut off from the wall or the
+  ceiling still falls, the floor piece behaves as before. New test 7c
+  in `tests/voxel/pieces.test.ts`: held past `maxHoldTime` with the
+  source busy, the piece falls, sleeps, and wakes when `busy` clears
+  (red before the fix, green after). A probe over the three real
+  pieces (throwaway, removed) showed each now keeps 0 break-off
+  islands after a 0.35 m centre carve, with bedrock rows present.
+  `npx tsc --noEmit`, `npx vitest run` (681 pass, 2 skip) and
+  `npm run build` pass.
+- **What the three pieces meant, and whether they now do it.**
+  - `store-window` (1-2, cover, wall): LVL-02b card 4, the breather
+    store's "window onto the ring". Cover per KIT: it should wear down
+    and open sight lines, not drop whole. It now holds by its sill row
+    (flush with `window-sill`) and its lintel row (flush with
+    `window-lintel`) and wears as meant.
+  - `tower-plug` (1-2, plug, ceiling): LVL-02d wanted "a cardboard
+    voxel piece above floor 2 that one shot breaks, dropping a foam
+    slab to the floor below". That is the card's plug-you-shoot-open
+    case: after stage 1 the plug holds after a single carve, so one
+    shot no longer opens it. `tests/level/level-1-2.test.ts` test 9
+    asserted the old drop-whole behaviour and was updated to expect
+    the plug to hold. `data/levels/1-2.json` is left alone as the
+    card directs; whether the plug should drop on one shot is the
+    reviewer's call (a smaller piece, or a rule that a `plug` kind
+    releases whole at a damage threshold, would both serve LVL-02d).
+  - `pit-island` (1-4, island, wall): LVL-04b's "floor island on the
+    west ramp's top (3.2 x 0.4 x 3.2 m, a voxel piece over a hole)";
+    level-1-4 test 12 says a player who carves it falls to the pit
+    floor. Its `wall` anchor existed only so the floor rule's bedrock
+    bottom row would not plug the hole. Stage 1 beds only the columns
+    built into the `pit-west-ledge-w` and `-e` boxes (about the outer
+    0.3 m of each end, flush included); the middle stays destructible,
+    carving the middle drops it and opens the hole, as meant. Worth
+    noting for review: those end columns are now invisible
+    indestructible voxels, so the island's very ends never crumble.
+- **Not checked by eye.** No browser here (dev servers are out of scope
+  for this task). What has not been seen rendering: the three pieces
+  holding in game, a carved wall piece hanging from its bedrock, and
+  the woken piece visibly falling. All three are covered by headless
+  tests only.
+
 ### 2026-11-07: ENV-02 review, merged (Claude Opus 5.5): the toy button
 
 - **Bug, fixed in review: a swing pressed a button through a wall.**
