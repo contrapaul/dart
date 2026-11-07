@@ -25,15 +25,19 @@ SMALL_BEVEL = 0.001
 REC_BACK, REC_FRONT = -0.050, 0.190
 REC_BOTTOM, REC_TOP, REC_W = 0.045, 0.135, 0.065
 TUBE_Z, TUBE_R, TUBE_FRONT = 0.110, 0.040, 0.525
-BAND_YS, BAND_L = (0.280, 0.440), 0.012
+BAND_YS, BAND_L = (0.330, 0.470), 0.012
 BUMPER_Y0, BUMPER_Y1, BUMPER_R, BUMPER_INNER = 0.522, 0.552, 0.045, 0.030
 MUZZLE_Y = BUMPER_Y1
 
-MAG_Y0, MAG_Y1, MAG_R = 0.150, 0.450, 0.0225
-MAG_Z = TUBE_Z - TUBE_R - MAG_R + 0.004
-ROUNDS, ROUND_R, ROUND_L = 5, 0.0165, 0.040
-PUMP_Y0, PUMP_Y1, PUMP_R = 0.330, 0.450, 0.0325
-PUMP_RIBS = 4
+# A large revolving drum (Paul): its axis along the bore, the top chamber in
+# line with the launch tube, six warheads showing in its front face.
+DRUM_Y0, DRUM_Y1, DRUM_R = 0.180, 0.290, 0.066
+DRUM_Z = TUBE_Z - 0.040
+ROUNDS, ROUND_R, CHAMBER_R = 6, 0.017, 0.040
+# A vertical pump handle (Paul) under the launch tube, on a rod.
+ROD_Y0, ROD_Y1, ROD_R = 0.290, 0.480, 0.007
+ROD_Z = TUBE_Z - TUBE_R - 0.010
+HANDLE_Y, HANDLE_L, HANDLE_W, HANDLE_D = 0.400, 0.095, 0.030, 0.038
 
 LADDER_Y, LADDER_H = 0.150, 0.050
 
@@ -298,8 +302,8 @@ def build_model():
     static.append(profile("Receiver", rec_points, REC_W, navy))
 
     # Wide launch tube with two red bands and a plain round bumper.
-    tube_len = TUBE_FRONT - REC_FRONT + 0.03
-    static.append(cylinder("Launch tube", (0, REC_FRONT - 0.03 + tube_len / 2, TUBE_Z),
+    tube_len = TUBE_FRONT - DRUM_Y1 + 0.01
+    static.append(cylinder("Launch tube", (0, DRUM_Y1 - 0.01 + tube_len / 2, TUBE_Z),
                            TUBE_R, tube_len, navy, 40, 0.002))
     for y in BAND_YS:
         static.append(tube("Red band", (0, y, TUBE_Z), TUBE_R + 0.003, TUBE_R - 0.004,
@@ -358,38 +362,48 @@ def build_model():
     # Local X points left, so positive glTF local X rotation pulls rearward.
     trigger.rotation_euler.y = math.pi
 
-    # Tube magazine under the launch tube: a long slot on its right side
-    # shows five yellow warheads.
-    mag_len = MAG_Y1 - MAG_Y0
-    mag_cy = (MAG_Y0 + MAG_Y1) / 2
-    shell = cylinder("Tube magazine", (0, mag_cy, MAG_Z), MAG_R, mag_len, navy, 32, 0)
-    cut(shell, box("Slot cutter", (MAG_R, mag_cy - 0.04, MAG_Z),
-                   (0.024, mag_len - 0.13, 0.016), navy, 0))
-    bevel(shell, 0.0008, 2)
-    mag_parts = [shell]
+    # The drum: a big cylinder along the bore, red rims, a charcoal hub,
+    # six yellow warheads in its front face. It turns about its own axis.
+    drum_len = DRUM_Y1 - DRUM_Y0
+    drum_cy = (DRUM_Y0 + DRUM_Y1) / 2
+    drum_parts = [cylinder("Drum", (0, drum_cy, DRUM_Z), DRUM_R, drum_len, navy, 48, 0.004)]
+    for y in (DRUM_Y0 + 0.006, DRUM_Y1 - 0.006):
+        drum_parts.append(tube("Drum rim", (0, y, DRUM_Z), DRUM_R + 0.002, DRUM_R - 0.006,
+                               0.010, red, 48))
+    drum_parts.append(cylinder("Drum hub", (0, DRUM_Y1 + 0.003, DRUM_Z), 0.016, 0.010,
+                               charcoal, 24))
     for i in range(ROUNDS):
-        y = MAG_Y0 + 0.032 + i * (ROUND_L + 0.006)
-        mag_parts.append(cylinder("Round warhead", (0, y, MAG_Z), ROUND_R, ROUND_L,
-                                  yellow, 24, 0.004))
-    mag = join_at(mag_parts, "mag", (0, mag_cy, MAG_Z))
+        angle = math.pi / 2 + i * math.tau / ROUNDS
+        x, z = CHAMBER_R * math.cos(angle), DRUM_Z + CHAMBER_R * math.sin(angle)
+        drum_parts.append(cylinder("Round warhead", (x, DRUM_Y1 + 0.004, z), ROUND_R,
+                                   0.014, yellow, 24, 0.003))
+    drum = join_at(drum_parts, "drum", (0, drum_cy, DRUM_Z))
 
-    # Pump sleeve round the front of the tube magazine, red ribs.
-    pump_len = PUMP_Y1 - PUMP_Y0
-    pump_cy = (PUMP_Y0 + PUMP_Y1) / 2
-    pump_parts = [tube("Pump sleeve", (0, pump_cy, MAG_Z), PUMP_R, MAG_R + 0.001,
-                       pump_len, charcoal, 32)]
-    for i in range(PUMP_RIBS):
-        y = PUMP_Y0 + 0.018 + i * (pump_len - 0.036) / (PUMP_RIBS - 1)
-        pump_parts.append(tube("Pump rib", (0, y, MAG_Z), PUMP_R + 0.003, PUMP_R - 0.002,
-                               0.008, red, 32))
-    pump = join_at(pump_parts, "pump", (0, pump_cy, MAG_Z))
+    # The pump handle: a rod under the launch tube, a vertical grip on a
+    # sleeve that slides along it.
+    rod_len = ROD_Y1 - ROD_Y0
+    static.append(cylinder("Pump rod", (0, (ROD_Y0 + ROD_Y1) / 2, ROD_Z), ROD_R, rod_len,
+                           navy, 16))
+    sleeve = cylinder("Pump sleeve", (0, HANDLE_Y, ROD_Z), ROD_R + 0.008, 0.050, charcoal, 24)
+    grip = box("Pump handle", (0, HANDLE_Y, ROD_Z - 0.010 - HANDLE_L / 2),
+               (HANDLE_W, HANDLE_D, HANDLE_L), charcoal, 0.010)
+    pump_parts = [sleeve, grip]
+    for i in range(3):
+        pump_parts.append(box("Handle rib", (0, HANDLE_Y + HANDLE_D / 2 + 0.001,
+                                             ROD_Z - 0.030 - i * 0.022),
+                              (HANDLE_W - 0.006, 0.004, 0.006), red, SMALL_BEVEL))
+    pump = join_at(pump_parts, "pump", (0, HANDLE_Y, ROD_Z))
+    # The contract wants the pump's origin at its rest centre (its bounds),
+    # and the handle hangs well below the rod.
+    activate(pump)
+    bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
 
     for obj in static:
         if obj.name != "Smooth rounded grip":
             while obj.data.uv_layers:
                 obj.data.uv_layers.remove(obj.data.uv_layers[0])
     body = join_at(static, "body", (0, 0, 0))
-    for part in (pump, trigger, mag):
+    for part in (pump, trigger, drum):
         parent_keep_world(part, body)
 
     muzzle = bpy.data.objects.new("muzzle_1", None)
@@ -397,7 +411,7 @@ def build_model():
     muzzle.location = (0, MUZZLE_Y, TUBE_Z)
     muzzle.empty_display_size = 0.01
     parent_keep_world(muzzle, body)
-    return body, pump, trigger, mag
+    return body, pump, trigger, drum
 
 
 def point_at(obj, target):
@@ -471,11 +485,10 @@ def render_views():
         bpy.ops.render.render(write_still=True)
         print("Rendered", scene.render.filepath)
 
-    cam = add_camera("Slot closeup", (0.8, 0.30, 0.05), (0, 0.30, 0.05))
-    cam.data.ortho_scale = 0.36
+    cam = add_camera("Drum closeup", (0.35, 0.75, 0.10), (0, 0.29, 0.07), ortho=False)
     scene.camera = cam
     scene.render.resolution_x, scene.render.resolution_y = (640, 360)
-    scene.render.filepath = str(RENDER_DIR / "slot-closeup.png")
+    scene.render.filepath = str(RENDER_DIR / "drum-closeup.png")
     bpy.ops.render.render(write_still=True)
     print("Rendered", scene.render.filepath)
 
