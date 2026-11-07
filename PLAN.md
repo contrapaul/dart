@@ -671,6 +671,7 @@ All twelve answered 2026-10-29.
 
 | Date | Decision | Section |
 |---|---|---|
+| 2026-11-07 | The player's own explosions never hurt the player (Paul). The shared explosion (GAME-09d, B06's every-fifth dart, later B05 and B07) damages Foamers only. | 3, 4 |
 | 2026-11-07 | B05 Shrike and B06 The Standard models approved (Paul), B06 after his second round: the house-shaped magazine faces forward, opaque, no darts; the shroud mostly rectangular. | 5 |
 | 2026-11-07 | B05 and B06 briefs approved with Paul's changes. B05 Shrike: a deep red lead colour and a rectangular scope. B06 The Standard: teal like the reference, no bipod, and a chunky house-shaped magazine in place of the round drum. | 5 |
 | 2026-11-07 | B02 Musketeer model approved (Paul), from the renders in `art/blasters/B02/renders/`: yellow frame and slide, charcoal grip with the magazine end showing below it, a plain round orange bumper. | 5 |
