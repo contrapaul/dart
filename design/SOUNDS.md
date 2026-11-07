@@ -119,6 +119,7 @@ and the tool are unnamed so far).
 | B06-rev-up | Motor spin-up, deeper than B04 | Later | 3 | Blaster |
 | B06-rev-loop | Motor at speed (loop) | Later | 2 long | Blaster |
 | B06-rev-down | Spin-down | Later | 3 | Blaster |
+| B06-spin | Motor at speed, deeper than B04 (GAME-09d placeholder id) | Later | 2 long | Blaster |
 | B06-fire | One mega dart, heavy | Later | 8 | Blaster: mega darts |
 | B06-belt | Drum or belt feeding (loop under fire) | Later | 2 long | Foley: a ratchet |
 | B06-reload | Drum or box out and in | Later | 3 each | Blaster |
@@ -164,6 +165,7 @@ and the tool are unnamed so far).
 | EX-big | Big blast (B07): deep foam boom | Later | 4 | Library plus Foley layer |
 | EX-cluster | Cluster bomblets, four small pops | Later | 3 | Layered from EX-small |
 | EX-debris | Voxel chunks raining down after a blast | Later | 4 | Foley: crumbled foam dropped on a board |
+| FX-explode | The shared explosion (GAME-09d): a foam pop with a puff | Later | 4 | Code plus Foley: pop a balloon full of foam bits |
 
 ## 4. Foamers
 

@@ -558,6 +558,135 @@
         "gain": 0.8
       }
     },
+    "B06-fire": {
+      "_note": "GAME-09d (Paul): one mega dart, heavier than B04-fire: same shape, lower and longer.",
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.08,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.11,
+              "attack": 0.001,
+              "decay": 0.09,
+              "lowpass": 1400,
+              "highpass": 80,
+              "lowpassEnd": 350
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.07,
+              "f0": 150,
+              "f1": 80,
+              "wave": "triangle",
+              "attack": 0.001,
+              "decay": 0.06
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "B06-spin": {
+      "_note": "GAME-09d (Paul): the Standard's motor at speed, deeper than B04-rev-loop. Placeholder: game-sounds.ts loops only B04-rev-loop today; wiring B06's loop belongs to the review (see HANDOFF).",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0,
+      "maxVoices": 1,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 130,
+              "f1": 130,
+              "wave": "triangle",
+              "attack": 0,
+              "decay": 0
+            },
+            "gain": 0.4
+          },
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 260,
+              "f1": 260,
+              "wave": "triangle",
+              "attack": 0,
+              "decay": 0
+            },
+            "gain": 0.12
+          }
+        ],
+        "loop": true
+      }
+    },
+    "B06-reload": {
+      "_note": "GAME-09d (Paul): the drum box out and in, used by the B06 reload cues.",
+      "files": [],
+      "volume": 0.85,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": { "dur": 0.06, "freq": 700 },
+            "gain": 0.7
+          },
+          {
+            "noise": {
+              "dur": 0.12,
+              "attack": 0.002,
+              "decay": 0.1,
+              "lowpass": 900,
+              "highpass": 200
+            },
+            "gain": 0.4
+          }
+        ]
+      }
+    },
+    "FX-explode": {
+      "_note": "GAME-09d (Paul): the shared explosion: a foam pop with a puff (SOUNDS.md EX-small's shape, the card's id).",
+      "files": [],
+      "volume": 1,
+      "jitter": 0.05,
+      "maxVoices": 4,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.14,
+              "f0": 500,
+              "f1": 120,
+              "wave": "sine",
+              "attack": 0.001,
+              "decay": 0.12
+            },
+            "gain": 0.9
+          },
+          {
+            "noise": {
+              "dur": 0.3,
+              "attack": 0.002,
+              "decay": 0.26,
+              "lowpass": 2400,
+              "highpass": 120,
+              "lowpassEnd": 300
+            },
+            "gain": 0.8
+          },
+          {
+            "crackle": { "dur": 0.35, "rate": 40, "decay": 0.06 },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
     "DT-hit-foamer": {
       "files": [],
       "volume": 0.9,
@@ -3362,6 +3491,18 @@
         "state": "reloading",
         "at": 0.8,
         "sound": "B04-mag-in"
+      }
+    ],
+    "B06": [
+      {
+        "state": "reloading",
+        "at": 0.15,
+        "sound": "B06-reload"
+      },
+      {
+        "state": "reloading",
+        "at": 0.75,
+        "sound": "B06-reload"
       }
     ]
   },

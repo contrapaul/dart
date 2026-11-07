@@ -34,6 +34,21 @@
       "fireInterval": 0.22,
       "carveRadius": 0.08
     },
+    "mega": {
+      "_note": "GAME-09d: the mega dart (B06, and B07's launcher round later, D14). 1.6 times the standard radius, a little slower, more drop, more impulse, a bigger carve. Start values for Paul to tune on the range.",
+      "speed": 33,
+      "gravityScale": 0.5,
+      "drag": 0.4,
+      "length": 0.2,
+      "radius": 0.029,
+      "bodyColor": "#2ec4ff",
+      "tipColor": "#ffb01a",
+      "sticks": false,
+      "restitution": 0.3,
+      "impulse": 1.8,
+      "fireInterval": 0.17,
+      "carveRadius": 0.2
+    },
     "slug": {
       "speed": 34,
       "gravityScale": 0.5,

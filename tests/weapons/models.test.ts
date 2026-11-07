@@ -47,8 +47,13 @@ describe("GAME-09 models", () => {
         expect(names.has("pump"), `${id}: no pump`).toBe(true);
         expect(names.has("mag"), `${id}: no mag`).toBe(true);
       } else if (spec.mode === "auto") {
-        expect(names.has("flywheel_l"), `${id}: no flywheel_l`).toBe(true);
-        expect(names.has("flywheel_r"), `${id}: no flywheel_r`).toBe(true);
+        // GAME-09d: an auto blaster spins a pair of flywheels (B04) or
+        // cycles a bolt (B06, whose approved model has one). Either is a
+        // moving part; the viewmodel animates whichever the file has.
+        expect(
+          names.has("flywheel_l") && names.has("flywheel_r") || names.has("bolt"),
+          `${id}: no flywheels and no bolt`,
+        ).toBe(true);
         expect(names.has("mag"), `${id}: no mag`).toBe(true);
       } else {
         expect(names.has("breach"), `${id}: no breach`).toBe(true);

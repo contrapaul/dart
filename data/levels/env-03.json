@@ -22,7 +22,8 @@
   "stations": [
     { "id": "station-b01", "pos": [-4, 0, -3], "facing": 3.1415926, "blaster": "B01", "mod": "slug" },
     { "id": "station-b04", "pos": [4, 0, -3], "facing": 3.1415926, "blaster": "B04", "mod": "suppress" },
-    { "id": "station-b03", "pos": [0, 0, -5.5], "facing": 3.1415926, "blaster": "B03", "mod": "both" }
+    { "id": "station-b03", "pos": [0, 0, -5.5], "facing": 3.1415926, "blaster": "B03", "mod": "both" },
+    { "id": "station-b06", "pos": [-4, 0, -5.5], "facing": 3.1415926, "blaster": "B06", "mod": "rate" }
   ],
 
   "arenas": [],

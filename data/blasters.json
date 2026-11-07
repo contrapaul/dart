@@ -1,6 +1,6 @@
 {
   "_note": "The three slice blasters (GAME-09), keyed by id, in level order. Units: metres, seconds, degrees. Common fields, then one block for the fire mode: pump (primeTime), auto (fireInterval, spinUp, spinDown, recoil), break (fireInterval). A mod's fields override the blaster's; nested blocks (recoil) merge key by key. Starting values from the blaster cards, marked to tune on the range. Viewmodel placement numbers are first guesses; the reviewer sets them.",
-  "order": ["B01", "B04", "B03"],
+  "order": ["B01", "B04", "B03", "B06"],
   "switchTime": 0.35,
   "B01": {
     "name": "The Dartman", "model": "/models/blasters/B01.glb",
@@ -28,6 +28,22 @@
     "mods": {
       "suppress": { "recoil": { "spreadPerShot": 0.12, "climbDegPerShot": 0.08 } },
       "bounce": { "_note": "Every 5th shot bounces to another target: GAME-09b. Data only for now." }
+    }
+  },
+  "B06": {
+    "_note": "GAME-09d: The Standard (design/blasters/B06.md). Heavy full-auto on mega darts: slower than B04, each shot much harder. The approved model has no flywheels: its moving part is bolt, so wheelSpin drives nothing and is left at 0. Start values for Paul to tune on the range.",
+    "name": "The Standard", "model": "/models/blasters/B06.glb",
+    "mode": "auto", "dartType": "mega", "dartsPerShot": 1, "spreadDeg": 1.5,
+    "magSize": 60, "reserveMax": 120, "reserveStart": 60,
+    "fireInterval": 0.17, "spinUp": 0.25, "spinDown": 1.2,
+    "reloadTime": 2.4, "autoReload": true,
+    "recoil": { "spreadPerShot": 0.5, "spreadMax": 7, "climbDegPerShot": 0.35, "climbDegMax": 5, "recover": 0.5 },
+    "muzzles": ["muzzle_1"],
+    "viewmodel": { "position": [0.22, -0.3, -0.42], "rotationDeg": [2, 5, 0], "scale": 0.7 },
+    "motion": { "kick": 0.03, "tiltDeg": 3, "return": 12, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.2 },
+    "mods": {
+      "rate": { "_note": "GAME-09d mod 1 (Paul): increased rate of fire, about 8 a second.", "fireInterval": 0.12 },
+      "explosive": { "_note": "GAME-09d mod 2 (Paul): every 5th mega dart explodes where it first hits, through the shared ExplosionSystem. The count is on the blaster (Blaster.beginShot reads explosiveEvery).", "explosiveEvery": 5 }
     }
   },
   "B03": {

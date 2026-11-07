@@ -1,0 +1,11 @@
+{
+  "_note": "GAME-09d: the shared explosion (CONTENT-PLAN 4: B05, B06 and B07 all gain explosive options; explosions carve). One explosion system serves every explosive dart, not one per blaster. carveRadius and rangeMetres in metres; damageCentre is the health taken off at the blast's centre, falling linearly to 0 at rangeMetres (it never falls below 0 outside). maxPerSecond is the hard cap on blasts: a request over the cap does nothing. burstChunks foam chunks fly from the blast point (the debris system's own ring caps the total). pushSpeed is the speed an outward push gives a loose body, capped by the body's own mass so it never changes its speed by more than that. Start values for Paul to tune on the range.",
+  "carveRadius": 0.6,
+  "damageCentre": 12,
+  "rangeMetres": 2.5,
+  "maxPerSecond": 6,
+  "burstChunks": 10,
+  "burstSize": 0.09,
+  "burstMaterial": "foam-white",
+  "pushSpeed": 3
+}

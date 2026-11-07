@@ -21,10 +21,15 @@ export interface ShotChunk {
 
 /** GAME-09b: what a shot's darts carry so a hit can judge the chunk rule.
  *  id groups the darts of one trigger pull; muzzle is where they left. */
+/** GAME-09d: what a shot's darts carry so a hit can run the explosion.
+ *  explodes: this dart explodes where it first hits (B06's explosive mod).
+ *  exploded: set once the blast has run, so a bounce never doubles it. */
 export interface DartShot {
   id: number;
   muzzle: THREE.Vector3;
   chunk: ShotChunk | null;
+  explodes?: boolean;
+  exploded?: boolean;
 }
 
 export interface DartHit {
@@ -108,6 +113,11 @@ export class DartSystem {
   /** Called once per dart that comes to rest on a surface (the RESTING
    *  state). AUD-01 uses the point for the DT-floor sound. */
   onDartRest: (e: DartRestEvent) => void = () => {};
+
+  /** GAME-09d: called once per explosive dart, on its FIRST hit, with that
+   *  hit (walls, the floor and Foamer parts all count). DartImpacts wires
+   *  it to the shared ExplosionSystem when the page passes one. */
+  onExplosiveHit: (hit: DartHit) => void = () => {};
 
   private world: RAPIER.World;
   private ignore: RAPIER.Collider;
@@ -217,14 +227,26 @@ export class DartSystem {
       s.shotBuf.id = shot.id;
       s.shotBuf.muzzle.copy(shot.muzzle);
       s.shotBuf.chunk = shot.chunk;
+      // GAME-09d: the explosive flag comes from the blaster's shot; the
+      // fired flag is the slot's own, reset here so a recycled slot never
+      // inherits a blast that already ran.
+      s.shotBuf.explodes = shot.explodes ?? false;
+      s.shotBuf.exploded = false;
       s.shot = s.shotBuf;
     } else s.shot = null;
     s.inst = this.list[type].length;
     this.list[type].push(i);
   }
 
+  /** GAME-09d: called at the top of every fixed step, with dt. The page
+   *  that wires an ExplosionSystem through DartImpacts uses it to tick the
+   *  blast cap's simulation clock (no wall clock, so tests are load
+   *  proof). */
+  onUpdate: (dt: number) => void = () => {};
+
   /** Fixed step. Call before world.step(). */
   update(dt: number): void {
+    this.onUpdate(dt);
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i];
       if (!s.alive) continue;
@@ -346,6 +368,13 @@ export class DartSystem {
       this.onHit(dartHit);
       // After the onHit chain, so the sounds read the material.
       this.onDartHit(dartHit);
+      // GAME-09d: an explosive dart blasts on its first hit whatever it
+      // hit. The flag lives on the slot's own shot copy, so a bounce off a
+      // hard surface never fires a second blast.
+      if (s.shot && s.shot.explodes && !s.shot.exploded) {
+        s.shot.exploded = true;
+        this.onExplosiveHit(dartHit);
+      }
       // Push dynamic bodies along the flight direction at the impact point.
       // The push never changes a body's speed by more than maxPushSpeed: a
       // foam chunk weighs a few grams, and the full impulse would fling it

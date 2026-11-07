@@ -5,7 +5,8 @@
     "damage": {
       "standard": 1,
       "suction": 0.5,
-      "slug": 6
+      "slug": 6,
+      "mega": 3
     },
     "minDamageSpeed": 8,
     "turnRate": 6,

@@ -4,6 +4,18 @@ Running record of what is built, what was decided, and what the next session
 should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 `CLAUDE.md`.
 
+GAME-09d code done 2026-11-07, two stage commits on `game-09d`, not
+reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): B06 The
+Standard and the shared explosion. The `mega` dart type, B06's spec
+(auto, 60/120, spin, climb, rate and explosive mods), and one
+`ExplosionSystem` (`src/weapons/explosion.ts`, `data/explosion.json`)
+that carves, damages with a falloff through the non-dart
+`Foamers.blastDamage`, pushes debris, bursts foam chunks and obeys a
+6 blasts per second cap; every 5th mega dart blasts on its first hit.
+The model in hand, the carve, the push and the burst were not seen by
+eye and the four placeholder sounds not heard; B06 cannot be selected
+by key until game.ts gains a fifth weapon slot (left for the review).
+
 ## Status
 
 GAME-10k code done 2026-11-07, three stage commits on `game-10k`, not
@@ -680,6 +692,90 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-09d review, merged (Claude Opus 5.5): B06 and the shared explosion
+
+- **Bug, fixed in review, in every full-auto blaster: a stored burst
+  after a pause.** `Blaster.fireClock` grew by dt every step, trigger held
+  or not, and was never capped, so after any idle time a full-auto
+  blaster fired one dart per step until the stored time ran out (on the
+  arena page B06 emptied 60 darts in about a second; B04 its 35). The
+  clock now stores at most one shot. New test in
+  `tests/weapons/b06.test.ts` (five idle seconds, then a held second):
+  B04 fired 35 before the fix, at most its interval after.
+- **Played** (`arena.html?watch&level=env-01`, the trigger held through
+  the input module): after a long idle B06 fired 11 darts in 2 s (0.17 s
+  apart after the 0.25 s spin-up), every fifth exploding; explosive darts
+  blew both crates of a stack apart; an explosion at an F05 took 12 (the
+  centre damage) and a second F05 4 m away nothing; five blasts popped
+  it; a blast at the player's own feet did nothing (Paul: the player's
+  explosions never hurt the player).
+- Kept: the model also added a B06 `rate` station to the `env-03` test
+  level, outside its file list but useful.
+- Not checked: B06 in hand and the mega dart in flight by eye (pane
+  hidden; with it hidden the camera does not turn, so aimed fire at a
+  moving Foamer was not testable), the four sounds. B06 has no weapon key
+  yet (keys 1 to 3 are mapped; B02's card adds a fourth): it is reached
+  with the next-weapon key until the keys are sorted after GAME-09c merges.
+
+### 2026-11-07: B06 The Standard and the shared explosion (GAME-09d, Qwen 3.8 Flash Next via Pi, dgx-spark, branch `game-09d`)
+
+- Asked for: the mega dart and B06's gameplay (card `tasks/GAME-09d.md`),
+  and one explosion system every explosive dart shares, with B06's
+  explosive mod on every fifth dart.
+- Stage 1 (commit `511fb96`): the `mega` type in `data/darts.json` (radius
+  0.029 against standard's 0.017, speed 33, gravityScale 0.5, drag 0.4,
+  impulse 1.8, carveRadius 0.2, sticks false); `mega` damage 3 in
+  `data/foamers.json` beside standard 1; a `B06` entry in
+  `data/blasters.json` on the approved model (auto, mega, 1 dart, 60/120,
+  fireInterval 0.17, spinUp 0.25, spinDown 1.2, climb recoil, mods `rate`
+  at 0.12 and `explosive`). The only code change: one line in
+  `resolveSpec` (src/weapons/blaster.ts:167 area) so a mod can override
+  `fireInterval`. No fire-mode code was touched (GAME-09c owns it).
+- Stage 2 (commit `b9d8b87`): `src/weapons/explosion.ts` and
+  `data/explosion.json`. One `ExplosionSystem` per page, so a B06 blast and
+  a later B05 or B07 blast behave the same. At a world point it carves a
+  sphere through the same `carveSphere` a dart carve uses (so a blast's
+  islands go down the page's existing `onCarve` path, and the nav grid
+  re-bakes), damages Foamer centres inside `rangeMetres` 2.5 with a linear
+  falloff from `damageCentre` 12, pushes loose debris and broken pieces
+  outward, bursts `burstChunks` 10 foam chunks through the debris ring
+  (the ring's own cap holds), and calls `onExplode` for the sound. Hard
+  cap: `maxPerSecond` 6; a request over the cap does nothing at all.
+- The dart-hit path to the explosion: a blaster tags a shot
+  (`Blaster.beginShot`, every `explosiveEvery`th shot) → `DartSystem.fire`
+  copies the flag onto the slot's own shot copy → in `stepFlying`, the
+  first `onHit` of an exploding dart calls `onExplosiveHit` once (the
+  slot's `exploded` flag stops a bounce blasting twice) → `DartImpacts`
+  (given the system as a 4th argument) calls `explosion.explode(hit.point)`
+  and ticks the cap's clock from the new `DartSystem.onUpdate`. Foamer
+  damage goes through the new non-dart `Foamers.blastDamage`, like
+  `parryDamage` but the blast's own damage counts toward a catastrophic
+  hit, so a blast at the centre can pop as well as go down.
+- Decided: a blast does no damage to the player. Proposal for Paul: the
+  explosive rounds are a reward, not a hazard to their own feet. The
+  explosion carves the level's volume, not a Foamer's parts (the dart path
+  owns part carving); the blast's own damage is what kills a Foamer.
+- Sounds: `B06-fire`, `B06-spin`, `B06-reload`, `FX-explode` in
+  `data/sounds.json` (synth only) and rows in `design/SOUNDS.md` (the card
+  asked for `B06-spin`; SOUNDS.md listed `B06-rev-loop`, so both ids are
+  there now and `B06-spin` is marked as the placeholder the card named).
+  `game-sounds.ts` loops `B04-rev-loop` only, so B06's motor does not
+  sound yet: wiring a second rev loop is left for the review.
+- Not checked by eye (no browser here): the B06 viewmodel placement and
+  the model's look in hand, the mega dart in flight, the carve, the push
+  and the chunk burst on the range, the drum reload animation. Not heard:
+  all four placeholder sounds. Not played: the rate mod's feel, and every
+  fifth dart's blast (only the tests cover it).
+- Open for the review: B06 is the fourth blaster in the loadout order
+  (B01, B04, B03, B06), but `src/game/game.ts` maps only weapon1 to
+  weapon3, so B06 cannot be selected by key. The card said to leave the
+  key wiring rather than edit `game.ts`, so the fifth slot is untouched.
+  `data/levels/env-03.json` gained a `station-b06` for the `rate` mod so
+  that level's own test stays green.
+- Green: `npx tsc --noEmit`, `npx vitest run` (740 pass, 2 skipped; 15 new
+  tests in `tests/weapons/b06.test.ts` and `tests/weapons/explosion.test.ts`),
+  `npm run build`; no dash characters in the files touched.
 
 ### 2026-11-07: B05 Shrike and B06 The Standard models (ART-04, Claude Opus 5.5)
 
