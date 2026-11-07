@@ -18,6 +18,24 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+GAME-10m stages 1 and 2 done 2026-11-08 (Qwen 3.8-27B via Pi), two
+commits on `game-10m` in its own worktree, not reviewed, not merged, not
+pushed: the F12 Ambusher's look and type (stage 1) and the pounce
+(stage 2). A lean biped 2.14 m in `foam-purple-deep`, the painted
+angry eyes under a lime visor bar, three small orange spines down the
+back, claws; the `F12` type, health 25,
+speed 3, no weak point. The pounce: between 3 and 9 m, in sight, off
+the 4 s cooldown it crouches 0.45 s and pounces an arc at where the
+player stood when the crouch began, the landing within 1.2 m hits once
+through the ordinary hit path (the shield takes its share, not
+parryable); up close it claws (damage 8, headbutt when a forearm is
+gone); legs gone it crawls and claws. Paul's F12 row beats CONTENT-PLAN
+3.3's stalker note for the look (noted for Paul above); a new
+`foam-purple-deep` material is in `data/materials.json`. Not seen by
+eye (no browser, cannot view images): the F12 renders, the crouch and
+flight poses, the pounce arc, the claw and the hit feel were checked by
+script only. Stages 3 (the ambush, the test level) and 4 (the sounds,
+the docs) are left in a later run.
 GAME-10l all stages done 2026-11-07 and 2026-11-08: stage 1 and 2 by
 DeepSeek V4.1 Flash via Pi, stage 3 (the short spray, the tank gone and
 the sounds) and stage 4 (the docs) by Qwen 3.8-27B via Pi, three stage
@@ -712,6 +730,73 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-08: GAME-10m stages 1 and 2 (Qwen 3.8-27B via Pi): the F12 Ambusher's look and pounce
+
+Two commits on `game-10m` (in its own worktree), not reviewed, not merged,
+not pushed. Stage 1 (230ae3a): the look and the type. Stage 2 (db592ce):
+the pounce. `tools/f12-check.ts` measured the rig 2.22 m at stage 1 and
+2.14 m after the stage 2 leg reparent (the rest solve shifted slightly);
+either way it stands over the player's 1.8 m.
+
+- **Look (stage 1).** The F12 rig in `data/foamer-rigs.json` is rebuilt
+  from the greybox stalker to Paul's own F12 row: a lean biped 2.14 m
+  (the player is 1.8), body `foam-purple-deep`, a narrow head with the
+  painted angry eyes (white and foam-ink, the F04/F10 pattern, on the
+  +z face) under a lime visor bar, a row of three small orange spines
+  down the back, long arms to blunt foam claws, both feet flat-bottom
+  on the ground. The `F12` type in `data/foamers.json`: rig F12, health
+  25, speed 3, no weak point.
+- **Look clash for Paul.** CONTENT-PLAN 3.3 still describes F12 as "a
+  long low stalker, spined back, jointed legs, tail, gaping head".
+  Paul's own row (a lean biped) wins over the older stalker line, as
+  the card says. The spined back is kept; the tail is dropped.
+- **Material.** A new `foam-purple-deep` material is added to
+  `data/materials.json` (id 13, a dark purple): the palette had no
+  dark purple and the row asks for "deep purple ... as dark as the
+  palette allows". The orange spines are kept small (each under 0.3 m)
+  because orange means weak point or parryable and the F12 has neither,
+  so the spines are decoration, not a tell.
+- **The pounce (stage 2).** Between 3 and 9 m, in sight and off the
+  4 s cooldown (from the start of the crouch, as the Brawler's leap),
+  it crouches 0.45 s (the telegraph) and pounces in an arc at where the
+  player stood when the crouch began; a landing within 1.2 m of the
+  player hits once for 15 through the ordinary hit path (the raised
+  shield takes its share; not parryable, no pink). Up close it claws
+  for 8 (falling back to a headbutt when a forearm is gone). Both legs
+  gone: no pounce, it crawls in and claws. All numbers are in
+  `data/foamers.json` (`pounce`, `attacks`); the flight speed and arc
+  are read through `pounceOf` in `src/foamers/pounce.ts`, and the
+  decide is `decidePounce` in `src/ai/f12-brain.ts`. The crouch and
+  leaping states are the Brawler's, re-used: the Brawler lands short of
+  the player's spot (it sends the ring out) and the Ambusher lands on
+  the spot (the landing is the hit); the pounce path never touches the
+  shockwave code. 14 new tests in `tests/foamers/pounce.test.ts`.
+- **The legs.** The F12's legs are parented to the body part, not the
+  hips part (same world positions as before), because `f.legs()`
+  counts `kind: "leg"` whose parent is the root part
+  (`Foamer.legs()` in `src/foamers/foamer.ts`). On the hips part every
+  F12 would read legless and could never pounce. The F11's legs have
+  the same shape and are parented to its hips part: for its own card
+  to check, not this one.
+- **Not seen by eye.** No browser was run in this session (card rule).
+  The `design/foamers/F12-*.png` renders, the crouch and flight poses,
+  the pounce arc, the claw and the hit feel were not seen or played:
+  the look is checked by script (`tools/f12-check.ts`: height, feet on
+  the ground, spines on the back, eyes on the forward face) and
+  `tests/foamers/ambusher.test.ts`; the flight and the hit by
+  `tests/foamers/pounce.test.ts` only. The crouch sound is the shared
+  `F07-crouch` until stage 4; `F12-crouch`, `F12-pounce` and
+  `F12-burst` are added there.
+- **Left in a later run.** Stage 3 (the ambush from a growth, the test
+  level `env-05.json`, the validator) and stage 4 (the sounds and the
+  docs) start fresh after review of these two stages.
+- **Environment.** `dgx-spark` works in parallel in its own worktree on
+  `src/weapons/`, `src/player/controller.ts`, `src/game/game.ts`,
+  `src/range/main.ts`, `data/blasters.json` and `data/darts.json`; none
+  of those were touched here. The machine is shared with other test
+  runs: a timing test that fails under load is re-run on its own
+  before it is treated as a bug.
 
 ### 2026-11-08: GAME-10l review, merged (Claude Opus 5.5): the F13 Biomechanic, all stages
 
