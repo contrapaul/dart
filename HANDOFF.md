@@ -690,7 +690,7 @@ github.com/contrapaul/dart (public), MIT licence.
   checks in `art/blasters/B02/NOTES.md`. All contract checks pass and the
   export is repeatable.
 - Not done: the slide's kick animation, and pointing B02's data at the
-  model (after GAME-09c merges). Waiting for Paul's look.
+  model (after GAME-09c merges). Paul approved the look the same day.
 
 ### 2026-11-07: GAME-10k review, merged (Claude Opus 5.5): the F11 Seawall
 

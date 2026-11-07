@@ -176,7 +176,7 @@ Unlock point:  [level]
 | ID | Name | Role | Ammo | Status |
 |---|---|---|---|---|
 | B01 | The Dartman | Starter, pump, 3 darts per shot | Standard | Model approved 2026-11-01 (`public/models/blasters/B01.glb`, built by `art/blasters/B01/build.py`); in game with GAME-09 |
-| B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Gameplay on a placeholder model in GAME-09c (Paul, 2026-11-07); card and brief approved by Paul 2026-11-07 (`design/blasters/B02.md`); model built 2026-11-07 by Claude (`public/models/blasters/B02.glb`, built by `art/blasters/B02/build.py`), contract checks pass, waiting for Paul's look |
+| B02 | Musketeer | Sidearm, semi-auto, never empty | Standard | Gameplay on a placeholder model in GAME-09c (Paul, 2026-11-07); card and brief approved by Paul 2026-11-07 (`design/blasters/B02.md`); model built 2026-11-07 by Claude (`public/models/blasters/B02.glb`, built by `art/blasters/B02/build.py`), contract checks pass, look approved by Paul 2026-11-07 |
 | B03 | Leviathan | Spread, double barrel heavy shotgun | Standard (as shells) | Model approved 2026-11-01 (`public/models/blasters/B03.glb`, built by `art/blasters/B03/build.py`); in game with GAME-09 |
 | B04 | Shredder | Flywheel full-auto, recoil grows | Standard | Model approved 2026-11-01 (`public/models/blasters/B04.glb`, built by `art/blasters/B04/build.py`); in game with GAME-09 |
 | B05 | Shrike | Precision, zoom, piercing | Precision dart | Details in CONTENT-PLAN 4; card and model not started |
@@ -670,6 +670,7 @@ All twelve answered 2026-10-29.
 
 | Date | Decision | Section |
 |---|---|---|
+| 2026-11-07 | B02 Musketeer model approved (Paul), from the renders in `art/blasters/B02/renders/`: yellow frame and slide, charcoal grip with the magazine end showing below it, a plain round orange bumper. | 5 |
 | 2026-11-07 | B02 Musketeer brief approved as drafted (Paul): a compact semi-auto pistol with a grip magazine and a kicking slide, a foam yellow lead colour, and a plain round muzzle bumper (Paul dropped the flared one the same day). Whether heavy rounds show a thicker barrel sleeve is still open. | 5 |
 | 2026-11-07 | GAME-10k review: a stagger set inside `onBonk` survives the strike step (Claude). The page's melee parry runs inside the bonk, in the middle of the windup-to-strike step; the step used to set `strike` over it, freezing a parried Foamer with no attack. Any later parryable or stunnable melee hit relies on this. | 3, 4.1 |
 | 2026-11-07 | GAME-10k: the Seawall's shield is arc armour that cannot be worn down, so the only way past it is the parry (Qwen 3.8 Flash Next via Pi; `tasks/GAME-10k.md`). The Blocker's shield (GAME-10e) is carveable armour whose hp runs out; the Seawall's reuses the same `armour` read (`src/foamers/armour.ts`: damage 0, carve 0 inside `arcDeg` 120 on `shield` and `shieldBoss`) but has no part hp to spend against darts, because the card says darts never break it. It comes off only through the parry: `FoamerSystem.parryAttack` counts parries and calls the existing `breakPart` at `meleeParry.parriesToBreak` (2, data), and with the part gone the armour read has nothing to key on, so a front dart hurts from then on. No new armour code, no exception in the dart path. | 4.1, 7.5 |

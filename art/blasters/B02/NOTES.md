@@ -36,4 +36,4 @@ consecutive exports were byte-identical, SHA-256
 Not done yet: the slide's kick is not animated (the viewmodel animates
 `trigger`, `pump` and `mag` by name; `slide` needs ART-05), and the game
 still shows B01's model as GAME-09c's placeholder until that card merges
-and points B02 at `B02.glb`. Paul's visual approval is pending.
+and points B02 at `B02.glb`. Paul approved the look on 2026-11-07.
