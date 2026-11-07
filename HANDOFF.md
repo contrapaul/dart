@@ -6,6 +6,25 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
+Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
+a 4 m corridor opens into a 44 x 36 m yard with a 9 m ceiling and six
+destructible islands, one 3.2 m voxel volume each and 2.5 m tall, in two
+zigzag chains with 6.2 m gaps so the centre lane stays a charge line.
+Wave 1 is 2 Darters from the short ends and 8 Swarmers from the floor
+rifts; wave 2 is 3 Darters, 6 Roamers and 4 Swarmers, 13 in all, one past
+the KIT's 12 alive at Normal, so its spawns are held 1.6 s apart and the
+page's spawn call refuses at the cap: 12 stand at once and the 13th
+arrives when one dies. A6 and A7 ammo, 12 shells each, sit at the two long
+ends. The temporary exit pad and its 6 x 6 m room are gone: the exit is a
+3 x 3 m lime pad under a lime-light panel on white walls, 30 m from the
+yard centre through the north door. `npx tsc --noEmit`, full
+`npx vitest run` (615 pass, 2 skipped) and `npm run build` clean. Not
+checked by eye: the yard from the Ring's door, the six islands and their
+jump gaps, whether the lift reads as the brightest thing at 30 m, the
+13-Foamer wave in play (only run in the test's model), and the lift's
+completion trigger in a browser.
+
 GAME-10i merged locally 2026-11-07, not pushed (card `tasks/GAME-10i.md`, Qwen 3.8-27B
 via Pi, branch `game-10i`): the F07 Brawler carries its lime foam sword.
 Stage 1: the greybox right fist is gone; a 1.5 m rounded capsule blade (six
@@ -65,7 +84,8 @@ full `npx vitest run` (610 pass, 2 skipped) and `npm run build` clean.
 Not checked by eye: the promotion's light purple plates on a Darter, the
 Ring's ring and block, the four pillars, both ammo boxes, and that the
 adds really arrive at half health in play (the rule is only stepped in
-tests). Stage 3 (the A6 Yard and the lit lift) is to come.
+tests). Stage 3 (the A6 Yard and the lit lift) is done, in the first
+Status paragraph above.
 
 GAME-10h merged locally 2026-11-07, not pushed (card `tasks/GAME-10h.md`; stage 1
 by Qwen 3.8 Flash Next via Pi, dgx-spark; stage 2 and the docs by Qwen
@@ -601,6 +621,54 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: LVL-04b stage 3 review, merged (Claude): Level 1-4 is whole
+
+- The first start got no reply from OpenRouter in three tries (Pi never
+  opened a session); a test call worked minutes later and the restart
+  built the stage in two commits.
+- Read the diff: `data/levels/1-4.json` and its tests only. The older
+  assertions it changed follow the level going on past the Ring. Its
+  PLAN edit had dropped the row's task cell; restored here.
+- Main merged in (HANDOFF Status and Log conflicts, both kept). `tsc`,
+  the full suite (619 pass, 2 skipped) and the build pass.
+- Played by script at the Yard: it locks; wave 1 spawns staggered (2
+  Darters, 8 Swarmers); wave 2's 13 fill up to the 12 cap and hold, and
+  one taken down lets the 13th in (23 spawned in the arena, 10 plus 13).
+  Cleared, the north door opens; from it the lift is a lit lime panel at
+  the end of the corridor; stepping on it shows "Level complete".
+- Not checked: the islands as high ground and their jump gaps, the fight
+  by hand, the frame time with 12 Foamers in the Yard.
+
+### 2026-11-07: LVL-04b stage 3, the Yard and the lift (DeepSeek V4.1 Flash via Pi)
+
+- Task: the card's stage 3, the last one. The A6 Yard gauntlet past the
+  Ring's north door, both waves, and the lit lift as the level's real exit,
+  with the temporary pad removed.
+- Built in `data/levels/1-4.json`: a 4 m corridor from the Ring's north
+  door, the yard shell (44 x 36 m, 9 m ceiling, a doorway in each end wall
+  with a lintel), six island pieces, the arena `yard` (A6) with four rifts,
+  two doors, a floor-level trigger 6 m inside the south door and a
+  checkpoint at the door, A6 and A7 ammo, and the lift past the north door
+  (a short corridor, a 6 x 5 m room, the 3 x 3 m lime pad, a lime-light
+  panel on white walls). `LEVEL.exit` moved onto the pad, so the existing
+  box test in `src/arena/extras.ts` triggers it with no shared-code change.
+- Decided: islands are one voxel volume each because 3.2 m is the
+  per-volume cap and the arena's six-zone budget is already full with six
+  islands. Wave 2's 13 stays, with `holdSeconds` and the page's cap doing
+  the work, rather than cutting a Foamer the concept names. The lift is lit
+  with bright materials, not a new light, because the level has no point
+  lights and adding one is a render change this card does not ask for.
+- Tests in `tests/level/level-1-4.test.ts`: 24 now, 5 of them new (the
+  yard's size, ceiling and island gaps; the walk from the Ring to the lift
+  and the islands as high ground; both waves and the doors; the lift as a
+  lit 3 x 3 m pad 30 m from the yard centre; and a run of the arena with
+  the page's spawn cap). Test 10 now runs each arena with that same cap
+  instead of counting the file, and the old "ring is last" and pad asserts
+  were updated, not loosened.
+- Green: `npx tsc --noEmit`, `npx vitest run` (615 pass, 2 skipped),
+  `npm run build`. No em or en dashes in the files touched.
+- Not checked by eye: everything below. A browser was not available.
 
 ### 2026-11-07: GAME-10i review, merged (Claude)
 
