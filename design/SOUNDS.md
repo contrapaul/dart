@@ -244,6 +244,9 @@ The other Foamers (IDs given when each is built):
 | F10-shot | GAME-10j placeholder ID: the homing ball leaving the wrist launcher (one per shot, the cap restricts side-by-side ones) | Yes | 4 | Blaster: a soft "pffft" on drylatch, with a small rising ring |
 | F10-fall | GAME-10j placeholder ID: the Turbo dropping to the floor when the last jet breaks (one, when the jet hiss stops) | Yes | 2 | Foley: a soft heavy flop of foam on the floor |
 | F10 | Flyer with jets | GAME-10j placeholder IDs: F10-jet (jet loop), F10-shot (homing shot), F10-fall (the drop to the floor) | Later | Foley plus Code |
+| F11-swing | GAME-10k placeholder ID: the Seawall's mace swing (the overhead and the sweep) | Yes | 3 | Foley plus Blaster: a heavy wooden whoosh, deeper than the Roamer's club |
+| F11-windup | GAME-10k placeholder ID: the Seawall's finisher: the slow high wind-up the player must hear to time the parry | Yes | 2 | Foley: a long low rising creak |
+| F11-shield-break | GAME-10k placeholder ID: the Seawall's tower shield breaking off after its parries | Yes | 2 | Foley: a hard crack, a board falling apart |
 | F11 | Armoured knight | Heavy armoured steps, mace swings, overhead slam, sweep, the slow parry wind-up (must be easy to hear), shield hits | Later | Foley |
 | F12 | Ambusher in foam growths | Rustle in a growth, pounce, landing | Later | Foley |
 | F13 | Medic | Spray wand (loop), healing sparkle on another Foamer, tank breaking | Later | Foley: spray bottle |

@@ -6,6 +6,17 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10k code done 2026-11-07, three stage commits on `game-10k`, not
+reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): the F11
+Seawall. The palette look (deep lime armour, purple mace, orange tower
+shield), the `F11` type on the melee brain (health 60, speed 1.4 from
+the rig), arc armour over the front that no dart gets through, the
+overhead, sweep, finisher combo with a pink mace head through the
+finisher's windup, and the melee parry (a data mark plus the shared
+decide in `src/foamers/combo.ts`) that staggers it and breaks the shield
+off after two parries. The look was not seen by eye, the poses and
+tell were not played, the three F11 sounds not heard; no dev server was
+run in that session (card rule).
 ENV-04 built 2026-11-07, both stages committed on `env-04`, not reviewed,
 not merged, not pushed (Qwen 3.8-27B via Pi): the E14 crushing toy press
 (`src/level/presses.ts`, timing and look in `data/press.json`), stepped by
@@ -669,6 +680,76 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10k review, merged (Claude Opus 5.5): the F11 Seawall
+
+- **Look, checked by eye:** the turnaround matches the brief: deep lime
+  helm, chest and boots, a purple spiked mace in the right hand, a big
+  orange tower shield on the shield arm, purple horns and cape.
+- **Bug, fixed in review: a parried Seawall froze for good.** The page
+  parries inside `onBonk`, which the Foamer system calls in the middle of
+  the windup-to-strike step. `parryAttack` staggered it and cleared its
+  attack, then the step set `strike` over the stagger; the strike step
+  read `f.attack()!.strike` with no attack and threw every frame. The
+  unit test called `parryAttack` directly, never through a strike. The
+  step now keeps a stagger the bonk set. New test in
+  `tests/foamers/seawall.test.ts` parries through the real strike; it
+  threw before the fix and passes after.
+- **Played on the range** (the F11 button, the shield raised by the watch
+  just before each finisher lands): overhead 0.7 s, sweep 0.5 s, finisher
+  1.2 s, in order and looping; the first finisher parried at 8.9 s and it
+  staggered, recovered and fought round to the next finisher; the second
+  parry at 15.1 s broke the shield off.
+- Not checked: the pink tell and the poses by eye (the pane was hidden),
+  the three sounds, a front dart after the break in the page (the unit
+  test covers it).
+
+### 2026-11-07: GAME-10k, finished (Qwen 3.8 Flash Next via Pi): the F11 Seawall
+
+- All three stages of `tasks/GAME-10k.md` are committed on `game-10k`
+  (stage 1 `b20b5bd`, stage 2 `5f1be5e`, this docs pass the third), not
+  reviewed, not merged, not pushed. The card's done list is met:
+  `tests/foamers/seawall.test.ts` (9 tests) covers the spec (rig F11,
+  health 60 from the rig, all attacks melee, the shield parts and the
+  mace on the rig), the shield (a dart inside the 120 degree arc does no
+  damage and carves nothing, a dart from behind hurts, `plateFaces` at
+  50 and 80 degrees, the body and mace unarmoured), the combo (the data
+  order and numbers, four real bonks in the order overhead, sweep,
+  finisher, overhead, `comboTurn` matching), the tell (the mace head's
+  chunk material is `BALL_MATERIAL` only during the finisher's windup,
+  the shared foam during the other two and after), and the parry
+  (`decideMeleeParry` for parryable and unmarked attacks, blocked and
+  not; a parry costs no health, staggers 1.5 s, counts; two break the
+  shield and the boss off and then a front dart hurts). No other type's
+  test file was touched; the full suite is green with them.
+- Stage 1: the palette per CONTENT-PLAN 3 (deep lime armour, purple
+  weapon and limbs, orange shield as the weak point) in
+  `data/foamer-rigs.json`, the F11 entry in `data/foamers.json` on the
+  melee brain (no brain code: the F07's shape, the rig's speed 1.4 and
+  health 60), arc armour as the Blocker's (`armour` block, damage 0,
+  carve 0, `arcDeg` 120 on `shield` and `shieldBoss`).
+- Stage 2: `src/foamers/combo.ts` (new, small) holds the combo read,
+  the `meleeParry` read and `decideMeleeParry`; `Foamer.comboTurn` and
+  `Foamer.parriesTaken` are the counters; `FoamerSystem.parryAttack`
+  staggers and breaks the shield through the existing `breakPart`;
+  `stepTell` draws the pink tell. Both pages (`src/game/game.ts`,
+  `src/range/main.ts`) wire the parry in their `onBonk`; `shield.ts` and
+  `data/shield.json` did not need a change (the parry window and the
+  block share are the ball parry's own numbers). Three new attacks in
+  data with the card's numbers, poses in `rig-states.ts` on the bonk and
+  swing patterns. `F11-swing`, `F11-windup` and `F11-shield-break`
+  placeholder synths in `data/sounds.json`, with the matching rows in
+  `design/SOUNDS.md` (the audio data test cross-checks the two).
+- What was not checked by eye: nothing was rendered or played here. The
+  F11 turnaround in `design/foamers/F11-*.png` was generated in stage 1
+  and only checked by script (the shield solved onto the left forearm,
+  the mace into the right hand, from the rig's rest pose); the shield's
+  look, the combo poses, the pink tell, the three sounds and the parry
+  feel in play are all unverified by sight or ear. The look needs Paul
+  and a browser pass, the way GAME-10j's did.
+- Final gate: `npx tsc --noEmit` clean, `npx vitest run` 707 pass 2
+  skip, `npm run build` clean, dash check (`perl -CSD`) clean on every
+  file touched.
 
 ### 2026-11-07: ENV-04 review, merged (Claude Opus 5.5): the crushing toy press
 

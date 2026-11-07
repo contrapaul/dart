@@ -3112,6 +3112,86 @@
         "gain": 0.8
       }
     },
+    "F11-swing": {
+      "_note": "GAME-10k: the Seawall's mace swing (the overhead and the sweep). Placeholder synth: a heavy wooden whoosh, deeper than the Roamer's club. Foley plus Blaster will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.07,
+      "maxVoices": 3,
+      "synth": {
+        "noise": {
+          "dur": 0.3,
+          "attack": 0.01,
+          "decay": 0.26,
+          "lowpass": 900,
+          "highpass": 80,
+          "lowpassEnd": 250
+        },
+        "gain": 0.8
+      }
+    },
+    "F11-windup": {
+      "_note": "GAME-10k: the Seawall's finisher: the slow high wind-up the player must hear to time the parry. Placeholder synth: a long low rising creak. Foley will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.95,
+      "jitter": 0.03,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 1.0,
+              "f0": 90,
+              "f1": 180,
+              "wave": "sawtooth",
+              "attack": 0.25,
+              "decay": 0.6
+            },
+            "gain": 0.3
+          },
+          {
+            "noise": {
+              "dur": 1.0,
+              "attack": 0.2,
+              "decay": 0.7,
+              "lowpass": 500,
+              "highpass": 120,
+              "lowpassEnd": 900
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "F11-shield-break": {
+      "_note": "GAME-10k: the Seawall's tower shield breaking off after its parries. Placeholder synth: a hard crack and a board falling apart over the generic part-thump. Foley will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 1.0,
+      "jitter": 0.05,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.06,
+              "freq": 2200
+            },
+            "gain": 0.9
+          },
+          {
+            "noise": {
+              "dur": 0.4,
+              "attack": 0.004,
+              "decay": 0.36,
+              "lowpass": 2400,
+              "highpass": 150,
+              "lowpassEnd": 300
+            },
+            "gain": 0.7
+          }
+        ]
+      }
+    },
     "ENV-button-press": {
       "files": [],
       "volume": 0.75,

@@ -649,6 +649,77 @@
           "strike": 0.2
         }
       ]
+    },
+    "F11": {
+      "rig": "F11",
+      "_note": "GAME-10k: the Seawall. A 3.4 m armoured knight (CONTENT-PLAN 3.3): it walks in like the F01 (the melee brain), slow, and its shield is armour on the shield and shieldBoss parts across the front arc: a dart inside it does no damage and carves nothing, and darts can never break it. Darts from the side or back hit as usual. Health 60 and speed 1.4 come from the rig. Stage 1 keeps a plain bonk; the three-hit combo comes in stage 2.",
+      "turnRate": 2.2,
+      "attackRange": 2.2,
+      "armour": {
+        "shield": {
+          "damage": 0,
+          "carve": 0,
+          "arcDeg": 120
+        },
+        "shieldBoss": {
+          "damage": 0,
+          "carve": 0,
+          "arcDeg": 120
+        },
+        "_doc": "GAME-10k: the tower shield (the weak point, orange). Inside its arcDeg front a dart is turned away whole: no damage, no carve. It is never broken by darts; only the finisher's parries break it (stage 2)."
+      },
+      "attacks": [
+        {
+          "id": "overhead",
+          "damage": 15,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "handle"
+          ],
+          "windup": 0.7,
+          "strike": 0.2
+        },
+        {
+          "id": "sweep",
+          "damage": 12,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "handle"
+          ],
+          "windup": 0.5,
+          "strike": 0.2
+        },
+        {
+          "id": "finisher",
+          "damage": 35,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "handle"
+          ],
+          "windup": 1.2,
+          "strike": 0.25,
+          "parryable": true,
+          "_doc": "GAME-10k: the slow high wind-up (CONTENT-PLAN F11). The one attack marked parryable: pink maceHead during its windup, and a raised shield inside the parry window turns it whole."
+        }
+      ],
+      "combo": {
+        "attacks": [
+          "overhead",
+          "sweep",
+          "finisher"
+        ],
+        "_doc": "GAME-10k: the Seawall fights its attacks in this order, one per strike that landed. The turn counter turns at the bonk (Foamer.comboTurn), so it loops overhead, sweep, finisher."
+      },
+      "meleeParry": {
+        "part": "shield",
+        "tellPart": "maceHead",
+        "staggerSeconds": 1.5,
+        "parriesToBreak": 2,
+        "_doc": "GAME-10k: a parry staggers the Seawall for staggerSeconds and puts one parry on its shield; at parriesToBreak the part breaks off as a foam piece and the arc armour goes with it."
+      }
     }
   },
   "promoted": {

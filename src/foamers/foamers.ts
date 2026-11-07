@@ -25,6 +25,8 @@ import { flyOf } from "./fly";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
 import { pelletKind, pelletOf, weakpointOf, canStream } from "./pellet";
 import { wallKind, wallOf, canFireWall, liveLaunchers, wallSlots, wallWeakMultiplier } from "./wall";
+import { comboOf, meleeParryOf, parryableAttack } from "./combo";
+import { BALL_MATERIAL } from "./projectiles";
 import { makeRng } from "../audio/synth";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
@@ -961,11 +963,20 @@ export class FoamerSystem {
             sound(this, "throw", f, f.centre);
           } else if (inReach) {
             f.bonk(atk.id);
+            // GAME-10k: a landed strike is one attack of the combo spent.
+            if (comboOf(f.spec)) f.comboTurn++;
           }
           // GAME-10d: a landed nibble restarts the Swarmer's ring wait.
           if (inReach && tokenKindOf(f.spec) === "swarm") f.sinceNibble = 0;
-          f.state = "strike";
-          f.stateTime = 0;
+          // GAME-10k review: a parry inside onBonk (the page's melee parry)
+          // has already staggered this Foamer and cleared its attack; a
+          // strike set over that froze it with no attack to finish.
+          // (TypeScript has narrowed f.state to "windup" here; onBonk can
+          // change it, hence the widening.)
+          if ((f.state as string) !== "stagger") {
+            f.state = "strike";
+            f.stateTime = 0;
+          }
         }
       }
     } else if (f.state === "strike") {
@@ -1183,6 +1194,43 @@ export class FoamerSystem {
     }
     f.applyPose();
     f.poseParts(dt, moving, flying);
+    this.stepTell(f);
+  }
+
+  /**
+   * GAME-10k: the pink tell. CONTENT-PLAN 3: pink means parryable and only
+   * parryable. While a parryable attack is winding up, its tell part (the
+   * Seawall's mace head) is drawn with the material the parryable balls use
+   * (the pages read that material by identity the same way); when the windup
+   * ends it goes back to the shared foam. A type with no meleeParry block
+   * never comes here.
+   */
+  private stepTell(f: Foamer): void {
+    const mp = meleeParryOf(f.spec);
+    if (!mp) return;
+    const atk = f.attack();
+    const on = f.state === "windup" && atk !== null && parryableAttack(f.spec, atk.id);
+    if (!on && !f.tellOn) return;
+    const part = f.parts.get(mp.tellPart);
+    if (part) part.setDrawMaterial(on ? BALL_MATERIAL : null);
+    f.tellOn = on;
+  }
+
+  /**
+   * GAME-10k: a Foamer attack that met a raised shield inside the parry
+   * window (the page decides in its onBonk path, where the shield is).
+   * Nothing costs the player; the Foamer staggers for its own time, and its
+   * tell part (the shield) takes one parry. At parriesToBreak it breaks off
+   * as a foam piece, and with it the arc armour goes: the part is gone, so
+   * a front dart hurts from then on. Any type may mark an attack parryable.
+   */
+  parryAttack(f: Foamer): void {
+    const mp = meleeParryOf(f.spec);
+    if (!mp) return;
+    f.parriesTaken++;
+    const part = f.parriesTaken >= mp.parriesToBreak ? f.parts.get(mp.part) : undefined;
+    if (part) this.breakPart(f, part); // its own stagger, then the parry's
+    this.startStagger(f, false, mp.staggerSeconds);
   }
 
   /**
@@ -1607,6 +1655,19 @@ export class FoamerSystem {
   /** The first spec attack whose needs are met (at least one of each id
    *  still attached; needs [] always). */
   private chooseAttack(f: Foamer): string {
+    // GAME-10k: a combo type fights its attacks in order, one per strike
+    // that landed (the turn counter turns at the bonk). An attack whose
+    // needs are gone is stepped over, so a maceless Seawall still swings
+    // the two it has.
+    const combo = comboOf(f.spec);
+    if (combo) {
+      const n = combo.attacks.length;
+      for (let i = 0; i < n; i++) {
+        const id = combo.attacks[(f.comboTurn + i) % n]!;
+        const a = f.spec.attacks.find((x) => x.id === id);
+        if (a && a.needs.every((id2) => f.parts.has(id2))) return id;
+      }
+    }
     // GAME-10c: a Floater's big blob comes every blob.everyFourth attack,
     // counting the attacks it has fired (the counter turns at the release).
     const blob = blobOf(f.spec);

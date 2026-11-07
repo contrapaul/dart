@@ -31,6 +31,7 @@ import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
 import rangeJson from "../../data/range.json";
 import { damageOf } from "../game/attack";
+import { decideMeleeParry } from "../foamers/combo";
 import dartsJson from "../../data/darts.json";
 import soundsJson from "../../data/sounds.json";
 import renderJson from "../../data/render.json";
@@ -174,6 +175,15 @@ foamers.onBonk = (_f, attack) => {
   // GAME-04: an attack from the front arc behind the raised disc costs
   // only its data share; a blocked hit is not a hit, so no HUD flash.
   const blocked = shield.blocksAttackFrom(_f.centre);
+  // GAME-10k: the melee parry on the range too, same as the game page:
+  // an attack marked parryable met inside the parry window is turned
+  // whole, the Foamer staggers and its tell part counts the parry.
+  if (blocked && decideMeleeParry(_f.spec, attack, true, shield.canParry()) === "parry") {
+    shield.noteParry();
+    foamers.parryAttack(_f);
+    if (engine) engine.play("SH-parry", { position: _f.centre });
+    return;
+  }
   const lost = health.damage(damageOf(attack, _f.spec) * (blocked ? shield.damageShare : 1), attack);
   if (lost <= 0) return;
   if (blocked) {
