@@ -3363,22 +3363,17 @@
           "shape": "capsule",
           "size": [
             6,
-            18,
+            13,
             6
           ],
           "parent": "body",
           "at": [
-            -0.85,
+            -1.1,
             0.6,
             0
           ],
-          "pivot": [
-            0,
-            -0.6,
-            0
-          ],
           "rest": [
-            -1.0,
+            -0.2,
             0,
             0
           ]
@@ -3389,7 +3384,7 @@
           "shape": "capsule",
           "size": [
             5,
-            12,
+            10,
             5
           ],
           "parent": "armL",
@@ -3409,9 +3404,9 @@
           "kind": "detail",
           "shape": "ellipsoid",
           "size": [
-            10,
-            11,
-            9
+            7,
+            8,
+            7
           ],
           "parent": "foreArmL",
           "at": [
@@ -3419,13 +3414,8 @@
             -0.85,
             0.15
           ],
-          "pivot": [
-            0,
-            -0.6,
-            0
-          ],
           "rest": [
-            0.9,
+            0.3,
             0,
             0
           ],
@@ -3440,22 +3430,17 @@
           "shape": "capsule",
           "size": [
             6,
-            18,
+            13,
             6
           ],
           "parent": "body",
           "at": [
-            0.85,
+            1.1,
             0.6,
             0
           ],
-          "pivot": [
-            0,
-            -0.6,
-            0
-          ],
           "rest": [
-            -1.0,
+            -0.2,
             0,
             0
           ]
@@ -3466,7 +3451,7 @@
           "shape": "capsule",
           "size": [
             5,
-            12,
+            10,
             5
           ],
           "parent": "armR",
@@ -3486,9 +3471,9 @@
           "kind": "detail",
           "shape": "ellipsoid",
           "size": [
-            10,
-            11,
-            9
+            7,
+            8,
+            7
           ],
           "parent": "foreArmR",
           "at": [
@@ -3496,13 +3481,8 @@
             -0.85,
             0.15
           ],
-          "pivot": [
-            0,
-            -0.6,
-            0
-          ],
           "rest": [
-            -0.9,
+            0.3,
             0,
             0
           ],
@@ -3687,7 +3667,8 @@
         }
       },
       "health": 25,
-      "_note": "GAME-10m: the Ambusher. Paul's F12 row wins over the 3.3 stalker line (HANDOFF): a lean biped a little taller than the player (1.8 m). Deep purple body (foam-purple-deep, the darkest purple in data/materials.json), a narrow head with the painted angry eyes under a lime visor bar (the F04 and F10 pattern, so the palette's lime sits on the head), a row of small orange spines down the back: orange means weak point or parryable and the F12 has neither, so they are kept small, long arms to blunt foam claws, both feet flatBottom on the ground. The legs are parented to the body (not the hips part) because f.legs() counts kind leg whose parent is the root part (src/foamers/foamer.ts): with the legs on the hips part the Ambusher always reads legless and can never pounce."    },
+      "_note": "GAME-10m: the Ambusher. Paul's F12 row wins over the 3.3 stalker line (HANDOFF): a lean biped a little taller than the player (1.8 m). Deep purple body (foam-purple-deep, the darkest purple in data/materials.json), a narrow head with the painted angry eyes under a lime visor bar (the F04 and F10 pattern, so the palette's lime sits on the head), a row of small orange spines down the back: orange means weak point or parryable and the F12 has neither, so they are kept small, long arms to blunt foam claws, both feet flatBottom on the ground. The legs are parented to the body (not the hips part) because f.legs() counts kind leg whose parent is the root part (src/foamers/foamer.ts): with the legs on the hips part the Ambusher always reads legless and can never pounce."
+    },
     {
       "id": "F13",
       "label": "F13",

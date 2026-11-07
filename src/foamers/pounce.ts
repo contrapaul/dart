@@ -19,9 +19,8 @@ export interface PounceSpec {
   speed: number;
   /** The apex of the arc over the ground it leaves, metres. */
   arcMetres: number;
-  /** The hit radius at the landing (metres), read every frame of the
-   *  flight: the whole arc is a hit check, because it shifts its weight
-   *  into the swing. */
+  /** The hit radius at the landing (metres): the landing is the one
+   *  moment the pounce can hit. */
   hitMetres: number;
 }
 
