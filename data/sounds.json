@@ -1721,6 +1721,69 @@
         ]
       }
     },
+    "ENV-station-grant": {
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.03,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.16,
+              "f0": 420,
+              "f1": 640,
+              "wave": "triangle",
+              "attack": 0.003,
+              "decay": 0.14
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.22,
+              "f0": 640,
+              "f1": 960,
+              "wave": "sine",
+              "attack": 0.09,
+              "decay": 0.16
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "ENV-station-spent": {
+      "files": [],
+      "volume": 0.65,
+      "jitter": 0.08,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.18,
+              "f0": 220,
+              "f1": 140,
+              "wave": "square",
+              "attack": 0.004,
+              "decay": 0.16
+            },
+            "gain": 0.25
+          },
+          {
+            "noise": {
+              "dur": 0.1,
+              "attack": 0.003,
+              "decay": 0.08,
+              "lowpass": 900,
+              "highpass": 200
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
     "LV-arena-lock": {
       "files": [],
       "volume": 0.9,

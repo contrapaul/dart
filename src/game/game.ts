@@ -100,6 +100,10 @@ export interface GameHooks<T extends BuiltGame = BuiltGame> {
   renderLate?(dt: number, alpha: number): void;
   /** The pop's own effect: sounds, the HUD flash, the course's foam burst. */
   popEffect?(): void;
+  /** ENV-03: the mod station the view is on (the page's `Stations.prompt`):
+   *  the use prompt's word when no finisher or vacuum target takes the
+   *  key first; null or absent leaves the other tools' prompts as before. */
+  stationPrompt?(eye: THREE.Vector3, forward: THREE.Vector3): string | null;
   /** The scene knobs: the arena needs a bigger fog and shadow box. */
   scene?: SceneOptions;
   /** Wire the page's own spawns and return its late hooks. */
@@ -143,6 +147,10 @@ export interface Game<T extends BuiltGame = BuiltGame> {
   mesherPool: MesherPool;
   foamers: FoamerSystem;
   levelAI: LevelAI;
+  /** GAME-08: the vacuum; the arena page reads it in its step hook to keep
+   *  the mod stations (`src/arena/stations.ts`) off the use key while a
+   *  tool has a target. */
+  vacuum: Vacuum;
   voxels: VoxelVolume;
   voxelMesh: VolumeMesh;
   audio: GameAudio;
@@ -510,8 +518,12 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
 
   const game = {
     renderer, scene, camera, rapier, world, input, hud, store, health, player,
-    darts, loadout, shield, pickups, finisher, melee, impacts, debris, pieces, mesherPool, foamers, levelAI,
+    darts, loadout, shield, pickups, finisher, melee, impacts, debris, pieces, mesherPool, foamers, levelAI, vacuum,
     voxels, voxelMesh, audio, ui: null as unknown as UIController, built,
+    // The watch menu's prompt readout (ENV-03): what is on the
+    // #finishprompt element this frame; updates every render, like
+    // the vacuum's state field above it.
+    prompt: { kind: "", shown: false } as { kind: string; shown: boolean },
     loop: null as unknown as ReturnType<typeof startLoop>,
   };
 
@@ -771,7 +783,15 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       const fwd = camera.getWorldDirection(_aimDir);
       const done = !ui.paused && !finisher.active && !vacuum.active && finisher.has(eye, fwd);
       const vac = !ui.paused && !vacuum.active && !done && vacuum.hasTarget(eye, fwd) != null;
-      hud.setFinishPrompt(done || vac, done ? meleeKey() : useKey());
+      // ENV-03: the mod station's prompt rides the same element, behind
+      // the vacuum and the finisher: a level without stations returns
+      // null, so those prompts are unchanged.
+      const sta = !ui.paused && !finisher.active && !vacuum.active && !done && !vac ? h.stationPrompt?.(eye, fwd) : null;
+      const staText = sta ? sta + " " + useKey() : null;
+      hud.setFinishPrompt(done || vac || staText != null, done ? meleeKey() : staText ?? useKey());
+      // The watch's readout of the same element.
+      game.prompt.kind = done ? "melee" : staText != null ? "station" : vac ? "use" : "";
+      game.prompt.shown = done || vac || staText != null;
       // GAME-08: the charge's one pip, filling as it recharges.
       hud.setVacCharge(vacuum.chargeFrac);
       // GAME-05: the lock marker at the crosshair, on while a charge
