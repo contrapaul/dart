@@ -968,8 +968,15 @@ export class FoamerSystem {
           }
           // GAME-10d: a landed nibble restarts the Swarmer's ring wait.
           if (inReach && tokenKindOf(f.spec) === "swarm") f.sinceNibble = 0;
-          f.state = "strike";
-          f.stateTime = 0;
+          // GAME-10k review: a parry inside onBonk (the page's melee parry)
+          // has already staggered this Foamer and cleared its attack; a
+          // strike set over that froze it with no attack to finish.
+          // (TypeScript has narrowed f.state to "windup" here; onBonk can
+          // change it, hence the widening.)
+          if ((f.state as string) !== "stagger") {
+            f.state = "strike";
+            f.stateTime = 0;
+          }
         }
       }
     } else if (f.state === "strike") {

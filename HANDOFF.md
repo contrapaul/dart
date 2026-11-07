@@ -675,6 +675,29 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: GAME-10k review, merged (Claude Opus 5.5): the F11 Seawall
+
+- **Look, checked by eye:** the turnaround matches the brief: deep lime
+  helm, chest and boots, a purple spiked mace in the right hand, a big
+  orange tower shield on the shield arm, purple horns and cape.
+- **Bug, fixed in review: a parried Seawall froze for good.** The page
+  parries inside `onBonk`, which the Foamer system calls in the middle of
+  the windup-to-strike step. `parryAttack` staggered it and cleared its
+  attack, then the step set `strike` over the stagger; the strike step
+  read `f.attack()!.strike` with no attack and threw every frame. The
+  unit test called `parryAttack` directly, never through a strike. The
+  step now keeps a stagger the bonk set. New test in
+  `tests/foamers/seawall.test.ts` parries through the real strike; it
+  threw before the fix and passes after.
+- **Played on the range** (the F11 button, the shield raised by the watch
+  just before each finisher lands): overhead 0.7 s, sweep 0.5 s, finisher
+  1.2 s, in order and looping; the first finisher parried at 8.9 s and it
+  staggered, recovered and fought round to the next finisher; the second
+  parry at 15.1 s broke the shield off.
+- Not checked: the pink tell and the poses by eye (the pane was hidden),
+  the three sounds, a front dart after the break in the page (the unit
+  test covers it).
+
 ### 2026-11-07: GAME-10k, finished (Qwen 3.8 Flash Next via Pi): the F11 Seawall
 
 - All three stages of `tasks/GAME-10k.md` are committed on `game-10k`

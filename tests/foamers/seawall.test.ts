@@ -228,3 +228,33 @@ describe("GAME-10k: the melee parry", () => {
     expect(f.health).toBeLessThan(before);
   });
 });
+
+describe("GAME-10k review: a parry through the real strike", () => {
+  it("a finisher parried inside its own strike leaves the Seawall staggering, then fighting again", async () => {
+    // Review: the parry was tested by calling parryAttack directly. In play
+    // the page parries inside onBonk, which the system calls in the middle
+    // of the windup-to-strike step; the stagger it set was overwritten with
+    // `strike` and no attack, and the Seawall froze there for good.
+    await RAPIER.init();
+    const r = rig();
+    const player = new THREE.Vector3(0, 0, 2.2);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), player, "F11")!;
+    let parried = 0;
+    r.foamers.onBonk = (sf, attack) => {
+      if (attack === "finisher") {
+        parried++;
+        r.foamers.parryAttack(sf);
+      }
+    };
+    const states: string[] = [];
+    for (let i = 0; i < 60 * 25 && parried < 1; i++) tick(r, player);
+    expect(parried, "the combo reached its finisher").toBe(1);
+    for (let i = 0; i < 60 * 6; i++) {
+      tick(r, player);
+      if (states[states.length - 1] !== f.state) states.push(f.state);
+    }
+    expect(states[0], "the parry left it staggering").toBe("stagger");
+    expect(states.length, "it came out of the stagger and fought on").toBeGreaterThan(2);
+    expect(f.state === "strike" && f.attack() === null, "not frozen in a strike").toBe(false);
+  });
+});
