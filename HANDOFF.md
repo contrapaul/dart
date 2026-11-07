@@ -18,6 +18,16 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+GAME-10l stage 1 code done 2026-11-07, one stage commit on `game-10l`,
+not reviewed, not merged, not pushed (DeepSeek V4.1 Flash via Pi): the
+F13 Biomechanic, look, type and tank only. The palette with a purple
+hood over the crown, a lime tank on the back and a purple wand with a
+foam-core tip in the right hand; the `F13` type on the keep-distance
+brain with a 10 m ring and the tank a 2x weak point. The stream heals
+nothing yet and fires nothing: its attack is declared so the type gets
+the right brain, and stage 2 fills it in. The look was not seen by eye
+and nothing was played (no browser in that session); the hood, the tank
+and the wand were checked by script from the rest pose.
 GAME-10k code done 2026-11-07, three stage commits on `game-10k`, not
 reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): the F11
 Seawall. The palette look (deep lime armour, purple mace, orange tower
@@ -692,6 +702,49 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: GAME-10l stage 1 (DeepSeek V4.1 Flash via Pi): the F13 Biomechanic's look, type and tank
+
+- **Asked for** (`tasks/GAME-10l.md`): stage 1 only, the Biomechanic's
+  palette look with a hood, its `F13` type on the keep-distance brain at
+  about 10 m, and the tank as its weak point. Stages 2 (the healing
+  stream) and 3 (the spray and the docs) are next.
+- **Look.** The rig's material is `foam-orange` and the tank `foam-lime`,
+  the antenna and the wand `foam-purple` with the wand's three-voxel tip
+  left `foam-core`, and the legs purple. The hood is a new `kind:
+  "detail"` part on the head, an ellipsoid of 15 x 9 x 15 voxels with
+  `taper [1, 0.6]` at `[0, 0.6, -0.1]`: measured from the solved rest
+  pose it sits over 78 of the 80 crown voxels and leaves all 26 eye
+  voxels (white and ink) showing. A narrower taper, `[0.9, 0.55]`, covered
+  71 and pushing the hood back dropped it to about half, so the hood
+  stays forward and wide.
+- **Type.** `data/foamers.json` gains the `F13` entry: rig F13, the
+  rig's health 25, `preferredDistanceMetres` 10 and
+  `retreatDistanceMetres` 5, `weakpoint: { parts: ["tank"], damage: 2 }`.
+  Its first attack carrying a token is `healStream` (token `ranged`, no
+  damage, `needs` the tank), which is what makes the system pick the
+  keep-distance brain, so no brain code was written; the `bonk` is last,
+  so a tankless one still fights. Stage 1 declares the stream and does
+  not fire it: two lines in `src/foamers/foamers.ts` keep it out of the
+  player's windup and excuse it from `flightClear`, the way the F10's
+  homing shot is excused, because the target is an ally.
+- **Rendered** `design/foamers/F13-{front,side,back,three-quarter,sheet}.png`
+  with `npx tsx tools/render-rig.ts F13`.
+- **Tests.** `tests/foamers/biomechanic.test.ts` (palette, hood coverage
+  and the eyes showing, the tank behind the body and the wand in the
+  right hand with a foam-core tip, the type reading its own spec, the
+  tank taking 2x where the body does not) and
+  `tests/ai/biomechanic-brain.test.ts` (the keep-distance brain on its
+  own distances, and 20 s of walking that never comes inside the
+  retreat distance). `npx tsc --noEmit`, `npx vitest run` (748 passed,
+  2 skipped) and `npm run build` are green.
+- **Not checked by eye:** the five PNGs and the look in the game. This
+  session had no browser and cannot view images, so the hood, the tank
+  placement and the wand were checked by script from the solved rest
+  pose only. The hood has not been seen on the model, and nothing has
+  been played.
+- Stage 1 is committed on `game-10l`, not reviewed, not merged, not
+  pushed.
 
 ### 2026-11-07: GAME-09d review, merged (Claude Opus 5.5): B06 and the shared explosion
 
