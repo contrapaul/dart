@@ -68,6 +68,11 @@ export class Viewmodel {
   private drumA = 0;
   private drumFrom = 0;
   private drumTarget = 0;
+  // ART-05b: B07's reload: the rounds this reload has to load and whether
+  // animate is inside one, so the drum turns one chamber per round going
+  // in and lands on a chamber at the end.
+  private inReload = false;
+  private reloadRounds = 0;
   private ejT = [-1, -1, -1, -1]; // 0..1 flight per barrel, -1 idle
 
   private constructor(spec: BlasterSpec, scene: THREE.Object3D) {
@@ -209,6 +214,13 @@ export class Viewmodel {
     // Root: base placement + kick (+Z back) + tilt (up) + dip (switch).
     const tiltNorm = m.kick > 1e-9 ? this.kick / m.kick : 0;
     const tilt = this.kick > 0 ? (m.tiltDeg * DEG) * tiltNorm : 0;
+    // ART-05b: reload tilt: the whole blaster rolls about its forward axis
+    // over and back across the reload. Positive reloadRollDeg is to the
+    // right as the player sees it, which is a negative rotation about the
+    // local Z (the camera looks down -Z, so +Z roll takes the top left).
+    const roll = blaster.state === "reloading" && m.reloadRollDeg
+      ? (m.reloadRollDeg * DEG) * Math.sin(blaster.progress * Math.PI)
+      : 0;
     this.root.position.set(
       v.position[0],
       v.position[1] + this.dip,
@@ -217,7 +229,7 @@ export class Viewmodel {
     this.root.rotation.set(
       THREE.MathUtils.degToRad(v.rotationDeg[0]) + tilt,
       THREE.MathUtils.degToRad(v.rotationDeg[1]),
-      THREE.MathUtils.degToRad(v.rotationDeg[2]),
+      THREE.MathUtils.degToRad(v.rotationDeg[2]) - roll,
     );
 
     // Trigger: held or for TRIGGER_HOLD after a shot, eased with a
@@ -250,12 +262,33 @@ export class Viewmodel {
       // X), eased across the priming time with the pump (B01 has no drum
       // node and no drumStepDeg, so it is untouched).
       if (m.drumStepDeg) {
-        if (blaster.state === "priming") {
-          this.drumA = this.drumFrom + (this.drumTarget - this.drumFrom) * blaster.progress;
+        const step = m.drumStepDeg * DEG;
+        if (blaster.state === "reloading") {
+          // ART-05b: rounds go into the drum one at a time, the drum
+          // turning one chamber for each, the turns spread evenly across
+          // the reload. The angle is recorded on the first reloading frame
+          // (the magazine is filled only at the end) and the reload always
+          // ends on a chamber: rounds * one chamber.
+          if (!this.inReload) {
+            this.inReload = true;
+            this.drumFrom = this.drumA;
+            this.reloadRounds = Math.max(0, sp.magSize - blaster.mag);
+          }
+          this.drumA = this.drumFrom + this.reloadRounds * step * blaster.progress;
         } else {
-          // Priming over (or the shot dropped): the drum finishes its
-          // index, so it never sits between chambers.
-          this.drumA = this.drumTarget;
+          if (this.inReload) {
+            // The reload just ended: land exactly on the chamber rather
+            // than on the last frame's near miss.
+            this.inReload = false;
+            this.drumA = this.drumFrom + this.reloadRounds * step;
+            this.drumTarget = this.drumA;
+          } else if (blaster.state === "priming") {
+            this.drumA = this.drumFrom + (this.drumTarget - this.drumFrom) * blaster.progress;
+          } else {
+            // Priming over (or the shot dropped): the drum finishes its
+            // index, so it never sits between chambers.
+            this.drumA = this.drumTarget;
+          }
         }
         const dn = this.nodeByName.get("drum");
         if (dn) {

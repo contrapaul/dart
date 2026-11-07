@@ -47,6 +47,11 @@ export interface MotionSpec {
    *  handle pulled during the reload (B06). */
   boltLiftDeg?: number;
   boltTravel?: number;
+  /** ART-05b: reload tilt: degrees the whole viewmodel rolls about its
+   *  forward axis at the middle of a reload, easing over and back. Positive
+   *  is to the right as the player sees it (B02 rolls right, B04 left).
+   *  A blaster without the field is untouched. */
+  reloadRollDeg?: number;
 }
 
 export interface BlasterSpec {
@@ -138,6 +143,10 @@ interface RawMod {
   burstGap?: number;
   burstCooldown?: number;
   recoil?: Partial<RecoilSpec>;
+  /** ART-05b: a mod's own motion: keys here override the blaster's motion
+   *  block key by key, the way `recoil` does (B02 heavy: a bigger kick and
+   *  a slower slide return). */
+  motion?: Partial<MotionSpec>;
   show?: string[];
   hide?: string[];
   chunk?: ShotChunk | null;
@@ -182,8 +191,8 @@ interface RawBlaster {
 
 /** Merge a blaster's data with its active mods into a resolved spec. The
  *  mod's scalar fields overwrite the blaster's, its muzzles replace the
- *  list, its recoil block merges key by key, and its show and hide node
- *  lists accumulate. */
+ *  list, its recoil and motion blocks merge key by key, and its show and
+ *  hide node lists accumulate. */
 export function resolveSpec(blasterId: string, activeMods: string[] = []): BlasterSpec {
   const raw = (blastersJson as unknown as Record<string, RawBlaster>)[blasterId];
   const s: BlasterSpec = {
@@ -236,6 +245,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     if (mod.muzzles !== undefined) s.muzzles = [...mod.muzzles];
     if (mod.bothBarrels !== undefined) s.bothBarrels = mod.bothBarrels;
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
+    if (mod.motion) s.motion = { ...s.motion, ...mod.motion };
     if (mod.chunk !== undefined) s.chunk = mod.chunk;
     if (mod.explosiveEvery !== undefined) s.explosiveEvery = mod.explosiveEvery;
     if (mod.remote !== undefined) s.remote = mod.remote;

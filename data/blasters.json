@@ -24,7 +24,7 @@
     "recoil": { "spreadPerShot": 0.4, "spreadMax": 6, "climbDegPerShot": 0.25, "climbDegMax": 4, "recover": 0.4 },
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.75 },
-    "motion": { "kick": 0.01, "tiltDeg": 1, "return": 18, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.18 },
+    "motion": { "kick": 0.01, "tiltDeg": 1, "return": 18, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.18, "reloadRollDeg": -8 },
     "mods": {
       "suppress": { "recoil": { "spreadPerShot": 0.12, "climbDegPerShot": 0.08 } },
       "bounce": { "_note": "Every 5th shot bounces to another target: GAME-09b. Data only for now." }
@@ -83,10 +83,10 @@
     "fireInterval": 0.15, "reloadTime": 1.0, "autoReload": true,
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 4, 0], "scale": 0.85 },
-    "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1, "slideTravel": 0.025, "slideReturn": 0.1 },
+    "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1, "slideTravel": 0.025, "slideReturn": 0.1, "reloadRollDeg": 8 },
     "mods": {
       "burst": { "_note": "GAME-09c: mod 1. One press fires three darts, burstGap apart, then the cooldown.", "mode": "burst", "burstCount": 3, "burstGap": 0.07, "burstCooldown": 0.3 },
-      "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit.", "dartType": "slug", "fireInterval": 0.45, "chunk": { "rangeMetres": 6, "carveRadius": 0.2, "push": 1.0 } }
+      "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit. ART-05b: the mod's own motion: a bigger kick and a slower slide return (start values for Paul).", "dartType": "slug", "fireInterval": 0.45, "chunk": { "rangeMetres": 6, "carveRadius": 0.2, "push": 1.0 }, "motion": { "kick": 0.035, "slideReturn": 0.18 } }
     }
   },
   "B07": {

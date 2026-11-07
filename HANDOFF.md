@@ -693,6 +693,69 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: ART-05b (Qwen 3.8 Flash Next via Pi, dgx-spark): reload tilts, B07's reload drum, B02 heavy's motion
+
+- Asked for: the rest of the "Motion (for ART-05)" briefs after ART-05a
+  and GAME-09f (`tasks/ART-05b.md`). Files: `src/weapons/viewmodel.ts`,
+  `src/weapons/blaster.ts` (`MotionSpec`, `RawMod`, `resolveSpec`), the
+  `motion` blocks and B02's `heavy` line in `data/blasters.json`, and
+  `tests/weapons/art-05b.test.ts`.
+- Reload tilt: new optional `MotionSpec.reloadRollDeg`. In `animate`,
+  while `blaster.state === "reloading"` the root's local Z rotation gets
+  `-reloadRollDeg * sin(progress * pi)`, so the blaster eases over and
+  back and is exactly at rest when the reload ends (sin is 0 at both
+  ends). Decision: folded into the existing root `rotation.set`, not a
+  new node or a new helper, because the root is already rewritten every
+  frame there.
+- Sign, found by test (test 1), as the card asked: `rotationDeg` is
+  `[2, 4, 0]` for B02 and `[2, 5, 0]` for B04, so Z is the only free roll
+  axis. A positive rotation about the local Z turns the top of the
+  blaster to the player's left (the camera looks down -Z), so
+  `reloadRollDeg` positive (right, B02) is subtracted. B02 is +8, B04 is
+  -8. The test asserts B02's peak is negative and B04's positive, which
+  is what "right" and "left" mean here.
+- B07's reload drum: the drum's existing index (one chamber per shot,
+  eased across the priming) is unchanged. Added `inReload` and
+  `reloadRounds`: the first reloading frame records `drumFrom` and the
+  round count (`magSize - blaster.mag`, read then, because the magazine
+  is only filled when the reload finishes), and `drumA` eases from
+  `drumFrom` to `drumFrom + rounds * drumStepDeg` on `blaster.progress`.
+  The frame the reload ends lands it exactly on that angle rather than on
+  the last frame's near miss, so it never sits between chambers. Decision:
+  spread evenly across the whole reload, not across part of it; the brief
+  just says one chamber for each round.
+- Mod motion: `RawMod.motion?: Partial<MotionSpec>` and one line in
+  `resolveSpec` (`s.motion = { ...s.motion, ...mod.motion }`), the same
+  shape as the `recoil` merge above it. B02's `heavy` carries
+  `{ "kick": 0.035, "slideReturn": 0.18 }`. Data lines hand-edited, the
+  compact one-line layout kept.
+- Untouched blasters: B01, B03, B05, B06 have no `reloadRollDeg`, and
+  test 3 drives each through shots and a reload and checks the root's Z
+  rotation never leaves its base value. The ART-05a and GAME-09f tests
+  pass unchanged; the whole suite is green (114 files, 808 passed,
+  2 skipped), `npx tsc --noEmit` and `npm run build` pass.
+- Test notes: `rig2` copies the spec with `autoReload: false` so an empty
+  magazine cannot start a reload the test is not asking for; `fireShots`
+  holds the trigger (an auto blaster's flywheels need `fireHeld`) and
+  re-presses once the blaster is ready and past its interval; the drum
+  reader unwraps the turn (a plain angle between quaternions folds every
+  360 degrees to zero) and must be read every frame, and reads `2 *
+  atan2(q.y, q.w)` for a rotation about local Y.
+- Not checked by eye: none of it on screen. The roll direction is only as
+  good as the reading above, so Paul should look at B02 and B04 reloading
+  and confirm which way they tip; and B07's drum should be watched
+  loading six rounds to see the pacing reads as round by round.
+- Not verified by test: the root shot kick's travel. Pre-existing, not
+  touched here: `animate` calls `springKick(dt, m.return, m.kick, { k:
+  this.kick, v: this.kickVel, j: 0 })` with a fresh object literal, and
+  `springKick` mutates that literal, so `this.kick` stays 0 and the root
+  never moves back or tips (only `kickVel` grows). ART-05a's
+  `viewmodel-anim.test.ts` already says so ("skip check of the max kick
+  reached in this version"). Left alone: making the kick work would move
+  B01, B03, B05 and B06, which this card requires stay unchanged. For
+  Paul to decide on, separately. Test 8 therefore checks the heavy
+  `slideReturn` by motion and the bigger `kick` through the spec.
+
 ### 2026-11-08: ART-05a review, merged (Claude Opus 5.5): B02 slide, B05 bolt, B06 handle
 
 - Reviewed dgx-spark's run: clean, the data lines hand-edited in main's
