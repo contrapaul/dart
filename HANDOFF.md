@@ -11,8 +11,10 @@ code): 13 terrain element candidates. Paul answered Q17 to Q20 the same day
 (its section 0): mods at stations, ammo on the ground; moving floors
 paused; Act 1 hazards must be able to kill; looks for crates, buttons,
 targets and stations. Cards ENV-01 (cladding, crates), ENV-02 (button) and
-ENV-03 (mod station) are written, not started. The killing hazard waits on
-Paul's choice. No terrain element is built yet.
+ENV-03 (mod station) are written. ENV-01 stage 1 (the `env-01` test room
+and E01 foam cladding, branch `env-01`, not merged) is built; ENV-01 stage
+2 (E02 crates) and the other two cards are not started. The killing
+hazard waits on Paul's choice.
 
 LVL-04b stage 3 merged locally 2026-11-07, not pushed (card `tasks/LVL-04b.md`, DeepSeek V4.1 Flash via Pi): the A6
 Yard gauntlet and the lit lift, the last stage. Past the Ring's north door
@@ -629,6 +631,45 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-07: ENV-01 stage 1, the cladding test room and E01 (DeepSeek V4.1 Flash via Pi)
+
+- Card `tasks/ENV-01.md`, branch `env-01`, stage 1 only. Stage 2 (E02
+  crates) is not started.
+- `data/levels/env-01.json`: one plain lit room, 16 x 16 m inside walls,
+  5 m ceiling, a player start at `[0, 0, 6]` facing north and an exit pad
+  at `[3, 0.01, -6]` with its box. `arenas: []`, so no lock: the
+  `LevelRunner` is `complete` from the first frame and the pad ends the
+  level on touch. Registered as `"env-01"` in `src/arena/levels.ts`, and
+  `arena.html?level=env-01` picks it.
+- E01: `col-shell` is a shell box, 0.8 x 3 x 0.8 m at `[-3, 1.5, 0]`,
+  indestructible. `col-coat` is one `cover` piece of four volumes, 0.3 m
+  thick on all four sides, `foam-yellow` so it reads softer than the
+  greybox shell, and each volume touches the next at the corners. It is
+  floor anchored on purpose: a wall anchor gets no bedrock row from
+  `fillPieces`, so the first carve would drop the whole coat as one
+  island. See the PLAN section 14 rows.
+- Zone count against KIT 5: **4 volumes, cap 6**, all in the one room.
+  The validator does not count them (its rule 3 counts volumes inside an
+  arena, and this level has none), so `tests/level/env-01.test.ts`
+  asserts the count itself.
+- Tests, all new or one line changed: `tests/level/env-01.test.ts` (7
+  tests: it registers and validates clean, the runner completes with no
+  arena, floor under the start and pad, no coat volume shares space with
+  the shell column, the coat stops a side shot, and carving the whole
+  west face away leaves the shell column solid, the bedrock anchor row
+  in place and the other three sides standing). `tests/level/ring-load`
+  test 5's level list gains `env-01`. No `src/voxel/` or `src/level/`
+  code changed.
+- `npx tsc --noEmit`, `npx vitest run` (626 pass, 2 skipped) and
+  `npm run build` clean; no em or en dashes in the files touched
+  (checked with perl).
+- Not checked by eye (no browser here): whether the room reads as lit
+  and empty at all, whether the coat's four sides show the 0.1 m gap at
+  the top and bottom the file note describes, whether a dart's real
+  carve radius chews the coat at the rate the test's 4 voxel spheres
+  model, and whether the exit pad ending the level on touch works in a
+  running page rather than in the runner's model.
 
 ### 2026-11-07: Paul's answers to Q17 to Q20, and the ENV-01 to ENV-03 cards (Claude Opus 5.5)
 
