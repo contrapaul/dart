@@ -48,6 +48,9 @@ interface Piece {
   prevQ: THREE.Quaternion;
   held: boolean;
   holdTime: number;
+  /** BUG-12: the body was let go while the source still had old chunk
+   *  colliders under it; wake it once the source has remeshed. */
+  wakeWhenSourceDone: boolean;
   /** Reported to onRest already (a piece rests once). */
   rested: boolean;
   /** Bounding radius of the piece (metres), for the rest report. */
@@ -145,11 +148,19 @@ export class FallingPieces {
         pc.holdTime += dt;
         if ((pc.meshJobs === 0 && !pc.source.busy) || pc.holdTime >= T.maxHoldTime) {
           pc.held = false;
+          // Released with the source still remeshing: the piece may settle
+          // on its old chunk colliders and sleep (it can even report a rest
+          // there). Wake it when that remesh lands, or it floats forever.
+          pc.wakeWhenSourceDone = pc.source.busy;
           pc.body!.setBodyType(this.rapier.RigidBodyType.Dynamic, true);
           pc.group.visible = true;
           this.keepPrev(pc);
         }
         continue;
+      }
+      if (pc.wakeWhenSourceDone && !pc.source.busy) {
+        pc.wakeWhenSourceDone = false;
+        pc.body!.wakeUp();
       }
       if (!pc.body || pc.body.translation().y < -20) {
         this.dispose(pc, i);
@@ -223,6 +234,7 @@ export class FallingPieces {
       prevQ: new THREE.Quaternion(),
       held: true,
       holdTime: 0,
+      wakeWhenSourceDone: false,
       rested: false,
       radius: 0,
       fading: false,

@@ -135,6 +135,26 @@ describe("FallingPieces", () => {
     expect(world.bodies.getAll().filter((b) => b.isDynamic())).toHaveLength(1);
   });
 
+  it("7c: a piece released while the source is busy wakes when the source finishes", async () => {
+    // The bug: released at maxHoldTime with the source still remeshing, the
+    // piece settles on the source's old chunk colliders and goes to sleep;
+    // when they go, nothing wakes it and it floats.
+    setBusy(true);
+    const removed = removeLayer(source, 10);
+    pieces.afterCarve(source, removed);
+    await new Promise((r) => setTimeout(r, 0));
+    step(world, pieces, Math.ceil(tuning.islands.maxHoldTime * 60) + 10);
+    const body = world.bodies.getAll().find((b) => b.isDynamic())!;
+    expect(body).toBeDefined();
+    // Still busy: it falls and comes to rest on the old colliders.
+    step(world, pieces, 240);
+    expect(body.isSleeping()).toBe(true);
+    // The source finishing must wake it, even though it is at rest.
+    setBusy(false);
+    pieces.update(dt);
+    expect(body.isSleeping()).toBe(false);
+  });
+
   it("8: tiny islands go to debris; over the cap pieces fade out", async () => {
     // (a) A 3-voxel island is under minPieceVoxels: it becomes debris.
     const small = new VoxelVolume(V);
