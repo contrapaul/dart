@@ -3219,264 +3219,475 @@
       "id": "F12",
       "label": "F12",
       "tier": "Elite",
-      "behaviour": "Hides low, creeps, then pounces from cover.",
+      "behaviour": "Elite: a lean biped that lies in wait in foam growths and pounces out of them.",
       "movement": "pounce",
       "speed": 3,
       "voxelSize": 0.05,
-      "material": "greybox",
+      "material": "foam-purple-deep",
       "parts": [
         {
           "id": "body",
           "kind": "body",
           "shape": "ellipsoid",
           "size": [
-            12,
-            10,
-            24
+            11,
+            20,
+            12
           ],
-          "parent": null,
-          "nubs": [
-            [
-              0,
-              1,
-              0.5
-            ],
-            [
-              0,
-              1,
-              0
-            ],
-            [
-              0,
-              1,
-              -0.5
-            ]
-          ]
+          "parent": null
         },
         {
           "id": "head",
           "kind": "head",
           "shape": "ellipsoid",
           "size": [
-            10,
             9,
-            11
+            10,
+            9
           ],
           "parent": "body",
           "at": [
             0,
-            0.25,
-            0.75
+            0.68,
+            0.1
           ],
           "pivot": [
             0,
-            0,
-            -0.8
+            -0.5,
+            0
           ],
           "eyes": "angry",
-          "mouth": "gape"
+          "mouth": "grin"
         },
         {
-          "id": "tail",
-          "kind": "fin",
-          "shape": "capsule",
+          "id": "visor",
+          "kind": "detail",
+          "shape": "box",
+          "size": [
+            8,
+            3,
+            2
+          ],
+          "parent": "head",
+          "at": [
+            0,
+            0.5,
+            0.92
+          ],
+          "material": "foam-lime"
+        },
+        {
+          "id": "spine1",
+          "kind": "detail",
+          "shape": "cone",
           "size": [
             4,
-            18,
+            5,
             4
           ],
           "parent": "body",
           "at": [
             0,
-            0.2,
-            -0.75
+            0.35,
+            -0.85
           ],
           "pivot": [
             0,
-            1,
+            -1,
             0
           ],
           "rest": [
-            2,
+            -1.05,
+            0,
+            0
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "id": "spine2",
+          "kind": "detail",
+          "shape": "cone",
+          "size": [
+            4,
+            5,
+            4
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            -0.1,
+            -0.9
+          ],
+          "pivot": [
+            0,
+            -1,
+            0
+          ],
+          "rest": [
+            -1.05,
+            0,
+            0
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "id": "spine3",
+          "kind": "detail",
+          "shape": "cone",
+          "size": [
+            4,
+            4,
+            4
+          ],
+          "parent": "body",
+          "at": [
+            0,
+            -0.5,
+            -0.7
+          ],
+          "pivot": [
+            0,
+            -1,
+            0
+          ],
+          "rest": [
+            -1.05,
+            0,
+            0
+          ],
+          "material": "foam-orange"
+        },
+        {
+          "id": "armL",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            6,
+            18,
+            6
+          ],
+          "parent": "body",
+          "at": [
+            -0.85,
+            0.6,
+            0
+          ],
+          "pivot": [
+            0,
+            -0.6,
+            0
+          ],
+          "rest": [
+            -1.0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "foreArmL",
+          "kind": "arm",
+          "shape": "capsule",
+          "size": [
+            5,
+            12,
+            5
+          ],
+          "parent": "armL",
+          "at": [
+            0,
+            -0.9,
+            0
+          ],
+          "rest": [
+            -0.5,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "clawL",
+          "kind": "detail",
+          "shape": "ellipsoid",
+          "size": [
+            10,
+            11,
+            9
+          ],
+          "parent": "foreArmL",
+          "at": [
+            0,
+            -0.85,
+            0.15
+          ],
+          "pivot": [
+            0,
+            -0.6,
+            0
+          ],
+          "rest": [
+            0.9,
             0,
             0
           ],
           "taper": [
-            0.3,
-            1
+            1,
+            0.6
           ]
         },
         {
-          "id": "legFL",
-          "kind": "leg",
+          "id": "armR",
+          "kind": "arm",
           "shape": "capsule",
           "size": [
-            3,
-            7,
-            3
+            6,
+            18,
+            6
           ],
           "parent": "body",
           "at": [
-            -0.65,
-            -0.4,
-            0.55
+            0.85,
+            0.6,
+            0
           ],
-          "rest": [
-            -0.3,
+          "pivot": [
             0,
-            -0.5
-          ]
-        },
-        {
-          "id": "shinFL",
-          "kind": "leg",
-          "shape": "capsule",
-          "size": [
-            3,
-            8,
-            3
-          ],
-          "parent": "legFL",
-          "at": [
-            0,
-            -0.85,
+            -0.6,
             0
           ],
           "rest": [
-            0.5,
+            -1.0,
             0,
-            0.5
+            0
           ]
         },
         {
-          "id": "legBL",
-          "kind": "leg",
+          "id": "foreArmR",
+          "kind": "arm",
           "shape": "capsule",
           "size": [
-            3,
-            7,
-            3
+            5,
+            12,
+            5
           ],
-          "parent": "body",
-          "at": [
-            -0.65,
-            -0.4,
-            -0.55
-          ],
-          "rest": [
-            0.3,
-            0,
-            -0.5
-          ]
-        },
-        {
-          "id": "shinBL",
-          "kind": "leg",
-          "shape": "capsule",
-          "size": [
-            3,
-            8,
-            3
-          ],
-          "parent": "legBL",
+          "parent": "armR",
           "at": [
             0,
-            -0.85,
+            -0.9,
             0
           ],
           "rest": [
             -0.5,
             0,
-            0.5
+            0
           ]
         },
         {
-          "id": "legFR",
-          "kind": "leg",
-          "shape": "capsule",
+          "id": "clawR",
+          "kind": "detail",
+          "shape": "ellipsoid",
           "size": [
-            3,
-            7,
-            3
+            10,
+            11,
+            9
           ],
-          "parent": "body",
-          "at": [
-            0.65,
-            -0.4,
-            0.55
-          ],
-          "rest": [
-            -0.3,
-            0,
-            0.5
-          ]
-        },
-        {
-          "id": "shinFR",
-          "kind": "leg",
-          "shape": "capsule",
-          "size": [
-            3,
-            8,
-            3
-          ],
-          "parent": "legFR",
+          "parent": "foreArmR",
           "at": [
             0,
             -0.85,
+            0.15
+          ],
+          "pivot": [
+            0,
+            -0.6,
             0
           ],
           "rest": [
-            0.5,
+            -0.9,
             0,
-            -0.5
+            0
+          ],
+          "taper": [
+            1,
+            0.6
           ]
         },
         {
-          "id": "legBR",
-          "kind": "leg",
-          "shape": "capsule",
+          "id": "hips",
+          "kind": "detail",
+          "shape": "ellipsoid",
           "size": [
-            3,
-            7,
-            3
+            10,
+            6,
+            8
           ],
           "parent": "body",
           "at": [
-            0.65,
-            -0.4,
-            -0.55
-          ],
-          "rest": [
-            0.3,
             0,
-            0.5
+            -0.62,
+            0
           ]
         },
         {
-          "id": "shinBR",
+          "id": "legL",
           "kind": "leg",
           "shape": "capsule",
           "size": [
-            3,
+            7,
             8,
-            3
+            7
           ],
-          "parent": "legBR",
+          "parent": "hips",
           "at": [
-            0,
-            -0.85,
+            -0.4,
+            -0.2,
             0
           ],
           "rest": [
-            -0.5,
+            -0.25,
             0,
-            -0.5
+            0
           ]
+        },
+        {
+          "id": "shinL",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            6,
+            8,
+            6
+          ],
+          "parent": "legL",
+          "at": [
+            0,
+            -0.88,
+            0
+          ],
+          "rest": [
+            0.45,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "footL",
+          "kind": "leg",
+          "shape": "ellipsoid",
+          "size": [
+            8,
+            4,
+            10
+          ],
+          "parent": "shinL",
+          "at": [
+            0,
+            -0.9,
+            0.12
+          ],
+          "pivot": [
+            0,
+            0.4,
+            -0.3
+          ],
+          "rest": [
+            -0.4,
+            0,
+            0
+          ],
+          "flatBottom": true
+        },
+        {
+          "id": "legR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            7,
+            8,
+            7
+          ],
+          "parent": "hips",
+          "at": [
+            0.4,
+            -0.2,
+            0
+          ],
+          "rest": [
+            -0.25,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "shinR",
+          "kind": "leg",
+          "shape": "capsule",
+          "size": [
+            6,
+            8,
+            6
+          ],
+          "parent": "legR",
+          "at": [
+            0,
+            -0.88,
+            0
+          ],
+          "rest": [
+            0.45,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "footR",
+          "kind": "leg",
+          "shape": "ellipsoid",
+          "size": [
+            8,
+            4,
+            10
+          ],
+          "parent": "shinR",
+          "at": [
+            0,
+            -0.9,
+            0.12
+          ],
+          "pivot": [
+            0,
+            0.4,
+            -0.3
+          ],
+          "rest": [
+            -0.4,
+            0,
+            0
+          ],
+          "flatBottom": true
         }
       ],
-      "health": 25
-    },
+      "motions": {
+        "_note": "GAME-10m: the pounce poses, read by crouchMotion / leapMotion in src/foamers/rig-states.ts (the F07's block names, tuned for a lean build). Angles in degrees, the dip in metres.",
+        "crouch": {
+          "pitch": 16,
+          "dip": 0.18,
+          "armBack": 65,
+          "foreArm": -75,
+          "knees": 35,
+          "headLow": 14
+        },
+        "leap": {
+          "pitch": -12,
+          "lift": 0.05,
+          "armUp": 140,
+          "armOut": 25,
+          "foreArm": -35,
+          "tuck": -55,
+          "headBack": -12
+        }
+      },
+      "health": 25,
+      "_note": "GAME-10m: the Ambusher. Paul's F12 row wins over the 3.3 stalker line (HANDOFF): a lean biped a little taller than the player (1.8 m). Deep purple body (foam-purple-deep, the darkest purple in data/materials.json), a narrow head with the painted angry eyes under a lime visor bar (the F04 and F10 pattern, so the palette's lime sits on the head), a row of small orange spines down the back: orange means weak point or parryable and the F12 has neither, so they are kept small, long arms to blunt foam claws, both feet flatBottom on the ground."    },
     {
       "id": "F13",
       "label": "F13",
