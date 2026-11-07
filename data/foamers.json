@@ -730,6 +730,14 @@
       "throwRangeMetres": 12,
       "preferredDistanceMetres": 10,
       "retreatDistanceMetres": 5,
+      "heal": {
+        "_note": "GAME-10l stage 2: the healing stream. Every pickSeconds it looks for the most hurt ally in rangeMetres and in sight, and pours perSecond health into it, never above its maximum, while it holds. The stream is drawn as a chain of foam-core blobs from the wand tip to the ally, never more than blobCap of them. The antenna is the tank's aerial: with it gone the range halves (src/foamers/heal.ts).",
+        "rangeMetres": 7,
+        "perSecond": 5,
+        "pickSeconds": 0.5,
+        "blobCap": 12,
+        "blobRadiusMetres": 0.09
+      },
       "_brain": "GAME-10l: the first attack with a token is the healing stream, a ranged one, so the Foamer runs the keep-distance brain (decideF02) and holds its 10 m ring while it looks for an ally to heal.",
       "weakpoint": {
         "_note": "GAME-10l: CONTENT-PLAN 3.1, the tank is the weak point. A dart on it takes damage x damage.",

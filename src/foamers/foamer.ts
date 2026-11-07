@@ -17,6 +17,7 @@ import { makeShockwave } from "./leap";
 import type { ShotDamage } from "./chunk";
 import type { DartHit } from "../weapons/darts";
 import type { AgentInput, FoamerAgent } from "../ai/agent";
+import type { HealStream } from "./heal";
 
 // One test Foamer (ENG-10): a root kinematic body that carries only the
 // movement capsule, plus one FoamerPart per part of the rig it was spawned
@@ -185,6 +186,10 @@ export class Foamer {
    *  Only a type that lands a shockwave has one (made at spawn); owned by
    *  the FoamerSystem's group, like the glow group. */
   waveMesh: THREE.Mesh | null = null;
+  /** GAME-10l: the healing stream's blob chain. Only a type with a `heal`
+   *  block has one (made at spawn); owned by the FoamerSystem's group, like
+   *  the wave ring. */
+  healStream: HealStream | null = null;
   /** The body's centre height over the ground at rest: the pendulum's pivot
    *  length, filled once at spawn (GAME-11). */
   pivotHeight = 0;
@@ -238,6 +243,16 @@ export class Foamer {
   /** GAME-10k: whether its tell part is drawn with the parry material
    *  now (the system's stepTell re-asserts it while it is on). */
   tellOn = false;
+  /** GAME-10l: the ally it is streaming health into (null when it is not
+   *  healing), seconds until its next look for the most hurt ally, and the
+   *  clock its stream's blobs drift on. The system fills these; a type with
+   *  no `heal` block never has them set. */
+  healTarget: Foamer | null = null;
+  /** GAME-10l: the ally it walks toward because it is hurt and out of
+   *  range (null when there is none). */
+  healSeek: Foamer | null = null;
+  healCheckIn = 0;
+  healPhase = 0;
   attack() {
     return this.attackId ? this.spec.attacks.find((a) => a.id === this.attackId) ?? null : null;
   }
@@ -621,6 +636,7 @@ export class Foamer {
     for (const p of this.parts.values()) p.dispose(world);
     this.group.removeFromParent();
     this.glowGroup.removeFromParent();
+    this.healStream?.dispose();
     this.waveMesh?.removeFromParent();
     this.waveMesh?.geometry.dispose();
     world.removeRigidBody(this.root);

@@ -39,6 +39,7 @@ import { steer, type Neighbour, type Velocity } from "../ai/steer";
 import { makePath, type NavGrid } from "../ai/nav-grid";
 import type { ProjectileSystem } from "./projectiles";
 import { homingOf, homingShotKind } from "./homing";
+import { healOf, canHeal, healRange, healthShare, HealStream, wandTipPoint } from "./heal";
 import { SIGHT_QUERY_GROUPS } from "../physics/world";
 
 // Spawning, per-part dart damage with foam-core wounds, breaking,
@@ -214,6 +215,9 @@ const _losTo = new THREE.Vector3();
 const _losDir = new THREE.Vector3();
 /** BUG-07: the ball hand's point, for the flight check. */
 const _throwFrom = new THREE.Vector3();
+// GAME-10l stage 2: the healing stream's ends and one ally's chest.
+const _healFrom = new THREE.Vector3();
+const _healTo = new THREE.Vector3();
 /** GAME-10d: one pack member's feet, written before its spawn. */
 const _packFeet = new THREE.Vector3();
 /** GAME-11: a prone Foamer turns at this share of its turn rate. */
@@ -488,6 +492,13 @@ export class FoamerSystem {
       f.waveMesh.visible = false;
       this.group.add(f.waveMesh);
     }
+    // GAME-10l stage 2: the healing stream's blob chain, parked invisible
+    // until it heals; it belongs to the system's group, like the ring.
+    const heal = healOf(f.spec);
+    if (heal) {
+      f.healStream = new HealStream(heal);
+      this.group.add(f.healStream.group);
+    }
     this.list.push(f);
     // Every part is a voxel target of its own, so darts carve the part
     // they actually hit.
@@ -625,6 +636,7 @@ export class FoamerSystem {
         this.stepDown(f, dt);
       } else if (!f.dyingHit) {
         this.stepFoamer(f, dt, player);
+        if (healOf(f.spec)) this.stepHeal(f, dt);
       }
       // The attached parts' meshes refresh here (wounds, stumps); the
       // broken pieces' meshes refresh in stepBroken.
@@ -1201,6 +1213,132 @@ export class FoamerSystem {
     this.stepTell(f);
   }
 
+  /** GAME-10l stage 2: the healing stream. Every heal.pickSeconds the
+   *  Biomechanic looks for the ally with the lowest health share, below
+   *  full and inside its heal range, that it can see, and holds that one
+   *  while it stays in range and in sight, pouring heal.perSecond into it
+   *  (never above its maximum). One ally at a time. With its tank gone it
+   *  cannot heal at all, and the chain is not drawn. */
+  private stepHeal(f: Foamer, dt: number): void {
+    const heal = healOf(f.spec)!;
+    f.healCheckIn = Math.max(0, f.healCheckIn - dt);
+    const range = healRange(f.spec, f);
+    const tank = canHeal(f.spec, f);
+    // It keeps the ally it holds while it is still worth mending and in
+    // reach: one ally at a time, not a new one every look the shares cross
+    // (two hurt allies would otherwise trade the stream back and forth and
+    // neither would get anywhere). A new one is picked on the clock when it
+    // holds nobody.
+    let target = tank ? f.healTarget : null;
+    const lost = !target || !this.healable(f, target) ||
+      Math.hypot(target.centre.x - f.centre.x, target.centre.z - f.centre.z) > range ||
+      !this.healSight(f, target);
+    if (lost) target = null;
+    if (!target && f.healCheckIn <= 0) {
+      target = tank ? this.healPick(f, range) : null;
+      f.healCheckIn = heal.pickSeconds;
+    }
+    f.healTarget = target;
+    // With nobody to mend in reach, a hurt ally it can see is one it walks
+    // the ring toward: the step is round its kept distance, never inside
+    // it (steerAgent reads this). Picked when it has none and dropped when
+    // one is mending, so the sight rays run once per walk, not per frame.
+    if (target) f.healSeek = null;
+    else if (!f.healSeek || !this.healable(f, f.healSeek)) {
+      f.healSeek = tank ? this.healSeekPick(f, range) : null;
+    }
+    if (!target) {
+      f.healStream?.hide();
+      return;
+    }
+    // Turn to it: the wand must point at the ally it is mending.
+    const dx = target.centre.x - f.centre.x;
+    const dz = target.centre.z - f.centre.z;
+    if (Math.hypot(dx, dz) > 1e-4) f.yaw = Math.atan2(dx, dz);
+    target.health = Math.min(target.maxHealth, target.health + heal.perSecond * dt);
+    // The chain: wand tip to the ally's chest, blobs drifting toward it.
+    f.healPhase += dt;
+    const tip = wandTipPoint(f, _healFrom);
+    if (tip) {
+      _healTo.set(target.centre.x, target.centre.y + target.height * 0.5, target.centre.z);
+      f.healStream?.draw(tip, _healTo, heal, f.healPhase);
+    } else {
+      f.healStream?.hide();
+    }
+  }
+
+  /** Whether this Foamer may be healed: alive, standing about, not dying,
+   *  and below its maximum (a full one is no target: the card). */
+  private healable(f: Foamer, t: Foamer): boolean {
+    if (t === f || t.state === "down" || t.state === "finish" || t.dyingHit) return false;
+    return t.health < t.maxHealth;
+  }
+
+  /** The ally to walk the ring toward when nobody is mending: the hurt one
+   *  it can see whose way round the ring is shortest, preferring one that is
+   *  out of reach. Null when every ally is full or none is in sight. */
+  private healSeekPick(f: Foamer, range: number): Foamer | null {
+    let best: Foamer | null = null;
+    let bestScore = Infinity;
+    for (const o of this.list) {
+      if (!this.healable(f, o)) continue;
+      if (!this.healSight(f, o)) continue;
+      const d = Math.hypot(o.centre.x - f.centre.x, o.centre.z - f.centre.z);
+      // Out of reach first (in reach would have been picked above), then
+      // the one nearest to the ring's stride.
+      const score = d > range ? d : d + 1000;
+      if (score < bestScore) {
+        best = o;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  /** The most hurt ally in range and in sight: the lowest health share, so
+   *  the stream goes to the one closest to going down, not the one with the
+   *  biggest number missing. Ties go to the nearer ally (a deterministic
+   *  pick: never Math.random()). */
+  private healPick(f: Foamer, range: number): Foamer | null {
+    let best: Foamer | null = null;
+    let bestShare = 1;
+    let bestDist = Infinity;
+    for (const o of this.list) {
+      if (!this.healable(f, o)) continue;
+      const d = Math.hypot(o.centre.x - f.centre.x, o.centre.z - f.centre.z);
+      if (d > range) continue;
+      if (!this.healSight(f, o)) continue;
+      const share = healthShare(o);
+      if (share < bestShare - 1e-6 || (Math.abs(share - bestShare) <= 1e-6 && d < bestDist)) {
+        best = o;
+        bestShare = share;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  /** Can it see the ally? The same solid-geometry ray its sight uses, from
+   *  its own chest to the ally's, with its own capsule excluded. The ally's
+   *  own movement capsule is the one thing the ray may stop on (a ray to a
+   *  standing body cannot stop short of it the way the player's sight stops
+   *  short of the player): a first hit on that capsule means the way is
+   *  clear, a first hit on anything else means it is not. */
+  private healSight(f: Foamer, t: Foamer): boolean {
+    const from = _healFrom.set(f.centre.x, f.centre.y + f.height * 0.7, f.centre.z);
+    const to = _healTo.set(t.centre.x, t.centre.y + t.height * 0.7, t.centre.z);
+    _losDir.subVectors(to, from);
+    const len = _losDir.length();
+    if (len < 1e-4) return true;
+    _losDir.multiplyScalar(1 / len);
+    this.losRay.origin = from;
+    this.losRay.dir = _losDir;
+    const hit = this.world.castRay(
+      this.losRay, len, true, 8 /* EXCLUDE_SENSORS */, SIGHT_QUERY_GROUPS, f.capsule,
+    );
+    return !hit || hit.collider.handle === t.capsule.handle;
+  }
+
   /**
    * GAME-10k: the pink tell. CONTENT-PLAN 3: pink means parryable and only
    * parryable. While a parryable attack is winding up, its tell part (the
@@ -1319,6 +1457,14 @@ export class FoamerSystem {
     // ring it would keep is 12 m from a bonk it can never land: the
     // brain closes like a bonker's while there is no ranged shot.
     else if (homingOf(f.spec) && !f.parts.has("blaster")) {
+      input.throwRange = input.attackRange;
+      input.preferredDistance = input.attackRange;
+      input.retreatDistance = input.attackRange;
+    }
+    // GAME-10l stage 2: the Biomechanic holds its ring to heal from, so its
+    // own 10 m is never cut down to a bonk's reach. With its tank gone it
+    // has no stream left and closes in to bonk, the way the others do.
+    else if (healOf(f.spec) && !canHeal(f.spec, f)) {
       input.throwRange = input.attackRange;
       input.preferredDistance = input.attackRange;
       input.retreatDistance = input.attackRange;
@@ -1528,7 +1674,16 @@ export class FoamerSystem {
     let vx = 0;
     let vz = 0;
     if (d > 1e-4) {
-      const side = move === "circleLeft" ? 1 : -1;
+      let side = move === "circleLeft" ? 1 : -1;
+      // GAME-10l stage 2: a hurt ally out of reach is what it walks toward,
+      // round the ring rather than through it: the stride takes the side
+      // that closes on the ally, so the player is never crowded.
+      const seek = f.healSeek;
+      if (seek) {
+        const sx = seek.centre.x - f.centre.x;
+        const sz = seek.centre.z - f.centre.z;
+        side = (dz / d) * sx + (-dx / d) * sz >= 0 ? 1 : -1;
+      }
       vx = (dz / d) * side * speed;
       vz = (-dx / d) * side * speed;
       // A step in to the ring when it is outside it, and a step out when it
@@ -1541,7 +1696,14 @@ export class FoamerSystem {
       // circleStrafeShare of the speed, and does nothing inside the
       // deadband, so the sidle settles on the ring (data/ai.json brain).
       const k = Math.min(1, Math.abs(err) / BRAIN.circleRampMetres) * BRAIN.circleStrafeShare;
-      if (Math.abs(err) > BRAIN.circleDeadbandMetres) {
+      // GAME-10l stage 2: a healing Foamer wants to step in toward a hurt
+      // ally out of range, never toward the player, so on its ring it never
+      // closes inside the distance it keeps. (Its 10 m hold and its 7 m
+      // heal range overlap, so an ally at 7.5 m is one it can heal where it
+      // already stands; a further one it cannot reach without crowding the
+      // player, which the card forbids.)
+      const inward = !healOf(f.spec) || err >= 0;
+      if (inward && Math.abs(err) > BRAIN.circleDeadbandMetres) {
         vx -= (dx / d) * Math.sign(err) * speed * k;
         vz -= (dz / d) * Math.sign(err) * speed * k;
       }
