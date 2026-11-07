@@ -6,6 +6,34 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+GAME-10h on branch `game-10h` 2026-11-07 (card `tasks/GAME-10h.md`; stage 1
+by Qwen 3.8 Flash Next via Pi, dgx-spark; stage 2 and the docs by Qwen
+3.8-27B via Pi): the F08 Trawler, finished. Deep lime body and legs,
+purple drum and shoulder nubs, orange launchers (turnaround sheets in
+design/foamers/). The rig format has a cone shape, so shoulder spikes are
+not blocked by the format, but the built Trawler does not have them: it
+keeps the ellipsoid shoulder nubs as a shield look from CONTENT-PLAN 3.4
+and the seen trio of limbs. It holds about 12 m on the Roamer's brain
+(decideF02, no brain code change) and from 19 m winds up both launchers
+for 1.0 s, fires one wall, and recovers 2.5 s. The wall is one flat row
+across the aim line at the player's chest: 2 x 5 balls at 0.6 m apart,
+9 m/s, flat, damage 8, orange, bursts on any geometry, not parryable
+(CONTENT-PLAN gives F08 no P), 40 live at most. Two side-by-side balls
+are left out at a seeded position (data seed plus the wall's number; the
+same PRNG as the pellet stream; never at the row's ends), so a player
+who reads it can step through. Each launcher is a weak point x2 and owns
+its half: one gone means a half row (the gap still applies), both gone
+means no wall, a walk in, and a stomp for 12 at base melee range. Three
+placeholder sounds: F08-windup (both lift), F08-wall (one per wall, not
+per ball), F08-step. Every other type is untouched (tests). tsc, all 588
+tests and npm run build pass; no em or en dashes.
+
+Not checked by eye (no browser here): the Trawler on the range, and in
+particular the wall itself, reading and crossing a gap in play, the stomp
+with both launchers gone, and the three sounds are not heard. The look is
+the rendered turnaround sheets; play tuned nothing (the numbers are
+proposals for Paul).
+
 LVL-03b merged locally 2026-11-07 (card `tasks/LVL-03b.md`, DeepSeek V4.1
 Flash via Pi, branch `lvl-03b`), not pushed:
 Level 1-3 beats 6 to 9 in `data/levels/1-3.json`: the hall chase (A4,
