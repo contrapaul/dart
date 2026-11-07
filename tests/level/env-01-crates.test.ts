@@ -116,13 +116,14 @@ describe("the env-01 crate stacks", () => {
 
   it("builds each crate as a 0.6 m box with a frame proud of the panels", () => {
     for (const [id, centres] of [
-      ["stack-a", [[-5.3, 0.4, 1.4], [-4.7, 0.4, 1.4], [-5.45, 1.0, 1.4]]],
+      ["stack-a", [[-5.3, 0.4, 1.4], [-4.7, 0.4, 1.4], [-5.6, 1.0, 1.4]]],
       ["stack-b", [[2.5, 0.4, 1.0], [2.5, 1.0, 1.0]]],
     ] as const) {
       for (const [cx, cy, cz] of centres) {
         const vols = crateVolumes(id, cx, cy, cz);
-        // Thirteen volumes: the body and the twelve edges.
-        expect(vols.length).toBe(13);
+        // Eighteen volumes: six hollow panels and the twelve edges (review:
+        // a solid crate could not be shot through in play).
+        expect(vols.length).toBe(18);
         const span = (axis: number) => {
           const lo = Math.min(...vols.map((v) => v.pos[axis]! - v.size[axis]! / 2));
           const hi = Math.max(...vols.map((v) => v.pos[axis]! + v.size[axis]! / 2));
@@ -131,14 +132,15 @@ describe("the env-01 crate stacks", () => {
         expect(span(0)).toBeCloseTo(CRATE, 6);
         expect(span(1)).toBeCloseTo(CRATE, 6);
         expect(span(2)).toBeCloseTo(CRATE, 6);
-        // The frame is a second colour, and the panel between the bars is
-        // recessed: the body is 0.4 m across against the crate's 0.6, so a
-        // bar stands 0.1 m proud of the face it frames.
+        // The frame is a second colour, and the panels between the bars are
+        // recessed: they sit 0.2 m from the centre against the crate's 0.3,
+        // so a bar stands 0.1 m proud of the face it frames. The panels are
+        // 0.1 m thick and the inside is empty.
         const body = vols.filter((v) => v.material === "cardboard");
-        const bars = vols.filter((v) => v.material === "foam-orange");
-        expect(body.length).toBe(1);
+        const bars = vols.filter((v) => v.material === "foam-ink");
+        expect(body.length).toBe(6);
         expect(bars.length).toBe(12);
-        expect(body[0]!.size).toEqual([0.4, 0.4, 0.4]);
+        for (const v of body) expect([...v.size].sort()).toEqual([0.1, 0.4, 0.4]);
       }
     }
   });
@@ -163,7 +165,7 @@ describe("the env-01 crate stacks", () => {
       for (const v of onBottom) expect(v.size[1]).toBeCloseTo(0.1, 6);
       // No crate frame or panel reaches the floor.
       for (const v of vols) {
-        if (v.material === "cardboard" || v.material === "foam-orange") {
+        if (v.material === "cardboard" || v.material === "foam-ink") {
           expect(v.pos[1] - v.size[1] / 2).toBeGreaterThanOrEqual(0.1 - 1e-9);
         }
       }
@@ -183,7 +185,7 @@ describe("the env-01 crate stacks", () => {
     expect(o.y + isle.min[1] * s).toBeCloseTo(0.7, 6);
     expect(o.y + (isle.max[1] + 1) * s).toBeCloseTo(1.3, 6);
     const mats = new Set(isle.voxels.map((v) => material(v.material)?.name));
-    expect(mats).toEqual(new Set(["cardboard", "foam-orange"]));
+    expect(mats).toEqual(new Set(["cardboard", "foam-ink"]));
     // Heavy enough to be a falling piece rather than debris, and cheap
     // enough to collide as a handful of boxes.
     expect(isle.voxels.length).toBeGreaterThanOrEqual(MIN_PIECE_VOXELS);
@@ -206,8 +208,9 @@ describe("the env-01 crate stacks", () => {
     // The right crate is still up and still anchored: its panel voxels are
     // in place, tied to its own plinth.
     const right = b.voxels;
-    const gx = Math.round((-4.7 - o.x) / s);
-    const gy = Math.round((0.3 - o.y) / s);
+    // The crate is hollow, so look in its east panel, not its middle.
+    const gx = Math.floor((-4.55 - o.x) / s + 1e-6);
+    const gy = Math.floor((0.35 - o.y) / s + 1e-6);
     const gz = Math.round((1.4 - o.z) / s);
     expect(material(right.get(gx, gy, gz))?.name).toBe("cardboard");
   });

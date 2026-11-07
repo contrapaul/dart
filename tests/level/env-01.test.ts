@@ -146,7 +146,7 @@ describe("the foam coat on the column", () => {
             Math.round((y + s / 2 - o.y) / s),
             Math.round((z + s / 2 - o.z) / s),
           );
-          if (material(m)?.name === "foam-yellow") left++;
+          if (material(m)?.name === "foam-white") left++;
         }
       }
     }
@@ -179,7 +179,7 @@ describe("the foam coat on the column", () => {
       Math.round((1.5 - o.y) / s),
       Math.round((-0.55 - o.z) / s),
     );
-    expect(material(m)?.name).toBe("foam-yellow");
+    expect(material(m)?.name).toBe("foam-white");
     expect(m).not.toBe(materialId("bedrock"));
   });
 });

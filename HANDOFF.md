@@ -632,10 +632,38 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-01 review (Claude Opus 5.5)
+
+- Stage 1, the cladding, passes: tsc, 633 tests and the build are green,
+  and in the page eight darts took 82 voxels off the coat's east face and
+  nothing else moved. The pane was hidden, so this was read from the voxel
+  volume, not seen.
+- Colours changed in review. The crate frame was `foam-orange` and orange
+  means a weak point (Paul, 2026-11-07); it is `foam-ink` now. The coat was
+  `foam-yellow` and yellow is the player's darts; it is `foam-white` now.
+  Both are Paul's to change.
+- Crates are now hollow (six 0.1 m cardboard panels inside the same frame)
+  and the offset top crate of `stack-a` sits on the 0.1 m grid at x -5.6
+  (it was at -5.45, half a voxel off, so one edge was rounded away).
+- **Not working in play: the topple.** The tests pass because they delete a
+  whole bottom crate at once. In the page, 150 Dartman darts on a solid
+  crate, 40 slugs on another, and 120 darts on a hollow one all left the
+  top crate standing: darts carve the near face and the back panel and
+  bars keep the top crate tied to its plinth. A stack only falls if a full
+  ring through the bottom crate is cut from every side. Needs Paul's call:
+  a crate that breaks whole after a share of its voxels is gone (a small
+  rule in the voxel code), or crates stay cover to chew through and only
+  explosions topple them.
+- The wall and ceiling anchors write no bedrock (DeepSeek's finding, true:
+  `fillPieces` in `src/level/build.ts`). A wall or ceiling piece under the
+  6000 voxel island search budget drops whole on its first carve.
+  `store-window` and `tower-plug` (1-2) and `pit-island` (1-4) use them;
+  not checked yet whether any is small enough to drop.
+
 ENV-01 stage 2 merged locally 2026-11-07, not pushed (card `tasks/ENV-01.md`,
 DeepSeek V4.1 Flash via Pi, branch `env-01`): E02, the toy crate stacks, in
 `data/levels/env-01.json`. A crate is 0.6 m: a 0.4 m `cardboard` body with
-twelve `foam-orange` bars on its edges, each bar 0.2 m thick so it overlaps
+twelve `foam-ink` bars on its edges, each bar 0.2 m thick so it overlaps
 the body by 0.1 m and stands 0.1 m proud of the panel it frames (one 0.1 m
 voxel, per the reviewer's correction; the card said 0.08 m). Thirteen
 volumes per crate, which costs one KIT 5 zone: the room is now 3 of 6 (the
@@ -660,7 +688,7 @@ column of two. A top crate bridging both bottom crates was rejected: it
 shares faces with both, so shooting one out leaves it tied to the other,
 which is correct but shows nothing.
 
-The frame is `foam-orange` rather than `wood` because a standard dart carves
+The frame is foam (`foam-ink` after review) rather than `wood` because a standard dart carves
 0.12 m and `carveSphere` divides that by hardness: against wood (2.5) the
 effective radius is 0.048 m, under `minEffectiveRadius` 0.5, so a dart
 could not remove a single frame voxel and the stack would be permanent. The
@@ -696,7 +724,7 @@ lands on the nav grid sensibly.
   `arena.html?level=env-01` picks it.
 - E01: `col-shell` is a shell box, 0.8 x 3 x 0.8 m at `[-3, 1.5, 0]`,
   indestructible. `col-coat` is one `cover` piece of four volumes, 0.3 m
-  thick on all four sides, `foam-yellow` so it reads softer than the
+  thick on all four sides, `foam-white` (yellow after the review: yellow is the player's darts) so it reads softer than the
   greybox shell, and each volume touches the next at the corners. It is
   floor anchored on purpose: a wall anchor gets no bedrock row from
   `fillPieces`, so the first carve would drop the whole coat as one
