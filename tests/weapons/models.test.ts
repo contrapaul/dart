@@ -28,16 +28,16 @@ function glbNodeNames(path: string): Set<string> {
   return new Set(json.nodes.map((n) => n.name));
 }
 
-// Path from the tests directory to the mounted public directory.
-const MODELS = "public/models/blasters";
-
 describe("GAME-09 models", () => {
   const ids = (blastersJson as unknown as { order: string[] }).order;
 
   it("13. every blaster has every node its mode, muzzles, mods and animation need", () => {
     for (const id of ids) {
       const spec = resolveSpec(id);
-      const names = glbNodeNames(`${MODELS}/${id}.glb`);
+      // GAME-09c: read the model the spec points at, not "<id>.glb":
+      // the B02 placeholder points at the B01 file until its own ships.
+      const rel = spec.model.startsWith("/") ? spec.model.slice(1) : spec.model;
+      const names = glbNodeNames(`public/${rel}`);
       // Every blaster animates its trigger.
       expect(names.has("trigger")).toBe(true);
       // Every muzzle in use fires darts from a named empty.
@@ -54,6 +54,10 @@ describe("GAME-09 models", () => {
           names.has("flywheel_l") && names.has("flywheel_r") || names.has("bolt"),
           `${id}: no flywheels and no bolt`,
         ).toBe(true);
+        expect(names.has("mag"), `${id}: no mag`).toBe(true);
+      } else if (spec.mode === "semi") {
+        // GAME-09c: B02 reuses the B01 glb as a placeholder and needs
+        // only the magazine node to drop on its reload.
         expect(names.has("mag"), `${id}: no mag`).toBe(true);
       } else {
         expect(names.has("breach"), `${id}: no breach`).toBe(true);

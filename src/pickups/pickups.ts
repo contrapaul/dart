@@ -229,6 +229,8 @@ export class PickupSystem {
     let gave = 0;
     for (const b of this.blasters) {
       if (b.dartType !== it.dartType) continue;
+      // GAME-09c: the B02's reserve never empties, so the box never gives it.
+      if (b.spec.reserveInfinite) continue;
       const space = Math.max(0, b.spec.reserveMax - b.reserve);
       const take = Math.min(space, it.dartCount ?? 0);
       b.reserve += take;
