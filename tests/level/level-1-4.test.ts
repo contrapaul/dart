@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { World } from "@dimforge/rapier3d-compat";
 import levelJson from "../../data/levels/1-4.json";
+import foamerData from "../../data/foamers.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { LevelRunner, type LevelEvents } from "../../src/level/level-runner";
@@ -9,9 +10,15 @@ import { makeLevelAI } from "../../src/ai/level";
 import { makePath } from "../../src/ai/nav-grid";
 import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
-import { linearColorTable } from "../../src/voxel/materials";
+import { linearColorTable, materialId } from "../../src/voxel/materials";
 import type { Level } from "../../src/level/format";
 import { chosenLevel } from "../../src/arena/levels";
+import * as THREE from "three";
+import { DebrisSystem } from "../../src/voxel/debris";
+import { DartSystem } from "../../src/weapons/darts";
+import type { VoxelTarget } from "../../src/weapons/impacts";
+import { FoamerSystem } from "../../src/foamers/foamers";
+import type { VoxelVolume } from "../../src/voxel/chunk";
 
 // LVL-04a: Level 1-4 beats 1 to 5 (the forecourt, explore 1 with the first
 // Darter, the A4 hall, the mid-hall alcove and the A8 bridge over the ring,
@@ -411,5 +418,64 @@ describe("the Pit and breather 2 (LVL-04b stage 1)", () => {
     // A3 stays on the Pit's ring, per the concept's section 6: no ammo here.
     const near = level.pickups!.filter((p) => p.pos[2] < -203);
     expect(near).toEqual([]);
+  });
+});
+
+// LVL-04b stage 2: the promotion. A promoted spawn is the same Foamer with
+// more health and, for a Darter, light purple plates; an ordinary spawn keeps
+// the rig's lime plates and its 30 health, so the two read apart on sight.
+describe("promoted Foamers (LVL-04b stage 2)", () => {
+  /** The materials a part's voxel volume is made of, as a set. */
+  function materialsOf(volume: VoxelVolume) {
+    const set = new Set<number>();
+    for (const c of volume.chunks.values()) for (const m of c.data) if (m) set.add(m);
+    return set;
+  }
+
+  async function spawnDarter(promoted: boolean) {
+    const { world } = await createPhysics();
+    world.createCollider(RAPIER.ColliderDesc.cuboid(40, 0.5, 40).setTranslation(0, -0.5, 0));
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    const ignore = world.createCollider(
+      RAPIER.ColliderDesc.capsule(0.5, 0.3).setTranslation(0, 0, 200),
+      body,
+    );
+    const darts = new DartSystem(new THREE.Scene(), world, RAPIER, ignore);
+    const debris = new DebrisSystem(RAPIER, world);
+    const targets: VoxelTarget[] = [];
+    const foamers = new FoamerSystem(RAPIER, world, FAKE, debris, darts, targets);
+    world.step();
+    return { foamers, world, f: foamers.spawn(new THREE.Vector3(0, 0, 0), undefined, "F05", promoted) };
+  }
+
+  it("15. a promoted spawn has 1.5x the health and the light purple plates, an ordinary one neither", async () => {
+    // The block's own number, so the test fails if the data drifts from 1.5.
+    expect(foamerData.promoted.healthMultiplier).toBe(1.5);
+    const purple = materialId("foam-purple-light");
+    const lime = materialId("foam-lime");
+
+    const plain = await spawnDarter(false);
+    expect(plain.f!.maxHealth).toBe(30);
+    expect(plain.f!.health).toBe(30);
+    for (const id of ["chest", "brow"]) {
+      const mats = materialsOf(plain.f!.parts.get(id)!.volume);
+      expect(mats.has(lime), `ordinary ${id} is lime`).toBe(true);
+      expect(mats.has(purple), `ordinary ${id} is not purple`).toBe(false);
+    }
+
+    const promoted = await spawnDarter(true);
+    expect(promoted.f!.maxHealth).toBe(45);
+    expect(promoted.f!.health).toBe(45);
+    for (const id of ["chest", "brow"]) {
+      expect(materialsOf(promoted.f!.parts.get(id)!.volume).has(purple), `promoted ${id} is purple`)
+        .toBe(true);
+    }
+    // The rest of the rig keeps its own colours: only the named parts swapped.
+    expect(materialsOf(promoted.f!.parts.get("weakpoint")!.volume).has(materialId("foam-orange")))
+      .toBe(true);
+    // The shared rig is not changed for every other spawn.
+    const after = await spawnDarter(false);
+    expect(after.f!.maxHealth).toBe(30);
+    expect(materialsOf(after.f!.parts.get("chest")!.volume).has(lime)).toBe(true);
   });
 });

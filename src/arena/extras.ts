@@ -95,12 +95,13 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       door.setState(state);
       audio.play("LV-door", { position: doorMeshPos(id) });
     },
-    spawn(foamerId, rift) {
+    spawn(foamerId, rift, promoted) {
       // GAME-10a: the id in the file is the type (the validator checked it
       // exists in the rigs, and every rig id has a spec entry).
+      // LVL-04b: a promoted spawn gets the mini-boss health and plates.
       _riftFeet.set(rift.pos[0], rift.pos[1], rift.pos[2]);
       _riftFacing.copy(player.eye(1, _playerPos));
-      const f = foamers.spawn(_riftFeet, _riftFacing, foamerId);
+      const f = foamers.spawn(_riftFeet, _riftFacing, foamerId, promoted);
       if (!f) return false;
       audio.play("FX-spawn", { position: _riftFeet });
       return true;
