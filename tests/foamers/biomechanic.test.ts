@@ -136,7 +136,7 @@ describe("the Biomechanic's look (GAME-10l stage 1)", () => {
     expect(hidden, "the eyes are not behind the hood").toBe(0);
   });
 
-  it("3. the tank is on its back and the wand hangs from the right hand", () => {
+  it("3. the tank is on its back and the wand is in the right hand", () => {
     const pose = solvePose(RIG, new THREE.Vector3(), 0, restMotion(), new Map());
     const box = (id: string) => {
       const p = partOf(id);
@@ -165,7 +165,7 @@ describe("the Biomechanic's look (GAME-10l stage 1)", () => {
     const core = materialId("foam-core");
     for (let x = 0; x < partOf("wand").size[0]; x++)
       for (let z = 0; z < partOf("wand").size[2]; z++)
-        for (let y = 0; y < 3; y++)
+        for (let y = 0; y < (partOf("wand") as { tip: { length: number } }).tip.length; y++)
           if (wandV.get(x, y, z)) expect(wandV.get(x, y, z), `wand tip ${x},${y},${z}`).toBe(core);
   });
 });
