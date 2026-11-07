@@ -693,6 +693,15 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: B07 Collateral brief and model (ART-01, ART-04, Claude Opus 5.5)
+
+- Paul said to proceed with B07 in navy blue with red accents. Brief
+  `design/blasters/B07.md` (a tube magazine under a wide launch tube, a
+  ribbed pump sleeve, a ladder sight, a short stock) and the model from
+  `art/blasters/B07/build.py`; notes and checks in
+  `art/blasters/B07/NOTES.md`. All contract checks pass; the export is
+  repeatable. Waiting for Paul's approval of both. Gameplay not started.
+
 ### 2026-11-07: GAME-09d review, merged (Claude Opus 5.5): B06 and the shared explosion
 
 - **Bug, fixed in review, in every full-auto blaster: a stored burst
