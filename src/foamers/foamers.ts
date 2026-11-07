@@ -925,6 +925,10 @@ export class FoamerSystem {
           } else if (inReach && atk.token === "ranged" && wallOf(f.spec)) {
             // GAME-10h: the Trawler's wall fires at the strike's start (see
             // the strike branch), with its own sound, not the throw's.
+          } else if (inReach && atk.token === "ranged" && atk.id === "healStream") {
+            // GAME-10l: the Biomechanic's healing stream goes to an ally,
+            // never to the player, so nothing leaves the wand here and the
+            // throw sound does not play. Stage 2 fills the strike branch in.
           } else if (inReach && atk.token === "ranged") {
             // A throw is not a hit: the ball does the damage when it lands
             // (src/foamers/projectiles.ts), so no bonk and no onBonk here.
@@ -1583,6 +1587,9 @@ export class FoamerSystem {
     // GAME-10j: a homing shot seeks after it leaves the blaster, so a
     // blocked line does not block it: no gate to fail.
     if (f.attack()?.id === "homingShot") return true;
+    // GAME-10l: the Biomechanic's stream goes to an ally, never to the
+    // player, so the player's line is not the one it needs.
+    if (f.attack()?.id === "healStream") return true;
     if (!fresh && f.throwCheckIn > 0) return f.throwClear;
     const from = this.projectiles.handAt(f, _throwFrom);
     f.throwClear = this.projectiles.flightClear(from, player);

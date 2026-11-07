@@ -721,6 +721,49 @@
         "parriesToBreak": 2,
         "_doc": "GAME-10k: a parry staggers the Seawall for staggerSeconds and puts one parry on its shield; at parriesToBreak the part breaks off as a foam piece and the arc armour goes with it."
       }
+    },
+    "F13": {
+      "rig": "F13",
+      "_note": "GAME-10l: the Biomechanic. An elite support Foamer on the Roamer's keep-distance brain (the F02 brain), holding at preferredDistanceMetres 10 so it stays behind the line it heals. Health 25 and speed 1.6 come from the rig. The tank is the weak point (weakpoint): with it gone it cannot heal or spray and closes in to bonk with the wand. Look (CONTENT-PLAN 3.3): orange body and arms, a purple hood over the head, a lime tank on the back, a purple wand with a foam-core tip. Stage 1 only: the healing stream and the spray arrive in stages 2 and 3, so for now the wand is a melee bonk.",
+      "turnRate": 4,
+      "attackRange": 1.6,
+      "throwRangeMetres": 12,
+      "preferredDistanceMetres": 10,
+      "retreatDistanceMetres": 5,
+      "_brain": "GAME-10l: the first attack with a token is the healing stream, a ranged one, so the Foamer runs the keep-distance brain (decideF02) and holds its 10 m ring while it looks for an ally to heal.",
+      "weakpoint": {
+        "_note": "GAME-10l: CONTENT-PLAN 3.1, the tank is the weak point. A dart on it takes damage x damage.",
+        "parts": [
+          "tank"
+        ],
+        "damage": 2
+      },
+      "attacks": [
+        {
+          "id": "healStream",
+          "damage": 0,
+          "token": "ranged",
+          "_note": "GAME-10l: the healing stream, aimed at an ally rather than the player. Stage 1 declares it so the type runs the keep-distance brain and keeps its ring; nothing fires and nothing is healed until stage 2 fills the windup branch in. needs the tank: with it gone the attack is gone and the bonk is what is left.",
+          "needs": [
+            "tank"
+          ],
+          "windup": 0.6,
+          "strike": 0.2,
+          "range": 10
+        },
+        {
+          "id": "bonk",
+          "damage": 12,
+          "token": "melee",
+          "needs": [
+            "foreArmL",
+            "foreArmR",
+            "wand"
+          ],
+          "windup": 0.6,
+          "strike": 0.2
+        }
+      ]
     }
   },
   "promoted": {
