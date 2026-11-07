@@ -627,6 +627,17 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-07: ENV-00 review, merged (Claude)
+
+- Read `design/levels/ENVIRONMENT.md` in full: what exists today, 13
+  candidates (E01 to E13) across destructible, hazard, movement,
+  interactive, changing cover and stations, a first set of five (E01
+  cladding, E02 crate stack, E04 sticky patch, E08 toy button, E12 ammo
+  station) and Q17 to Q20 in PLAN section 13. Foam and toys only, no
+  fluid, fire or shock, `[Paul]` on every look; blaster and Foamer names
+  are Paul's own. Docs only; the suite passes (619, 2 skipped).
+- Waiting on Paul: which elements to build, and Q17 to Q20.
+
 ### 2026-11-07: ENV-00, the environment element list (design only)
 
 - Card `tasks/ENV-00.md`, branch `env-00`. No game code touched: the
