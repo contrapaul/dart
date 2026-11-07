@@ -670,17 +670,56 @@
       },
       "attacks": [
         {
-          "id": "bonk",
+          "id": "overhead",
+          "damage": 15,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "handle"
+          ],
+          "windup": 0.7,
+          "strike": 0.2
+        },
+        {
+          "id": "sweep",
           "damage": 12,
           "token": "melee",
           "needs": [
             "foreArmR",
             "handle"
           ],
-          "windup": 0.6,
+          "windup": 0.5,
           "strike": 0.2
+        },
+        {
+          "id": "finisher",
+          "damage": 35,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "handle"
+          ],
+          "windup": 1.2,
+          "strike": 0.25,
+          "parryable": true,
+          "_doc": "GAME-10k: the slow high wind-up (CONTENT-PLAN F11). The one attack marked parryable: pink maceHead during its windup, and a raised shield inside the parry window turns it whole."
         }
-      ]
+      ],
+      "combo": {
+        "attacks": [
+          "overhead",
+          "sweep",
+          "finisher"
+        ],
+        "_doc": "GAME-10k: the Seawall fights its attacks in this order, one per strike that landed. The turn counter turns at the bonk (Foamer.comboTurn), so it loops overhead, sweep, finisher."
+      },
+      "meleeParry": {
+        "part": "shield",
+        "tellPart": "maceHead",
+        "staggerSeconds": 1.5,
+        "parriesToBreak": 2,
+        "_doc": "GAME-10k: a parry staggers the Seawall for staggerSeconds and puts one parry on its shield; at parriesToBreak the part breaks off as a foam piece and the arc armour goes with it."
+      }
     }
   },
   "promoted": {

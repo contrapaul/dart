@@ -56,15 +56,14 @@ function tick(r: ReturnType<typeof rig>, player: THREE.Vector3) {
 }
 
 describe("GAME-10k: the Seawall's spec", () => {
-  it("reads its own spec: rig F11, health 60, the melee brain's one attack", async () => {
+  it("reads its own spec: rig F11, health 60, melee attacks", async () => {
     await RAPIER.init();
     const r = rig();
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1), "F11")!;
     expect(f.spec.rig).toBe("F11");
     expect(f.rig.health).toBe(60);
     expect(f.health).toBe(60);
-    expect(f.spec.attacks.length).toBe(1);
-    expect(f.spec.attacks[0]!.token).toBe("melee");
+    expect(f.spec.attacks.every((a) => a.token === "melee")).toBe(true);
     expect(f.parts.has("shield")).toBe(true);
     expect(f.parts.has("shieldBoss")).toBe(true);
     expect(f.parts.has("maceHead")).toBe(true);
@@ -126,5 +125,106 @@ describe("GAME-10k: the shield against darts", () => {
     for (let i = 0; i < 120 && f.health === before; i++) tick(r, player);
     const kind = SPEC.partDamage.kinds[body.spec.kind as "body"];
     expect(before - f.health).toBeCloseTo(SPEC.damage.standard * kind.hit * kind.total, 5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GAME-10k stage 2: the combo (overhead, sweep, finisher in order), the pink
+// tell on the finisher's windup, and the melee parry that breaks the shield.
+
+import { decideMeleeParry, comboOf, meleeParryOf } from "../../src/foamers/combo";
+import { BALL_MATERIAL } from "../../src/foamers/projectiles";
+import { voxelFoamMaterial } from "../../src/render/foam-material";
+
+describe("GAME-10k: the combo", () => {
+  it("the spec lists the three attacks and the combo order", () => {
+    expect(SPEC.attacks.map((a) => a.id)).toEqual(["overhead", "sweep", "finisher"]);
+    expect(comboOf(SPEC)?.attacks).toEqual(["overhead", "sweep", "finisher"]);
+    expect(SPEC.attacks.map((a) => a.windup)).toEqual([0.7, 0.5, 1.2]);
+    expect(SPEC.attacks.map((a) => a.damage)).toEqual([15, 12, 35]);
+    expect(meleeParryOf(SPEC)).toEqual({ part: "shield", tellPart: "maceHead", staggerSeconds: 1.5, parriesToBreak: 2 });
+  });
+
+  it("it fights overhead, sweep, finisher in order, then loops", async () => {
+    await RAPIER.init();
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 1.4), player, "F11")!;
+    for (const p of f.parts.values()) await settle(p.mesh, r.world);
+    const bonks: string[] = [];
+    r.foamers.onBonk = (_f, attack) => bonks.push(attack);
+    for (let i = 0; i < 60 * 40 && bonks.length < 4; i++) tick(r, player);
+    expect(bonks.slice(0, 4)).toEqual(["overhead", "sweep", "finisher", "overhead"]);
+    expect(f.comboTurn).toBe(4);
+  });
+
+  it("the mace is pink only during the finisher's windup", async () => {
+    await RAPIER.init();
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 1.4), player, "F11")!;
+    for (const p of f.parts.values()) await settle(p.mesh, r.world);
+    const mace = f.parts.get("maceHead")!;
+    const chunkMat = () => (mace.mesh.group.children[0] as THREE.Mesh).material as THREE.Material;
+    let sawPink = false, sawPlainDuringWindup = false;
+    for (let i = 0; i < 60 * 40 && !(sawPink && sawPlainDuringWindup); i++) {
+      tick(r, player);
+      if (f.state !== "windup") continue;
+      if (f.attack()?.id === "finisher") {
+        if (chunkMat() === BALL_MATERIAL) sawPink = true;
+      } else if (chunkMat() === voxelFoamMaterial()) sawPlainDuringWindup = true;
+    }
+    expect(sawPink).toBe(true);
+    expect(sawPlainDuringWindup).toBe(true);
+    // Once the windup is over it is purple foam again.
+    for (let i = 0; i < 600 && f.state !== "recover" && f.state !== "approach"; i++) tick(r, player);
+    expect(chunkMat()).toBe(voxelFoamMaterial());
+  });
+});
+
+describe("GAME-10k: the melee parry", () => {
+  it("only a marked attack inside the window is a parry; the rest block or hit", () => {
+    expect(decideMeleeParry(SPEC, "finisher", true, true)).toBe("parry");
+    // Blocked but the window has passed: a block, as any attack is.
+    expect(decideMeleeParry(SPEC, "finisher", true, false)).toBe("block");
+    // An attack not marked parryable is never parried, even in the window.
+    expect(decideMeleeParry(SPEC, "overhead", true, true)).toBe("block");
+    expect(decideMeleeParry(SPEC, "sweep", true, true)).toBe("block");
+    // Nothing met the disc: a clean hit.
+    expect(decideMeleeParry(SPEC, "finisher", false, true)).toBe("hit");
+    // A type with no parryable attacks never parries (the test type's bonk).
+    const f01 = specFor("F01");
+    expect(decideMeleeParry(f01, "bonk", true, true)).toBe("block");
+  });
+
+  it("a parry costs the player nothing, staggers the Seawall and counts; two break the shield, and then a front dart hurts", async () => {
+    await RAPIER.init();
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 1.4), player, "F11")!;
+    for (const p of f.parts.values()) await settle(p.mesh, r.world);
+    const healthBefore = f.health;
+    // One parry: stagger, count, shield still on.
+    r.foamers.parryAttack(f);
+    expect(f.health).toBe(healthBefore);
+    expect(f.state).toBe("stagger");
+    expect(f.staggerDuration()).toBe(1.5);
+    expect(f.parriesTaken).toBe(1);
+    expect(f.parts.has("shield")).toBe(true);
+    // Out of the stagger, a second parry: the shield breaks off as a piece.
+    while (f.state === "stagger") tick(r, player);
+    r.foamers.parryAttack(f);
+    expect(f.parriesTaken).toBe(2);
+    expect(f.parts.has("shield")).toBe(false);
+    expect(f.parts.has("shieldBoss")).toBe(false);
+    // The arc is gone: a dart straight at the helm from the front hurts.
+    const helm = f.parts.get("helm") ?? f.parts.get("head")!;
+    await settle(helm.mesh, r.world);
+    const c = helm.voxelToWorld(new THREE.Vector3(
+      helm.spec.size[0] / 2, helm.spec.size[1] / 2, helm.spec.size[2] / 2));
+    const before = f.health;
+    r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1.5), new THREE.Vector3(0, 0, -1), "standard");
+    for (let i = 0; i < 120 && f.health === before; i++) tick(r, player);
+    expect(f.health).toBeLessThan(before);
   });
 });

@@ -99,6 +99,25 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [0.2 * e, 0, 1.4 * e]);
     out.turn = 0.25 * e;
     out.pitch = 0.1 * e;
+  } else if (attack === "overhead" || attack === "finisher") {
+    // GAME-10k: the Seawall's mace over its head. The finisher is the
+    // slow high wind-up (CONTENT-PLAN F11): the same pose held higher and
+    // the body coiled further back, and its part is what turns pink (the
+    // system's tell, not the pose).
+    const high = attack === "finisher";
+    if (rig.parts.some((p) => p.id === "armR"))
+      out.rot.set("armR", [(high ? -2.8 : -2.4) * e, 0, 0]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * e, 0, 0]);
+    out.pitch = (high ? -0.25 : -0.1) * e;
+    out.y = 0.04 * e;
+  } else if (attack === "sweep") {
+    // GAME-10k: the wide horizontal mace strike: the arm drawn back out
+    // to the right, the body turning with it, ending where the strike
+    // starts (no snap at the handover). The Brawler's swing (GAME-10i)
+    // is the pattern.
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [0.2 * e, 0, 1.4 * e]);
+    out.turn = 0.25 * e;
+    out.pitch = 0.1 * e;
   } else if (attack === "homingShot") {
     // GAME-10j: the wrist launcher raised: the right arm lifts the blaster
     // out to the side and up, the forearm over, the body aiming with it.
@@ -149,6 +168,34 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     // GAME-10i: the wide horizontal strike: the drawn-back arm swings
     // across the body, side to side, fast for the first 70%, then the
     // follow-through settles to rest, so the recover starts clean.
+    const u = k < 0.7 ? (k / 0.7) ** 1.6 : 1;
+    const back = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+    if (rig.parts.some((p) => p.id === "armR"))
+      out.rot.set("armR", [(0.2 - 0.5 * u) * back, 0, (1.4 - 2.7 * u) * back]);
+    out.turn = (0.25 - 0.45 * u) * back;
+    out.pitch = (0.1 - 0.25 * u) * back;
+  } else if (attack === "overhead") {
+    // GAME-10k: the mace comes down from where the windup left it. Like
+    // the bonk, fast through 0.7 of the strike, then the follow settles.
+    const up = -2.4; // where the windup left the arm, over the head
+    const a = k < 0.7 ? up + 3.3 * (k / 0.7) ** 2 : 0.9 - 0.9 * ((k - 0.7) / 0.3);
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [a, 0, 0]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * (1 - Math.min(1, k / 0.7)), 0, 0]);
+    out.pitch = 0.2 * Math.sin(k * Math.PI);
+  } else if (attack === "finisher") {
+    // GAME-10k: the high chop: from the higher windup it comes down the
+    // whole strike, slower over the first part (the windup is already
+    // 1.2 s), the body straightening with it.
+    const up = -2.8; // where the windup left the arm, over the head
+    const a = k < 0.6 ? up + 3.7 * (k / 0.6) ** 2 : 0.9 - 0.9 * ((k - 0.6) / 0.4);
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [a, 0, 0]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * (1 - Math.min(1, k / 0.6)), 0, 0]);
+    out.pitch = -0.25 + 0.55 * e;
+    out.y = 0.04 * (1 - e);
+  } else if (attack === "sweep") {
+    // GAME-10k: the wide horizontal strike across the body: the drawn-
+    // back arm swings over, fast for the first 70%, then the follow
+    // settles to rest (the Brawler's swing, GAME-10i, is the pattern).
     const u = k < 0.7 ? (k / 0.7) ** 1.6 : 1;
     const back = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
     if (rig.parts.some((p) => p.id === "armR"))

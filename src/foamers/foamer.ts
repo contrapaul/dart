@@ -229,6 +229,15 @@ export class Foamer {
    *  wall number), and whether the wall running now has left the launchers. */
   wallTurn = 0;
   wallFired = false;
+  /** GAME-10k: attacks this Seawall has landed (the combo's place, one per
+   *  strike that actually bonked). Turns where the attack really happens. */
+  comboTurn = 0;
+  /** GAME-10k: parries its shield has taken. At the spec's parriesToBreak
+   *  it breaks off (the page's shared onBonk path counts them). */
+  parriesTaken = 0;
+  /** GAME-10k: whether its tell part is drawn with the parry material
+   *  now (the system's stepTell re-asserts it while it is on). */
+  tellOn = false;
   attack() {
     return this.attackId ? this.spec.attacks.find((a) => a.id === this.attackId) ?? null : null;
   }

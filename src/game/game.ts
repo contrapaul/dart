@@ -41,6 +41,7 @@ import type { RemovedVoxel } from "../voxel/carve";
 import renderJson from "../../data/render.json";
 import { carveBounds } from "./shared";
 import { damageOf } from "./attack";
+import { decideMeleeParry } from "../foamers/combo";
 import { createAudio, type GameAudio } from "./audio";
 import type { LoopHandle } from "../audio/sink";
 import { createUI, type UIController } from "./ui";
@@ -407,6 +408,18 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // only its data share. A blocked hit is not a hit: no HUD flash, and
     // the disc's own sound plays instead of the hurt one.
     const blocked = shield.blocksAttackFrom(f.centre);
+    // GAME-10k: the melee parry (CONTENT-PLAN F11). An attack marked
+    // parryable in the type's data (the Seawall's finisher) that meets the
+    // raised disc inside the parry window is turned whole: the player
+    // takes nothing, the disc gets its parry feedback and the Seawall
+    // staggers and counts the parry on its shield. The decide is shared
+    // (src/foamers/combo.ts) so any later type may mark an attack too.
+    if (blocked && decideMeleeParry(f.spec, attack, true, shield.canParry()) === "parry") {
+      shield.noteParry();
+      foamers.parryAttack(f);
+      audio.play("SH-parry", { position: f.centre });
+      return;
+    }
     const share = blocked ? shield.damageShare : 1;
     const lost = health.damage(damageOf(attack, f.spec) * share, attack);
     if (lost <= 0) return;
