@@ -693,6 +693,69 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: ART-05a review, merged (Claude Opus 5.5): B02 slide, B05 bolt, B06 handle
+
+- Reviewed dgx-spark's run: clean, the data lines hand-edited in main's
+  layout. One change: the per-frame `seg` closure in `applyBolt` became a
+  module function, since the viewmodel allocates nothing per frame.
+- Checked on the real glbs in env-03 (the pane was hidden, so the loop was
+  stepped by hand): B02's slide goes back 2.1 cm on the shot frame and is
+  home within 10 frames; B05's bolt lifts 60 deg, goes back 4 cm at mid
+  priming and is home at rest when ready, and the lift raises the lever
+  (its top rises from 0.101 to 0.137 in the blaster's frame), so the
+  direction is right; B06's handle goes back 4 cm through the reload and
+  returns at the end.
+- Not checked by eye: how the three look on screen.
+- tsc, vitest (800 passed, 2 skipped), build green.
+
+### 2026-11-08: ART-05a (Qwen 3.8 Flash Next via Pi, dgx-spark): B02 slide, B05 bolt, B06 cocking handle
+
+- Asked for: the three viewmodel motions the approved models have waiting
+  for them, per `tasks/ART-05a.md`. Nothing else.
+- Built, all in `src/weapons/viewmodel.ts` following the B01 pump and B07
+  drum pattern (offset from `restP`/`restQ`, allocate nothing per frame):
+  - `applySlide(dt)` in the semi/burst branch: `hookShot` zeroes a clock
+    when `motion.slideTravel` is set and the `slide` node eases from
+    `slideTravel` back to rest over `slideReturn` seconds along its local
+    +Z. `hookShot` drops later darts of the same frame (existing
+    `shotsThisFrame` gate), but a burst's darts come on separate frames
+    `burstGap` apart, so each one re-kicks the slide.
+  - `applyBolt(blaster)` in the pump branch (B05) and the auto branch
+    (B06): the `bolt` node is driven by `blaster.progress`. Pump: lift
+    `boltLiftDeg` about local Z over 0 to 0.2, back `boltTravel` along
+    local +Z over 0.2 to 0.5, forward over 0.5 to 0.8, down over 0.8 to
+    1.0, only while `state === "priming"`. Auto: back `boltTravel` over 0
+    to 0.15 of the reload, held, let go over 0.85 to 1.0, only while
+    `state === "reloading"`. Outside its state the node sits at rest.
+- Decided: one `applyBolt` covers B05 and B06 by `spec.mode`, no new
+  field names per blaster; B06's data sets `boltTravel` alone so its
+  handle translates and never rotates. A blaster with no `bolt` node, or
+  with neither field, is left exactly as it was (B01, B03, B04, B07
+  untouched; their tests unchanged and still green).
+- New optional `MotionSpec` fields in `src/weapons/blaster.ts`:
+  `slideTravel`, `slideReturn`, `boltLiftDeg`, `boltTravel`. Data: the
+  three `motion` lines in `data/blasters.json` (hand-edited, one line
+  each): B02 `slideTravel` 0.025 / `slideReturn` 0.1, B05 `boltLiftDeg`
+  60 / `boltTravel` 0.05, B06 `boltTravel` 0.04. Start values for Paul
+  to tune on the range.
+- Not done on purpose: the heavy mod's slower slide, reload tilts, sounds
+  (all "not in this task"). B05 keeps its `pumpTravel` 0.05 even though
+  its glb has no `pump` node (pre-existing, the card says it moves
+  nothing).
+- Verified: `npx tsc --noEmit` clean, `npx vitest run` 800 passed 2
+  skipped (113 files) including 10 new tests in
+  `tests/weapons/art-05a.test.ts` (named-node trees, no glb, like
+  `tests/weapons/b07.test.ts` test 10), `npm run build` built. No em or
+  en dashes in the files touched.
+- Not checked by eye: none of it on screen. I could not open a browser, so
+  the slide kick, the bolt's lift direction (local +Z per the card's
+  "back is local +Z" fact, and the lift about the node's own Z) and the
+  handle pull are proven only by the node transforms in tests. The real
+  glb node names (`slide`, `bolt`) come from the card's facts, not from
+  loading the models. Paul should watch all three on the range, especially
+  that B05's bolt lifts the right way and B06's handle pulls the right
+  way.
+
 ### 2026-11-08: GAME-09f review, merged (Claude Opus 5.5): B07 Collateral
 
 - Reviewed dgx-spark's run. Fixed in review:

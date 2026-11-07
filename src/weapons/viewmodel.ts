@@ -22,6 +22,11 @@ function springKick(dt: number, rate: number, kickMax: number,
   void that.j;
 }
 
+/** ART-05a: progress p through the window [t0, t1], clamped to 0..1. */
+function seg(p: number, t0: number, t1: number): number {
+  return Math.max(0, Math.min(1, (p - t0) / (t1 - t0)));
+}
+
 export class Viewmodel {
   /** Added to under the camera. */
   readonly group = new THREE.Group();
@@ -46,6 +51,10 @@ export class Viewmodel {
   private boundHook: (m: number) => void = (m) => this.hookShot(m);
 
   private _w = new THREE.Vector3();
+  // ART-05a: B02's slide: seconds since the last shot, and the travel it
+  // is easing back from (re-set by each shot, so a burst kicks again).
+  private slideClock = 99;
+  private _axisZ = new THREE.Vector3(0, 0, 1);
   // Nothing is allocated per frame: the per-frame state is all
   // members.
   private kick = 0;
@@ -162,6 +171,8 @@ export class Viewmodel {
     this.kickVel += this.spec.motion.kick * this.spec.motion.return;
     this.trigClock = 0;
     if (this.spec.mode === "break") this.spent[m] = true;
+    // ART-05a: the slide snaps back on the shot and comes home on its own.
+    if (this.spec.motion.slideTravel) this.slideClock = 0;
     // GAME-09f: a pump shot indexes the drum one chamber (drumStepDeg),
     // which animate eases across the priming that starts on this press.
     if (this.spec.mode === "pump" && this.spec.motion.drumStepDeg) {
@@ -252,6 +263,7 @@ export class Viewmodel {
           if (q) dn.quaternion.copy(q).multiply(this._q.setFromAxisAngle(this._axisY, this.drumA));
         }
       }
+      this.applyBolt(blaster);
       this.applyMagDrop(blaster, m.magDrop ?? 0);
     } else if (sp.mode === "auto") {
       // Wheels: spin at wheelSpeed * wheelSpin rev/sec, positive local
@@ -269,16 +281,68 @@ export class Viewmodel {
         const r = this.restR.get("flywheel_r");
         if (r) wr.rotation.set(r[0], r[1] - this.wheelA, r[2]);
       }
+      this.applyBolt(blaster);
       this.applyMagDrop(blaster, m.magDrop ?? 0);
     } else if (sp.mode === "semi" || sp.mode === "burst") {
       // GAME-09c: a sidearm: the magazine drops on the reload like the
       // pump's; there is no pump travel and no wheel. Burst looks the
       // same and just fires faster.
+      this.applySlide(dt);
       this.applyMagDrop(blaster, m.magDrop ?? 0);
     } else {
       this.breakAction(dt, blaster);
     }
     this.shotsThisFrame = 0; // ensure we consume at most one per frame
+  }
+
+  /** ART-05a: B02's slide: snaps back slideTravel on a shot (hookShot
+   *  zeroes the clock) and comes home within slideReturn seconds. A blaster
+   *  without the field, or without a slide node, is untouched. */
+  private applySlide(dt: number): void {
+    const m = this.spec.motion;
+    const n = this.nodeByName.get("slide");
+    if (!n) return;
+    const r = this.restP.get("slide");
+    if (!r) return;
+    const travel = m.slideTravel ?? 0;
+    const back = m.slideReturn ?? 0;
+    this.slideClock += dt;
+    const off = travel > 0 && back > 0 && this.slideClock < back
+      ? travel * (1 - this.slideClock / back)
+      : 0;
+    n.position.set(r[0], r[1], r[2] + off);
+  }
+
+  /** ART-05a: a bolt node driven by the blaster's own progress.
+   *  B05 (mode pump): across the priming it lifts boltLiftDeg about its
+   *  local Z over 0 to 0.2, goes back boltTravel over 0.2 to 0.5, comes
+   *  forward over 0.5 to 0.8 and drops over 0.8 to 1.0.
+   *  B06 (mode auto): the cocking handle goes back boltTravel over 0 to
+   *  0.15 of the reload, holds, and is let go over 0.85 to 1.0. Bolt lift
+   *  is left out of its data, so it only travels.
+   *  Outside those states the node sits at rest. A blaster with no bolt
+   *  node, or with neither field, is untouched. */
+  private applyBolt(b: Blaster): void {
+    const m = this.spec.motion;
+    const n = this.nodeByName.get("bolt");
+    if (!n) return;
+    if (!m.boltTravel && !m.boltLiftDeg) return;
+    const rp = this.restP.get("bolt");
+    const rq = this.restQ.get("bolt");
+    if (!rp || !rq) return;
+    const cycling = this.spec.mode === "pump"
+      ? b.state === "priming"
+      : this.spec.mode === "auto" && b.state === "reloading";
+    const p = cycling ? b.progress : 1;
+    const off = (m.boltTravel ?? 0)
+      * (this.spec.mode === "pump"
+        ? seg(p, 0.2, 0.5) - seg(p, 0.5, 0.8)
+        : seg(p, 0, 0.15) - seg(p, 0.85, 1.0));
+    const lift = this.spec.mode === "pump"
+      ? (m.boltLiftDeg ?? 0) * DEG * (seg(p, 0, 0.2) - seg(p, 0.8, 1.0))
+      : 0;
+    n.position.set(rp[0], rp[1], rp[2] + off);
+    n.quaternion.copy(rq).multiply(this._q.setFromAxisAngle(this._axisZ, lift));
   }
 
   private applyMagDrop(b: Blaster, drop: number): void {

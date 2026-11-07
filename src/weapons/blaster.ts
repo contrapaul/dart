@@ -37,6 +37,16 @@ export interface MotionSpec {
   drumStepDeg?: number;
   breachOpenDeg?: number;
   latchDeg?: number;
+  /** ART-05a: B02's slide: how far the slide node goes back along its
+   *  local +Z on a shot, and the seconds it takes to come home. */
+  slideTravel?: number;
+  slideReturn?: number;
+  /** ART-05a: B05's bolt: degrees the bolt node lifts about its local Z
+   *  and how far it slides back along its local +Z across the priming.
+   *  With boltTravel alone (no lift) the same node works as a cocking
+   *  handle pulled during the reload (B06). */
+  boltLiftDeg?: number;
+  boltTravel?: number;
 }
 
 export interface BlasterSpec {
