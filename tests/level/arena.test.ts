@@ -191,3 +191,88 @@ describe("the arena state machine", () => {
     expect(doors.get("vault")).toBe("sealed");
   });
 });
+
+// LVL-04b: the Ring's second wave arrives at half the pair's health instead
+// of at the arena's last kill, so a fight that is going well goes faster.
+describe("a wave that starts on the health left", () => {
+  /** A two wave arena: wave 1 is one Foamer, wave 2 has no delay and only a
+   *  health share, so it can only come from the share. */
+  function arenaOnHealth(share?: number): Arena {
+    const a = structuredClone(arena);
+    a.waves = [
+      { id: "w1", rifts: ["pit-r1"], spawns: [{ foamer: "F01", count: 1 }], delaySeconds: 0 },
+      {
+        id: "w2", rifts: ["pit-r2"], spawns: [{ foamer: "F03", count: 2 }], delaySeconds: 0,
+        startsWithHealthShare: share,
+      },
+    ];
+    return a;
+  }
+
+  function make(a: Arena) {
+    let live = 0;
+    let health = 0;
+    const waves: number[] = [];
+    const spawned: string[] = [];
+    const runner = new ArenaRunner(a, {
+      setDoor() {},
+      spawn(foamer) { live++; spawned.push(foamer); return true; },
+      onLocked() {}, onCleared() {}, onWaveStart(_w, index) { waves.push(index); },
+    });
+    const step = (frames: number) => {
+      for (let i = 0; i < frames; i++) runner.update(DT, { playerPos: INSIDE, aliveCount: live, aliveHealth: health });
+    };
+    return { runner, waves, spawned, step, set: (l: number, h: number) => { live = l; health = h; } };
+  }
+
+  it("starts the next wave when the living Foamers hold the share", () => {
+    const t = make(arenaOnHealth(0.5));
+    // Wave 1's single Foamer is up at its full health.
+    t.set(1, 30);
+    t.step(10);
+    expect(t.waves).toEqual([0]);
+    // Hurt but above half: no adds yet.
+    t.set(1, 20);
+    t.step(10);
+    expect(t.waves).toEqual([0]);
+    // At half: the adds arrive with wave 1's Foamer still standing.
+    t.set(1, 15);
+    t.step(10);
+    expect(t.waves).toEqual([0, 1]);
+    expect(t.spawned.filter((f) => f === "F03")).toHaveLength(2);
+  });
+
+  it("still starts it on the last kill, and never asks for health when the share is absent", () => {
+    // No share: the old rule, only when the arena empties.
+    const plain = make(arenaOnHealth(undefined));
+    plain.set(1, 1);
+    plain.step(30);
+    expect(plain.waves).toEqual([0]);
+    plain.set(0, 0);
+    plain.step(30);
+    expect(plain.waves).toEqual([0, 1]);
+    // With a share but the wave killed outright, the clear path still runs.
+    const killed = make(arenaOnHealth(0.5));
+    killed.set(1, 30);
+    killed.step(10);
+    killed.set(0, 0);
+    killed.step(30);
+    expect(killed.waves).toEqual([0, 1]);
+  });
+
+  it("does not fire twice, and a page that reports no health never fires it", () => {
+    const t = make(arenaOnHealth(0.5));
+    // The pair stands at its full 30, then drops to 10 (a third).
+    t.set(2, 30);
+    t.step(10);
+    t.set(2, 10);
+    t.step(60);
+    expect(t.waves).toEqual([0, 1]);
+    // A page that leaves aliveHealth out: Infinity, so the share is never met.
+    const noHealth = new ArenaRunner(arenaOnHealth(0.5), {
+      setDoor() {}, spawn() { return true; }, onLocked() {}, onCleared() {}, onWaveStart() {},
+    });
+    for (let i = 0; i < 60; i++) noHealth.update(DT, { playerPos: INSIDE, aliveCount: 2 });
+    expect(noHealth.state.waveIndex).toBe(0);
+  });
+});

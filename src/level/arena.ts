@@ -19,6 +19,10 @@ export interface ArenaContext {
   playerPos: Vec3;
   /** Foamers still on their feet or sinking, from FoamerSystem. */
   aliveCount: number;
+  /** LVL-04b: the total health of those Foamers, for a wave that starts on
+   *  the fight's health (`Wave.startsWithHealthShare`). Optional: a page
+   *  that does not report it simply never starts a wave that way. */
+  aliveHealth?: number;
 }
 
 export interface ArenaEvents {
@@ -76,6 +80,9 @@ export class ArenaRunner {
   private gap = -1;
   /** LVL-03b: seconds left before an escaped arena's doors seal, or -1. */
   private sealIn = -1;
+  /** LVL-04b: the most health the Foamers up in the current wave have held,
+   *  which is what a later wave's `startsWithHealthShare` is a share of. */
+  private peakHealth = 0;
 
   constructor(private readonly arena: Arena, private readonly events: ArenaEvents) {
     this.reset();
@@ -107,6 +114,7 @@ export class ArenaRunner {
     this.grace = 0;
     this.gap = -1;
     this.sealIn = -1;
+    this.peakHealth = 0;
     this.queue = [];
     for (const door of this.arena.doors) this.events.setDoor(door.id, door.state);
   }
@@ -155,6 +163,7 @@ export class ArenaRunner {
     }
 
     // phase === "wave": issue spawns, then wait for the arena to empty.
+    this.peakHealth = Math.max(this.peakHealth, ctx.aliveHealth ?? 0);
     this.grace = Math.max(0, this.grace - dt);
     if (this.queue.length) {
       this.spawnTimer -= dt;
@@ -168,6 +177,18 @@ export class ArenaRunner {
           this.spawnTimer = SPAWN_RETRY;
         }
       }
+      return;
+    }
+    // LVL-04b: a wave may start on the health left, not only when every
+    // Foamer is down: the Ring's adds arrive at half the pair's health. The
+    // queue is empty here, so every Foamer of this wave has been issued.
+    const healthNext = this.arena.waves[this.waveIndex + 1];
+    const share = healthNext?.startsWithHealthShare;
+    if (
+      this.grace <= 0 && share !== undefined && ctx.aliveCount > 0 && this.peakHealth > 0
+      && (ctx.aliveHealth ?? Infinity) <= share * this.peakHealth
+    ) {
+      this.startWave(this.waveIndex + 1);
       return;
     }
     if (this.grace > 0 || ctx.aliveCount > 0) return;
@@ -223,6 +244,7 @@ export class ArenaRunner {
     this.spawnTimer = 0;
     this.grace = CLEAR_GRACE;
     this.gap = -1;
+    this.peakHealth = 0;
     this.queue = [];
     // Round robin over the wave's rifts, so 5 Foamers from 3 rifts do not
     // all come out of one seam.

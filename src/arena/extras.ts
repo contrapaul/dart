@@ -152,7 +152,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     return new THREE.Vector3(...(door ? door.pos : [0, 0, 0]));
   }
 
-  const arenaCtx: ArenaContext = { playerPos: [0, 0, 0], aliveCount: 0 };
+  const arenaCtx: ArenaContext = { playerPos: [0, 0, 0], aliveCount: 0, aliveHealth: 0 };
 
   /** Reaching the exit pad ends the level (BLOCKOUT 4: a lit pad behind
    *  the locked door). A box test is enough; the pad is flat. */
@@ -229,6 +229,11 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       const at = feetPos(_playerPos);
       arenaCtx.playerPos = [at.x, at.y, at.z];
       arenaCtx.aliveCount = foamers.live - foamers.downed.length;
+      // LVL-04b: the Ring's second wave arrives at half the pair's health, so
+      // the runner is told what is left, downed ones excluded: theirs is spent.
+      let aliveHealth = 0;
+      for (const f of foamers.list) if (f.state !== "down") aliveHealth += Math.max(0, f.health);
+      arenaCtx.aliveHealth = aliveHealth;
       runner.update(dt, arenaCtx);
     },
     afterWorld(dt: number) {
