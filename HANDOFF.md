@@ -18,6 +18,11 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+PT-02 code done 2026-11-08 by Qwen 3.8 Flash Next via Pi (dgx-spark): a
+Foamer that loses its head goes down whatever its health, on `pt-02`, not
+reviewed, not merged, not pushed. See the log entry below for what was not
+seen by eye.
+
 PT-01 all three stages done 2026-11-08 by Qwen 3.8 Flash Next via Pi
 (dgx-spark): the range rebuilt for time-to-kill testing, three commits
 on `pt-01` (`51f4c28`, `32ece38`, `7bc462a`), not reviewed, not merged,
@@ -754,6 +759,104 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-08: PT-02 review, merged (Claude Opus 5.5): head off means down
+
+- dgx-spark did it in about 45 minutes. The rule sits in `breakPart`, so
+  every cause counts (dart, wear, blast). The head-and-arm rule and the
+  headless turn rate are gone. Every head in the rigs hangs straight off
+  the root body, so no head can leave with another part unnoticed.
+- Played on the range with precision darts at the head: the F07 went
+  down at 29/45 health, the F11 at 28/60, the F12 at 5/25, each the step
+  its head broke.
+- Review fix: the time-to-kill panel repeated the id for a type with no
+  name ("F12 F12"), as the labels did.
+- Behaviour change to know: a downed Foamer's parts no longer break off
+  (it is a ragdoll by then); dgx-spark added it so a second break in one
+  step cannot stagger it back up.
+- For Paul: the F05 Darter's face is its root part (kind head), so
+  breaking it now downs the Darter. Set `headOffDowns: false` on F05 if
+  it should fight on. `src/sandbox/main.ts` still describes the old
+  head-and-arm rule in its preview text (not changed).
+- 916 tests pass (2 skipped) twice, tsc and build green.
+
+### 2026-11-08: PT-02, a Foamer that loses its head goes down (Qwen 3.8 Flash Next via Pi, dgx-spark)
+
+Asked for (card `tasks/PT-02.md`): Paul's playtest, "some enemies keep
+moving after they lose their heads. (A blown off head should be death...)".
+Losing the head now downs a Foamer at once, whatever its health, replacing
+D12's head-and-an-arm rule.
+
+Built. The rule is one check in `Foamers.breakPart`, after the part has
+gone out as a foam piece: `part.spec.kind === "head"` and the type's new
+`headOffDowns` flag, then `goDown`. One choke point rather than a check at
+each call site, so every cause counts: a dart (`handleHit`), the
+once-per-step wear check in `update`, the parry (`parryAttack`), and a
+blast or a chunk that carves the head away, which breaks the part on the
+next step's wear check. `goDown` is the ordinary down path: same topple,
+fizz and dissolve, same `down` sound, same `downed` list and spawner
+accounting.
+
+Decisions.
+- **The pop still wins a tie.** `handleHit` checks the health before the
+  part break, so a catastrophic hit that also takes the head pops as it
+  does today. `goDown` and `pop` are each once per Foamer (both return
+  early or remove it from `list`), so the kill counts once. Test 4 of the
+  new file fires a dart that spends the last 1.5 health and breaks the
+  head in one step and asserts `downed.length === 1`.
+- **`breakPart` now returns on `f.state === "down"`.** Without it a second
+  break in the same step (the head and an arm from two darts, or the wear
+  loop) called `startStagger` after the down and pulled the Foamer back out
+  of `down` into `stagger`. That is what the range-api clear() test caught.
+- **`handicaps.noHeadTurnRate` and `Foamer.hasHead()` are removed.**
+  `Foamer.turnRate()` was their only reader, and a living Foamer is never
+  headless any more. `handicaps` keeps the leg and crawl numbers.
+- **`headOffDowns` (default true) sits in the shared base of
+  `data/foamers.json`**, next to `turnRate`, so every type inherits it and
+  a boss can set it false in its own `types` block. No boss exists yet, so
+  nothing sets it; test 7 flips it on a cached spec to prove the opt-out.
+- **"head" is the rig's kind, not the part id.** The F06 blob and the F09
+  turret have no kind-`head` part and are not affected (test 2). Test 1
+  runs over the ten types whose rig has a breakable head: F01 to F04, F07,
+  F08, F10 to F13. The F05 Darter is the case the reviewer should look at
+  (test 8): it carries the face on its **root** part (id `body`, kind
+  `head`, no parent), and `breakPart` only refuses kind `body`, so that
+  part can come off. A probe on the baseline showed what that did today:
+  set the root's hp to 0 and the Darter lost every part and stayed alive
+  and partless. Under the new rule losing it is losing the head, so it
+  goes down, which is what the card asks for ("a blown off head should be
+  death"). It is the one behaviour change beyond the head-and-arm rule
+  itself. If Paul wants the Darter to keep fighting without its face, set
+  `headOffDowns: false` on F05, and the partless-alive state comes back
+  with it.
+
+Tests. New `tests/foamers/head-off.test.ts` (8 tests): every headed type
+goes down with its health untouched and counts once; a headless type keeps
+walking; an arm alone does not down it; the tie case above; the carved
+head; the flag's default; the opt-out; the F05's root-part face. Existing
+tests changed: `parts.9` asserted the headless turn took 1.7 to 2.3 times
+as long, which is the
+removed handicap, so it now asserts the head downs it and the turn rate is
+the spec's; `parts.13` (head and an arm) keeps its shape but its wording
+and its expectation are the new rule; `weapons/b05.10` fired a standard
+dart through one F01 at a second and expected one hurt, which only held
+because the first F01 survived the hit, so it now pins the first one's head
+hp so the test measures what it always measured (a dart stops at the first
+Foamer) instead of the new rule.
+
+Not seen by eye: no browser and no dev server here, so nobody has watched
+a headless Foamer topple, fizz and dissolve, or heard the `down` sound
+fire on a head shot, or checked the ragdoll of a Foamer whose head left as
+a piece a step before the topple. The reviewer should watch a head shot on
+the range and listen.
+
+Not touched (outside the card's files): the sandbox preview
+(`src/sandbox/main.ts:219`) still shows the old head-and-arm rule, and
+`tasks/ENG-10.md` and `tasks/ENG-12.md` still describe it. The sandbox is a
+look-and-feel preview, not the game's rules; say the word if you want it
+changed too.
+
+916 tests pass (2 skipped), `npx tsc --noEmit` and `npm run build` green.
 
 ### 2026-11-08: PT-01 review, merged (Claude Opus 5.5): the rebuilt range
 

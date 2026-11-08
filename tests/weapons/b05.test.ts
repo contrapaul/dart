@@ -334,8 +334,14 @@ describe("GAME-09e: pierce", () => {
   it("10. a standard dart is unchanged: it stops at the first Foamer", async () => {
     const r = arena();
     const eye = new THREE.Vector3(0, 1.6, 30);
-    r.foamers.spawn(new THREE.Vector3(0, 0, -6), eye, "F01");
+    const first = r.foamers.spawn(new THREE.Vector3(0, 0, -6), eye, "F01")!;
     r.foamers.spawn(new THREE.Vector3(0, 0, -8), eye, "F01");
+    // PT-02: a dart that takes the head downs the Foamer, and a downed one
+    // drops its part colliders, so the dart would fly on through the ragdoll
+    // and hit the second. That is the new rule, not a pierce. Keep the first
+    // alive (its head cannot break) so this measures what it always
+    // measured: a standard dart stops at the first Foamer in its way.
+    first.parts.get("head")!.hp = 99;
     await settle(r.foamers, r.world, r.darts);
     const before = r.foamers.list.map((f) => f.health);
     const b = new Blaster(resolveSpec("B01"), r.darts, () => new THREE.Vector3(0, 1.1, -1), lcg(5));

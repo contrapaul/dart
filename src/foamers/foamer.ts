@@ -294,9 +294,12 @@ export class Foamer {
     return this.rig.speed;
   }
 
-  /** Turn rate in rad/s, with the no-head handicap. */
+  /** PT-02 (Paul, 2026-11-08): a Foamer whose head comes off goes down at
+   *  once, whatever its health, so there is no headless turn to slow down
+   *  any more. A type with no head part (the F06 blob, the F09 turret) simply
+   *  keeps its turn rate. */
   turnRate() {
-    return this.hasHead() ? this.spec.turnRate : this.spec.turnRate * this.spec.handicaps.noHeadTurnRate;
+    return this.spec.turnRate;
   }
 
   constructor(
@@ -428,10 +431,6 @@ export class Foamer {
     return this.rig.parts
       .filter((p) => p.kind === "leg" && (p.parent === null || kind.get(p.parent) !== "leg"))
       .map((p) => p.id);
-  }
-
-  hasHead() {
-    return this.has("head");
   }
 
   /** Report a bonk that connects, and count it. */

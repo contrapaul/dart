@@ -683,7 +683,6 @@ export class FoamerSystem {
               part.voxelCount <= part.startVoxels * (1 - f.spec.partDamage.wearBreak))
             this.breakPart(f, part);
         }
-        if (!f.parts.has("head") && this.anyArmGone(f)) this.goDown(f);
       }
     }
     this.stepBroken(dt);
@@ -2108,8 +2107,6 @@ export class FoamerSystem {
       return;
     }
     if (part.spec.kind !== "body" && (part.hp <= 0 || worn)) this.breakPart(f, part);
-    // The head and any arm part gone: it goes down whatever its health.
-    if (f.state !== "down" && !f.parts.has("head") && this.anyArmGone(f)) this.goDown(f);
     // GAME-07: crossing into the finishable band starts the long stagger,
     // once, for the finisher to land. Not on the killing hit, and not one
     // that is being carried elsewhere (fall, down, finisher) already.
@@ -2265,11 +2262,6 @@ export class FoamerSystem {
     if (!f) return null;
     this.breakPart(f, f.parts.get("legL")!);
     return f;
-  }
-
-  /** Any part of kind arm that is not attached any more. */
-  private anyArmGone(f: Foamer): boolean {
-    return f.rig.parts.some((p) => p.kind === "arm" && !f.parts.has(p.id));
   }
 
   /** GAME-09b: does this killing hit blow a hole through it? The rule is
@@ -2703,8 +2695,11 @@ export class FoamerSystem {
    *  the Foamer staggers. A stagger during a windup cancels the attack. */
   private breakPart(f: Foamer, part: FoamerPart) {
     // A dart can hit a part that is already fallen, and a pose can move it
-    // under another: ignore the part while the system is handling it.
-    if (!f.parts.has(part.spec.id) || part.spec.kind === "body") return;
+    // under another: ignore the part while the system is handling it. A
+    // Foamer that has gone down is a ragdoll: its parts do not break any
+    // more, so a second break in the same step cannot stagger it out of
+    // "down".
+    if (!f.parts.has(part.spec.id) || part.spec.kind === "body" || f.state === "down") return;
     const rig = f.rig;
     // Children that already broke off earlier are not in parts any more.
     const ids = partAndChildren(rig, part.spec.id).filter((id) => f.parts.has(id));
@@ -2795,6 +2790,21 @@ export class FoamerSystem {
       bottomY: bottom, topY: top,
       age: 0, sinking: false, sinkSpeed: 0,
     });
+    // PT-02 (Paul, 2026-11-08): the head coming off is death whatever the
+    // health, replacing D12's head and an arm. Checked here rather than at
+    // the call sites so every cause counts: a dart, the once-per-step wear
+    // check, a parry, or a blast that carved the head away (which breaks it
+    // on the next step's wear check). The head has already gone out as a
+    // foam piece above, and the down is the ordinary one: the same topple,
+    // fizz and dissolve, the same counters as a kill. A type with no head
+    // part (the F06 blob, the F09 turret) never gets here with one, and a
+    // hit whose damage also spent the health is decided by resolveKill
+    // before this runs, so a pop is still a pop. A boss that must keep
+    // fighting with its head off sets headOffDowns false in its type.
+    if (part.spec.kind === "head" && f.spec.headOffDowns) {
+      this.goDown(f);
+      return;
+    }
     // GAME-11: down to too few legs, a living Foamer falls over instead of
     // staggering. It does not fall twice, and a downed one is not here.
     if (part.spec.kind === "leg" && !f.prone &&
