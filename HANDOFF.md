@@ -760,6 +760,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: PT-02 review, merged (Claude Opus 5.5): head off means down
+
+- dgx-spark did it in about 45 minutes. The rule sits in `breakPart`, so
+  every cause counts (dart, wear, blast). The head-and-arm rule and the
+  headless turn rate are gone. Every head in the rigs hangs straight off
+  the root body, so no head can leave with another part unnoticed.
+- Played on the range with precision darts at the head: the F07 went
+  down at 29/45 health, the F11 at 28/60, the F12 at 5/25, each the step
+  its head broke.
+- Review fix: the time-to-kill panel repeated the id for a type with no
+  name ("F12 F12"), as the labels did.
+- Behaviour change to know: a downed Foamer's parts no longer break off
+  (it is a ragdoll by then); dgx-spark added it so a second break in one
+  step cannot stagger it back up.
+- For Paul: the F05 Darter's face is its root part (kind head), so
+  breaking it now downs the Darter. Set `headOffDowns: false` on F05 if
+  it should fight on. `src/sandbox/main.ts` still describes the old
+  head-and-arm rule in its preview text (not changed).
+- 916 tests pass (2 skipped) twice, tsc and build green.
+
 ### 2026-11-08: PT-02, a Foamer that loses its head goes down (Qwen 3.8 Flash Next via Pi, dgx-spark)
 
 Asked for (card `tasks/PT-02.md`): Paul's playtest, "some enemies keep

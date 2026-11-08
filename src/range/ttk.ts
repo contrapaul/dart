@@ -142,7 +142,7 @@ export class TtkPanel {
 
   render(): void {
     const text = this.tracker.kills
-      .map((k) => `${k.type} ${this.label(k.type)} ${k.blaster}`
+      .map((k) => `${this.label(k.type) === k.type ? k.type : `${k.type} ${this.label(k.type)}`} ${k.blaster}`
         + `${k.mods.length ? " " + k.mods.join(",") : ""}`
         + ` ${k.seconds.toFixed(2)}s ${k.shots} pulls ${k.distanceMetres.toFixed(0)}m ${k.how}`)
       .join("\n");
