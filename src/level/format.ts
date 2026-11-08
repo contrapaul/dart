@@ -75,6 +75,19 @@ export interface Rift {
   facing: Vec3;
 }
 
+/** GAME-10m stage 3: a Foamer hidden inside a growth piece (kind "growth").
+ *  Not drawn, no colliders, no brain, out of the live list, until it wakes
+ *  (the player comes within wakeMetres of the growth, or the growth loses
+ *  a voxel); waking bursts it out with a pounce the player at once. */
+export interface Ambush {
+  /** Unique in the level. */
+  id: string;
+  /** A rig ID from data/foamer-rigs.json (a card with an ambush block, F12). */
+  foamer: string;
+  /** The ID of a piece of kind "growth". */
+  growth: string;
+}
+
 export interface WaveSpawn {
   /** A rig ID from data/foamer-rigs.json (F01 is the Slowmer). */
   foamer: string;
@@ -213,6 +226,8 @@ export interface Level {
   meta: LevelMeta;
   shell: ShellBox[];
   pieces?: Piece[];
+  /** GAME-10m: Foamers hidden inside growth pieces. */
+  ambushes?: Ambush[];
   arenas?: Arena[];
   /** ENV-02: buttons, each wired to one action. */
   buttons?: Button[];

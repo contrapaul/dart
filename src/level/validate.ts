@@ -385,6 +385,22 @@ export function validateLevel(level: Level): ValidationResult {
     }
   }
 
+  // GAME-10m (the ambush): an ambush names a known rig and a piece of kind
+  // "growth". An ambush whose growth is missing or of another kind would
+  // leave a hidden, undamageable Foamer in the level the page can never
+  // wake, so it is an error, not a warning.
+  const growthKinds = new Map(
+    (level.pieces ?? []).map((p) => [p.id, p.kind] as const),
+  );
+  for (const a of level.ambushes ?? []) {
+    const what = `ambush ${a.id}`;
+    if (!rigIds.has(a.foamer)) errors.push(`${what}: unknown foamer ${a.foamer}`);
+    const kind = growthKinds.get(a.growth);
+    if (kind !== "growth") {
+      errors.push(`${what}: growth ${a.growth} is not a growth piece${kind ? ` (it is a ${kind})` : " (no such piece)"}`);
+    }
+  }
+
   return { errors, warnings };
 }
 
