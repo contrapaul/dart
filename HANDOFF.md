@@ -18,6 +18,11 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+PT-01 all three stages done 2026-11-08 by Qwen 3.8 Flash Next via Pi
+(dgx-spark): the range rebuilt for time-to-kill testing, three commits
+on `pt-01` (`51f4c28`, `32ece38`, `7bc462a`), not reviewed, not merged,
+not pushed. See the log entry below for what was not seen by eye.
+
 GAME-09g code done 2026-11-08, reviewed and merged by Claude Opus 5.5,
 (Qwen 3.8 Flash Next via Pi): B08 Firehose gameplay
 on B04's model as a placeholder. The `ball` dart type (`data/darts.json`,
@@ -749,6 +754,59 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-08: PT-01, the range rebuilt for time-to-kill testing (Qwen 3.8 Flash Next via Pi, dgx-spark)
+
+Asked for (card `tasks/PT-01.md`): every blaster cycleable by keys and
+wheel, one of every Foamer in a line standing still, a time-to-kill
+readout, a menu with only mod toggles and Respawn, and B07 and every
+explosive shot exploding on the range. Three commits on `pt-01`, not
+merged, not pushed: `51f4c28` stage 1, `32ece38` stage 2, `7bc462a`
+stage 3.
+
+Built. Stage 1: `src/range/setup.ts` (`createRangeSystems`,
+`fillReserves`, `createLineup`, `respawnLineup`) holds the wiring the
+page used to do inline, with no DOM, so a headless test builds what the
+page builds. The real bug behind "B07 never explodes": the range made
+its `DartImpacts` with no `ExplosionSystem`, so B07's rounds, B05's
+explosive mod and B06's every fifth shot landed as plain darts. Ammo is
+now `fillReserves` (reserve refilled, magazine and reload honoured) so a
+measured time to kill includes its reloads. Stage 2: the lineup is one
+Foamer of each type in `data/foamers.json` order at
+`range.lineup.distanceMetres` (15) and `range.lineup.spacingMetres` (4),
+held still by `FoamerSystem.held` (the one edit outside `src/range/`: a
+set that gates brain, walk, attack, throw, heal, hover), and
+`src/range/labels.ts` puts a div per Foamer in `#hud` showing name and
+health. Stage 3: `src/range/ttk.ts` (`TtkTracker` wraps `darts.fire` and
+subscribes to `darts.onHit` last; `TtkPanel` writes the last five kills
+into `#ttk`, newest first) and `src/range/menu.ts` (`RangeMenu` model +
+`RangeMenuPanel` view: the active blaster's name, one lit button per mod
+of it, Respawn). The old switches, spawn buttons, type picker, dart-type
+row, sound rows, report and frame graph moved into `#benchTools`, shown
+only for `range.html?bench`; a click on the canvas takes the lock again.
+
+Decided (PLAN.md section 14): a held set rather than a new Foamer state;
+reserve refill rather than magazine refill; a div per label rather than
+a text texture; the tracker wrapping the dart system rather than the
+Foamer carrying bookkeeping; the menu as a model with no DOM plus a
+view; the old tools behind `?bench` rather than deleted. Tests:
+`tests/range/ttk.test.ts` (a real B07 round explodes and kills, a
+magazine empties and a reload costs time, shots and pulls counted
+rightly, one kill per Foamer, the last five kept),
+`tests/range/menu.test.ts` (the mod list follows the blaster) and
+`tests/range/page.test.ts` (every id `main.ts` looks up exists in
+`range.html`, and no bench-only id is on the default page).
+
+Green: `npx tsc --noEmit` silent, `npx vitest run` 1074 passed (95
+files), `npm run build` ok (chunk-size warning only), no em or en dash
+in any touched file.
+
+Not checked by eye (no browser, no dev server, cannot see images): the
+menu's look and that its buttons answer a click, the lineup's placement
+and that the labels sit above the right Foamers, that B07 and the
+explosive mods visibly explode on this page, the time-to-kill panel's
+placement and readability, `range.html?bench` still rendering its tools,
+the recoil and the ball's bounce feel. The reviewer has to open the page.
 
 ### 2026-11-08: Paul's playtest, three cards (Claude Opus 5.5)
 
