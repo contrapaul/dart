@@ -13,14 +13,23 @@
       <div id="crosshair"></div>
       <div id="ammo"></div>
       <div id="health"><div class="bar"><i></i></div><span class="num"></span></div>
+      <div id="labels"></div>
+      <div id="ttk"></div>
     </div>
     <div id="hitflash"></div>
     <div id="graphbox"><p id="graphText"></p><canvas id="graphCanvas"></canvas></div>
     <div id="overlay">
       <aside id="panel">
         <h1>Test range</h1>
-        <p class="note">The graph shows one bar per frame: its height is the time since the last frame, the orange part is the game's own work. A hitch is a frame much longer than the display's refresh, or one that ran the wrong number of physics steps. Long: the game worked too long. Pacing: the frame came late while the game was idle (frame timing, or a browser pause such as garbage collection). Back-quote hides the graph.</p>
         <div class="row"><button id="play">Play</button></div>
+        <p class="label">Blaster</p>
+        <p id="menuBlaster" class="blaster">-</p>
+        <p class="label">Mods</p>
+        <div class="row" id="menuMods"></div>
+        <div class="row"><button id="menuRespawn">Respawn line</button></div>
+        <p class="hint">Keys 1 to 8 or the mouse wheel change the blaster. Esc pauses and shows this panel; click the canvas or press Play to shoot again. T respawns the line. The time-to-kill panel is the small box in the lower left.</p>
+        <div id="benchTools" hidden>
+        <p class="note">The graph shows one bar per frame: its height is the time since the last frame, the orange part is the game's own work. A hitch is a frame much longer than the display's refresh, or one that ran the wrong number of physics steps. Long: the game worked too long. Pacing: the frame came late while the game was idle (frame timing, or a browser pause such as garbage collection). Back-quote hides the graph.</p>
         <p class="label">Switches</p>
         <label class="ctl">Foamers
           <span class="row">
@@ -98,6 +107,7 @@
           <span class="row" id="keepAlive"></span>
         </label>
         <div class="row">
+          <button id="respawn">Respawn line</button>
           <button id="breakLeg">Break leg</button>
           <button id="clearFoamers">Clear Foamers</button>
           <button id="benchmark">Benchmark</button>
@@ -111,7 +121,8 @@
           <button id="clearLog">Clear log</button>
         </div>
         <pre id="report"></pre>
-        <p class="hint">Esc pauses and shows this panel. Backquote shows or hides the frame graph.</p>
+        <p class="hint">Backquote shows or hides the frame graph.</p>
+        </div>
       </aside>
     </div>
     <script type="module" src="/src/range/main.ts"></script>

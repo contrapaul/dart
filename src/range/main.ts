@@ -15,17 +15,20 @@ import { Shield } from "../player/shield";
 import { DartSystem } from "../weapons/darts";
 import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
-import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
-import { FoamerSystem } from "../foamers/foamers";
+import type { VoxelTarget } from "../weapons/impacts";
 import type { Foamer } from "../foamers/foamer";
-import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
+import { BALL_MATERIAL } from "../foamers/projectiles";
 import { shockwaveOf } from "../foamers/leap";
 import { makeLevelAI } from "../ai/level";
 import { SettingsStore, DIFFICULTIES } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
-import { DebrisSystem } from "../voxel/debris";
+import { createRangeSystems, createLineup, respawnLineup, fillReserves } from "./setup";
+import { LineupLabels } from "./labels";
+import { TtkTracker, TtkPanel } from "./ttk";
+import { RangeMenu, RangeMenuPanel } from "./menu";
+import { foamerLabel } from "./labels";
 import { MesherPool } from "../voxel/mesher-pool";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
@@ -44,6 +47,7 @@ const R = (rangeJson as unknown as {
     playerSpawn: [number, number, number];
     cover: [number, number, number, number, number, number][];
     spawn: { count: number; points: [number, number, number][] };
+    lineup: { distanceMetres: number; spacingMetres: number };
   };
   bench: { seconds: number; strafePeriod: number };
 }).range;
@@ -67,8 +71,6 @@ scene.add(camera); // the blaster viewmodel is a child of the camera
 const input = new Input(canvas);
 const { rapier, world } = await createPhysics();
 const mesherPool = new MesherPool();
-const debris = new DebrisSystem(rapier, world);
-scene.add(debris.mesh);
 
 // The level: a flat floor, 4 m outer walls, the cover boxes from the data
 // file and thin markers every 5 m down the long axis (no collider).
@@ -136,13 +138,25 @@ Loadout.muzzleToWorld = (camPoint, out) => {
 // Only the Foamers' parts are voxel targets on this page, and the system
 // pushes each part in and out as Foamers spawn and go.
 const voxelTargets: VoxelTarget[] = [];
-// Dart hits on the Foamer parts carve craters and throw foam debris.
-const impacts = new DartImpacts(darts, debris, voxelTargets);
-const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
-// GAME-10a: the F02's foam balls (kinematic raycasts, no physics bodies).
-const projectiles = new ProjectileSystem(rapier, world, debris, player.collider, foamers);
+// Dart hits on the Foamer parts carve craters and throw foam debris. The
+// debris system, the shared explosion, the impacts, the Foamer system and the
+// foam balls are built by the range's own factory, the way src/game/game.ts
+// wires them: the impacts get an ExplosionSystem, so B07's rounds, B05's
+// explosive mod and B06's every fifth shot explode here as they do in the
+// game. The range has no voxel wall, so the blast has no volume to carve.
+const { debris, impacts, foamers, projectiles } = createRangeSystems(
+  rapier, world, darts, mesherPool, player.collider, voxelTargets,
+);
+// PT-01 stage 3: the time-to-kill readout. It wraps the dart system's fire
+// (to know which blaster and which mods fired each shot) and subscribes to
+// hits last, after the Foamer system has said which Foamer was hit.
+const ttk = new TtkTracker();
+ttk.track(darts, loadout, foamers);
+new TtkPanel(
+  document.querySelector<HTMLDivElement>("#ttk")!, ttk, foamerLabel,
+);
+scene.add(debris.mesh);
 scene.add(projectiles.group);
-foamers.projectiles = projectiles;
 projectiles.onSound = (kind, at) => {
   if (!engine) return;
   if (kind === "burst") engine.play("FB-burst", { position: at });
@@ -170,6 +184,27 @@ foamers.director = levelAI.director;
 foamers.navGrid = levelAI.grid;
 foamers.spawnState = "idle"; // range spawns start idle, so the sight test works
 scene.add(foamers.group);
+// PT-01 stage 2: the lineup. One of every Foamer type in the data, in a line
+// across the range at the data's distance and spacing, facing the player, and
+// held so each stands still: no brain, no walk, no attack, no projectile, no
+// heal, no hover. They still take damage, lose parts, go down, pop and
+// dissolve, which is what the time-to-kill test needs. The labels are one
+// plain div each above the line (its type, its name, its health now).
+const TYPES = Object.keys(foamerData.types);
+let lineup = createLineup(foamers, SPAWN_POSE, TYPES, R.lineup.distanceMetres, R.lineup.spacingMetres);
+const labels = new LineupLabels(
+  document.querySelector<HTMLDivElement>("#hud")!, camera, foamers, lineup,
+);
+// Respawn (the menu's button, and key T: R is reload) puts the whole line
+// back, fresh. The spawner's own keep-alive count is 0 on this page, so
+// nothing else repopulates it.
+function respawnLineupHere(): void {
+  lineup = respawnLineup(
+    foamers, SPAWN_POSE, TYPES, R.lineup.distanceMetres, R.lineup.spacingMetres,
+  );
+  labels.retarget(lineup);
+  ttk.reset(); // the line that is going is not being watched any more
+}
 foamers.onBonk = (_f, attack) => {
   if (switches.godMode || paused) return;
   // GAME-04: an attack from the front arc behind the raised disc costs
@@ -279,6 +314,27 @@ function renderModRow() {
 }
 renderBlasterRow();
 renderModRow();
+
+// PT-01 stage 3: the menu the card asks for. On the default page the panel
+// shows only the active blaster's name, one button per mod of it (lit when
+// on), and Respawn. Esc frees the pointer and shows it, as before; the Play
+// button or a click on the canvas goes back to shooting. The old switches,
+// spawn buttons, type picker, sound rows, report and graph live in the panel
+// behind range.html?bench.
+const menu = new RangeMenu(loadout);
+const menuPanel = new RangeMenuPanel(
+  menu,
+  document.querySelector<HTMLParagraphElement>("#menuBlaster")!,
+  document.querySelector<HTMLDivElement>("#menuMods")!,
+  document.querySelector<HTMLButtonElement>("#menuRespawn")!,
+  () => respawnLineupHere(),
+);
+// The bench tools stay on the page for performance work, hidden until
+// range.html?bench asks for them.
+document.querySelector<HTMLDivElement>("#benchTools")!.hidden =
+  !new URLSearchParams(location.search).has("bench");
+// The frame graph is a bench tool too (Backquote still shows it).
+if (!new URLSearchParams(location.search).has("bench") && graph.shown) graph.toggle();
 
 // Switches, each listed in the report.
 const switches = {
@@ -446,6 +502,7 @@ function spawnAhead(m: number) {
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));
+document.querySelector<HTMLButtonElement>("#respawn")!.addEventListener("click", respawnLineupHere);
 document.querySelector<HTMLButtonElement>("#clearFoamers")!.addEventListener("click", () =>
   foamers.clear());
 // GAME-11: break the nearest living Foamer's left leg, to watch a fall.
@@ -617,6 +674,9 @@ input.onLockChange = (locked) => setPaused(!locked);
 window.addEventListener("pointerdown", startAudio, { capture: true });
 window.addEventListener("keydown", startAudio, { capture: true });
 document.querySelector<HTMLButtonElement>("#play")!.addEventListener("click", () => input.requestLock());
+// PT-01: the card asks for a click on the canvas to play again. The overlay
+// covers it while paused, so the click that is not on a button does this.
+canvas.addEventListener("click", () => { if (!input.locked) input.requestLock(); });
 setPaused(true);
 // QA watch (task QA-watch): range.html?watch starts unpaused without
 // pointer lock, for the reviewer's automated browser, which cannot take
@@ -690,6 +750,8 @@ document.querySelector<HTMLButtonElement>("#benchmark")!.addEventListener("click
 // the game's KeyT, so it also works while paused.
 window.addEventListener("keydown", (e) => {
   if (e.code === "Backquote" && !e.repeat) graph.toggle();
+  // PT-01: T respawns the lineup (R is reload).
+  if (e.code === "KeyT" && !e.repeat) respawnLineupHere();
 });
 
 // Push every frame into the log. performance.memory is Chrome-only (Firefox
@@ -705,6 +767,7 @@ const _muzzleCam = new THREE.Vector3();
 const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _eye = new THREE.Vector3();
+let lastMenuBlaster = loadout.activeIndex;
 const eye = new THREE.Vector3();
 // BUG-02: the parry watch's scratch (the range's parryNext mirrors the
 // game page's, but it cannot run the loop's step: it holds a countdown
@@ -766,6 +829,9 @@ loopCtl = startLoop({
       const wdt = shield.slowed(dt);
       if (switches.foamers) {
         foamers.update(wdt, player.eye(1, _eye));
+        // PT-01: the time-to-kill clock, and the check for any watched Foamer
+        // that has gone down or popped this step.
+        ttk.update(wdt, foamers, player.eye(1, _eye));
         // GAME-10a: the foam balls fly on their own rays, no bodies.
         projectiles.update(wdt);
         updateNavPaths();
@@ -775,6 +841,14 @@ loopCtl = startLoop({
         if (input.wasPressed(WEAPON_KEYS[i])) loadout.select(i);
       if (input.wasPressed("weaponNext")) loadout.next();
       if (input.wasPressed("weaponPrev")) loadout.prev();
+      // PT-01: keys and the wheel change the blaster without the menu's
+      // buttons, so the menu follows the loadout each step (cheap: it writes
+      // the name only when it changed and rebuilds the mod row only on a
+      // blaster change).
+      if (lastMenuBlaster !== loadout.activeIndex) {
+        lastMenuBlaster = loadout.activeIndex;
+        menuPanel.render();
+      }
       // Muzzle from the active viewmodel, then aim through the world,
       // then the loadout's fixed step, then the darts.
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
@@ -806,6 +880,10 @@ loopCtl = startLoop({
         },
         _aimDir,
       );
+      // PT-01: on the range the reserve never runs out, so a time to kill
+      // measures the blaster and its reloads, not the ammo. The magazine is
+      // left alone: it still empties and a reload still takes its time.
+      fillReserves(loadout);
       if (sounds) sounds.update(dt, {
         fireHeld: canFire && input.isDown("fire"),
         firePressed: canFire && input.wasPressed("fire"),
@@ -829,6 +907,7 @@ loopCtl = startLoop({
     } else pausedClock = PAUSED_FRAME_MS;
     debris.syncRender(alpha);
     if (switches.foamers) foamers.syncRender(alpha);
+    labels.update();
     darts.syncRender(alpha);
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own
