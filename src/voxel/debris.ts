@@ -58,13 +58,16 @@ export class DebrisSystem {
 
   /**
    * Spawn chunks for a carve. Positions are in the volume's voxel space;
-   * toWorld maps a voxel-space point to world space.
+   * toWorld maps a voxel-space point to world space. PT-03: speedShare
+   * multiplies the launch speed, so a big impact throws its foam harder
+   * (the ring cap stays the cap).
    */
   spawn(
     removed: RemovedVoxel[],
     centre: THREE.Vector3,
     voxelSize: number,
     toWorld: (v: THREE.Vector3) => THREE.Vector3,
+    speedShare = 1,
   ) {
     if (removed.length === 0) return;
     const count = Math.min(T.perCarveMax, Math.max(1, Math.round(removed.length / T.voxelsPerPiece ** 2)));
@@ -76,19 +79,21 @@ export class DebrisSystem {
       const dir = pos.clone().sub(c);
       if (dir.lengthSq() < 1e-6) dir.set(Math.random() - 0.5, 1, Math.random() - 0.5);
       dir.normalize();
-      const speed = T.minSpeed + Math.random() * (T.maxSpeed - T.minSpeed);
+      const speed = (T.minSpeed + Math.random() * (T.maxSpeed - T.minSpeed)) * speedShare;
       this.add(pos, dir.multiplyScalar(speed).setY(dir.y + T.upBoost), size, v.material);
     }
   }
 
   /** GAME-10a: a burst of loose foam chunks at a world point (a foam ball
-   *  breaking up). Not tied to a carve: the chunk count is asked for. */
-  burst(at: THREE.Vector3, count: number, size: number, mat: number) {
+   *  breaking up). Not tied to a carve: the chunk count is asked for.
+   *  PT-03: speedShare multiplies the launch speed (a pop's burst, harder
+   *  the bigger the impact). */
+  burst(at: THREE.Vector3, count: number, size: number, mat: number, speedShare = 1) {
     for (let n = 0; n < count; n++) {
       const dir = new THREE.Vector3(
         Math.random() - 0.5, 1 + Math.random(), Math.random() - 0.5,
       ).normalize();
-      const speed = T.minSpeed + Math.random() * (T.maxSpeed - T.minSpeed);
+      const speed = (T.minSpeed + Math.random() * (T.maxSpeed - T.minSpeed)) * speedShare;
       this.add(at, dir.multiplyScalar(speed).setY(dir.y * speed), size, mat);
     }
   }

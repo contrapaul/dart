@@ -13,7 +13,8 @@ import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import { armourOf, plateFaces } from "./armour";
-import { addShotDamage, shotSummary, judgeChunk, chunkPossible, chunkRadius } from "./chunk";
+import { addShotDamage, shotSummary, chunkRadius } from "./chunk";
+import { judgeImpact, downPushOf, impactChunkRadius, chunkDebrisExtra, popBurstBoost, DEFAULT_IMPACT } from "./impact";
 import { chargeOf, type ChargeSpec } from "./charge";
 import {
   bandReaches, leapFlight, leapOf, landingPoint, shockwaveOf,
@@ -2065,16 +2066,19 @@ export class FoamerSystem {
       (wp && wp.parts.includes(part.spec.id) ? wp.damage : 1) *
       wallWeakMultiplier(f.spec, part.spec.id);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
+    const healthBefore = f.health;
     part.hp -= dmg;
     f.health -= dmg * kind.total;
-    // Only dart types that can pop count toward a catastrophic hit.
+    // PT-03: every dart's damage counts toward the impact window; there is
+    // no popTypes list any more.
     const total = dmg * kind.total;
-    if ((f.spec.catastrophic.popTypes as string[]).includes(hit.type)) f.addDamage(this.time, total);
-    // GAME-09b: the same damage on the shot that dealt it, so a chunk
-    // finish can judge the shot alone and carve at its darts' mean point.
+    f.addDamage(this.time, total);
+    // GAME-09b: the same damage on the shot that dealt it, so the impact
+    // rule can judge the shot alone and carve at its darts' mean point.
+    // healthBefore: the health this shot found, for the overkill.
     if (hit.shot) {
       addShotDamage(
-        f.shotDamage, hit.shot.id, this.time, total, hit.point, f.finishWeakened,
+        f.shotDamage, hit.shot.id, this.time, total, hit.point, healthBefore,
       );
     }
     this.stats.hits++;
@@ -2091,12 +2095,13 @@ export class FoamerSystem {
     const worn = part.voxelCount <= part.startVoxels * (1 - f.spec.partDamage.wearBreak);
     if (f.health <= 0) {
       // GAME-09b review: a chunk shot's first dart is usually not enough to
-      // clear minShare on its own (a weakened F01 dies to one dart's ~1.5
+      // decide the kill on its own (a weakened F01 dies to one dart's ~1.5
       // damage), so hold the kill: mark it dying and keep its colliders, so
       // the rest of this shot's darts still land, and resolve once on the
-      // next update (see resolveDying). A dart with no shot, or a chunk that
-      // cannot apply, resolves at once, exactly as before.
-      if (hit.shot && this.chunkCould(f, hit)) {
+      // next update (see resolveDying). The impact rule reads the whole
+      // shot, so every shot's kill is held this way. A dart with no shot
+      // resolves at once, exactly as before.
+      if (hit.shot) {
         if (!f.dyingHit) {
           f.dyingHit = hit;
           f.dyingStep = this.step;
@@ -2120,29 +2125,38 @@ export class FoamerSystem {
     }
   }
 
-  /** GAME-09b: could the hit's shot still be a chunk finish? The tier or
-   *  weakened flag and the shot's range; the share of health is left to the
-   *  shot's whole damage, which is what the hold is for. */
-  private chunkCould(f: Foamer, hit: DartHit): boolean {
-    return chunkPossible(
-      f.spec.catastrophic.chunk, hit.shot!.chunk, hit.shot!.muzzle,
-      f.rig.tier, f.finishWeakened, hit.point,
-    );
-  }
-
-  /** GAME-09b: the kill, once. Pop if the damage in the window is enough
-   *  (only popTypes count), else a chunk finish, else go down. */
+  /** PT-03: the kill, once. One impact number (src/foamers/impact.ts)
+   *  decides the outcome: below chunkAt it goes down with the ragdoll
+   *  pushed harder as the impact grows; from chunkAt to popAt it chunks,
+   *  any tier, the hole and its debris growing with the impact; at popAt and
+   *  above it pops, the burst pushed and thickened by the impact. With a
+   *  shot, the rule reads that shot's own damage and its mean hit point
+   *  against the muzzle; without one (a blast, or a dart no shot tagged)
+   *  it reads the damage in the window with near 1, as the card asks. */
   private resolveKill(f: Foamer, hit: DartHit | null) {
-    const cutoff = this.time - f.spec.catastrophic.window;
-    let recent = 0;
-    for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
-    if (recent >= f.spec.catastrophic.share * f.maxHealth) {
-      this.pop(f);
-    } else if (hit && this.canChunk(f, hit)) {
+    const spec = f.spec.catastrophic;
+    const sum = hit?.shot
+      ? shotSummary(f.shotDamage, hit.shot.id, this.time, spec.window)
+      : null;
+    const verdict = sum && hit?.shot
+      ? judgeImpact(
+        spec, hit.shot.impact ?? DEFAULT_IMPACT,
+        sum.total, sum.healthBefore, f.maxHealth,
+        hit.shot.muzzle.distanceTo(sum.mean),
+      )
+      : (() => {
+        const cutoff = this.time - spec.window;
+        let recent = 0;
+        for (const r of f.recentDamage) if (r.time >= cutoff) recent += r.amount;
+        return judgeImpact(spec, null, recent, f.health + recent, f.maxHealth, 0);
+      })();
+    if (verdict.outcome === "pop") {
+      this.pop(f, verdict.impact);
+    } else if (verdict.outcome === "chunk" && sum && hit?.shot?.chunk) {
       // GAME-09b: the shot blows a hole through it instead.
-      this.chunk(f, hit);
+      this.chunk(f, hit, verdict.impact);
     } else {
-      this.goDown(f, hit ?? undefined); // the killing hit pushes the ragdoll
+      this.goDown(f, hit ?? undefined, downPushOf(spec, verdict.impact));
     }
   }
 
@@ -2264,39 +2278,21 @@ export class FoamerSystem {
     return f;
   }
 
-  /** GAME-09b: does this killing hit blow a hole through it? The rule is
-   *  pure (chunk.ts); this only gathers the parts it reads: the shot's own
-   *  damage on this Foamer inside catastrophic.window, the shot's mean hit
-   *  point, the rig's tier and whether it was already finishable. */
-  private canChunk(f: Foamer, hit: DartHit): boolean {
-    if (!hit.shot) return false;
-    const sum = shotSummary(f.shotDamage, hit.shot.id, this.time, f.spec.catastrophic.window);
-    if (!sum) return false;
-    return judgeChunk(
-      f.spec.catastrophic.chunk,
-      hit.shot.chunk,
-      hit.shot.muzzle,
-      f.rig.tier,
-      sum.preWeakened,
-      f.maxHealth,
-      sum.total,
-      sum.mean,
-    );
-  }
-
-  /** GAME-09b: the chunk finish. Carve a sphere of the shot's radius at the
-   *  shot's mean hit point through every part it reaches, throw the removed
-   *  foam out as one burst (inside the debris caps and chunk.debrisMax), and
-   *  go down with the hole in it, pushed hard along the shot. A part the
-   *  carve took below its break line breaks off on the next step's wear
-   *  check. Pops are untouched: a chunk is never a pop. */
-  private chunk(f: Foamer, hit: DartHit) {
+  /** GAME-09b: the chunk finish. Carve a sphere at the shot's mean hit
+   *  point through every part it reaches, throw the removed foam out as one
+   *  burst (inside the debris caps and chunk.debrisMax plus the impact's
+   *  extra), and go down with the hole in it, pushed hard along the shot.
+   *  PT-03: the hole's radius and its debris count grow with `impact`, so
+   *  any tier can chunk and a big kill carves a big hole. A part the carve
+   *  took below its break line breaks off on the next step's wear check.
+   *  Pops are untouched: a chunk is never a pop. */
+  private chunk(f: Foamer, hit: DartHit, impact: number) {
     const shot = hit.shot!;
-    if (!shot.chunk) return this.goDown(f, hit);
+    if (!shot.chunk) return this.goDown(f, hit, downPushOf(f.spec.catastrophic, impact));
     const sum = shotSummary(f.shotDamage, shot.id, this.time, f.spec.catastrophic.window)!;
     const spec = f.spec.catastrophic.chunk;
-    const r = chunkRadius(spec, shot.chunk);
-    let left = spec.debrisMax;
+    const r = impactChunkRadius(f.spec.catastrophic, chunkRadius(spec, shot.chunk), impact);
+    let left = spec.debrisMax + chunkDebrisExtra(f.spec.catastrophic, impact);
     // The mean point is world space; each part carves it in its own voxel
     // space, so a hole through a hip takes the body and the leg. The debris
     // goes out of the part that lost it, as a pop's does.
@@ -2887,8 +2883,13 @@ export class FoamerSystem {
     for (let i = this.broken.length - 1; i >= 0; i--) this.removeBroken(i);
   }
 
-  /** The model bursts into foam debris per part and leaves the world. */
-  pop(f: Foamer) {
+  /** The model bursts into foam debris per part and leaves the world.
+   *  PT-03: `impact` (from resolveKill) grows the burst: up to
+   *  catastrophic.popDebrisMax extra loose chunks thrown at up to
+   *  1 + popPushShare times the speed. A caller with no impact (a press,
+   *  a finisher, an arena extra) passes none and gets the base pop. The
+   *  debris system's own ring cap stays hard above all of it. */
+  pop(f: Foamer, impact = 0) {
     sound(this, "pop", f, f.centre);
     for (const part of f.parts.values()) {
       // Every remaining voxel, in the part volume's own (non-rotated) space.
@@ -2912,6 +2913,14 @@ export class FoamerSystem {
         this.debris.spawn(burst, new THREE.Vector3(centre.x, centre.y, centre.z),
           vs * f.spec.popChunkScale, (v) => part.voxelToWorld(v));
       }
+    }
+    // PT-03: the impact's own burst of loose foam, on top of the body's.
+    const boost = popBurstBoost(f.spec.catastrophic, impact);
+    if (boost.extraChunks > 0) {
+      this.debris.burst(
+        f.centre, boost.extraChunks, f.rig.voxelSize * f.spec.popChunkScale,
+        materialId("foam-white"), boost.pushShare,
+      );
     }
     const i = this.list.indexOf(f);
     if (i >= 0) this.list.splice(i, 1);

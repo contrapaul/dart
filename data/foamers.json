@@ -82,21 +82,20 @@
       "wearBreak": 0.4
     },
     "catastrophic": {
-      "_note": "Pop when the damage from popTypes dart types in the last window seconds is at least share of max health. No starter dart type pops (Paul, 2026-11-01): heavier darts and blaster mods add theirs.",
-      "share": 0.4,
+      "_note": "PT-03: one impact number decides how a killed Foamer dies. overkill = the killing shot's damage on this Foamer inside window minus the health it had left before that shot (never below 0); near = 1 within the blaster's impact.fullMetres of the muzzle, falling to 0 at impact.zeroMetres (an explosion's kill uses near 1); impact = (overkill / max health) x near. Below chunkAt it goes down, pushed 1 + downPushShare x share of the way to popAt harder. From chunkAt to popAt it chunks: any tier, the hole grown from chunk.carveRadius to chunk.chunkGrowMaxMetres and the burst carrying up to chunk.debrisGrowMax extra chunks. At popAt and above it pops, the burst throwing up to popDebrisMax extra chunks at up to 1 + popPushShare times the speed. The debris system's own ring cap (data/destruction.json debris.max) stays hard above all of it. Replaces the pop rule's popTypes and share and the chunk rule's tiers, minShare and finishWeakened gates (Paul, 2026-11-08: base the explosiveness on the amount of overkill plus distance to target).",
       "window": 0.1,
-      "popTypes": [],
+      "chunkAt": 0.5,
+      "popAt": 1.5,
+      "downPushShare": 1,
+      "popDebrisMax": 40,
+      "popPushShare": 1,
       "chunk": {
-        "_note": "GAME-09b: the chunk finish. A blaster or mod with a chunk block, a hit inside its rangeMetres, qualifies when the killing shot's own damage on this Foamer inside the window above is at least minShare of max health, and the rig's tier is in tiers or the Foamer is already finishable (finishWeakened). Then carveRadius is carved as a sphere at the shot's mean hit point, up to debrisMax foam chunks burst out of the hole, and it goes down with the hole in it, pushed chunk.push times the ragdoll's kill push. Pops are unchanged.",
-        "minShare": 0.25,
-        "tiers": [
-          "Heavy",
-          "Elite",
-          "Boss"
-        ],
+        "_note": "GAME-09b: the chunk finish's carve. carveRadius is the hole's radius in metres at no impact, debrisMax the chunks its own burst throws, push the ragdoll's kill push multiplier along the shot. PT-03: chunkGrowMaxMetres and debrisGrowMax are the values at popAt, the hole and its burst growing with the impact.",
         "carveRadius": 0.35,
         "debrisMax": 40,
-        "push": 1
+        "push": 1,
+        "chunkGrowMaxMetres": 0.6,
+        "debrisGrowMax": 40
       }
     },
     "wound": {

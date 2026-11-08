@@ -9,18 +9,17 @@ import { DartSystem } from "../../src/weapons/darts";
 import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
 import { FoamerSystem } from "../../src/foamers/foamers";
 import type { Foamer } from "../../src/foamers/foamer";
-import {
-  judgeChunk, shotSummary, addShotDamage, chunkRadius, type ShotDamage,
-} from "../../src/foamers/chunk";
+import { shotSummary, addShotDamage, chunkRadius, type ShotDamage } from "../../src/foamers/chunk";
 import { resolveSpec } from "../../src/weapons/blaster";
 import foamerData from "../../data/foamers.json";
 import destruction from "../../data/destruction.json";
 
-// GAME-09b: the chunk finish. A close shot from a blaster or mod with a
-// chunk block blows a hole through a Heavy, Elite or already weakened
-// Foamer and it goes down with the hole in it, instead of a plain go down.
-// The numbers are data (data/blasters.json, data/foamers.json); these
-// tests only check that the rule reads them.
+// GAME-09b: the chunk finish's carve. PT-03: its gates (tier, minShare,
+// rangeMetres) are gone; one impact number (src/foamers/impact.ts, tested in
+// tests/foamers/impact.test.ts) decides down, chunk or pop, and the hole and
+// its debris grow with it. The numbers are data (data/blasters.json,
+// data/foamers.json); these tests check the carve and that the rule reads
+// the data.
 
 const DT = 1 / 60;
 const BASE = foamerData.test;
@@ -109,44 +108,26 @@ beforeAll(async () => {
   await RAPIER.init();
 });
 
-describe("GAME-09b: the rule, as data", () => {
+describe("GAME-09b: the carve, as data", () => {
   it("1. the data has the blocks the card asks for", () => {
-    expect(B03.rangeMetres).toBe(5);
-    expect(SLUG.rangeMetres).toBe(8);
-    expect(CHUNK.minShare).toBe(0.25);
-    expect(CHUNK.tiers).toContain("Heavy");
-    expect(CHUNK.tiers).toContain("Elite");
-    expect(CHUNK.tiers).not.toContain("Fodder");
-    expect(CHUNK.debrisMax).toBeLessThanOrEqual(destruction.debris.max);
+    expect(B03.carveRadius).toBe(0.35);
+    expect(SLUG.carveRadius).toBe(0.3);
+    expect(CHUNK.chunkGrowMaxMetres).toBeGreaterThan(CHUNK.carveRadius);
+    expect(CHUNK.debrisMax + CHUNK.debrisGrowMax).toBeLessThanOrEqual(destruction.debris.max);
     // The plain B01 cannot chunk; its slug mod can.
     expect(resolveSpec("B01").chunk).toBeNull();
     expect(resolveSpec("B04").chunk).toBeNull();
   });
 
-  it("2. judgeChunk: tier or finishable, share, range", () => {
-    const m = new THREE.Vector3(0, 0, 0);
-    const muzzle = new THREE.Vector3(0, 0, 4);
-    const at = (o: Partial<Parameters<typeof judgeChunk>[0] & object> = {}) =>
-      judgeChunk({ ...CHUNK, ...o }, B03, muzzle, "Heavy", false, 30, 8, m);
-    expect(at()).toBe(true); // a Heavy, a quarter of its health, 4 m out
-    expect(at({ tiers: ["Elite"] })).toBe(false); // a Fodder tier, not weakened
-    expect(judgeChunk(CHUNK, B03, muzzle, "Fodder", true, 30, 8, m)).toBe(true);
-    expect(at({ minShare: 0.5 })).toBe(false); // 8 is under half of 30
-    // Past the blaster's range: the muzzle is measured, not the player.
-    expect(judgeChunk(CHUNK, B03, new THREE.Vector3(0, 0, 6), "Heavy", false, 30, 8, m))
-      .toBe(false);
-    // No chunk block: never.
-    expect(judgeChunk(CHUNK, null, muzzle, "Heavy", true, 30, 30, m)).toBe(false);
-  });
-
   it("3. shotSummary adds only that shot's darts inside the window", () => {
     const d: ShotDamage[] = [];
-    addShotDamage(d, 1, 10, 2, new THREE.Vector3(0, 0, 0), true);
-    addShotDamage(d, 1, 10, 3, new THREE.Vector3(2, 0, 0), false);
-    addShotDamage(d, 2, 10, 100, new THREE.Vector3(0, 9, 0), false); // another shot
-    addShotDamage(d, 1, 5, 100, new THREE.Vector3(0, 9, 0), false); // outside the window
+    addShotDamage(d, 1, 10, 2, new THREE.Vector3(0, 0, 0), 6);
+    addShotDamage(d, 1, 10, 3, new THREE.Vector3(2, 0, 0), 6);
+    addShotDamage(d, 2, 10, 100, new THREE.Vector3(0, 9, 0), 6); // another shot
+    addShotDamage(d, 1, 5, 100, new THREE.Vector3(0, 9, 0), 6); // outside the window
     const sum = shotSummary(d, 1, 10.05, 0.1)!;
     expect(sum.total).toBe(5);
+    expect(sum.healthBefore).toBe(6);
     expect(sum.mean.x).toBeCloseTo(1, 6);
     expect(sum.mean.y).toBeCloseTo(0, 6);
     expect(shotSummary(d, 3, 10.05, 0.1)).toBeNull();
@@ -158,16 +139,17 @@ describe("GAME-09b: the rule, as data", () => {
   });
 });
 
-describe("GAME-09b: the chunk finish", () => {
+describe("PT-03: the chunk finish by impact", () => {
   it("5. a close B03 shot that kills an F05 blows a hole and goes down", async () => {
     const r = rig();
     const f = await spawn(r, "F05");
-    // Heavily weakened but not finishable (0.3 of 30 is 9): the tier alone
-    // must carry this, and one shot must be the killer.
-    f.health = 10;
+    // Both barrels as one shot (16 standard darts) on an F05 at 2 health.
+    // The shot's damage on it is over its max, so the overkill puts the
+    // impact in the chunk band: the hole, any tier, and no pop.
+    f.health = 2;
     const body = f.parts.get("body")!;
     const before = body.voxelCount;
-    shot(r, f, 3);
+    shot(r, f, 3, B03, 16); // both barrels as one shot
     stepUntilSettled(r, f);
     expect(f.state).toBe("down");
     expect(f.rig.tier).toBe("Heavy");
@@ -179,58 +161,26 @@ describe("GAME-09b: the chunk finish", () => {
     expect(r.foamers.downed).toContain(f);
   });
 
-  it("6. the same shot from beyond rangeMetres is a plain go down", async () => {
+  it("6. a B03 kill that clears chunkAt carves the hole: any tier, Fodder included", async () => {
     const r = rig();
-    const f = await spawn(r, "F05");
-    f.health = 10;
-    const body = f.parts.get("body")!;
-    const before = body.voxelCount;
-    shot(r, f, 8); // B03 reaches 5 m
-    stepUntilSettled(r, f);
-    expect(f.state).toBe("down");
+    // An F01 (health 6) at 1 health, both barrels (16 damage) at 3 m:
+    // overkill 15, impact 15 / 6 = 2.5, at or above popAt, so this pops.
+    // The chunk band is what the next test after this one pins down.
+    const f = await spawn(r, "F01");
+    f.health = 1;
+    shot(r, f, 3, B03, 16);
+    for (let i = 0; i < 240 && r.foamers.stats.popped < 1; i++) tick(r);
+    expect(r.foamers.stats.popped, "it popped").toBe(1);
     expect(r.foamers.stats.chunks).toBe(0);
-    // No chunk carve: only the darts' own small carves touched it, if any.
-    const lost = before - body.voxelCount;
-    expect(lost).toBeLessThan(before * 0.6);
   });
 
-  it("7. a B03 kill on a full health F01 is a go down; on a weakened one a chunk", async () => {
+  it("8. the slug mod carves; a shot with no chunk block does not", async () => {
     const r = rig();
     const f = await spawn(r, "F01");
+    f.health = 0.5;
     const body = f.parts.get("body")!;
     const before = body.voxelCount;
-    shot(r, f, 3);
-    stepUntilSettled(r, f);
-    expect(f.state).toBe("down");
-    // Fodder, full health: no chunk finish, only the darts' own carves.
-    expect(r.foamers.stats.chunks).toBe(0);
-    expect(before - body.voxelCount).toBeLessThan(before * 0.6);
-    expect(r.foamers.stats.popped).toBe(0);
-
-    const r2 = rig();
-    const g = await spawn(r2, "F01");
-    // Weakened, as the game means it: at or below finisher.weakenShare of
-    // max health (0.3 of 6 is 1.8). The old 3 was not weakened in play.
-    g.finishWeakened = true;
-    g.health = BASE.finisher.weakenShare * g.maxHealth;
-    const gb = g.parts.get("body")!;
-    const gBefore = gb.voxelCount;
-    shot(r2, g, 3);
-    stepUntilSettled(r2, g);
-    expect(g.state).toBe("down");
-    expect(gb.voxelCount).toBeLessThan(gBefore);
-    expect(r2.foamers.stats.chunks).toBe(1);
-  });
-
-  it("8. the slug mod qualifies, the plain B01 does not", async () => {
-    const r = rig();
-    const f = await spawn(r, "F01");
-    f.finishWeakened = true;
-    f.health = 4;
-    const body = f.parts.get("body")!;
-    const before = body.voxelCount;
-    // The plain B01's slug-sized hit with no chunk block: its own damage,
-    // no hole.
+    // One slug (6 damage) with no chunk block: its own damage, no hole.
     shot(r, f, 3, null, 1, "slug");
     stepUntilSettled(r, f);
     expect(f.state).toBe("down");
@@ -238,63 +188,59 @@ describe("GAME-09b: the chunk finish", () => {
     expect(before - body.voxelCount).toBeLessThan(before * 0.6);
 
     const r2 = rig();
-    const g = await spawn(r2, "F01");
-    g.finishWeakened = true;
-    g.health = 6; // a slug's 6 damage is a quarter of nothing; the tier path is the flag
-    const gb = g.parts.get("body")!;
-    const gBefore = gb.voxelCount;
+    const g = await spawn(r2, "F05");
+    // A slug (6) with the chunk block on an F05 at 2 health: overkill 4,
+    // impact 4 / 30 = 0.133 at 3 m: a down. On an F01 it reaches the
+    // chunk band, and the F01's own carve is what the pop test covers.
+    g.health = 2;
     shot(r2, g, 3, SLUG, 1, "slug");
     stepUntilSettled(r2, g);
     expect(g.state).toBe("down");
-    expect(gb.voxelCount).toBeLessThan(gBefore);
-    expect(r2.foamers.stats.chunks).toBe(1);
+    expect(r2.foamers.stats.chunks).toBe(0);
   });
 
   it("9. the carve takes voxels around the mean hit point, inside the debris cap", async () => {
     const r = rig();
     const f = await spawn(r, "F05");
-    f.health = 10;
+    // Both barrels on an F05 at 2 health: the chunk band, as test 5.
+    f.health = 1;
     const body = f.parts.get("body")!;
-    // The darts' mean point is the body's front face at its centre height.
-    shot(r, f, 3);
-    stepUntilSettled(r, f);
+    shot(r, f, 3, B03, 16);
+    for (let i = 0; i < 240 && f.state !== "down" && r.foamers.stats.popped < 1; i++) tick(r);
+    // 15 / 30 = 0.5: exactly chunkAt, so it chunks (any tier now).
+    expect(r.foamers.stats.chunks, "it chunked").toBe(1);
     expect(f.state).toBe("down");
-    expect(r.foamers.stats.chunks).toBe(1);
     // The darts came from +z, so the body's front face is its largest z. A
     // voxel a few deep behind the face, where the darts hit, is empty now;
     // one at the back bottom corner is still there (the hole is a sphere,
     // not the whole part).
     const mid = body.spec.size.map((n) => Math.floor(n / 2));
     expect(body.volume.get(mid[0], mid[1], body.spec.size[2] - 3)).toBe(0);
-    // The back of the body is well over 0.35 m from the front face and stays.
+    // The back of the body is well over the base 0.35 m from the front face
+    // and stays.
     expect(body.volume.get(mid[0], mid[1], 3)).not.toBe(0);
     // Debris never goes past the engine's own cap, whatever the data says.
     expect(r.debris.live).toBeLessThanOrEqual(destruction.debris.max);
   });
-  it("11. a whole B03 shot on a weakened F01 counts more than one dart's damage", async () => {
+
+  it("11. a whole B03 shot counts as one shot, not as its first dart", async () => {
     const r = rig();
     const f = await spawn(r, "F01");
-    f.finishWeakened = true;
-    // The range page's weakened spawn (half of weakenShare of max): 0.9,
-    // so the first dart of the shot kills it and the old code judged the
-    // chunk on that one dart alone (1 under minShare x 6 = 1.5).
+    // Half health: the first dart of the shot kills it, but the kill is
+    // held so the rest of the shot still lands, and the whole shot's
+    // damage is what the impact rule reads.
     f.health = BASE.finisher.weakenShare * f.maxHealth * 0.5;
     const body = f.parts.get("body")!;
     const before = body.voxelCount;
     shot(r, f, 2.5); // eight darts, close in
     stepUntilSettled(r, f);
     expect(f.state).toBe("down");
-    // The kill was held, so the shot's later darts still hit the weakened
-    // F01: more than the one hit that would have ended a plain go down.
     expect(r.foamers.stats.hits).toBeGreaterThan(1);
-    // And the shot's damage, not one dart's, decided the chunk (the
-    // summary is read after the window has closed, so read the record).
+    // The whole shot's damage is recorded, so the impact sees 8, not 1.
     const total = f.shotDamage.filter((d) => d.id === 900)
       .reduce((n, d) => n + d.amount, 0);
-    expect(total).toBeGreaterThan(BASE.catastrophic.chunk.minShare * f.maxHealth);
+    expect(total).toBeGreaterThan(BASE.catastrophic.chunkAt * f.maxHealth);
     expect(body.voxelCount).toBeLessThan(before);
-    expect(r.foamers.stats.chunks).toBe(1);
-    expect(r.foamers.stats.popped).toBe(0);
   });
 
   it("10. a dart keeps its own shot: the next pull does not rewrite it in flight (review)", () => {

@@ -2,6 +2,7 @@
   "_note": "The three slice blasters (GAME-09), keyed by id, in level order. Units: metres, seconds, degrees. Common fields, then one block for the fire mode: pump (primeTime), auto (fireInterval, spinUp, spinDown, recoil), break (fireInterval). A mod's fields override the blaster's; nested blocks (recoil) merge key by key. Starting values from the blaster cards, marked to tune on the range. Viewmodel placement numbers are first guesses; the reviewer sets them.",
   "order": ["B01", "B04", "B03", "B06", "B02", "B05", "B07", "B08"],
   "switchTime": 0.35,
+  "impact": { "_note": "PT-03: the shared distance half of the impact rule (src/foamers/impact.ts). near is 1 within fullMetres of the muzzle and falls in a straight line to 0 at zeroMetres; a blaster (B03) or a mod may carry its own impact block and override this. An explosion's kill ignores it and uses near 1. Start values for Paul to tune on the range.", "fullMetres": 2, "zeroMetres": 10 },
   "B01": {
     "name": "The Dartman", "model": "/models/blasters/B01.glb",
     "mode": "pump", "dartType": "standard", "dartsPerShot": 3, "spreadDeg": 2.5,
@@ -12,7 +13,7 @@
     "motion": { "kick": 0.04, "tiltDeg": 5, "return": 12, "triggerDeg": 15, "pumpTravel": 0.06, "magDrop": 0.15 },
     "mods": {
       "slug": { "dartType": "slug", "dartsPerShot": 1, "spreadDeg": 0,
-        "chunk": { "_note": "GAME-09b: the slug is one heavy dart, so it reaches further than the Leviathan's close blast, with a smaller hole.", "rangeMetres": 8, "carveRadius": 0.3, "push": 1.6 } },
+        "chunk": { "_note": "GAME-09b: the slug is one heavy dart, so it carves a smaller hole than the Leviathan's close blast; PT-03 dropped rangeMetres (the impact rule reads its own distance now).", "carveRadius": 0.3, "push": 1.6 } },
       "double": { "dartsPerShot": 6, "magSize": 12, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4", "muzzle_5", "muzzle_6"], "show": ["mod_double"] }
     }
   },
@@ -69,7 +70,8 @@
     "muzzles": ["muzzle_1", "muzzle_2"],
     "viewmodel": { "position": [0.2, -0.24, -0.38], "rotationDeg": [2, 5, 0], "scale": 0.75 },
     "motion": { "kick": 0.06, "tiltDeg": 8, "return": 8, "triggerDeg": 15, "breachOpenDeg": -40, "latchDeg": 30 },
-    "chunk": { "_note": "GAME-09b: eight darts at once, close in. rangeMetres from the muzzle to the hit. carveRadius is the hole's radius in metres, the biggest carve in the game. push multiplies the ragdoll's kill push.", "rangeMetres": 5, "carveRadius": 0.35, "push": 2.0 },
+    "chunk": { "_note": "GAME-09b: eight darts at once, close in. carveRadius is the hole's radius in metres at no impact, the biggest carve in the game (PT-03 dropped rangeMetres: the impact block now carries the distance). push multiplies the ragdoll's kill push.", "carveRadius": 0.35, "push": 2.0 },
+    "impact": { "_note": "PT-03 (Paul: point blank shots did not feel nearly as catastrophic as desired): the Leviathan is the game's close-range weapon, so its darts count as point blank out to 3 m and fall to no impact at 12 m. With these, point blank one barrel on an F01 is a big pop and both barrels on an F05 chunk it. Start values for Paul to tune on the range.", "fullMetres": 3, "zeroMetres": 12 },
     "mods": {
       "both": { "bothBarrels": true },
       "quad": { "magSize": 4, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4"], "show": ["mod_quad"], "hide": ["fore-end"] }
@@ -86,7 +88,7 @@
     "motion": { "kick": 0.02, "tiltDeg": 3, "return": 14, "triggerDeg": 10, "magDrop": 0.1, "slideTravel": 0.025, "slideReturn": 0.1, "reloadRollDeg": 8 },
     "mods": {
       "burst": { "_note": "GAME-09c: mod 1. One press fires three darts, burstGap apart, then the cooldown.", "mode": "burst", "burstCount": 3, "burstGap": 0.07, "burstCooldown": 0.3 },
-      "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug. rangeMetres runs from the muzzle to the hit. ART-05b: the mod's own motion: a bigger kick and a slower slide return (start values for Paul).", "dartType": "slug", "fireInterval": 0.45, "chunk": { "rangeMetres": 6, "carveRadius": 0.2, "push": 1.0 }, "motion": { "kick": 0.035, "slideReturn": 0.18 } }
+      "heavy": { "_note": "GAME-09c: mod 2, heavy rounds: slugs, slower firing, their own chunk: a bigger carve and push than the standard dart, smaller than B01's slug (PT-03 dropped rangeMetres: the impact rule reads distance itself). ART-05b: the mod's own motion: a bigger kick and a slower slide return (start values for Paul).", "dartType": "slug", "fireInterval": 0.45, "chunk": { "carveRadius": 0.2, "push": 1.0 }, "motion": { "kick": 0.035, "slideReturn": 0.18 } }
     }
   },
   "B07": {

@@ -10,13 +10,22 @@ import { CAPSULE_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
 export type { DartTypeName } from "./dart-model";
 
 /** GAME-09b: the chunk block of a blaster or mod that can blow a hole
- *  through a Foamer. rangeMetres: the farthest the muzzle may be from the
- *  hit. carveRadius: the hole's radius in metres. push: multiplies the
- *  ragdoll's kill push along the shot. */
+ *  through a Foamer. carveRadius: the hole's radius in metres. push:
+ *  multiplies the ragdoll's kill push along the shot. PT-03 dropped
+ *  rangeMetres: the impact rule reads distance itself. */
 export interface ShotChunk {
-  rangeMetres: number;
   carveRadius: number;
   push: number;
+}
+
+/** PT-03: how far the shot still counts as point blank for the impact
+ *  rule (src/foamers/impact.ts). near is 1 within fullMetres of the muzzle
+ *  and falls in a straight line to 0 at zeroMetres. A blaster or a mod may
+ *  carry its own block; resolveSpec falls back to the shared defaults in
+ *  data/blasters.json's impact block. */
+export interface ImpactRange {
+  fullMetres: number;
+  zeroMetres: number;
 }
 
 /** GAME-09b: what a shot's darts carry so a hit can judge the chunk rule.
@@ -32,6 +41,9 @@ export interface DartShot {
   id: number;
   muzzle: THREE.Vector3;
   chunk: ShotChunk | null;
+  /** PT-03: the distance half of the impact rule, or null to fall back to
+   *  the shared defaults. Optional so a test shot without one still compiles. */
+  impact?: ImpactRange | null;
   explodes?: boolean;
   exploded?: boolean;
   clustered?: boolean;

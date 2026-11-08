@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { DartTypeName, DartShot, ShotChunk } from "./darts";
+import type { DartTypeName, DartShot, ShotChunk, ImpactRange } from "./darts";
 import blastersJson from "../../data/blasters.json";
 
 // GAME-09: the resolved blaster spec, written once when the blaster and its
@@ -94,6 +94,10 @@ export interface BlasterSpec {
   motion: MotionSpec;
   /** GAME-09b: null for a blaster and mod that cannot chunk. */
   chunk: ShotChunk | null;
+  /** PT-03: the blaster's own distance block for the impact rule; null
+   *  falls back to the shared defaults in data/blasters.json's impact
+   *  block. */
+  impact: ImpactRange | null;
   /** GAME-09d: B06's explosive mod: every nth shot explodes at its first
    *  hit through the shared ExplosionSystem. 0: no explosive shots. */
   explosiveEvery: number;
@@ -158,6 +162,8 @@ interface RawMod {
   show?: string[];
   hide?: string[];
   chunk?: ShotChunk | null;
+  /** PT-03: the impact rule's distance block (a mod may carry its own). */
+  impact?: ImpactRange | null;
   /** GAME-09d: every nth shot of this mod explodes (the explosive mod). */
   explosiveEvery?: number;
   /** GAME-09f: B07's remote detonate and cluster mods. */
@@ -192,6 +198,8 @@ interface RawBlaster {
   viewmodel: ViewmodelSpec;
   motion: MotionSpec;
   chunk?: ShotChunk | null;
+  /** PT-03: the impact rule's distance block. */
+  impact?: ImpactRange | null;
   /** GAME-09d: every nth shot explodes (B06's explosive mod). */
   explosiveEvery?: number;
   /** GAME-09f: B07's remote detonate and cluster mods. */
@@ -238,6 +246,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     viewmodel: raw.viewmodel,
     motion: raw.motion,
     chunk: raw.chunk ?? null,
+    impact: raw.impact ?? null,
     explosiveEvery: raw.explosiveEvery ?? 0,
     remote: raw.remote ?? false,
     cluster: raw.cluster ?? false,
@@ -260,6 +269,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
     if (mod.recoil) s.recoil = { ...s.recoil, ...mod.recoil };
     if (mod.motion) s.motion = { ...s.motion, ...mod.motion };
     if (mod.chunk !== undefined) s.chunk = mod.chunk;
+    if (mod.impact !== undefined) s.impact = mod.impact;
     if (mod.explosiveEvery !== undefined) s.explosiveEvery = mod.explosiveEvery;
     if (mod.remote !== undefined) s.remote = mod.remote;
     if (mod.cluster !== undefined) s.cluster = mod.cluster;
@@ -613,6 +623,8 @@ export class Blaster {
   private beginShot(): void {
     this.shot.id = ++shotSeq;
     this.shot.chunk = this.spec.chunk;
+    // PT-03: the impact rule's distance block; null reads the shared data.
+    this.shot.impact = this.spec.impact;
     // GAME-09d: with the explosive mod, every nth shot's darts blast on
     // their first hit. Counted here, on the blaster, like the shot ids;
     // callers increment shots just before calling this.
