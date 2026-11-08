@@ -661,7 +661,10 @@ export class FoamerSystem {
         // PT-01: the range lineup. No brain, no walk, no attack, no heal,
         // no hover: it stands where it was put. It still takes damage, and
         // the part wear and mesh refresh below run as usual, so a line of
-        // them dies exactly as one in the game does.
+        // them dies exactly as one in the game does. Its pose is still
+        // solved, or its parts are drawn at the origin (review fix).
+        f.applyPose();
+        f.poseParts(dt, false, false);
       } else if (!f.dyingHit) {
         this.stepFoamer(f, dt, player);
         if (healOf(f.spec)) this.stepHeal(f, dt);

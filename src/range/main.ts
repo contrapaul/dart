@@ -333,6 +333,8 @@ const menuPanel = new RangeMenuPanel(
 // range.html?bench asks for them.
 document.querySelector<HTMLDivElement>("#benchTools")!.hidden =
   !new URLSearchParams(location.search).has("bench");
+// The frame graph is a bench tool too (Backquote still shows it).
+if (!new URLSearchParams(location.search).has("bench") && graph.shown) graph.toggle();
 
 // Switches, each listed in the report.
 const switches = {

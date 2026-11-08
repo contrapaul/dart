@@ -755,6 +755,36 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: PT-01 review, merged (Claude Opus 5.5): the rebuilt range
+
+- dgx-spark built all three stages in about 1.5 hours.
+- **Fix: the line of Foamers was invisible where it stood.** A held
+  Foamer skipped `stepFoamer`, where its pose is solved, so the page drew
+  every one in a heap near the origin while their colliders and labels
+  stood in the line (darts would hit nothing you could see). The held
+  branch now solves the pose. A new lineup test renders between two steps
+  as the page does; it fails without the fix.
+- **Change: the line is an arc** round the player's start, every Foamer
+  15 m away, 3 m apart along it. A straight row put the end ones at 28 m
+  and the middle at 15 m, which skews a time to kill (and PT-03 makes
+  damage fall off with distance).
+- The frame graph showed on the default page: it is now behind `?bench`
+  with the other tools (Backquote still toggles it).
+- Labels no longer repeat the id when a rig has no name ("F09 40/40").
+- **Flaky tests fixed** (they failed about one run in four, before this
+  review too): the time-to-kill tests aimed at 1.2 m, the top of an F01,
+  with B01's random spread; the five-kills test reused one spot where the
+  last round's pop debris could take the dart. The tracker now keys
+  Foamers by the object, not the physics handle (handles are reused).
+  Full suite green 8 runs in 8.
+- Played in the browser (pane hidden, stepped by hand): the menu's mod
+  buttons light and toggle the blaster's mods; the line of 13 stands
+  still with labels; B07 explodes on the range (a round 1.4 m from the
+  F09 took it from 40 to 25).
+- Not checked by hand: the wheel and keys in real play (the pane cannot
+  lock the pointer), the time-to-kill panel's look, `?bench`.
+- 908 tests pass (2 skipped), tsc and build green.
+
 ### 2026-11-08: PT-01, the range rebuilt for time-to-kill testing (Qwen 3.8 Flash Next via Pi, dgx-spark)
 
 Asked for (card `tasks/PT-01.md`): every blaster cycleable by keys and

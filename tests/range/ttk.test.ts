@@ -17,7 +17,9 @@ import { createLineup, createRangeSystems } from "../../src/range/setup";
 // blaster and the real Foamer system, the way the page does.
 
 const DT = 1 / 60;
-const PLAYER = new THREE.Vector3(0, 1.2, 6);
+// The darts fly at an F01's middle: higher, they pass over it once it
+// staggers and sags, and the kill in a test depends on the spread's luck.
+const PLAYER = new THREE.Vector3(0, 0.7, 6);
 
 function fakeMesher(): Mesher {
   const colors = linearColorTable();
@@ -144,7 +146,12 @@ describe("PT-01 stage 3: the time-to-kill record", () => {
     const line = createLineup(r.foamers, PLAYER, ["F01"], 6, 4);
     await settle(r);
     const f = line[0]!.foamer;
-    tick(r, 0.5, true); // a pull or two from the B01
+    // One B01 dart (fired while it is active, so it is the B01's), not a
+    // full pull, which can kill the F01 before the switch.
+    r.darts.fire(PLAYER, AIM, "standard", { id: 777, muzzle: PLAYER.clone(), chunk: null });
+    tick(r, 0.5);
+    expect(f.health).toBeLessThan(f.maxHealth);
+    expect(f.state).not.toBe("down");
     for (let i = 0; i < 60 && r.loadout.activeId() === "B01"; i++) {
       r.loadout.select(1);
       tick(r, DT);
@@ -188,10 +195,19 @@ describe("PT-01 stage 3: the time-to-kill record", () => {
   it("the panel keeps the last five kills, newest at the top", async () => {
     const r = rig(["B01"]);
     for (let i = 0; i < 7; i++) {
-      const line = createLineup(r.foamers, PLAYER, ["F01"], 6, 4);
+      // Each round on its own spot, 4 m along: the last one popped into
+      // foam debris, and a falling chunk in the line would take the dart.
+      const at = new THREE.Vector3(PLAYER.x + i * 4, PLAYER.y, PLAYER.z);
+      const line = createLineup(r.foamers, at, ["F01"], 6, 4);
       await settle(r);
-      tick(r, 0.4, true); // a pull or two: this is what puts it under watch
-      r.foamers.blastDamage(line[0]!.foamer, line[0]!.foamer.health);
+      // One straight dart at its middle (a B01 pull's spread can miss all
+      // three at 6 m, and then nothing is watched): this puts it under watch.
+      const f0 = line[0]!.foamer;
+      const from = new THREE.Vector3(at.x, f0.centre.y + f0.height * 0.5, at.z);
+      r.darts.fire(from, AIM, "standard", { id: 100 + i, muzzle: from.clone(), chunk: null });
+      tick(r, 0.4);
+      expect(f0.health, `round ${i}`).toBeLessThan(f0.maxHealth);
+      r.foamers.blastDamage(f0, f0.health);
       tick(r, 0.5);
     }
     expect(r.ttk.kills.length).toBe(5); // the card: the last five

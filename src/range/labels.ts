@@ -61,8 +61,8 @@ export class LineupLabels {
       const x = (this._v.x * 0.5 + 0.5) * this.host.clientWidth;
       const y = (-this._v.y * 0.5 + 0.5) * this.host.clientHeight;
       r.el.style.transform = `translate(-50%, -100%) translate(${x.toFixed(0)}px, ${y.toFixed(0)}px)`;
-      const text =
-        `${f.rig.id} ${foamerLabel(f.rig.id)} ${Math.max(0, Math.ceil(f.health))}/${f.maxHealth}`;
+      const name = foamerLabel(f.rig.id);
+      const text = `${name === f.rig.id ? name : `${f.rig.id} ${name}`} ${Math.max(0, Math.ceil(f.health))}/${f.maxHealth}`;
       if (text !== r.text) {
         r.text = text;
         r.el.textContent = text;

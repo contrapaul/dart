@@ -82,17 +82,37 @@ describe("PT-01 stage 2: the line of Foamers", () => {
     const n = TYPES.length;
     line.forEach((e, i) => {
       const f = e.foamer;
-      // Centred on the player's start, spacingMetres apart, one row.
-      expect(f.centre.x).toBeCloseTo((i - (n - 1) / 2) * LINEUP.spacingMetres, 6);
-      expect(f.centre.z).toBeCloseTo(SPAWN.z - LINEUP.distanceMetres, 6);
+      // On an arc round the player's start: every one distanceMetres away,
+      // spacingMetres apart along the arc, centred straight ahead.
+      expect(Math.hypot(f.centre.x - SPAWN.x, f.centre.z - SPAWN.z)).toBeCloseTo(LINEUP.distanceMetres, 6);
+      const a = (i - (n - 1) / 2) * LINEUP.spacingMetres / LINEUP.distanceMetres;
+      expect(f.centre.x).toBeCloseTo(SPAWN.x + Math.sin(a) * LINEUP.distanceMetres, 6);
       // Facing the player: the yaw points from it back at the spawn.
       const dx = SPAWN.x - f.centre.x;
       const dz = SPAWN.z - f.centre.z;
       expect(f.yaw).toBeCloseTo(Math.atan2(dx, dz), 6);
     });
-    // A row across the range, not a stack.
-    expect(line[1]!.foamer.centre.x - line[0]!.foamer.centre.x)
-      .toBeCloseTo(LINEUP.spacingMetres, 6);
+    // Spread across the range, not a stack.
+    const gap = Math.hypot(line[1]!.foamer.centre.x - line[0]!.foamer.centre.x, line[1]!.foamer.centre.z - line[0]!.foamer.centre.z);
+    expect(gap).toBeGreaterThan(LINEUP.spacingMetres * 0.9);
+  });
+
+  it("a held Foamer's parts are drawn where it stands, not at the origin (review fix)", async () => {
+    const r = rig();
+    const line = createLineup(r.foamers, SPAWN, TYPES, LINEUP.distanceMetres, LINEUP.spacingMetres);
+    await settle(r);
+    tick(r, SPAWN, 0.2);
+    // Between two steps, as the page draws (the pose is blended with the
+    // step before).
+    r.foamers.syncRender(0.5);
+    const w = new THREE.Vector3();
+    for (const e of line) {
+      const f = e.foamer;
+      const body = f.parts.get("body") ?? [...f.parts.values()][0]!;
+      // The part's own group carries the solved pose (syncRender).
+      w.setFromMatrixPosition(body.group.matrix);
+      expect(Math.hypot(w.x - f.centre.x, w.z - f.centre.z), e.type).toBeLessThan(2);
+    }
   });
 
   it("a held Foamer does not move, attack or throw over 10 s beside the player", async () => {
@@ -177,8 +197,8 @@ describe("PT-01 stage 2: the line of Foamers", () => {
       expect(e.foamer.state).toBe("idle");
       expect(e.foamer.finishWeakened).toBe(false);
       expect(r.foamers.held.has(e.foamer)).toBe(true);
-      // Back in a row at the data's distances, facing the player.
-      expect(e.foamer.centre.z).toBeCloseTo(SPAWN.z - LINEUP.distanceMetres, 6);
+      // Back on the arc at the data's distance, facing the player.
+      expect(Math.hypot(e.foamer.centre.x - SPAWN.x, e.foamer.centre.z - SPAWN.z)).toBeCloseTo(LINEUP.distanceMetres, 6);
     }
     // Nothing left of the old line: no downed body still sinking, no part
     // still in the dart targets.

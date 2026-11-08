@@ -44,7 +44,9 @@ export class TtkTracker {
   readonly kills: KillRecord[] = [];
   private readonly keep = 5;
   private time = 0;
-  private readonly watched = new Map<number, Watched>();
+  /** Keyed by the Foamer itself: physics body handles are reused once a
+   *  body is freed, so a handle could name the next Foamer (review fix). */
+  private readonly watched = new Map<Foamer, Watched>();
   /** shot id -> what fired it. Filled by the darts.fire wrapper below. */
   private readonly fired = new Map<number, { blaster: string; mods: string[] }>();
   private readonly _player = new THREE.Vector3();
@@ -74,7 +76,7 @@ export class TtkTracker {
     if (key === undefined || key === null) return; // floor, wall, loose piece
     const f = foamers.list.find((x) => x.root.handle === key);
     if (!f) return;
-    let w = this.watched.get(key);
+    let w = this.watched.get(f);
     if (!w) {
       w = {
         foamer: f,
@@ -82,7 +84,7 @@ export class TtkTracker {
         shots: new Set(),
         distance: f.centre.distanceTo(this._player),
       };
-      this.watched.set(key, w);
+      this.watched.set(f, w);
     }
     if (hit.shot) w.shots.add(hit.shot.id);
   }

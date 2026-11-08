@@ -89,9 +89,15 @@ export function createLineup(
   // One of every type must fit, so the cap takes at least the line's size.
   if (foamers.spawnCap < n) foamers.spawnCap = n;
   for (let i = 0; i < n; i++) {
-    const x = (i - (n - 1) / 2) * spacingMetres;
+    // An arc round the player's start, so every Foamer is the same distance
+    // away and a time to kill compares across types (review fix: a straight
+    // row put the ends nearly twice as far). spacingMetres along the arc.
+    const a = (i - (n - 1) / 2) * spacingMetres / distanceMetres;
     const f = foamers.spawn(
-      new THREE.Vector3(x, 0, playerStart.z - distanceMetres),
+      new THREE.Vector3(
+        playerStart.x + Math.sin(a) * distanceMetres, 0,
+        playerStart.z - Math.cos(a) * distanceMetres,
+      ),
       playerStart,
       types[i]!,
     );
