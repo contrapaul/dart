@@ -3516,6 +3516,101 @@
         ]
       }
     },
+    "F12-crouch": {
+      "_note": "GAME-10m stage 4: the Ambusher folds before its pounce, the telegraph. Placeholder synth: a low hiss (the card's \"a low hiss\"), breath through foam going down in pitch. Foley will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.7,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "noise": {
+              "dur": 0.5,
+              "attack": 0.06,
+              "decay": 0.4,
+              "lowpass": 900,
+              "highpass": 160,
+              "lowpassEnd": 320
+            },
+            "gain": 0.8
+          },
+          {
+            "tone": {
+              "dur": 0.5,
+              "f0": 150,
+              "f1": 80,
+              "wave": "sine",
+              "attack": 0.08,
+              "decay": 0.38
+            },
+            "gain": 0.3
+          }
+        ]
+      }
+    },
+    "F12-pounce": {
+      "_note": "GAME-10m stage 4: the Ambusher's pounce leaving the crouch (the launch, not the landing: the landing is a hit through the ordinary path). Placeholder synth: a springing whoosh up in pitch over a foam push. Foley will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.8,
+      "jitter": 0.06,
+      "maxVoices": 2,
+      "synth": {
+        "layers": [
+          {
+            "tone": {
+              "dur": 0.32,
+              "f0": 170,
+              "f1": 430,
+              "wave": "triangle",
+              "attack": 0.02,
+              "decay": 0.26
+            },
+            "gain": 0.7
+          },
+          {
+            "noise": {
+              "dur": 0.28,
+              "attack": 0.01,
+              "decay": 0.24,
+              "lowpass": 2600,
+              "highpass": 220,
+              "lowpassEnd": 500
+            },
+            "gain": 0.5
+          }
+        ]
+      }
+    },
+    "F12-burst": {
+      "_note": "GAME-10m stage 4: the Ambusher bursting out of its foam growth (played by the ambush page, src/arena/extras.ts, where it comes out). Placeholder synth: a foam pop apart: a crack over a burst of crumbs falling off. Foley will replace it (design/SOUNDS.md).",
+      "files": [],
+      "volume": 0.9,
+      "jitter": 0.06,
+      "maxVoices": 3,
+      "synth": {
+        "layers": [
+          {
+            "click": {
+              "dur": 0.05,
+              "freq": 1400
+            },
+            "gain": 0.8
+          },
+          {
+            "noise": {
+              "dur": 0.45,
+              "attack": 0.005,
+              "decay": 0.4,
+              "lowpass": 3800,
+              "highpass": 240,
+              "lowpassEnd": 420
+            },
+            "gain": 0.8
+          }
+        ]
+      }
+    },
     "F13-heal": {
       "_note": "GAME-10l stage 3: the Biomechanic's wand while it streams an ally a mend (loop; it runs only while the stream draws, the sounds' state owns it). Placeholder synth: a bright airy froth, a spray bottle held open (design/SOUNDS.md).",
       "files": [],

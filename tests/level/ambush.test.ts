@@ -57,7 +57,12 @@ async function setup() {
   };
   const ambushes = buildAmbushes(level, foamers, built.voxels, built.voxelMesh, player);
   ambushes.countVoxels();
-  return { world, built, foamers, ambushes, feet };
+  // GAME-10m stage 4: the ambush's own sounds ride the system's one-shot
+  // events (the crouch hiss and the pounce launch; the page plays the
+  // burst where it comes out). The page plays the burst (F12-burst).
+  const sounds: string[] = [];
+  foamers.onSound = (kind) => sounds.push(kind);
+  return { world, built, foamers, ambushes, feet, sounds };
 }
 
 /** The growth's solid voxel count now (a hole in it shows here). */
@@ -109,6 +114,8 @@ describe("GAME-10m stage 3: the ambush in env-05", () => {
     // The pounce has started: folded in the crouch, aimed at the player,
     // off cooldown, and it has not hit yet.
     expect(f.state).toBe("crouch");
+    // The crouch hiss has played (stage 4: F12-crouch through "crouch").
+    expect(r.sounds).toContain("crouch");
     expect(f.pounceX).toBeCloseTo(r.feet.x, 5);
     expect(f.pounceZ).toBeCloseTo(r.feet.z, 5);
     expect(f.leapCooldown).toBe(0);
@@ -118,6 +125,9 @@ describe("GAME-10m stage 3: the ambush in env-05", () => {
     // The crouch runs out and it flies (the stage 2 path takes over).
     for (let i = 0; i < 40; i++) r.foamers.update(DT, new THREE.Vector3(r.feet.x, 1.6, r.feet.z));
     expect(["leaping", "recover", "approach"]).toContain(f.state);
+    // And the launch has its own sound (stage 4: F12-pounce through
+    // "pounce", which only a pounce's launch sends).
+    expect(r.sounds).toContain("pounce");
   });
 
   it("carving its growth wakes it from the far side of the room", async () => {

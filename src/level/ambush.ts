@@ -178,6 +178,10 @@ export class AmbushSystem {
     f.state = "crouch";
     f.stateTime = 0;
     f.yaw = Math.atan2(f.pounceX - c.x, f.pounceZ - c.z);
+    // The crouch's own sound (the approach branch sends it for a normal
+    // crouch; this crouch starts here). The pounce's launch sound comes
+    // with the stage 2 path taking over.
+    this.foamers.onSound("crouch", f, c);
     return { id: a.spec.id, at: c };
   }
 }

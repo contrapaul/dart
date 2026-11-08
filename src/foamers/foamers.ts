@@ -253,6 +253,9 @@ export type FoamerSoundKind =
   // GAME-10f, the Brawler: the crouch before the leap and the landing that
   // lands the shockwave.
   | "crouch" | "land"
+  // GAME-10m, the Ambusher: the leap of a pounce leaving the crouch (the
+  // crouch itself is the "crouch" event, with the F12's own sound).
+  | "pounce"
   // GAME-10g, the Crawler: each pellet of a stream (a cheap tick; the
   // voice cap in data/sounds.json bounds a storm of them).
   | "pellet"
@@ -854,6 +857,9 @@ export class FoamerSystem {
         f.vy = flight.vy;
         f.stateTime = 0;
         f.state = "leaping";
+        // GAME-10m: the pounce's launch has its own sound (the Brawler's
+        // leap keeps the silence between its crouch and its landing).
+        if (pounce) sound(this, "pounce", f, f.centre);
       }
     } else if (f.state === "leaping") {
       // The arc. The system steps it (the standard movement below carries

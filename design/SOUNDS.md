@@ -261,6 +261,9 @@ The other Foamers (IDs given when each is built):
 | F11-windup | GAME-10k placeholder ID: the Seawall's finisher: the slow high wind-up the player must hear to time the parry | Yes | 2 | Foley: a long low rising creak |
 | F11-shield-break | GAME-10k placeholder ID: the Seawall's tower shield breaking off after its parries | Yes | 2 | Foley: a hard crack, a board falling apart |
 | F11 | Armoured knight | Heavy armoured steps, mace swings, overhead slam, sweep, the slow parry wind-up (must be easy to hear), shield hits | Later | Foley |
+| F12-crouch | GAME-10m stage 4 placeholder ID: the Ambusher folds before its pounce (the telegraph), the card's low hiss | Yes | 2 | Foley: air through a foam tube, going down |
+| F12-pounce | GAME-10m stage 4 placeholder ID: the Ambusher's pounce leaving the crouch (the launch; the landing is a hit through the ordinary path) | Yes | 3 | Foley: a spring board releasing, with a whoosh |
+| F12-burst | GAME-10m stage 4 placeholder ID: the Ambusher bursting out of its foam growth (played by the ambush page where it comes out) | Yes | 3 | Foley: a foam block popping apart, crumbs after |
 | F12 | Ambusher in foam growths | Rustle in a growth, pounce, landing | Later | Foley |
 | F13-heal | GAME-10l stage 3 placeholder ID: the Biomechanic's wand while it streams an ally a mend (loop, only while the stream draws; stop the moment the chain hides) | Yes | 2 | Foley: a spray bottle held open, bright and airy, with a soft core-froth in it |
 | F13-spray | GAME-10l stage 3 placeholder ID: the short damaging spray at the player, one puff as the run starts (the run then pours the small hits quietly) | Yes | 2 | Foley: a hard pressurized "tssss" |
