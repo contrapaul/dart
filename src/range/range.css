@@ -33,6 +33,22 @@ body {
   display: none;
 }
 
+/* PT-01 stage 2: the lineup label above each Foamer: its type, its name from
+   the data and its health now. One div each, placed by the labels module. */
+#hud .tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 #crosshair {
   position: absolute;
   left: 50%;

@@ -319,11 +319,21 @@ export class FoamerSystem {
   /** How many Foamers the spawner keeps alive. Default is the data file's
    *  count; the range page sets its own (0 until the panel adds them). */
   spawnCount = SPAWNER.count;
+  /** PT-01: the hard cap on live Foamers, the data's spawner.max. The range
+   *  lineup raises it to its own type count so one of every type fits in the
+   *  line (13 today, over the arena's 12). */
+  spawnCap = SPAWNER.max;
   /** Where the spawner picks from, in feet metres. */
   spawnPoints: [number, number, number][] = SPAWNER.points.map((p) => [p[0], p[1], p[2]]);
   /** The type the keep-alive spawner makes (GAME-10a; the range page sets
    *  it from its type row). */
   spawnType = "F01";
+  /** PT-01: the Foamers the range lineup holds. A held one steps nothing but
+   *  the part mesh refresh and the part wear below: no brain, no bid, no
+   *  walk, no attack, no heal, no hover. It still takes damage, loses parts,
+   *  goes down, pops and dissolves, which is what the range is for. A WeakSet
+   *  so a Foamer the system has already dropped needs no clean-up line. */
+  readonly held = new WeakSet<Foamer>();
   private dtPrev = 1 / 60;
   /** Caps on the ragdoll seed velocity (a walking stride is a few m/s at
    *  most; a near-instant kill would otherwise divide a near-zero dt over
@@ -434,7 +444,7 @@ export class FoamerSystem {
    *  `facing` (a world point), it starts turned toward that point.
    *  `promoted` (LVL-04b) gives it the mini-boss health and plates. */
   spawn(feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01", promoted = false): Foamer | null {
-    if (this.list.length >= SPAWNER.max) return null;
+    if (this.list.length >= this.spawnCap) return null;
     const spec = specFor(type);
     const f = new Foamer(this.rapier, this.world, this.mesher, spec, rigForSpawn(spec, promoted), feet);
     if (facing) f.yaw = Math.atan2(facing.x - feet.x, facing.z - feet.z);
@@ -627,7 +637,8 @@ export class FoamerSystem {
       // bids from where it will stand, and every Blocker in the wall sees
       // the same slots this step.
       this.assignSlots(player);
-      for (const f of this.list) if (f.state !== "down" && f.state !== "finish") this.bidAgent(f, player);
+      for (const f of this.list)
+        if (f.state !== "down" && f.state !== "finish" && !this.held.has(f)) this.bidAgent(f, player);
       this.director.update(dt);
     }
     // BUG-01: every Foamer body once per frame, not once per Foamer. The
@@ -646,6 +657,11 @@ export class FoamerSystem {
       // keeps its colliders and its pose, and does nothing else.
       if (f.state === "down") {
         this.stepDown(f, dt);
+      } else if (this.held.has(f)) {
+        // PT-01: the range lineup. No brain, no walk, no attack, no heal,
+        // no hover: it stands where it was put. It still takes damage, and
+        // the part wear and mesh refresh below run as usual, so a line of
+        // them dies exactly as one in the game does.
       } else if (!f.dyingHit) {
         this.stepFoamer(f, dt, player);
         if (healOf(f.spec)) this.stepHeal(f, dt);

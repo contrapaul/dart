@@ -24,7 +24,8 @@ import { SettingsStore, DIFFICULTIES } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
-import { createRangeSystems, fillReserves } from "./setup";
+import { createRangeSystems, createLineup, respawnLineup, fillReserves } from "./setup";
+import { LineupLabels } from "./labels";
 import { MesherPool } from "../voxel/mesher-pool";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
@@ -43,6 +44,7 @@ const R = (rangeJson as unknown as {
     playerSpawn: [number, number, number];
     cover: [number, number, number, number, number, number][];
     spawn: { count: number; points: [number, number, number][] };
+    lineup: { distanceMetres: number; spacingMetres: number };
   };
   bench: { seconds: number; strafePeriod: number };
 }).range;
@@ -171,6 +173,26 @@ foamers.director = levelAI.director;
 foamers.navGrid = levelAI.grid;
 foamers.spawnState = "idle"; // range spawns start idle, so the sight test works
 scene.add(foamers.group);
+// PT-01 stage 2: the lineup. One of every Foamer type in the data, in a line
+// across the range at the data's distance and spacing, facing the player, and
+// held so each stands still: no brain, no walk, no attack, no projectile, no
+// heal, no hover. They still take damage, lose parts, go down, pop and
+// dissolve, which is what the time-to-kill test needs. The labels are one
+// plain div each above the line (its type, its name, its health now).
+const TYPES = Object.keys(foamerData.types);
+let lineup = createLineup(foamers, SPAWN_POSE, TYPES, R.lineup.distanceMetres, R.lineup.spacingMetres);
+const labels = new LineupLabels(
+  document.querySelector<HTMLDivElement>("#hud")!, camera, foamers, lineup,
+);
+// Respawn (the menu's button, and key T: R is reload) puts the whole line
+// back, fresh. The spawner's own keep-alive count is 0 on this page, so
+// nothing else repopulates it.
+function respawnLineupHere(): void {
+  lineup = respawnLineup(
+    foamers, SPAWN_POSE, TYPES, R.lineup.distanceMetres, R.lineup.spacingMetres,
+  );
+  labels.retarget(lineup);
+}
 foamers.onBonk = (_f, attack) => {
   if (switches.godMode || paused) return;
   // GAME-04: an attack from the front arc behind the raised disc costs
@@ -447,6 +469,7 @@ function spawnAhead(m: number) {
 }
 for (const [id, m] of [["#spawn5", 5], ["#spawn10", 10], ["#spawn20", 20], ["#spawn30", 30]] as const)
   document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => spawnAhead(m));
+document.querySelector<HTMLButtonElement>("#respawn")!.addEventListener("click", respawnLineupHere);
 document.querySelector<HTMLButtonElement>("#clearFoamers")!.addEventListener("click", () =>
   foamers.clear());
 // GAME-11: break the nearest living Foamer's left leg, to watch a fall.
@@ -691,6 +714,8 @@ document.querySelector<HTMLButtonElement>("#benchmark")!.addEventListener("click
 // the game's KeyT, so it also works while paused.
 window.addEventListener("keydown", (e) => {
   if (e.code === "Backquote" && !e.repeat) graph.toggle();
+  // PT-01: T respawns the lineup (R is reload).
+  if (e.code === "KeyT" && !e.repeat) respawnLineupHere();
 });
 
 // Push every frame into the log. performance.memory is Chrome-only (Firefox
@@ -834,6 +859,7 @@ loopCtl = startLoop({
     } else pausedClock = PAUSED_FRAME_MS;
     debris.syncRender(alpha);
     if (switches.foamers) foamers.syncRender(alpha);
+    labels.update();
     darts.syncRender(alpha);
     camera.position.copy(player.eye(paused ? 1 : alpha, eye));
     // The active blaster's recoil climb tilts the view up (the player's own

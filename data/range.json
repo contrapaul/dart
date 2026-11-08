@@ -4,7 +4,8 @@
     "size": 60,
     "playerSpawn": [0, 0, 25],
     "cover": [[-4, 0.6, 12, 4, 1.2, 0.6], [5, 1.5, 5, 1, 3, 1], [-8, 0.6, -2, 3, 1.2, 0.6]],
-    "spawn": { "count": 0, "points": [[-10, 0, -20], [10, 0, -20], [0, 0, -25]] }
+    "spawn": { "count": 0, "points": [[-10, 0, -20], [10, 0, -20], [0, 0, -25]] },
+    "lineup": { "distanceMetres": 15, "spacingMetres": 4 }
   },
   "graph": { "frames": 600, "width": 480, "height": 120, "hitchFactor": 1.5, "longWorkFactor": 0.75, "gcDropMb": 1 },
   "bench": { "seconds": 20, "strafePeriod": 1.5 }

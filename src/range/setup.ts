@@ -6,6 +6,7 @@
 // damages, pushes and bursts as it does in the game.
 //
 // No DOM here: the same factory runs in a headless test.
+import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { DebrisSystem } from "../voxel/debris";
@@ -14,6 +15,7 @@ import { ExplosionSystem, type ExplosionTarget } from "../weapons/explosion";
 import { FoamerSystem } from "../foamers/foamers";
 import { ProjectileSystem } from "../foamers/projectiles";
 import type { Mesher } from "../voxel/pieces";
+import type { Foamer } from "../foamers/foamer";
 import type { DartSystem } from "../weapons/darts";
 import type { Loadout } from "../weapons/loadout";
 
@@ -65,4 +67,58 @@ export function fillReserves(loadout: Loadout): void {
   for (const b of loadout.blasters) {
     if (b.reserve < b.spec.reserveMax) b.reserve = b.spec.reserveMax;
   }
+}
+
+/** PT-01 stage 2: one of every Foamer type, in a line across the range, held
+ *  so it stands still. The types come from `data/foamers.json` (`types`), in
+ *  its own order, never hard-coded here.
+ *
+ *  The line is centred on the player's start, `distanceMetres` in front of it
+ *  along -z, `spacingMetres` apart, each turned to face the player. Returns
+ *  the Foamers made, in data order, with the type each one is: the page puts
+ *  a label above each. */
+export function createLineup(
+  foamers: FoamerSystem,
+  playerStart: THREE.Vector3,
+  types: string[],
+  distanceMetres: number,
+  spacingMetres: number,
+): { type: string; foamer: Foamer }[] {
+  const out: { type: string; foamer: Foamer }[] = [];
+  const n = types.length;
+  // One of every type must fit, so the cap takes at least the line's size.
+  if (foamers.spawnCap < n) foamers.spawnCap = n;
+  for (let i = 0; i < n; i++) {
+    const x = (i - (n - 1) / 2) * spacingMetres;
+    const f = foamers.spawn(
+      new THREE.Vector3(x, 0, playerStart.z - distanceMetres),
+      playerStart,
+      types[i]!,
+    );
+    if (!f) break; // the spawner's hard cap (SPAWNER.max) is in the way
+    // Stand still, and stay in the pose it spawned in.
+    f.state = "idle";
+    f.stateTime = 0;
+    f.agent = null;
+    f.agentInput = null;
+    f.setAttack(null);
+    foamers.held.add(f);
+    out.push({ type: types[i]!, foamer: f });
+  }
+  return out;
+}
+
+/** PT-01 stage 2: Respawn (the menu's button, and key T: R is reload). Take
+ *  the whole line out and put it back fresh, in the same order, at full
+ *  health. Returns the new line, in data order, so the page can put its
+ *  labels on it. */
+export function respawnLineup(
+  foamers: FoamerSystem,
+  playerStart: THREE.Vector3,
+  types: string[],
+  distanceMetres: number,
+  spacingMetres: number,
+): { type: string; foamer: Foamer }[] {
+  foamers.clear();
+  return createLineup(foamers, playerStart, types, distanceMetres, spacingMetres);
 }
