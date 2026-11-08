@@ -750,6 +750,37 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: GAME-10m stages 3 and 4 review, merged (Claude Opus 5.5): the F12 ambush from a growth, and its sounds
+
+- qwen-machine (Qwen 3.8-27B) ran four hours and wrote about 70 lines,
+  so it was stopped; its level format and validator check were kept
+  (76eff06). dgx-spark (Qwen 3.8 Flash Next) wrote the rest in about
+  three hours (de92c56, 1c25289).
+- **Fix: the F12 could not leave its growth.** Played in env-05: it woke
+  and crouched, but it was built in the middle of the 1.6 m growth with a
+  0.9 m hole round it, so the leap and every step after were blocked and
+  it stood there for good. The unit tests only checked its state. It now
+  bursts out of the side facing the player: the hole is bitten out where
+  that side meets the line to the player, and the F12 stands
+  `burstRadiusMetres` outside it. New test: it is born outside the box
+  and its pounce closes more than 3 m on the player.
+- **Fix: a restart woke it at once.** Carved voxels stay through a
+  restart, so the old burst hole read as a new loss. `reset()` now counts
+  the growths again. New test.
+- Played in the browser (env-05, stepped by hand, the pane hidden): four
+  darts into the growth from the start woke it from 9 m; it came out,
+  flew about 7 m and landed on the player for 15. Walking up woke it at
+  5.6 m and not at 6.4 m. Seen in a screenshot: the F12 out in front of
+  the growth, the lime visor showing.
+- Wave counting checked by dgx-spark and confirmed: a hidden ambusher is
+  never built, so it is in no Foamer list and no counter sees it.
+- 876 tests pass (2 skipped), tsc and build green.
+- Not checked: the three sounds by ear, the shield block against a burst
+  pounce in play, what happens if the side facing the player is against
+  a wall (it would be born inside the wall; env-05 has no such growth).
+- For Paul: the growth (`foam-purple`) and the F12 (`foam-purple-deep`)
+  are close purples, so it may be hard to see it coming out.
+
 ### 2026-11-08: GAME-10m stages 3 and 4 (Qwen 3.8 Flash Next via Pi): the F12 Ambusher's ambush, test level and sounds
 
 - Asked for: stage 3 (the ambush from a growth, the validator, the test

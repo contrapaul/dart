@@ -108,6 +108,9 @@ export class AmbushSystem {
     }
     this.woken.length = 0;
     for (const a of this.hidden) a.woken = false;
+    // Carved voxels stay through a restart, so a burst hole from the last
+    // try is not a new loss: count the growths again as they stand.
+    this.countVoxels();
   }
 
   /** One fixed step with the player's feet: the two wake tests. The
@@ -143,14 +146,20 @@ export class AmbushSystem {
    *  is at its cap: the hole is carved on the attempt, so the next step
    *  takes the lost-voxels path and tries again. */
   private wake(a: HiddenAmbush): AmbushWake | null {
-    const c = new THREE.Vector3(
-      (a.growth.min.x + a.growth.max.x) / 2,
-      (a.growth.min.y + a.growth.max.y) / 2,
-      (a.growth.min.z + a.growth.max.z) / 2,
-    );
-    // The hole first: a Foamer born inside uncarved voxels would be
-    // pushed out of them as they remesh. An empty carve reports nothing.
-    const v = this.voxelMesh.worldToVoxel(c.clone());
+    const g = a.growth;
+    const c = new THREE.Vector3((g.min.x + g.max.x) / 2, (g.min.y + g.max.y) / 2, (g.min.z + g.max.z) / 2);
+    // It bursts out of the side facing the player: a Foamer built inside
+    // the growth is held there by the voxels round it (review fix). The
+    // hole is bitten out where that side meets the line to the player, and
+    // the Foamer stands burstRadiusMetres outside it, clear of the growth.
+    const eye = this.player.eye(1, this.eye);
+    let dx = eye.x - c.x, dz = eye.z - c.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-6) { dx = 0; dz = 1; } else { dx /= len; dz /= len; }
+    const hx = (g.max.x - g.min.x) / 2, hz = (g.max.z - g.min.z) / 2;
+    const t = Math.min(dx ? hx / Math.abs(dx) : Infinity, dz ? hz / Math.abs(dz) : Infinity);
+    const face = new THREE.Vector3(c.x + dx * t, c.y, c.z + dz * t);
+    const v = this.voxelMesh.worldToVoxel(face.clone());
     const removed = carveSphere(
       this.voxels, v.x, v.y, v.z, a.burstRadiusMetres / this.voxels.voxelSize,
     );
@@ -158,12 +167,9 @@ export class AmbushSystem {
       a.growth.voxels -= removed.length;
       this.onCarveReport(removed);
     }
-    const eye = this.player.eye(1, this.eye);
+    const out = new THREE.Vector3(face.x + dx * a.burstRadiusMetres, g.min.y, face.z + dz * a.burstRadiusMetres);
     // Feet on the growth's floor (its min side), not in the hole's air.
-    const f = this.foamers.spawn(
-      new THREE.Vector3(c.x, Math.max(a.growth.min.y, c.y - a.burstRadiusMetres), c.z),
-      eye, a.spec.foamer,
-    );
+    const f = this.foamers.spawn(out, eye, a.spec.foamer);
     if (!f) return null;
     a.woken = true;
     this.woken.push(f);
@@ -177,12 +183,12 @@ export class AmbushSystem {
     f.pounceZ = eye.z;
     f.state = "crouch";
     f.stateTime = 0;
-    f.yaw = Math.atan2(f.pounceX - c.x, f.pounceZ - c.z);
+    f.yaw = Math.atan2(f.pounceX - out.x, f.pounceZ - out.z);
     // The crouch's own sound (the approach branch sends it for a normal
     // crouch; this crouch starts here). The pounce's launch sound comes
     // with the stage 2 path taking over.
-    this.foamers.onSound("crouch", f, c);
-    return { id: a.spec.id, at: c };
+    this.foamers.onSound("crouch", f, face);
+    return { id: a.spec.id, at: face };
   }
 }
 

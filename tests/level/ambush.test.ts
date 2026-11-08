@@ -130,6 +130,26 @@ describe("GAME-10m stage 3: the ambush in env-05", () => {
     expect(r.sounds).toContain("pounce");
   });
 
+  it("it comes out of the growth and its pounce carries it at the player (review fix)", async () => {
+    const r = await setup();
+    // At the start, 9 m away: carve the growth to wake it from there.
+    const v = r.built.voxelMesh.worldToVoxel(new THREE.Vector3(-2, 1.2, -2.4));
+    r.built.voxels.set(Math.round(v.x), Math.round(v.y), Math.round(v.z), 0);
+    let woke: { id: string }[] = [];
+    for (let i = 0; i < 30 && woke.length === 0; i++) woke = r.ambushes.step(DT, r.feet);
+    expect(woke.length).toBe(1);
+    const f = r.foamers.list[0]!;
+    // Born outside the growth's box (-2.8..-1.2, -3.8..-2.2), on the side
+    // facing the player, so nothing holds it in.
+    const outside = f.centre.x < -2.8 || f.centre.x > -1.2 || f.centre.z < -3.8 || f.centre.z > -2.2;
+    expect(outside).toBe(true);
+    const eye = new THREE.Vector3(r.feet.x, 1.6, r.feet.z);
+    const startGap = Math.hypot(f.centre.x - eye.x, f.centre.z - eye.z);
+    for (let i = 0; i < 120; i++) { r.foamers.update(DT, eye); r.world.step(); }
+    const endGap = Math.hypot(f.centre.x - eye.x, f.centre.z - eye.z);
+    expect(endGap).toBeLessThan(startGap - 3);
+  });
+
   it("carving its growth wakes it from the far side of the room", async () => {
     const r = await setup();
     // Far away: the distance test cannot be what wakes it.
@@ -166,6 +186,18 @@ describe("GAME-10m stage 3: the ambush in env-05", () => {
     expect(r.foamers.list.length).toBe(1);
     r.ambushes.reset();
     expect(r.foamers.list.length).toBe(0);
+    expect(r.ambushes.isHidden("amb-1")).toBe(true);
+  });
+
+  it("after a restart the old burst hole does not wake it again (review fix)", async () => {
+    const r = await setup();
+    r.feet.set(-2, 0, -3);
+    expect(r.ambushes.step(DT, r.feet).length).toBe(1);
+    r.ambushes.reset();
+    // Back at the start, far away: the hole carved before the restart is
+    // not a new loss, so it stays hidden.
+    r.feet.set(0, 0, 6);
+    for (let i = 0; i < 60; i++) expect(r.ambushes.step(DT, r.feet).length).toBe(0);
     expect(r.ambushes.isHidden("amb-1")).toBe(true);
   });
 });
