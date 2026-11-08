@@ -26,6 +26,9 @@ import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
 import { createRangeSystems, createLineup, respawnLineup, fillReserves } from "./setup";
 import { LineupLabels } from "./labels";
+import { TtkTracker, TtkPanel } from "./ttk";
+import { RangeMenu, RangeMenuPanel } from "./menu";
+import { foamerLabel } from "./labels";
 import { MesherPool } from "../voxel/mesher-pool";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
@@ -144,6 +147,14 @@ const voxelTargets: VoxelTarget[] = [];
 const { debris, impacts, foamers, projectiles } = createRangeSystems(
   rapier, world, darts, mesherPool, player.collider, voxelTargets,
 );
+// PT-01 stage 3: the time-to-kill readout. It wraps the dart system's fire
+// (to know which blaster and which mods fired each shot) and subscribes to
+// hits last, after the Foamer system has said which Foamer was hit.
+const ttk = new TtkTracker();
+ttk.track(darts, loadout, foamers);
+new TtkPanel(
+  document.querySelector<HTMLDivElement>("#ttk")!, ttk, foamerLabel,
+);
 scene.add(debris.mesh);
 scene.add(projectiles.group);
 projectiles.onSound = (kind, at) => {
@@ -192,6 +203,7 @@ function respawnLineupHere(): void {
     foamers, SPAWN_POSE, TYPES, R.lineup.distanceMetres, R.lineup.spacingMetres,
   );
   labels.retarget(lineup);
+  ttk.reset(); // the line that is going is not being watched any more
 }
 foamers.onBonk = (_f, attack) => {
   if (switches.godMode || paused) return;
@@ -302,6 +314,25 @@ function renderModRow() {
 }
 renderBlasterRow();
 renderModRow();
+
+// PT-01 stage 3: the menu the card asks for. On the default page the panel
+// shows only the active blaster's name, one button per mod of it (lit when
+// on), and Respawn. Esc frees the pointer and shows it, as before; the Play
+// button or a click on the canvas goes back to shooting. The old switches,
+// spawn buttons, type picker, sound rows, report and graph live in the panel
+// behind range.html?bench.
+const menu = new RangeMenu(loadout);
+const menuPanel = new RangeMenuPanel(
+  menu,
+  document.querySelector<HTMLParagraphElement>("#menuBlaster")!,
+  document.querySelector<HTMLDivElement>("#menuMods")!,
+  document.querySelector<HTMLButtonElement>("#menuRespawn")!,
+  () => respawnLineupHere(),
+);
+// The bench tools stay on the page for performance work, hidden until
+// range.html?bench asks for them.
+document.querySelector<HTMLDivElement>("#benchTools")!.hidden =
+  !new URLSearchParams(location.search).has("bench");
 
 // Switches, each listed in the report.
 const switches = {
@@ -641,6 +672,9 @@ input.onLockChange = (locked) => setPaused(!locked);
 window.addEventListener("pointerdown", startAudio, { capture: true });
 window.addEventListener("keydown", startAudio, { capture: true });
 document.querySelector<HTMLButtonElement>("#play")!.addEventListener("click", () => input.requestLock());
+// PT-01: the card asks for a click on the canvas to play again. The overlay
+// covers it while paused, so the click that is not on a button does this.
+canvas.addEventListener("click", () => { if (!input.locked) input.requestLock(); });
 setPaused(true);
 // QA watch (task QA-watch): range.html?watch starts unpaused without
 // pointer lock, for the reviewer's automated browser, which cannot take
@@ -731,6 +765,7 @@ const _muzzleCam = new THREE.Vector3();
 const _muzzle = new THREE.Vector3();
 const _aimDir = new THREE.Vector3();
 const _eye = new THREE.Vector3();
+let lastMenuBlaster = loadout.activeIndex;
 const eye = new THREE.Vector3();
 // BUG-02: the parry watch's scratch (the range's parryNext mirrors the
 // game page's, but it cannot run the loop's step: it holds a countdown
@@ -792,6 +827,9 @@ loopCtl = startLoop({
       const wdt = shield.slowed(dt);
       if (switches.foamers) {
         foamers.update(wdt, player.eye(1, _eye));
+        // PT-01: the time-to-kill clock, and the check for any watched Foamer
+        // that has gone down or popped this step.
+        ttk.update(wdt, foamers, player.eye(1, _eye));
         // GAME-10a: the foam balls fly on their own rays, no bodies.
         projectiles.update(wdt);
         updateNavPaths();
@@ -801,6 +839,14 @@ loopCtl = startLoop({
         if (input.wasPressed(WEAPON_KEYS[i])) loadout.select(i);
       if (input.wasPressed("weaponNext")) loadout.next();
       if (input.wasPressed("weaponPrev")) loadout.prev();
+      // PT-01: keys and the wheel change the blaster without the menu's
+      // buttons, so the menu follows the loadout each step (cheap: it writes
+      // the name only when it changed and rebuilds the mod row only on a
+      // blaster change).
+      if (lastMenuBlaster !== loadout.activeIndex) {
+        lastMenuBlaster = loadout.activeIndex;
+        menuPanel.render();
+      }
       // Muzzle from the active viewmodel, then aim through the world,
       // then the loadout's fixed step, then the darts.
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
