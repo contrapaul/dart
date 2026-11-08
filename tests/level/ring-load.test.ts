@@ -93,8 +93,9 @@ describe("the Ring loads (GAME-10b)", () => {
     // file still keeps its own id, a 90 s test space.
     // ENV-01 adds env-01, the cladding test room. ENV-02 adds env-02, the
     // button test level. ENV-03 adds env-03, the stations test room. ENV-04
-    // adds env-04, the crushing toy press test corridor.
-    expect(Object.keys(ARENA_LEVELS).sort()).toEqual(["1-1-pit", "1-2", "1-3", "1-4", "1-4-ring", "env-01", "env-02", "env-03", "env-04"]);
+    // adds env-04, the crushing toy press test corridor. GAME-10m adds
+    // env-05, the ambush test room.
+    expect(Object.keys(ARENA_LEVELS).sort()).toEqual(["1-1-pit", "1-2", "1-3", "1-4", "1-4-ring", "env-01", "env-02", "env-03", "env-04", "env-05"]);
     expect(chosenLevel("?level=1-4-ring").level.meta.id).toBe("1-4");
     expect(chosenLevel("").level.meta.id).toBe("1-1");
     expect(chosenLevel("?level=9-9-nope").level.meta.id).toBe("1-1");

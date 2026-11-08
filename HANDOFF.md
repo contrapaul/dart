@@ -31,10 +31,17 @@ the order at key 8; the firing movement slow is the controller's new
 feel, the viewmodel, the recoil, the spin-up, the slow and both placeholder
 sounds were not seen or heard by eye (no browser, no dev server).
 
-GAME-10m stages 1 and 2 done 2026-11-08 (Qwen 3.8-27B via Pi), two
-commits on `game-10m` in its own worktree, not reviewed, not merged, not
-pushed: the F12 Ambusher's look and type (stage 1) and the pounce
-(stage 2). A lean biped 2.14 m in `foam-purple-deep`, the painted
+GAME-10m all stages done 2026-11-08: stages 1 and 2 by Qwen 3.8-27B via
+Pi (reviewed, merged), stages 3 and 4 by Qwen 3.8 Flash Next via Pi
+(commits `76eff06`, `de92c56` and this run's on `game-10m2`), reviewed,
+merged and pushed by nobody yet. Stages 3 and 4: the ambush from a growth
+(`src/level/ambush.ts`, a level's `ambushes`, inert while hidden, waking
+on the player within 6 m or the growth losing a voxel, bursting out
+straight into a pounce), the validator checks, the test level
+`data/levels/env-05.json` (env-01's room, two growths, an F12 in one) and
+the placeholder sounds `F12-crouch` / `F12-pounce` / `F12-burst`.
+Not seen by eye: env-05 was never opened in a browser and the three
+sounds were never heard (see the Log entry). Stages 1 and 2: a lean biped 2.14 m in `foam-purple-deep`, the painted
 angry eyes under a lime visor bar, three small orange spines down the
 back, claws; the `F12` type, health 25,
 speed 3, no weak point. The pounce: between 3 and 9 m, in sight, off
@@ -47,8 +54,7 @@ gone); legs gone it crawls and claws. Paul's F12 row beats CONTENT-PLAN
 `foam-purple-deep` material is in `data/materials.json`. Not seen by
 eye (no browser, cannot view images): the F12 renders, the crouch and
 flight poses, the pounce arc, the claw and the hit feel were checked by
-script only. Stages 3 (the ambush, the test level) and 4 (the sounds,
-the docs) are left in a later run.
+script only.
 GAME-10l all stages done 2026-11-07 and 2026-11-08: stage 1 and 2 by
 DeepSeek V4.1 Flash via Pi, stage 3 (the short spray, the tank gone and
 the sounds) and stage 4 (the docs) by Qwen 3.8-27B via Pi, three stage
@@ -743,6 +749,123 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-08: GAME-10m stages 3 and 4 review, merged (Claude Opus 5.5): the F12 ambush from a growth, and its sounds
+
+- qwen-machine (Qwen 3.8-27B) ran four hours and wrote about 70 lines,
+  so it was stopped; its level format and validator check were kept
+  (76eff06). dgx-spark (Qwen 3.8 Flash Next) wrote the rest in about
+  three hours (de92c56, 1c25289).
+- **Fix: the F12 could not leave its growth.** Played in env-05: it woke
+  and crouched, but it was built in the middle of the 1.6 m growth with a
+  0.9 m hole round it, so the leap and every step after were blocked and
+  it stood there for good. The unit tests only checked its state. It now
+  bursts out of the side facing the player: the hole is bitten out where
+  that side meets the line to the player, and the F12 stands
+  `burstRadiusMetres` outside it. New test: it is born outside the box
+  and its pounce closes more than 3 m on the player.
+- **Fix: a restart woke it at once.** Carved voxels stay through a
+  restart, so the old burst hole read as a new loss. `reset()` now counts
+  the growths again. New test.
+- Played in the browser (env-05, stepped by hand, the pane hidden): four
+  darts into the growth from the start woke it from 9 m; it came out,
+  flew about 7 m and landed on the player for 15. Walking up woke it at
+  5.6 m and not at 6.4 m. Seen in a screenshot: the F12 out in front of
+  the growth, the lime visor showing.
+- Wave counting checked by dgx-spark and confirmed: a hidden ambusher is
+  never built, so it is in no Foamer list and no counter sees it.
+- 876 tests pass (2 skipped), tsc and build green.
+- Not checked: the three sounds by ear, the shield block against a burst
+  pounce in play, what happens if the side facing the player is against
+  a wall (it would be born inside the wall; env-05 has no such growth).
+- For Paul: the growth (`foam-purple`) and the F12 (`foam-purple-deep`)
+  are close purples, so it may be hard to see it coming out.
+
+### 2026-11-08: GAME-10m stages 3 and 4 (Qwen 3.8 Flash Next via Pi): the F12 Ambusher's ambush, test level and sounds
+
+- Asked for: stage 3 (the ambush from a growth, the validator, the test
+  level env-05) and stage 4 (sounds and docs) of `tasks/GAME-10m.md`, on
+  top of commit 76eff06 (the `ambushes` list and its validator check).
+- Stage 3 (commit de92c56): `src/level/ambush.ts` holds `AmbushSystem`
+  and `buildAmbushes`. A hidden ambusher is never built, so it is inert
+  in the strong sense the card asks for: nothing to draw, no colliders,
+  no brain, no damage to take, and nothing in the `FoamerSystem`'s lists
+  at all. Waking (the player's feet within `ambush.wakeMetres` 6 of the
+  growth's box, or the growth holding fewer voxels than it was counted
+  with at build) carves a sphere of `burstRadiusMetres` 0.9 out of the
+  growth, spawns the F12 at the growth's centre through the ordinary
+  `foamers.spawn`, and starts the crouch and pounce at the player on the
+  spot with `leapCooldown` forced to 0 (the stage 2 path runs the rest).
+  The burst's carve goes out through `onCarveReport` to the page's own
+  carve path (`g.pieces.afterCarve` and `g.levelAI.carveChanged`), so
+  islands fall and the nav grid re-bakes over the hole, as for a dart.
+- How the wave and level counters were checked: `src/arena/extras.ts`
+  sets `arenaCtx.aliveCount = foamers.live - foamers.downed.length` each
+  step and `src/level/arena.ts:194` clears a wave only when the spawn
+  grace has run out and `aliveCount === 0`; `foamers.live` is
+  `list.length`, and the watch-state `alive` reads the same pair. A
+  hidden ambusher is in none of those (it is created only at its wake),
+  so it can neither hold a wave open nor end one early. env-05 lists
+  `arenas: []`, so its pad completes from the first frame: a hidden F12
+  does not delay it either. A woken one is a plain Foamer and counts.
+- Two things decided on the way, both in section 14: the growth's voxel
+  count is walked at the type's `recheckSeconds` 0.25 cadence, not every
+  frame (the distance test still runs every step, and a growth already
+  below the level's count needs no walk at all), and a wake blocked at
+  the `FoamerSystem` cap carves its hole anyway, so the next step takes
+  the lost-voxels path and tries again rather than losing the ambush.
+- Validator (`src/level/validate.ts`): ambush ids unique; unknown foamer;
+  the growth missing or not of kind `growth`; and a new check that the
+  type carries an `ambush` block, so only types that ambush can hide.
+  F12's numbers are a new `ambush` block in `data/foamers.json` (6, 0.9,
+  0.25), proposals for Paul to tune.
+- Stage 4: placeholder IDs `F12-crouch` (the card's low hiss),
+  `F12-pounce` (the launch out of the crouch) and `F12-burst` (out of the
+  growth) in `data/sounds.json`, with rows in the `design/SOUNDS.md`
+  table before the F12 line. `FoamerSoundKind` gains `"pounce"`, sent by
+  the crouch-to-leaping transition when the type has a `pounce` block
+  (the Brawler's leap stays silent between its crouch and its landing);
+  `src/audio/foamer-sounds.ts` plays `F12-crouch` for an F12's crouch and
+  `F12-pounce` for the launch; the page plays `F12-burst` where the F12
+  came out. `AmbushSystem.wake` sends the `"crouch"` event itself: the
+  approach branch would not, since the wake sets the crouch directly.
+- Test level `data/levels/env-05.json`: env-01's room (same shell, start
+  and pad), two `foam-purple` growths, an F12 hidden in `growth-a`,
+  `[Paul]` meta fields as env-03's. Registered in `src/arena/levels.ts`
+  (the env-05 name added to the registry list in
+  `tests/level/ring-load.test.ts`).
+- New tests `tests/level/ambush.test.ts` (11): the file validates and
+  lists one ambush in a growth; hidden is inert (lists, `live`, `downed`
+  all empty over 60 steps far away); inside `wakeMetres` it wakes into
+  the crouch aimed at the player with the cooldown 0 and a hole carved,
+  then flies; one voxel lost from the far side of the room wakes it; the
+  burst's carve is reported once and non-empty; a restart hides it again;
+  the five validator rejections; and the `crouch` and `pounce` events
+  fire. 874 tests pass (2 skipped), `npx tsc --noEmit` and
+  `npm run build` green.
+- Not checked by eye (no browser, cannot view images): env-05 in the
+  arena (`?level=env-05`) was never opened, so the growth's look, the F12
+  coming out of it, the crouch read as a telegraph at close range, the
+  pounce arc from inside a growth and whether the burst hole reads as a
+  burst were all only checked by test and by script. The three new sounds
+  were never heard: they are placeholder synths, `files: []`, and
+  `tests/audio/data.test.ts` and `tests/audio/synth.test.ts` only check
+  the shape renders.
+- Look clashes for Paul, two. The card's own (line 16) is unchanged from
+  stage 1 and stands: CONTENT-PLAN 3.3 still calls the F12 a long low
+  stalker with a tail, Paul's row a lean biped, and Paul's row is what is
+  built (noted in the stage 1 and 2 entries). The new one is the ambush's:
+  the growths in env-05 are `foam-purple` and the
+  F12's body is `foam-purple-deep` (`#5b2fb8`), the same hue a step
+  darker. An Ambusher coming out of its own growth may read as part of
+  it, especially at a distance or in a dark room. Options are Paul's: a
+  different growth material (the palette has `foam-lime` and
+  `foam-orange`, both of which mean something else in this game), a
+  lighter body for the F12, or an outline when it wakes. Left as it is
+  until he says.
+- Not done here: no other level uses `ambushes` yet, no growth is in any
+  shipped level, and the ambush has never been played. Not merged, not
+  pushed.
 
 ### 2026-11-08: fix: the F11 Seawall read as legless (Claude Opus 5.5)
 

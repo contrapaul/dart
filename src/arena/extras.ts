@@ -3,7 +3,7 @@ import blastersData from "../../data/blasters.json";
 import { buildLevel, type BuiltLevel } from "../level/build";
 import type { ArenaContext } from "../level/arena";
 import { LevelRunner, type LevelEvents } from "../level/level-runner";
-import { FALL_LIMIT } from "../game/shared";
+import { FALL_LIMIT, carveBounds } from "../game/shared";
 import type { BuildInput, BuiltGame, Game, GameHooks } from "../game/game";
 import { RiftVisuals } from "./rifts";
 import { Stations, useHeldForStations } from "./stations";
@@ -12,6 +12,7 @@ import { ButtonSystem, type PressEvent } from "../level/buttons";
 import {
   HealthPressPlayer, PressSystem,
 } from "../level/presses";
+import { buildAmbushes } from "../level/ambush";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -86,6 +87,7 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   const _riftFacing = new THREE.Vector3();
   const _padPos = new THREE.Vector3();
   const _aimDir = new THREE.Vector3();
+  const _ambushFeet = new THREE.Vector3();
   let swingsSeen = 0;
 
   /** The player's feet as a vector: the controller exposes the height as
@@ -178,6 +180,25 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   const pressPlayer = new HealthPressPlayer(health, pressUi, hud, audio);
   const presses = new PressSystem(level.presses);
 
+  // GAME-10m: the ambushes. A level's hidden F12s live here, not in the
+  // FoamerSystem's lists (that is what makes them inert: nothing to draw,
+  // collide with, path or damage, and the wave and level counters, which
+  // read foamers.live and the alive list, cannot see them). Waking builds
+  // one through the ordinary spawn, carves the growth open around it and
+  // starts the pounce at once. The counts of the growths' voxels are
+  // taken now, after buildLevel filled the volume: a growth holding fewer
+  // than its count is a growth losing voxels, and wakes its ambusher.
+  // The burst's carve goes to the page's own island and grid path.
+  const ambushes = buildAmbushes(LEVEL, foamers, level.voxels, level.voxelMesh, player);
+  ambushes.countVoxels();
+  ambushes.onCarveReport = (removed) => {
+    // What game.ts's carve report does for a dart carve, for the burst's
+    // own hole (a growth has no crates, so crates.take is not needed).
+    g.pieces.afterCarve(level.voxelMesh, removed);
+    const box = carveBounds(level.voxelMesh, removed);
+    if (box) g.levelAI.carveChanged(box[0], box[1], box[2], box[3]);
+  };
+
   // ENV-02: the level's buttons, wired to the door verb above. The press
   // runs the action through `events.setDoor`, so a button opens a door the
   // same way the lock-in does, sound and all.
@@ -255,6 +276,12 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     pickups.loadLevelBoxes(LEVEL); // LVL-02a: the file boxes come back
     stations.reset(); // ENV-03: the stations grant again on a restart
     presses.reset(); // ENV-04: the heads are back up on their own timers
+    // GAME-10m: the woken ambusher goes with the other Foamers and the
+    // hidden ones go back to their growths. The carved voxels stay as
+    // they are (the rule of every restart here), so the growth counts are
+    // retaken: a growth already opened hides its F12 in the hole rather
+    // than wake it on the spot for a loss it took before the restart.
+    ambushes.reset();
     hud.clearFlash();
     // Back to the ammo the player had at the start: there are no pickups
     // yet, so a retry with what was left could not win the arena.
@@ -311,6 +338,13 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       for (const f of foamers.list) if (f.state !== "down") aliveHealth += Math.max(0, f.health);
       arenaCtx.aliveHealth = aliveHealth;
       runner.update(dt, arenaCtx);
+      // GAME-10m: the wake tests (the player's feet within wakeMetres of
+      // a growth, or the growth holding fewer voxels than it was counted
+      // with). F12-burst plays where it came out; the woken Foamer's own
+      // crouch hiss rides onSound, as the pounce's does.
+      for (const w of ambushes.step(dt, feetPos(_ambushFeet))) {
+        audio.play("F12-burst", { position: w.at });
+      }
       // ENV-04: the crushing toy presses, each on its own timer at every
       // fixed step, so a pause keeps them stopped with the rest. The crush
       // lands through the player's own path (pressPlayer: health.damage,
@@ -406,6 +440,8 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
       buttons: Object.fromEntries(buttons.ids.map((id) => [id, buttons.isPressed(id)])),
       // ENV-04: which phase each crush is in.
       presses: Object.fromEntries(presses.ids.map((id) => [id, presses.phaseOf(id)])),
+      // GAME-10m: which ambushers are still hidden.
+      ambushes: Object.fromEntries(ambushes.ids.map((id) => [id, ambushes.isHidden(id)])),
     }),
   };
 

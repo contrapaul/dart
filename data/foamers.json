@@ -740,6 +740,12 @@
         "arcMetres": 1.2,
         "hitMetres": 1.2
       },
+      "ambush": {
+        "_note": "GAME-10m stage 3: the ambush from a growth (src/level/ambush.ts). A level may hide one of these in a piece of kind growth; it wakes (spawns, then crouches and pounces at once, no cooldown) when the player's feet come within wakeMetres of the growth's box, or when the growth loses any voxel (checked every recheckSeconds, the distance test every step). burstRadiusMetres is the sphere carved out of the growth as it bursts out (through the page's carve report, so its islands fall and the nav grid re-bakes). Only types with this block may be listed in a level's ambushes (src/level/validate.ts).",
+        "wakeMetres": 6,
+        "burstRadiusMetres": 0.9,
+        "recheckSeconds": 0.25
+      },
       "attacks": [
         {
           "_note": "GAME-10m stage 2: the claw, the up-close attack (damage 8, the base melee's windup and strike). Both forearms must still be hanging; with a forearm gone it falls back to the headbutt, and with a head gone it rams with its body (the base fallback in src/foamers/foamers.ts).",

@@ -1,0 +1,42 @@
+{
+  "_note": "GAME-10m stage 3: a test level, not a level to ship. env-01's room (same shell, same start, same exit pad, empty arenas so the page's exit works from the first frame) with two foam-purple growths and one F12 hidden in growth-a. The Ambusher is inert while hidden: it is not drawn, has no colliders, no brain, takes no damage, and is not in the FoamerSystem's lists, so the wave and level counters cannot see it (src/level/ambush.ts). It wakes when the player's feet come within the type's ambush.wakeMetres of growth-a's box (6 m from data/foamers.json), or when growth-a loses any voxel (shoot it from across the room). Waking, it carves a hole, is built at the growth's centre and starts a pounce at the player at once, ignoring the cooldown. growth-b has no ambusher: it is there to show the growth kind on its own, and to be shot at without waking anything. Metres, Y up, -z is north, positions are box centres, sizes are full extents.",
+  "meta": {
+    "id": "env-05",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 60,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+
+  "shell": [
+    { "id": "room-floor", "shape": "box", "pos": [0, -0.5, 0], "size": [18, 1, 18], "material": "greybox-dark" },
+    { "id": "room-ceiling", "shape": "box", "pos": [0, 4.5, 0], "size": [16, 1, 16], "material": "greybox" },
+    { "id": "room-wall-w", "shape": "box", "pos": [-8.5, 2.5, 0], "size": [1, 5, 18], "material": "greybox" },
+    { "id": "room-wall-e", "shape": "box", "pos": [8.5, 2.5, 0], "size": [1, 5, 18], "material": "greybox" },
+    { "id": "room-wall-n", "shape": "box", "pos": [0, 2.5, -8.5], "size": [16, 5, 1], "material": "greybox" },
+    { "id": "room-wall-s", "shape": "box", "pos": [0, 2.5, 8.5], "size": [16, 5, 1], "material": "greybox" },
+    { "id": "exit-pad", "shape": "box", "pos": [3, 0.01, -6], "size": [2, 0.02, 2], "material": "foam-white" }
+  ],
+
+  "pieces": [
+    { "id": "growth-a", "kind": "growth", "anchor": "floor",
+      "volumes": [
+        { "pos": [-2, 0.8, -3], "size": [1.6, 1.6, 1.6], "material": "foam-purple" }
+      ] },
+
+    { "id": "growth-b", "kind": "growth", "anchor": "floor",
+      "volumes": [
+        { "pos": [5.5, 0.8, -1.5], "size": [1.6, 1.6, 1.6], "material": "foam-purple" }
+      ] }
+  ],
+
+  "ambushes": [
+    { "id": "amb-1", "foamer": "F12", "growth": "growth-a" }
+  ],
+
+  "arenas": [],
+
+  "playerStart": { "pos": [0, 0, 6], "yaw": 0 },
+  "exit": { "pos": [3, 1, -6], "size": [2, 2, 2] }
+}

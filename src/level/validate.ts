@@ -1,5 +1,6 @@
 import materialsData from "../../data/materials.json";
 import rigData from "../../data/foamer-rigs.json";
+import foamerData from "../../data/foamers.json";
 import dartsData from "../../data/darts.json";
 import blastersData from "../../data/blasters.json";
 import type { Arena, Level, Piece, PieceVolume, ShellBox } from "./format";
@@ -382,6 +383,31 @@ export function validateLevel(level: Level): ValidationResult {
         if (s.name.startsWith("shell ")) continue;
         if (inside(s.bounds, p.pos)) errors.push(`${what}: inside ${s.name}`);
       }
+    }
+  }
+
+  // GAME-10m (the ambush): an ambush names a known rig and a piece of kind
+  // "growth". An ambush whose growth is missing or of another kind would
+  // leave a hidden, undamageable Foamer in the level the page can never
+  // wake, so it is an error, not a warning. The type must also carry the
+  // ambush block in data/foamers.json (wakeMetres): it is what gives the
+  // hidden Foamer its wake range, and an F12 from a wave (a rift) just
+  // hunts and pounces, it does not hide.
+  const growthKinds = new Map(
+    (level.pieces ?? []).map((p) => [p.id, p.kind] as const),
+  );
+  const seenAmbushes = new Set<string>();
+  for (const a of level.ambushes ?? []) {
+    const what = `ambush ${a.id}`;
+    if (seenAmbushes.has(a.id)) errors.push(`${what}: id used twice`);
+    seenAmbushes.add(a.id);
+    if (!rigIds.has(a.foamer)) errors.push(`${what}: unknown foamer ${a.foamer}`);
+    else if (!(foamerData.types as Record<string, { ambush?: unknown }>)[a.foamer]?.ambush) {
+      errors.push(`${what}: foamer ${a.foamer} has no ambush block (only types that ambush may hide in a growth)`);
+    }
+    const kind = growthKinds.get(a.growth);
+    if (kind !== "growth") {
+      errors.push(`${what}: growth ${a.growth} is not a growth piece${kind ? ` (it is a ${kind})` : " (no such piece)"}`);
     }
   }
 

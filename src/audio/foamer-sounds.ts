@@ -291,11 +291,17 @@ export class FoamerSounds {
         break;
       // GAME-10f, the Brawler: the fold before the leap and the landing
       // that sends the ring out (placeholder IDs, design/SOUNDS.md).
+      // GAME-10m: the Ambusher's crouch is its own low hiss, not the
+      // Brawler's creak.
       case "crouch":
-        this.sink.play("F07-crouch", p);
+        this.sink.play(f.spec.rig === "F12" ? "F12-crouch" : "F07-crouch", p);
         break;
       case "land":
         this.sink.play("F07-land", p);
+        break;
+      // GAME-10m, the Ambusher: the pounce's launch out of the crouch.
+      case "pounce":
+        this.sink.play("F12-pounce", p);
         break;
     }
   }
