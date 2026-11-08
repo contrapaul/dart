@@ -492,42 +492,22 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(a!.id, "headbutt, not bonk").toBe("headbutt");
     expect(a!.windup, "0.9 s windup, not 0.6").toBeCloseTo(0.9);
   });
-  it("9. without a head, turning 180 degrees to face the player takes 1.7 to 2.3 times as long", async () => {
-    // Both Foamers start backing onto a player 8 m behind them. From
-    // yaw 0 the full turn carries it about pi radians either way; the
-    // rate, not the way, is what the card measures.
-    const faceTime = async (r: ReturnType<typeof rig>, f: Foamer, player: THREE.Vector3) => {
-      let steps = 0;
-      while (steps < 900) {
-        if (Math.PI - Math.abs(f.yaw) < 0.15) break; // face-on, either wrap
-        tick(r, player);
-        steps++;
-      }
-      return steps * DT;
-    };
-    const r1 = rig();
+  it("9. PT-02: losing the head is no longer a turning handicap, it is death", async () => {
+    // The old test here measured a headless Foamer turning 180 degrees at
+    // half rate (handicaps.noHeadTurnRate). Paul's rule of 2026-11-08
+    // replaces that: the head coming off downs it at once, so there is no
+    // headless turn to measure. What is left to check is that the turn rate
+    // is the spec's, and that a Foamer with its head off is not standing.
+    const r = rig();
     const behind = new THREE.Vector3(0, 1.6, -8);
-    const f1 = r1.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-    r1.world.step();
-    await settleAll(r1, f1);
-    f1.yaw = 0; // a clean start away from the player
-    const headed = await faceTime(r1, f1, behind);
-    expect(headed, "need a turn to measure").toBeGreaterThan(0.2);
-    const r2 = rig();
-    const f2 = r2.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-    r2.world.step();
-    await settleAll(r2, f2);
-    // Off with the head: a dart at a part that has died once since is
-    // carried by the wound that is left, so this takes two.
-    await breakOff(r2, behind, f2, "head");
-    await untilApproach(r2, behind, f2);
-    f2.yaw = 0;
-    const headless = await faceTime(r2, f2, behind);
-    const ratio = headless / headed;
-    // turnRate is 6 with a head and 3 without: about twice as long; the
-    // card's pass band is 1.7 to 2.3.
-    expect(ratio, "headless turn is 1.7 to 2.3 times slower").toBeGreaterThanOrEqual(1.7);
-    expect(ratio, "headless turn is 1.7 to 2.3 times slower").toBeLessThanOrEqual(2.3);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    expect(f.turnRate(), "turn rate is the spec's").toBe(SPEC.turnRate);
+    await breakOff(r, behind, f, "head");
+    expect(f.state, "the head alone downs it").toBe("down");
+    for (let i = 0; i < 60; i++) tick(r, behind);
+    expect(f.state, "and it stays down").toBe("down");
   });
 
   it("10. break by wear: carve armL past wearBreak and it breaks after one update", async () => {
@@ -642,19 +622,20 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(r.darts.stats().stuck, "the suction dart fell").toBe(0);
   });
 
-  it("13. head and an arm gone with health above zero: the Foamer goes down", async () => {
+  it("13. PT-02: the head gone with health above zero: the Foamer goes down; an arm alone does not", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 8);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     r.world.step();
     await settleAll(r, f);
-    // Two darts at armL take the arm (2 hp), two at the head (2 hp).
+    // Two darts at armL take the arm (2 hp). The old rule needed the head
+    // too; now the arm alone must not down it.
     await breakOff(r, player, f, "armL");
     expect(f.state, "armL alone does not down it").not.toBe("down");
     await breakOff(r, player, f, "head");
-    expect(f.state, "head plus an arm downs it").toBe("down");
+    expect(f.state, "the head downs it").toBe("down");
     expect(f.health, "still above zero").toBeGreaterThan(0);
-    expect(r.foamers.stats.popped).toBe(0);
+    expect(r.foamers.stats.popped, "not a pop").toBe(0);
   });
 
   it("14. catastrophic: three standard darts on the body in the same step at low health pop it (all bodies gone, debris spawned); one dart killing it at 1 health downs it instead", async () => {
