@@ -30,7 +30,7 @@ Each has a recommendation first.
 | D9 | Ammo-for-kills tool | **A. A suck-up tool: a vacuum that pulls a weakened Foamer in and spits darts out.** B. A squeeze finisher on any Foamer below a health line |
 | D10 | Difficulty presets | **A. Four: Story, Normal, Hard, Foam Fury (names [Paul])**, plus the sliders from PLAN.md 10. B. Sliders only |
 | D11 | Limb damage defaults | **A. As in section 3.1: one leg limps, both crawl, arms take attacks, head is a double-damage weak point.** B. Limbs only slow, never remove attacks |
-| D12 | How Foamers die (section 3.2) | **A. Three outcomes: most go down (topple, fizz, dissolve); a catastrophic killing hit (40% or more of max health in one hit) pops them into chunks; losing the head and an arm downs them whatever their health.** B. Pop only from explosives (B05 explosive mod, B06 every 5th, B07), never from a shotgun |
+| D12 | How Foamers die (section 3.2) | **A. Three outcomes: most go down (topple, fizz, dissolve); a catastrophic killing hit (40% or more of max health in one hit) pops them into chunks; losing the head downs them whatever their health (PT-02, Paul, 2026-11-08).** B. Pop only from explosives (B05 explosive mod, B06 every 5th, B07), never from a shotgun |
 | D13 | Rating target, now that parts come off and Foamers look menacing | **A. Aim for ESRB E10+ / PEGI 12 ("non-realistic violence towards fantasy characters").** B. Keep PEGI 7: then no parts breaking off, only wounds and pops |
 | D14 | Ammo for B06 and B07, both now on mega darts | **A. Keep five ammo types: standard, precision, mega, foam ball, and a launcher round for B07 (a mega dart with a foam warhead, its own pickup).** B. Four types: B06 and B07 share mega darts |
 | D15 | B03 fire type: "pump" and "double barrel" | **A. Break-action double barrel: each trigger pull fires one barrel, both fired means reload (the 2 in 2 / 24); mod 1 fires both at once.** B. Pump-action with a 2-shell tube |
@@ -156,7 +156,8 @@ Per Foamer (proposal, matching the roster above):
 
 Paul: Foamers should not always explode when killed. Fodder especially
 should "go down" with some foamy gore when it has taken enough damage, or
-when its head and an arm are blown off. Explosive results are for
+when its head is blown off (PT-02, Paul, 2026-11-08: the head alone is
+death; the old rule also asked for an arm). Explosive results are for
 catastrophic damage only: close-range shotguns, massive impacts.
 
 "Foamy gore" means foam, never body parts: every Foamer is foam all the way
@@ -168,7 +169,7 @@ bones or insides, no faces in pain, and nothing lies around for long.
 |---|---|---|
 | Wounded | Any hit | The hit carves a crater; the foam around it shows the core colour; a short fizz of foam bubbles from the wound |
 | Part off | A part's own health runs out (or it loses 40% of its foam) | The part falls off as one foam piece, bounces and settles; both sides of the break show a core-coloured stump that fizzes for a second. The Foamer loses what the part did (section 3.1) and staggers |
-| Goes down | Health runs out from an ordinary hit, or the head and an arm are both gone | It topples (forward on two legs, onto its side on four), limbs go limp, foam fizzes off it for about 3 s, then it sinks into the floor and is gone (about 5 s). A finisher on a downed Foamer is not needed: it is out |
+| Goes down | Health runs out from an ordinary hit, or its head comes off (PT-02: the head alone, whatever its health) | It topples (forward on two legs, onto its side on four), limbs go limp, foam fizzes off it for about 3 s, then it sinks into the floor and is gone (about 5 s). A finisher on a downed Foamer is not needed: it is out |
 | Pops | The killing hit alone is 40% or more of the Foamer's max health | It bursts into foam chunks (15 cm), the deep ones in the core colour, thrown away from the hit. Chunks bounce, settle and shrink away within 5 s |
 
 Proposed numbers (all in `data/`, Paul to tune after trying the sandbox):
