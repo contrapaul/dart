@@ -750,6 +750,27 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-08: Paul's playtest, three cards (Claude Opus 5.5)
+
+Paul played the live site and reported: the range menu is broken (blaster
+buttons ignore clicks, mod toggles do nothing), B07 never explodes,
+nothing punches through, Foamers keep moving with their heads off, B03
+is far too weak and point blank is not catastrophic. He asked for the
+range rebuilt for time-to-kill testing and for impact to come from
+overkill and distance. Causes found before writing the cards:
+
+- The range builds `DartImpacts` with no `ExplosionSystem`, so no
+  explosive shot explodes there (the game pages pass one).
+- `catastrophic.popTypes` is empty, so darts never pop; the chunk finish
+  needs Heavy or Elite tier and 25% in one shot.
+- B03 is 8 darts of damage 1 a barrel: 8 at most.
+- B01's `slug` has `pierce: 0`, against CONTENT-PLAN 4.
+- Head off only slows turning; D12 downs a Foamer on head and arm.
+
+Cards: `tasks/PT-01.md` (the range), `PT-02.md` (head off downs it),
+`PT-03.md` (impact, B03, pierce). All three go to dgx-spark one after
+another, each reviewed before the next starts.
+
 ### 2026-11-08: GAME-10m stages 3 and 4 review, merged (Claude Opus 5.5): the F12 ambush from a growth, and its sounds
 
 - qwen-machine (Qwen 3.8-27B) ran four hours and wrote about 70 lines,
