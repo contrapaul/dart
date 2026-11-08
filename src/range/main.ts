@@ -15,17 +15,16 @@ import { Shield } from "../player/shield";
 import { DartSystem } from "../weapons/darts";
 import { Loadout, modIds } from "../weapons/loadout";
 import { updateAim } from "../weapons/aim";
-import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
-import { FoamerSystem } from "../foamers/foamers";
+import type { VoxelTarget } from "../weapons/impacts";
 import type { Foamer } from "../foamers/foamer";
-import { ProjectileSystem, BALL_MATERIAL } from "../foamers/projectiles";
+import { BALL_MATERIAL } from "../foamers/projectiles";
 import { shockwaveOf } from "../foamers/leap";
 import { makeLevelAI } from "../ai/level";
 import { SettingsStore, DIFFICULTIES } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
-import { DebrisSystem } from "../voxel/debris";
+import { createRangeSystems, fillReserves } from "./setup";
 import { MesherPool } from "../voxel/mesher-pool";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
@@ -67,8 +66,6 @@ scene.add(camera); // the blaster viewmodel is a child of the camera
 const input = new Input(canvas);
 const { rapier, world } = await createPhysics();
 const mesherPool = new MesherPool();
-const debris = new DebrisSystem(rapier, world);
-scene.add(debris.mesh);
 
 // The level: a flat floor, 4 m outer walls, the cover boxes from the data
 // file and thin markers every 5 m down the long axis (no collider).
@@ -136,13 +133,17 @@ Loadout.muzzleToWorld = (camPoint, out) => {
 // Only the Foamers' parts are voxel targets on this page, and the system
 // pushes each part in and out as Foamers spawn and go.
 const voxelTargets: VoxelTarget[] = [];
-// Dart hits on the Foamer parts carve craters and throw foam debris.
-const impacts = new DartImpacts(darts, debris, voxelTargets);
-const foamers = new FoamerSystem(rapier, world, mesherPool, debris, darts, voxelTargets);
-// GAME-10a: the F02's foam balls (kinematic raycasts, no physics bodies).
-const projectiles = new ProjectileSystem(rapier, world, debris, player.collider, foamers);
+// Dart hits on the Foamer parts carve craters and throw foam debris. The
+// debris system, the shared explosion, the impacts, the Foamer system and the
+// foam balls are built by the range's own factory, the way src/game/game.ts
+// wires them: the impacts get an ExplosionSystem, so B07's rounds, B05's
+// explosive mod and B06's every fifth shot explode here as they do in the
+// game. The range has no voxel wall, so the blast has no volume to carve.
+const { debris, impacts, foamers, projectiles } = createRangeSystems(
+  rapier, world, darts, mesherPool, player.collider, voxelTargets,
+);
+scene.add(debris.mesh);
 scene.add(projectiles.group);
-foamers.projectiles = projectiles;
 projectiles.onSound = (kind, at) => {
   if (!engine) return;
   if (kind === "burst") engine.play("FB-burst", { position: at });
@@ -806,6 +807,10 @@ loopCtl = startLoop({
         },
         _aimDir,
       );
+      // PT-01: on the range the reserve never runs out, so a time to kill
+      // measures the blaster and its reloads, not the ammo. The magazine is
+      // left alone: it still empties and a reload still takes its time.
+      fillReserves(loadout);
       if (sounds) sounds.update(dt, {
         fireHeld: canFire && input.isDown("fire"),
         firePressed: canFire && input.wasPressed("fire"),
