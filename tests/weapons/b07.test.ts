@@ -280,15 +280,16 @@ describe("GAME-09f: the launcher blast", () => {
     expect(P.knockDecay).toBeGreaterThan(0);
   });
 
-  it("9. B06 and B05 blasts keep the dart profile's numbers", () => {
+  it("9. B06 and B05 blasts use the dart profile's numbers", () => {
     const D = explosionTuning.profiles.dart;
     const at = new THREE.Vector3(1.2, 1.2, 1.2);
     const c = at.clone();
     const r = blastRig([c]);
-    r.explosion.explode(at); // no profile: the old call, the dart numbers
+    r.explosion.explode(at); // no profile: the dart numbers
     expect(r.foamers.damaged.get(r.foamers.list[0])).toBeCloseTo(D.damageCentre, 6);
-    // The dart profile does not shove (B05/B06 blasts never pushed).
-    expect(r.foamers.shoved.size).toBe(0);
+    // PT-05 stage 3: the dart profile is a small launcher blast now, so it
+    // shoves as well.
+    expect(r.foamers.shoved.get(r.foamers.list[0])!.speed).toBeCloseTo(D.knockSpeed, 6);
     // Its carve is the original 0.6 m: 0.8 m out survives.
     expect(r.volume.get(12, 12, 12 + Math.round(0.8 / 0.1))).not.toBe(0);
   });

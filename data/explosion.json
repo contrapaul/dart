@@ -6,17 +6,18 @@
   "cluster": { "count": 4, "distanceMetres": 1.5, "delaySeconds": 0.25, "profile": "cluster" },
   "profiles": {
     "dart": {
+      "_note": "PT-05 stage 3: B05's explosive mod and B06's every fifth shot use this profile, so it now hits hard at the point (20 against the 12 it had) and shoves, a small launcher blast rather than a nudge.",
       "carveRadius": 0.6,
-      "damageCentre": 12,
-      "rangeMetres": 2.5,
+      "damageCentre": 20,
+      "rangeMetres": 2.2,
       "burstChunks": 10,
       "burstSize": 0.09,
       "burstMaterial": "foam-white",
       "pushSpeed": 3,
       "foamerCarveRadius": 0.2,
-      "knockSpeed": 0,
+      "knockSpeed": 5,
       "knockDecay": 6,
-      "liftSpeed": 0
+      "liftSpeed": 1.2
     },
     "launcher": {
       "_note": "GAME-09f: B07 Collateral's launcher round: a bigger blast than the dart's that pushes every Foamer in range away from it.",
