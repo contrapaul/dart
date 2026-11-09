@@ -5,7 +5,7 @@
     "playerSpawn": [0, 0, 25],
     "cover": [[-4, 0.6, 12, 4, 1.2, 0.6], [5, 1.5, 5, 1, 3, 1], [-8, 0.6, -2, 3, 1.2, 0.6]],
     "spawn": { "count": 0, "points": [[-10, 0, -20], [10, 0, -20], [0, 0, -25]] },
-    "lineup": { "distanceMetres": 15, "spacingMetres": 3 }
+    "lineup": { "distanceMetres": 15, "spacingMetres": 3, "pierceRow": { "_note": "PT-03 stage 3: three F01s straight ahead, one behind another, for the punch test. Nearer to the player than the arc, so it keeps the arc clear; respawn puts it back with the line.", "type": "F01", "distanceMetres": 9.5, "spacingMetres": 1.5, "count": 3 } }
   },
   "graph": { "frames": 600, "width": 480, "height": 120, "hitchFactor": 1.5, "longWorkFactor": 0.75, "gcDropMb": 1 },
   "bench": { "seconds": 20, "strafePeriod": 1.5 }

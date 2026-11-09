@@ -211,6 +211,7 @@ const _topV = new THREE.Vector3();
 const _sc = new THREE.Vector3();
 const _kbB = new THREE.Vector3(); // kill push: a part's centre
 const _kbV = new THREE.Vector3(); // kill push: the shot's horizontal direction
+const _exitC = new THREE.Vector3(); // PT-03: the pierce exit carve centre
 const _one = new THREE.Vector3(1, 1, 1);
 const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
 // ENG-08 stage 3b: the line of sight ray's ends, and the direction between.
@@ -434,6 +435,15 @@ export class FoamerSystem {
     darts.onHit = (hit) => {
       previous(hit);
       this.handleHit(hit);
+    };
+    // PT-03 stage 3: a piercing dart opens a hole on the far side, so
+    // the punch shows on two faces, not one. DartImpacts has carved the
+    // entry on this same hit (it chains first); this carves the exit the
+    // dart measured off the body's far face.
+    const prevExit = darts.onPierceExit;
+    darts.onPierceExit = (entry, exit) => {
+      prevExit(entry, exit);
+      this.handlePierceExit(entry, exit);
     };
     this.cc = world.createCharacterController(0.02);
     this.cc.enableAutostep(NAV.stepAutostepMetres, 0.2, false);
@@ -2314,6 +2324,38 @@ export class FoamerSystem {
     this.stats.chunks++;
     sound(this, "chunk", f, sum.mean);
     this.goDown(f, hit, spec.push);
+  }
+
+  /** PT-03 stage 3: the far side of a punched-through hole. The dart
+   *  measured the exit on this hit's far face (darts.ts); that face is
+   *  still solid for this step, so the carve opens it. The hole is the
+   *  type's carve radius at the same speed scale the entry took. No
+   *  debris out of it: the hole is the punch going through, not a hit,
+   *  and the chunks it throws sit in the hole's mouth and stop every
+   *  dart that still has pierce left to spend (the entry carve is the
+   *  burst, and throws it). A far face with no live part (a body broken
+   *  mid-flight) carves nothing and is dropped, not held. */
+  private handlePierceExit(entry: DartHit, exit: DartHit | null): void {
+    void entry;
+    if (!exit) return;
+    let part: FoamerPart | undefined;
+    for (const foamer of this.list) {
+      for (const p of foamer.parts.values()) {
+        if (p.owns(exit.collider)) {
+          part = p;
+          break;
+        }
+      }
+      if (part) break;
+    }
+    if (!part) return;
+    const vs = part.volume.voxelSize;
+    const spec = dartTuning.types[exit.type];
+    const scale = THREE.MathUtils.clamp(exit.speed / spec.speed, 0.3, 1);
+    const rv = (spec.carveRadius * scale * part.carveScale) / vs;
+    // On the face a half voxel in, the way the entry carve is centred.
+    const c = part.worldToVoxel(_exitC.copy(exit.point));
+    carveSphere(part.volume, c.x, c.y, c.z, rv);
   }
 
   /** Go down (card "Go down"): it stops moving and attacking, its parts
