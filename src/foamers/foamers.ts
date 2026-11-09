@@ -34,6 +34,7 @@ import { BALL_MATERIAL } from "./projectiles";
 import { makeRng } from "../audio/synth";
 import { decideCharge } from "../ai/f05-brain";
 import foamerData from "../../data/foamers.json";
+import blastData from "../../data/explosion.json";
 import playerData from "../../data/player.json";
 import rigData from "../../data/foamer-rigs.json";
 import aiData from "../../data/ai.json";
@@ -214,6 +215,9 @@ const _kbB = new THREE.Vector3(); // kill push: a part's centre
 const _kbV = new THREE.Vector3(); // kill push: the shot's horizontal direction
 const _exitC = new THREE.Vector3(); // PT-03: the pierce exit carve centre
 const _blastP = new THREE.Vector3(); // PT-05: a part's box centre, for the blast
+const _blastQ = new THREE.Vector3(); // PT-05: a blast carve's centre, per part
+/** PT-05: a blast kill's impact at or above this is total obliteration. */
+const OBLITERATE_AT: number = blastData.obliterateAt;
 /** PT-05: the blast's wall ray, from the point to a part. */
 const _blastRay = new RAPIER_V.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
 const EXCLUDE_SENSORS = 8;
@@ -2269,17 +2273,26 @@ export class FoamerSystem {
    *  damage and parryDamage, but the damage counts toward a catastrophic
    *  hit, so a blast at the centre can pop as well as go down (the card:
    *  "it can down or pop"). */
-  blastDamage(f: Foamer, amount: number): void {
+  blastDamage(
+    f: Foamer, amount: number,
+    blast?: { point: THREE.Vector3; carveRadius: number; strength: number },
+  ): void {
     if (f.state === "down") return;
     if (f.dyingHit) return;
+    const healthBefore = f.health;
     f.health -= amount;
     f.addDamage(this.time, amount);
     f.damageSinceStep = true;
     sound(this, "wound", f, f.centre);
     if (f.health <= 0) {
-      // The pop window holds the blast's own damage (parryDamage's bounce
-      // cannot pop; a blast can), so resolveKill decides pop or go down.
-      this.resolveKill(f, null);
+      // PT-05 stage 2: a blast kill has an impact of its own (the blast's
+      // damage on this Foamer, near 1), so it can chunk, pop or obliterate
+      // at the point it came from, not just go down.
+      // The kill's impact reads the blast's strength at its centre (the
+      // shot), not the amount the falloff left here: a big blast 1 m from a
+      // small Foamer is still a big blast (PT-05 stage 2).
+      if (blast) this.blastKill(f, blast.point, blast.strength, blast.carveRadius, healthBefore);
+      else this.resolveKill(f, null);
       return;
     }
     if (
@@ -2290,6 +2303,79 @@ export class FoamerSystem {
       f.finishWeakened = true;
       this.startStagger(f, true);
     }
+    // A survivor still wears the blast's hole: the same sphere the level
+    // takes, at the profile's Foamer radius.
+    if (blast && blast.carveRadius > 0) this.blastCarve(f, blast.point, blast.carveRadius);
+  }
+
+  /** PT-05 stage 2: carve the blast's sphere through every part it reaches,
+   *  the way the level is carved, so a blast beside a Foamer leaves a
+   *  visible hole. The debris leaves outward from the blast point (each
+   *  part's spawn centre is the point in that part's own voxel space), and
+   *  the debris ring cap is unchanged. Returns the voxels removed. */
+  blastCarve(f: Foamer, point: THREE.Vector3, radiusMetres: number): number {
+    let total = 0;
+    for (const part of f.parts.values()) {
+      const vs = part.volume.voxelSize;
+      const rv = radiusMetres / vs;
+      const sz = part.spec.size;
+      // The sphere is set down so it just reaches this part's box centre,
+      // which puts the hole on the side that faces the blast (the card:
+      // a chunk centred on the side facing the blast). A part already
+      // within the radius is carved at the point itself.
+      _blastP.set(sz[0] / 2, sz[1] / 2, sz[2] / 2);
+      part.voxelToWorld(_blastP);
+      _blastQ.copy(_blastP).sub(point);
+      const d = _blastQ.length();
+      if (d > radiusMetres) {
+        _blastQ.multiplyScalar((d - radiusMetres) / d).add(point);
+      } else {
+        _blastQ.copy(point);
+      }
+      const c = part.worldToVoxel(_blastQ);
+      // Skip a part the sphere cannot reach: its box plus the radius.
+      if (c.x < -rv || c.y < -rv || c.z < -rv) continue;
+      if (c.x > sz[0] + rv || c.y > sz[1] + rv || c.z > sz[2] + rv) continue;
+      const removed = carveSphere(part.volume, c.x, c.y, c.z, rv);
+      if (removed.length === 0) continue;
+      total += removed.length;
+      this.debris.spawn(removed, c, vs, (v) => part.voxelToWorld(v));
+    }
+    return total;
+  }
+
+  /** PT-05 stage 2: a blast kill, judged by the same impact rule a dart's
+   *  kill uses, with the blast's damage as the shot and near 1 (its damage
+   *  already falls off with distance). Below chunkAt it goes down; in the
+   *  chunk band the hole is carved at the point and it goes down with the
+   *  hole in it; at popAt it pops, the foam thrown outward from the point;
+   *  at obliterateAt and above it is obliterated: every part bursts into
+   *  foam and nothing is left (inside the debris caps). */
+  private blastKill(
+    f: Foamer, point: THREE.Vector3, damage: number, carveRadius: number,
+    healthBefore: number,
+  ) {
+    const spec = f.spec.catastrophic;
+    const verdict = judgeImpact(spec, null, damage, healthBefore, f.maxHealth, 0);
+    if (verdict.impact >= OBLITERATE_AT) {
+      this.pop(f, verdict.impact, point);
+      return;
+    }
+    if (verdict.outcome === "pop") {
+      this.pop(f, verdict.impact, point);
+      return;
+    }
+    if (verdict.outcome === "chunk") {
+      // The hole is the profile's Foamer carve, grown with the impact; at
+      // least the level carve's own, so it always shows.
+      this.blastCarve(
+        f, point, Math.max(carveRadius, impactChunkRadius(spec, carveRadius, verdict.impact)),
+      );
+      this.stats.chunks++;
+      this.goDown(f, undefined, downPushOf(spec, verdict.impact));
+      return;
+    }
+    this.goDown(f, undefined, downPushOf(spec, verdict.impact));
   }
 
   /** PT-05: the sphere of a blast reaches a Foamer's parts, not only its
@@ -3038,7 +3124,7 @@ export class FoamerSystem {
    *  1 + popPushShare times the speed. A caller with no impact (a press,
    *  a finisher, an arena extra) passes none and gets the base pop. The
    *  debris system's own ring cap stays hard above all of it. */
-  pop(f: Foamer, impact = 0) {
+  pop(f: Foamer, impact = 0, from?: THREE.Vector3) {
     sound(this, "pop", f, f.centre);
     for (const part of f.parts.values()) {
       // Every remaining voxel, in the part volume's own (non-rotated) space.
@@ -3053,7 +3139,14 @@ export class FoamerSystem {
       }
       if (voxels.length === 0) continue;
       const size = part.spec.size;
-      const centre = { x: size[0] / 2, y: size[1] / 2, z: size[2] / 2 };
+      // PT-05: a blast's pop throws its foam outward from the blast point;
+      // a plain pop still bursts from the part's own middle.
+      const centre = from
+        ? (() => {
+          const v = part.worldToVoxel(_blastP.copy(from));
+          return { x: v.x, y: v.y, z: v.z };
+        })()
+        : { x: size[0] / 2, y: size[1] / 2, z: size[2] / 2 };
       const slice = Math.ceil(voxels.length / f.spec.popBursts);
       const vs = f.rig.voxelSize;
       for (let i = 0; i < f.spec.popBursts; i++) {
@@ -3064,8 +3157,10 @@ export class FoamerSystem {
       }
     }
     // PT-03: the impact's own burst of loose foam, on top of the body's.
+    // PT-05: a blast's pop already leaves outward from the point, so it
+    // takes no upward spray on top.
     const boost = popBurstBoost(f.spec.catastrophic, impact);
-    if (boost.extraChunks > 0) {
+    if (boost.extraChunks > 0 && !from) {
       this.debris.burst(
         f.centre, boost.extraChunks, f.rig.voxelSize * f.spec.popChunkScale,
         materialId("foam-white"), boost.pushShare,

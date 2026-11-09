@@ -61,7 +61,10 @@ export interface BlastContact {
  *  is not in the Foamer list, so the blast never reaches them. */
 export interface BlastDamageTargets {
   readonly list: readonly { centre: THREE.Vector3 }[];
-  blastDamage(f: { centre: THREE.Vector3 }, amount: number): void;
+  blastDamage(
+    f: { centre: THREE.Vector3 }, amount: number,
+    blast?: { point: THREE.Vector3; carveRadius: number; strength: number },
+  ): void;
   blastDistance?(f: { centre: THREE.Vector3 }, point: THREE.Vector3): number;
   blastCarve?(f: { centre: THREE.Vector3 }, point: THREE.Vector3, radiusMetres: number): number;
   blastKnock?(
@@ -175,7 +178,13 @@ export class ExplosionSystem {
         const amount = T.damageCentre * fall;
         if (amount <= 0) continue;
         this.stats.damage++;
-        this.foamers.blastDamage(f, amount);
+        // PT-05 stage 2: the profile's Foamer carve radius goes with the
+        // damage, so a survivor gets its hole and a kill is judged on it.
+        this.foamers.blastDamage(f, amount, {
+          point,
+          carveRadius: T.foamerCarveRadius ?? 0,
+          strength: T.damageCentre,
+        });
         // PT-05: the shove is a speed the Foamer spends over the next
         // steps (blastKnock), not one moved position, so no step jumps and
         // a wall stops it inside the movement controller. A fake with no
