@@ -426,6 +426,12 @@ export class DartSystem {
       return;
     }
     this._dn.copy(s.vel).multiplyScalar(1 / speed);
+    // PT-06: a dart in flight turns along its velocity every step, so its
+    // tip leads through the arc and after each bounce. A ball (B08, and
+    // PT-06 the B07 launcher round) is round and does not need to turn.
+    if (!("shape" in s.spec && s.spec.shape === "ball")) {
+      s.quat.setFromUnitVectors(AXIS_Z, this._dn);
+    }
     const maxDist = speed * dt;
     this._po.x = s.pos.x; this._po.y = s.pos.y; this._po.z = s.pos.z;
     this._pd.x = this._dn.x; this._pd.y = this._dn.y; this._pd.z = this._dn.z;
