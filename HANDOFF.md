@@ -771,6 +771,21 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-07 review, merged (Claude Opus 5.5): weapons and the F11 shield
+
+- dgx-spark did it to the card: `kinds.weapon.total` 0, and F11's
+  `armour.shield` and `shieldBoss` gained `wear 1` and `carve 0.3`, so a
+  front dart does nothing to the Seawall but wears the plate.
+- On the range: six precisionHeavy darts at an F01's club shot it off
+  and the F01 kept 6 of 6 health. Darts at F11's shield from the front
+  wore it from 15 hp; it broke on its 15th hit and the next front dart
+  hurt the Seawall (51.5 to 50.5). Darts that missed the plate and hit
+  the parts round it took 0.5 each, as before.
+- Tuning for Paul: the shield takes 15 standard darts (its hp is the
+  `ability` hpShare 0.25 of 60); `wear` scales it.
+- 969 tests pass (2 skipped) twice after merging main, tsc and build
+  green. Not seen: the wear marks and the plate flying off.
+
 ### 2026-11-09: PT-04 review, merged (Claude Opus 5.5): sound cuts and B06
 
 - dgx-spark did it to the card: the F10 jet loop, `BX-holster` and
