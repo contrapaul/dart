@@ -766,6 +766,17 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-04 review, merged (Claude Opus 5.5): sound cuts and B06
+
+- dgx-spark did it to the card: the F10 jet loop, `BX-holster` and
+  `BX-draw`, the `B04-rev-loop` and `FX-fizz-out` are no longer played
+  (their data stays for Paul's recordings); `PL-step-hard` volume 0.14;
+  B06 `spinUp` 0, and it fires on the first held step (tested; the auto
+  code already clamped the divisor).
+- Nothing was listened to (no audio in the review pane). Paul to check by
+  ear: the footstep level, and that the F10 still reads alive silent.
+- 949 tests pass (2 skipped) after merging main, tsc and build green.
+
 ### 2026-11-09: PT-06 review, merged (Claude Opus 5.5): the dart look
 
 - qwen-machine stopped once when Pi's context compaction failed and it
