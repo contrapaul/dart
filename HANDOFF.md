@@ -18,6 +18,12 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+PT-05 code done 2026-11-09 by DeepSeek V4.1 Flash via Pi: blasts that reach
+and carve Foamers, a shove over time instead of a teleport, and stronger
+explosive mods. Three stage commits on `pt-05` (`eb9f75f`, `fe182d2`,
+`895098c`) plus a docs commit, not reviewed, not merged, not pushed. Nothing
+was seen by eye; see the top log entry.
+
 PT-02 code done 2026-11-08 by Qwen 3.8 Flash Next via Pi (dgx-spark): a
 Foamer that loses its head goes down whatever its health, on `pt-02`, not
 reviewed, not merged, not pushed. See the log entry below for what was not
@@ -759,6 +765,58 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-09: PT-05, blasts that blow Foamers apart (DeepSeek V4.1 Flash via Pi, branch `pt-05`, three commits plus this docs commit, not reviewed, not merged)
+
+Card: `tasks/PT-05.md`, from Paul's second playtest ("explosions barely
+mark Foamers, survivors teleport, walls do not block them, the explosive
+mods are too weak").
+
+**Stage 1 (eb9f75f)**: a blast now reaches a Foamer by its parts, not its
+feet: `FoamerSystem.blastDistance` finds the nearest part box centre with
+no fixed level geometry between it and the blast point, so an arm in the
+sphere takes the blast when the feet are out of it, and a wall in between
+does not. Only level geometry blocks; Foamers, debris and ragdolls never
+do. One trap worth knowing: a blast point resting on the floor sits a hair
+inside the floor collider and Rapier reports that shape at ray time 0 for
+every ray, which made every part read as blocked until the ray was started
+1 cm in and a hit at time 0 was ignored. The shove is now a speed, not a
+step: `blastKnock` sets the Foamer's own knock speed out from the point,
+the movement controller spends it through `computeColliderMovement` with
+the data decay, so no step moves further than the speed allows and a wall
+stops it mid-walk. Debris and broken pieces go straight out from the point
+in 3D with only `pushLift` (0.15) on top instead of straight up.
+
+**Stage 2 (fe182d2)**: `blastCarve` carves each Foamer part inside
+`foamerCarveRadius` (per profile), the sphere set down so it just reaches
+the part's centre, so the hole is on the side facing the blast and a
+survivor is visibly marked. A killing blast is judged by the same impact
+rule a dart kill uses, with the profile's `damageCentre` as the shot and
+near 1: the chunk band carves and goes down, `popAt` pops with the foam
+thrown outward from the point, and the new `obliterateAt` (data, 3) bursts
+every part and leaves nothing, inside the debris caps.
+
+**Stage 3 (895098c)**: the `dart` profile (B05 explosive mod, B06 every
+fifth shot) is a small launcher blast: 20 damage at the centre (was 12),
+2.2 m range, shove 5 m/s. Numbers for Paul: `data/explosion.json`, per
+profile `damageCentre`, `rangeMetres`, `foamerCarveRadius`, `knockSpeed`,
+`knockDecay`, `liftSpeed`, and top level `obliterateAt` and `pushLift`.
+
+Tests: `tests/foamers/blast.test.ts` (walls block, an arm in range, the
+shove over time, a wall stopping it), `tests/foamers/blast-carve.test.ts`
+(an F01 obliterated at 1 m, an F05 chunked at 2.5 m on the near side, a
+surviving F07 losing voxels), `tests/foamers/blast-mods.test.ts` (a dart
+blast at least twice a plain mega dart's damage, the neighbour shoved).
+
+**Not checked by eye.** I cannot see images or run a browser: nothing here
+was watched in the game. Worth a look by the reviewer: how big the hole
+reads on a survivor at each profile's radius, whether the obliteration
+looks like a pop or distinct, and whether 5 m/s of shove on the dart
+profile feels right on the range. Two tests changed for the rule change,
+not to make a failure go away: `tests/weapons/b07.test.ts` test 9 now
+expects the dart profile to shove (it deliberately did not in stage 1, so
+B05/B06 kept their old numbers for one stage), and `blast.test.ts` test 5
+checks the shove numbers on the launcher and cluster profiles only.
 
 ### 2026-11-09: Paul's second playtest, four cards (Claude Opus 5.5)
 
