@@ -1590,7 +1590,7 @@
     },
     "PL-step-hard": {
       "files": [],
-      "volume": 0.7,
+      "volume": 0.14,
       "jitter": 0.1,
       "maxVoices": 3,
       "synth": {

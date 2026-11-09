@@ -18,6 +18,11 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+PT-04 done 2026-11-09 by Qwen 3.8 Flash Next via Pi (dgx-spark): the sound
+cuts (F10 jet loop, weapon switch, B04 flywheel loop, Foamer fizz-out),
+footsteps at 20%, and B06 firing with no spin-up delay, on `pt-04`, not
+reviewed, not merged, not pushed. See the log entry below for what was not
+heard or seen by eye.
 PT-05 code done 2026-11-09 by DeepSeek V4.1 Flash via Pi: blasts that reach
 and carve Foamers, a shove over time instead of a teleport, and stronger
 explosive mods. Three stage commits on `pt-05` (`eb9f75f`, `fe182d2`,
@@ -766,6 +771,156 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-04 review, merged (Claude Opus 5.5): sound cuts and B06
+
+- dgx-spark did it to the card: the F10 jet loop, `BX-holster` and
+  `BX-draw`, the `B04-rev-loop` and `FX-fizz-out` are no longer played
+  (their data stays for Paul's recordings); `PL-step-hard` volume 0.14;
+  B06 `spinUp` 0, and it fires on the first held step (tested; the auto
+  code already clamped the divisor).
+- Nothing was listened to (no audio in the review pane). Paul to check by
+  ear: the footstep level, and that the F10 still reads alive silent.
+- 949 tests pass (2 skipped) after merging main, tsc and build green.
+
+### 2026-11-09: PT-06 review, merged (Claude Opus 5.5): the dart look
+
+- qwen-machine stopped once when Pi's context compaction failed and it
+  read the harness note as an order to pause; restarted from its saved
+  work, it finished in about 30 minutes.
+- The black streaks were the winding: the old side quads mixed two
+  triangle orders, so half the faces pointed inward. Fixed at the cause.
+- Seen in the browser, close up: standard blue with a reddish orange
+  tip, mega red with yellow, precision and precisionHeavy yellow with
+  blue, buck blue with reddish orange, the launcher a yellow ball; no
+  black faces from any angle.
+- Review fix: the tip had two rings and looked like a crayon point; it
+  now has four and reads as a rounded foam tip.
+- Darts turn along their velocity every step (tested after a bounce and
+  through an arc). Not seen in motion in the browser.
+- 946 tests pass (2 skipped), tsc and build green.
+
+### 2026-11-09: PT-06 dart look, in flight and after a bounce (Qwen 3.8-27B via Pi, qwen-machine)
+
+PT-06 code done on `pt-06`, not reviewed, not merged, not pushed. This was
+a continuation of an earlier run of mine that had saved a work-in-progress
+commit (`0752c72`) before its context ran out; I kept what was right
+(the shape rewrite, Paul's colours, the in-flight turn) and finished the
+card.
+
+The shape in `src/weapons/dart-model.ts` is now a plain cylinder, flat at
+the back, with a rounded foam tip of the body's own radius. The old tip
+was 22% of the length and bulged 1.25x the body radius; both are gone. The
+tip's share is a new `tipShare` 0.15 in `data/darts.json` (only the shape,
+size and colour lines changed, edited by hand, layout kept).
+
+The cause of the black triangles streaked with blue that Paul saw: the tip
+quads used two diagonals with opposite winding, so roughly half of every
+tip face was backfacing and unlit. `quad()` now takes one diagonal (`a, b,
+c, a, c, d`) so both triangles wind outward, and every face's triangle
+normal points away from the dart. `tests/weapons/dart-look.test.ts` proves
+it: the tip is one point at +Z, the back is flat, all normals point
+outward, the tip has no bulge, and the per-vertex colours are the data's
+colours with
+a float32 tolerance (the colour attribute is linear float32, so exact
+equality fails on rounding; that was the only remaining failure, as
+`0752c72`'s message and the card both predicted).
+
+Paul's colours, as given: standard body `#2ec4ff` tip `#ff5a1a` (reddish
+orange); mega body `#e8332a` tip `#ffd23f` (yellow); precision body
+`#ffd23f` tip `#2ec4ff` (blue). The launcher round is a yellow ball
+`#ffd23f` of its current radius (`#ffd23f`, the `shape: ball` path B08
+already had). For the types Paul did not name, I kept: `precisionHeavy`
+like precision (yellow body, blue tip), `buck` like standard (blue body,
+reddish orange tip), `b01slug` and `slug` keep their purple body and cream
+tip, `suction` keeps its yellow body and pink tip, and `ball` stays as it
+is. [Paul] please confirm those defaults against your intent.
+
+Orientation: `DartSystem.update` now turns every flying non-ball dart
+along its velocity each step (`setFromUnitVectors(AXIS_Z, dir)`), so the
+tip leads through the arc and takes the new direction at each bounce.
+Resting and stuck darts keep their old rules; the two ball types do not
+turn (they are round, nothing to point). Two card tests: a dart fired at
+45 degrees up points within 10 degrees of its (downward) velocity near the
+end of its arc, and a dart after a wall bounce has its +Z axis within 15
+degrees of its new velocity. Both pass headless.
+
+Not seen by eye: I can see no images and open no browser, so the new look
+(the colours, the rounded tip, the darts turning in flight and after a
+bounce) was only checked by the headless geometry and scene tests. The
+reviewer has to look at it in the browser.
+
+`npx tsc --noEmit`, `npx vitest run` (946 passed, 2 skipped) and
+`npm run build` all pass. No em or en dashes in the files I touched
+(perl check clean).
+### 2026-11-09: PT-08, blaster hold positions (Claude Opus 5.5)
+
+- Paul: blasters are held too far forward; B02 Musketeer is the closest
+  to correct and looks larger than the rest; B05 Shrike is so far out
+  two hands could not hold it.
+- Measured: scales ran 0.62 to 0.85 and triggers sat 33 to 51 cm in
+  front of the eye (B05 worst: 0.62 at 51 cm), so the rifles looked
+  small and floating.
+- Every blaster's `viewmodel` is now B02's: position (0.18, -0.22,
+  -0.32), scale 0.85, its own small rotation kept. They keep their true
+  relative sizes (B05 is long, B02 short) and all sit low right, the
+  fore-end within a left hand's reach. A first try at scale 1 and 28 cm
+  was far too big (a live trial had not taken the scale; the page
+  resets it each frame).
+- Seen in the browser for all eight. Not checked: a 16:9 window (the
+  pane is 4:3), and whether the recoil and sway now clip the screen edge.
+- 934 tests pass (2 skipped), tsc and build green.
+### 2026-11-09: PT-04, the sound cuts and The Standard's fire delay (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `pt-04`, two commits, not merged)
+
+What Paul asked for (second playtest): the F10's jet loop gone, footsteps
+about 80 per cent quieter, the change-weapon sound gone, the B04 flywheel
+sound dropped, the foamer dying sound dropped, and The Standard firing with
+no delay. All six are in. The sound definitions stay in `data/sounds.json`
+(his recordings will reuse the IDs), so what was removed is only the code
+that played them, noted as "Not played since PT-04, Paul" in
+`design/SOUNDS.md` against `F10-jet`, `FX-fizz-out`, `BX-holster`,
+`BX-draw`, `B04-rev-loop`, `B06-spin` and `PL-step-hard`.
+
+What was decided and why. The F10 keeps the float-or-fly path in
+`src/audio/foamer-sounds.ts` rather than being excluded from it, because
+that path is also what sounds `F10-fall` when the last jet breaks: its
+`hums` map entry now holds null for a Turbo instead of a `LoopHandle`, so
+the state is tracked and nothing plays. The F06 hum is untouched. The
+fizz-out queue (`Fizz`, `FIZZ_DELAY`, `FIZZ_CAP`) went entirely, so
+`FoamerSounds.update` no longer uses its `dt` (renamed `_dt`): it had no
+other caller. With the B04 loop went `stopRev`, the `rev` field and the
+`LoopHandle` import; `Blaster.wheelSpeed` itself stays, since
+`src/weapons/viewmodel.ts` still spins the wheels with it, and `B04-fire`
+per shot is kept.
+
+B06 is a data line only: `spinUp` 0.25 to 0. No code change was needed for
+zero, and that was checked rather than assumed: `updateAuto` divides by
+`Math.max(s.spinUp, 1e-6)` and `updateAutoFire` gates on `wheelSpeed < 1`,
+which zero spin-up reaches on the first held step, so the first mega dart
+leaves on step one. `B06-spin` had never been wired (game-sounds.ts loops
+only B04 today, as its own `_note` in the data said), so there was nothing
+to remove for it.
+
+Tests. Added: the card cases in `tests/audio/game-sounds.test.ts` (a new
+`PT-04: the sound cuts` block: a switch plays neither `BX-holster` nor
+`BX-draw`; the F10 starts no loop while the F06 still hums once, and the
+F10 still sounds its flop; B04 active starts no loop and still fires its
+fire sound), and a `PL-step-hard` volume assertion in
+`tests/audio/data.test.ts`. Updated where they asserted the old sounds,
+as the card asked: `a standard-dart kill ... FX-fizz-out 0.3 s later` in
+`tests/audio/game-sounds.test.ts` now asserts no fizz-out after the topple
+(stepped 60 ticks past the old delay), and the whole old `card test 10`
+rev-loop case (one loop, volume follows wheelSpeed) is deleted, replaced by
+the no-loop test above. In `tests/weapons/b06.test.ts`, spec test 3 expects
+`spinUp` 0 and test 4 fires on the first held step. `tests/foamers/fall.test.ts`
+already asserted no fizz-out on a fall and still passes unchanged.
+`npx tsc --noEmit`, `npx vitest run` (134 files, 937 passed, 2 skipped) and
+`npm run build` are green; no em or en dashes in the files touched.
+
+Not checked by eye or ear. Nothing here was heard: no dev server was run, so
+the mix is unverified, and the footsteps at 0.14 in particular is Paul's
+number, not a listened level. Whether B06 at zero delay now feels right, and
+whether the F10 reads as silent-but-alive with only its flop left, are for
+the reviewer's ear on the range and in the arena.
 ### 2026-11-09: PT-05 review, merged (Claude Opus 5.5): explosions that blow Foamers apart
 
 - DeepSeek did all three stages in about 20 minutes: the blast reaches

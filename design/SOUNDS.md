@@ -41,8 +41,8 @@ and the tool are unnamed so far).
 
 | ID | Sound | Slice | Takes | Suggested source |
 |---|---|---|---|---|
-| BX-draw | Blaster raised into view after a switch (plastic rattle, grip slap) | Yes | 3 | Blaster: shake and grab one |
-| BX-holster | Blaster lowered | Yes | 2 | Blaster |
+| BX-draw | Blaster raised into view after a switch (plastic rattle, grip slap). Not played since PT-04, Paul | Yes | 3 | Blaster: shake and grab one |
+| BX-holster | Blaster lowered. Not played since PT-04, Paul | Yes | 2 | Blaster |
 | BX-dry | Trigger pulled with an empty magazine (dry click) | Yes | 3 | Blaster: per blaster if they sound different |
 | BX-mod-on | Mod attached on the range or at a station (snap, click) | Yes | 2 | Foley: click a plastic part on |
 | BX-mod-off | Mod removed | Yes | 2 | Foley |
@@ -91,7 +91,7 @@ and the tool are unnamed so far).
 | ID | Sound | Slice | Takes | Suggested source |
 |---|---|---|---|---|
 | B04-rev-up | Flywheels spinning up (rising whine) | Yes | 3 | Blaster: rev it |
-| B04-rev-loop | Flywheels at full speed, steady (I loop it) | Yes | 2 long (5 s) | Blaster |
+| B04-rev-loop | Flywheels at full speed, steady (I loop it). Not played since PT-04, Paul | Yes | 2 long (5 s) | Blaster |
 | B04-rev-down | Flywheels spinning down | Yes | 3 | Blaster |
 | B04-fire | One dart through the wheels (played on each shot over the loop) | Yes | 8 | Blaster: single shots |
 | B04-burst | A full-auto burst, for reference | Yes | 3 | Blaster: hold the trigger |
@@ -128,7 +128,7 @@ wiring yet (game-sounds.ts has no per-dart loop, as with B06-spin).
 | B06-rev-up | Motor spin-up, deeper than B04 | Later | 3 | Blaster |
 | B06-rev-loop | Motor at speed (loop) | Later | 2 long | Blaster |
 | B06-rev-down | Spin-down | Later | 3 | Blaster |
-| B06-spin | Motor at speed, deeper than B04 (GAME-09d placeholder id) | Later | 2 long | Blaster |
+| B06-spin | Motor at speed, deeper than B04 (GAME-09d placeholder id). Not played since PT-04, Paul (B06's spinUp is 0, so there is no wind-up to cover) | Later | 2 long | Blaster |
 | B06-fire | One mega dart, heavy | Later | 8 | Blaster: mega darts |
 | B06-belt | Drum or belt feeding (loop under fire) | Later | 2 long | Foley: a ratchet |
 | B06-reload | Drum or box out and in | Later | 3 each | Blaster |
@@ -196,7 +196,7 @@ all?** That is your call; the vocal rows below are marked "Optional".
 | FX-part-land | The broken part bouncing on the floor | Yes | 6 | Foley: drop foam pieces |
 | FX-stagger | Staggered, finisher ready (wobbly jelly sound) | Yes | 3 | Foley or Code |
 | FX-topple | Going down, body hitting the floor | Yes | 4 | Foley: drop a cushion |
-| FX-fizz-out | Downed Foamer fizzing away (loop, about 3 s) | Yes | 3 | Foley: fizzing tablet in water |
+| FX-fizz-out | Downed Foamer fizzing away (loop, about 3 s). Not played since PT-04, Paul | Yes | 3 | Foley: fizzing tablet in water |
 | FX-sink | Sinking into the floor (soft slurp) | Yes | 3 | Foley |
 | FX-pop | Catastrophic pop into chunks (the big satisfying one) | Yes | 6 | Foley: balloon pop layered with foam tearing |
 | FX-chunk | Pop chunks bouncing | Yes | 6 | Foley: foam bits thrown on a floor |
@@ -253,7 +253,7 @@ The other Foamers (IDs given when each is built):
 | F08-windup | GAME-10h placeholder ID: the Trawler lifts both launchers before the wall (the telegraph) | Yes | 2 | Foley: a heavy wind, with a rising clunk |
 | F08-wall | GAME-10h placeholder ID: one wall of foam balls leaving the launchers (one sound per wall, not per ball) | Yes | 3 | Blaster: a wide low thump, with a hiss of foam |
 | F08-step | GAME-10h placeholder ID: the Trawler's heavy foot plant (the heaviest: health 80, speed 0.9) | Yes | 4 | Foley: a big boot, low and slow |
-| F10-jet | GAME-10j placeholder ID: the Turbo's jet hiss under it while its jets hold it up (loop; stop when the last jet breaks) | Yes | 2 | Foley: a roll of light air hisses, with a small muddy whistle in it |
+| F10-jet | GAME-10j placeholder ID: the Turbo's jet hiss under it while its jets hold it up (loop; stop when the last jet breaks). Not played since PT-04, Paul | Yes | 2 | Foley: a roll of light air hisses, with a small muddy whistle in it |
 | F10-shot | GAME-10j placeholder ID: the homing ball leaving the wrist launcher (one per shot, the cap restricts side-by-side ones) | Yes | 4 | Blaster: a soft "pffft" on drylatch, with a small rising ring |
 | F10-fall | GAME-10j placeholder ID: the Turbo dropping to the floor when the last jet breaks (one, when the jet hiss stops) | Yes | 2 | Foley: a soft heavy flop of foam on the floor |
 | F10 | Flyer with jets | GAME-10j placeholder IDs: F10-jet (jet loop), F10-shot (homing shot), F10-fall (the drop to the floor) | Later | Foley plus Code |
@@ -277,7 +277,7 @@ The other Foamers (IDs given when each is built):
 
 | ID | Sound | Slice | Takes | Suggested source |
 |---|---|---|---|---|
-| PL-step-hard | Footstep on concrete or brick | Yes | 8 | Foley: trainers on concrete |
+| PL-step-hard | Footstep on concrete or brick (PT-04, Paul: volume cut about 80%, 0.7 to 0.14 in data/sounds.json) | Yes | 8 | Foley: trainers on concrete |
 | PL-step-wood | Footstep on wood | Yes | 8 | Foley |
 | PL-step-foam | Footstep on foam growth | Later | 8 | Foley: walk on a foam mat |
 | PL-jump | Jump push-off | Yes | 4 | Foley |
