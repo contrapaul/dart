@@ -776,6 +776,32 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-09 review, merged (Claude Opus 5.5): Firefox
+
+- DeepSeek: pointer lock now takes the plain form inside the click after
+  any refusal (promise, throw or `pointerlockerror`), raw input kept
+  where it worked; the mesher pool meshes a job on the main thread when
+  its worker errors, its reply cannot be cloned or no worker starts,
+  with one `console.warn` naming the cause. 11 new tests with fakes.
+- **Firefox tested headless here** (Firefox 159, macOS, WebDriver BiDi
+  from a small Node script): current main, the PT-09 build and the live
+  site all load the range and draw all 16 Foamers with no console
+  errors. So Paul's "mobs do not fully load" did not reproduce on this
+  Mac; his Firefox differs (version, OS, privacy settings or an
+  extension). The fallback covers a worker failure there. Pointer lock
+  cannot be tested headless.
+- The live page takes about 20 to 30 s to start in a fresh browser (it
+  loads about 4.7 MB of blaster models before the game starts), which
+  may read as "not loading".
+- **For Paul:** the live page also loads
+  `static.cloudflareinsights.com/beacon.min.js` (Cloudflare Web
+  Analytics, injected by Cloudflare, not in the repo). That is an
+  outside host, against the no-external-hosts rule. It is turned off in
+  the Cloudflare dashboard (Web Analytics for the site), not in code.
+- Known limit: in a browser that reports a refusal only by event, the
+  first click fails and the second locks.
+- 980 tests pass (2 skipped), tsc and build green.
+
 ### 2026-11-09: PT-09, Firefox pointer lock and Foamers that finish loading (DeepSeek V4.1 Flash via Pi)
 
 Card: `tasks/PT-09.md`. Paul: the range does not let him look with the
