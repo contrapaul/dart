@@ -112,13 +112,15 @@ describe("PT-01 stage 3: the time-to-kill record", () => {
     await settle(r);
     const f = line[0]!.foamer;
     tick(r, 12, true);
-    expect(f.state).toBe("down");
+    // Since PT-03 the kill's overkill decides down, chunk or pop, and
+    // B01's random spread decides the overkill: any of them is a kill.
+    expect(f.state === "down" || !r.foamers.list.includes(f)).toBe(true);
     expect(r.ttk.kills.length).toBe(1);
     const k = r.ttk.kills[0]!;
     expect(k.type).toBe("F01");
     expect(k.blaster).toBe("B01"); // the blaster that landed the killing blow
     expect(k.mods).toEqual([]); // none were turned on
-    expect(k.how).toBe("down");
+    expect(["down", "pop"]).toContain(k.how);
     // The first hit is the dart's flight (about 0.16 s over 6 m), the end is
     // the step it went down on: a real, positive span, not a rounded 0.
     expect(k.seconds).toBeGreaterThan(0.1);
@@ -136,7 +138,7 @@ describe("PT-01 stage 3: the time-to-kill record", () => {
     await settle(r);
     r.loadout.setMod(0, "slug", true); // one heavy dart instead of three
     tick(r, 12, true);
-    expect(line[0]!.foamer.state).toBe("down");
+    expect(line[0]!.foamer.state === "down" || !r.foamers.list.includes(line[0]!.foamer)).toBe(true);
     expect(r.ttk.kills[0]!.mods).toEqual(["slug"]);
     expect(r.ttk.kills[0]!.blaster).toBe("B01");
   });
@@ -157,7 +159,7 @@ describe("PT-01 stage 3: the time-to-kill record", () => {
       tick(r, DT);
     }
     tick(r, 12, true);
-    expect(f.state).toBe("down");
+    expect(f.state === "down" || !r.foamers.list.includes(f)).toBe(true);
     expect(r.ttk.kills[0]!.blaster).toBe("B04");
   });
 

@@ -183,7 +183,9 @@ export class ExplosionSystem {
         this.foamers.blastDamage(f, amount, {
           point,
           carveRadius: T.foamerCarveRadius ?? 0,
-          strength: T.damageCentre,
+          // The damage this Foamer took at its distance, not the centre's
+          // (review fix: one at the edge was judged as if hit dead on).
+          strength: amount,
         });
         // PT-05: the shove is a speed the Foamer spends over the next
         // steps (blastKnock), not one moved position, so no step jumps and

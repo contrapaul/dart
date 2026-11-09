@@ -9,14 +9,12 @@ import { DartSystem } from "../../src/weapons/darts";
 import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
 import { FoamerSystem } from "../../src/foamers/foamers";
 import { ExplosionSystem } from "../../src/weapons/explosion";
-import explosionTuning from "../../data/explosion.json";
 
 // PT-05 stage 2: a blast carves the Foamer's parts, and a blast kill uses
 // the PT-03 impact rule (chunk in the band, pop above it, obliteration far
 // above it), with the blast's centre damage as the shot and near 1.
 
 const DT = 1 / 60;
-const P = explosionTuning.profiles.launcher;
 
 function fakeMesher(): Mesher {
   const colors = linearColorTable();
@@ -81,23 +79,28 @@ describe("PT-05 stage 2: blasts carve Foamers and obliterate them", () => {
     tick(r);
     expect(r.foamers.list).not.toContain(f);
     expect(r.foamers.stats.popped).toBe(1);
-    // The numbers that make it obliteration, not a plain pop.
-    expect(explosionTuning.obliterateAt).toBeLessThanOrEqual(P.damageCentre);
   });
 
-  it("2. a launcher round 2.5 m from an F05 chunks it on the near side", async () => {
+  it("2. the kill is judged on the damage taken there: near a weak F01 it chunks or pops, at the edge a nearly dead F05 only goes down (review fix)", async () => {
+    // A nearly dead F05 at the edge of the range takes a few points; its
+    // overkill is small, so it goes down with no hole (it was judged as if
+    // hit dead on, and chunked).
     const r = rig();
     const f = await spawn(r, "F05");
-    // Weakened so the edge-of-range damage still kills: the kill is then
-    // judged in the chunk band, and the hole is the near side the sphere
-    // reaches.
     f.health = 2;
-    const before = voxels(f);
-    r.explosion.explode(new THREE.Vector3(2.5, 0.9, 0), "launcher");
-    expect(r.foamers.stats.chunks).toBe(1);
-    expect(voxels(f)).toBeLessThan(before);
+    r.explosion.explode(new THREE.Vector3(2.9, 0.9, 0), "launcher");
     expect(f.state).toBe("down");
+    expect(r.foamers.stats.chunks).toBe(0);
     expect(r.foamers.stats.popped).toBe(0);
+
+    // The same round 2 m from a fresh F01: enough overkill for a chunk or
+    // more.
+    const r2 = rig();
+    const g = await spawn(r2, "F01");
+    const before = voxels(g);
+    r2.explosion.explode(new THREE.Vector3(2.0, 0.9, 0), "launcher");
+    expect(r2.foamers.stats.chunks + r2.foamers.stats.popped).toBe(1);
+    expect(voxels(g)).toBeLessThan(before);
   });
 
   it("3. a surviving F07 loses voxels where the blast reaches it", async () => {

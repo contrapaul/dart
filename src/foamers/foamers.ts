@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import RAPIER_V from "@dimforge/rapier3d-compat";
-import { CAPSULE_GROUPS, DEBRIS_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
+import { CAPSULE_GROUPS, DEBRIS_GROUPS, RAGDOLL_GROUPS, SOLID_QUERY_GROUPS } from "../physics/world";
 import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import type { DebrisSystem } from "../voxel/debris";
@@ -695,6 +695,12 @@ export class FoamerSystem {
         // the part wear and mesh refresh below run as usual, so a line of
         // them dies exactly as one in the game does. Its pose is still
         // solved, or its parts are drawn at the origin (review fix).
+        // A blast still shoves it (review fix: the range must show the
+        // knockback), through the wall-safe knockStep.
+        if (this.spendKnock(f, dt)) {
+          const d = Math.hypot(this._knock.x, this._knock.z);
+          if (d > 0) this.knockStep(f, this._knock.x / d, this._knock.z / d, d);
+        }
         f.applyPose();
         f.poseParts(dt, false, false);
       } else if (!f.dyingHit) {
@@ -1296,24 +1302,7 @@ export class FoamerSystem {
     // at a time, so nothing jumps; the controller below stops it at a wall
     // the way the shield's knockStep does. The decay is the profile's, per
     // second, so the shove eases off instead of stopping dead.
-    if (this.knockVX.has(f)) {
-      const vx = this.knockVX.get(f)!;
-      const vz = this.knockVZ.get(f)!;
-      this._knock.set(vx * dt, 0, vz * dt);
-      this._wish.add(this._knock);
-      const decay = Math.max(0, this.knockDecay.get(f) ?? 0);
-      const keep = decay > 0 ? Math.exp(-decay * dt) : 1;
-      const nvx = vx * keep;
-      const nvz = vz * keep;
-      if (Math.hypot(nvx, nvz) < 0.05) {
-        this.knockVX.delete(f);
-        this.knockVZ.delete(f);
-        this.knockDecay.delete(f);
-      } else {
-        this.knockVX.set(f, nvx);
-        this.knockVZ.set(f, nvz);
-      }
-    }
+    if (this.spendKnock(f, dt)) this._wish.add(this._knock);
     let stepDist = 0;
     if (f.legs().length === 0) {
       // No legs: the body is pinned to the floor by the fit below, so the
@@ -1333,9 +1322,11 @@ export class FoamerSystem {
       // The predicate runs inside the query, where the collider's body and
       // groups cannot be read back (Rapier refuses a nested borrow), so the
       // bodies are looked up by handle, which is safe there.
+      // Loose foam debris and ragdolls never block a Foamer (review fix:
+      // blast chunks thrown at random speeds stopped a shove on some runs).
       this.cc.computeColliderMovement(
         f.capsule, this._vel,
-        undefined, undefined,
+        undefined, SOLID_QUERY_GROUPS,
         (c) => {
           const h = c.parent()?.handle ?? -1;
           return !this.own.has(h) && !this.allBodies.has(h);
@@ -2427,6 +2418,28 @@ export class FoamerSystem {
    *  profile's lift into vy. The next steps spend it through the movement
    *  controller (see walkLive), so no single step moves further than that
    *  speed allows and a wall stops it. Zero fall spends nothing. */
+  /** PT-05: one step's share of a blast shove, into this._knock, with the
+   *  profile's decay applied. False when the Foamer has no shove left. */
+  private spendKnock(f: Foamer, dt: number): boolean {
+    if (!this.knockVX.has(f)) return false;
+    const vx = this.knockVX.get(f)!;
+    const vz = this.knockVZ.get(f)!;
+    this._knock.set(vx * dt, 0, vz * dt);
+    const decay = Math.max(0, this.knockDecay.get(f) ?? 0);
+    const keep = decay > 0 ? Math.exp(-decay * dt) : 1;
+    const nvx = vx * keep;
+    const nvz = vz * keep;
+    if (Math.hypot(nvx, nvz) < 0.05) {
+      this.knockVX.delete(f);
+      this.knockVZ.delete(f);
+      this.knockDecay.delete(f);
+    } else {
+      this.knockVX.set(f, nvx);
+      this.knockVZ.set(f, nvz);
+    }
+    return true;
+  }
+
   blastKnock(
     f: Foamer, point: THREE.Vector3, fall: number, profile: { knockSpeed?: number; knockDecay?: number; liftSpeed?: number },
   ): void {
@@ -2457,7 +2470,7 @@ export class FoamerSystem {
     this._vel.set(dirX * want, 0, dirZ * want);
     this.cc.computeColliderMovement(
       f.capsule, this._vel,
-      undefined, undefined,
+      undefined, SOLID_QUERY_GROUPS,
       (c) => !this.own.has(c.parent()?.handle ?? -1),
     );
     const moved = this.cc.computedMovement();

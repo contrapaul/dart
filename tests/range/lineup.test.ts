@@ -250,4 +250,24 @@ describe("PT-01 stage 2: the line of Foamers", () => {
       expect(r.foamers.held.has(f)).toBe(true);
     });
   });
+
+  it("a held Foamer is still shoved by a blast, smoothly (PT-05 review)", async () => {
+    const r = rig();
+    const line = createLineup(r.foamers, SPAWN, ["F07"], LINEUP.distanceMetres, LINEUP.spacingMetres);
+    await settle(r);
+    const f = line[0]!.foamer;
+    f.health = 1000; // it must live through the blast
+    const x0 = f.centre.clone();
+    // A launcher blast 1.2 m to its left, at hip height.
+    r.explosion.explode(new THREE.Vector3(x0.x - 1.2, 0.9, x0.z), "launcher");
+    let last = f.centre.clone();
+    let biggest = 0;
+    for (let i = 0; i < 60; i++) {
+      tick(r, SPAWN, DT);
+      biggest = Math.max(biggest, Math.hypot(f.centre.x - last.x, f.centre.z - last.z));
+      last = f.centre.clone();
+    }
+    expect(f.centre.x - x0.x).toBeGreaterThan(0.1); // pushed away from the blast
+    expect(biggest).toBeLessThan(0.3); // no jump on any one step
+  });
 });

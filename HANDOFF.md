@@ -766,6 +766,37 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-05 review, merged (Claude Opus 5.5): explosions that blow Foamers apart
+
+- DeepSeek did all three stages in about 20 minutes: the blast reaches
+  the nearest part, walls block it, the shove is a speed spent over the
+  steps, it carves every part in its sphere, a kill can chunk, pop or
+  obliterate (`obliterateAt` 3), and the explosive mods are small
+  launcher blasts (20 at the centre, 2.2 m, a shove).
+- **Fix: every Foamer in range was judged as if hit dead on.** The kill
+  used the profile's `damageCentre`, not the damage taken at its
+  distance, so a nearly dead F05 at the edge was chunked. It now uses
+  the damage taken. Test 2 of blast-carve, which locked in the old
+  result, rewritten; it fails without the fix.
+- **Fix: loose debris blocked Foamer movement.** The movement queries had
+  no group filter, so a foam chunk (thrown at a `Math.random` speed in
+  debris.ts) in a Foamer's path stopped its walk or its shove on some
+  runs: the cause of blast.test 4 failing under load. Both movement
+  queries now use `SOLID_QUERY_GROUPS` (no debris, no ragdolls).
+- **Fix: the range line was never shoved.** Held Foamers skip the step
+  where the shove is spent; they now spend it through the wall-safe
+  `knockStep`. New test in tests/range/lineup.test.ts.
+- Three time-to-kill tests assumed a B01 kill is always a plain down;
+  since PT-03 the random spread can make it a chunk or a pop. Loosened.
+- On the range: a launcher round 1.6 m from an F05 took 15 and carved
+  1742 voxels; 1.2 m from an F07, 18 and 5285 voxels, shoved 1.1 m over
+  the steps; an F03 beside a blast popped. The F04 takes nothing from
+  the front: its own shield wall blocks the blast (as it does darts).
+- Note: `src/voxel/debris.ts` uses `Math.random` for chunk speeds
+  (pre-existing; debris is visual and no longer blocks movement).
+- Not seen close up: the hole sizes, an obliteration against a pop.
+- 945 tests pass (2 skipped) three runs running, tsc and build green.
+
 ### 2026-11-09: PT-05, blasts that blow Foamers apart (DeepSeek V4.1 Flash via Pi, branch `pt-05`, three commits plus this docs commit, not reviewed, not merged)
 
 Card: `tasks/PT-05.md`, from Paul's second playtest ("explosions barely
