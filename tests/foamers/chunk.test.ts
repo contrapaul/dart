@@ -174,18 +174,18 @@ describe("PT-03: the chunk finish by impact", () => {
     expect(r.foamers.stats.chunks).toBe(0);
   });
 
-  it("8. the slug mod carves; a shot with no chunk block does not", async () => {
+  it("8. a shot with no chunk block chunks in the chunk band too; a low impact only downs", async () => {
     const r = rig();
     const f = await spawn(r, "F01");
     f.health = 0.5;
-    const body = f.parts.get("body")!;
-    const before = body.voxelCount;
-    // One slug (6 damage) with no chunk block: its own damage, no hole.
+    // One slug (6 damage) with no chunk block on an F01 at 0.5 health: in
+    // the chunk band, so it carves with the Foamer-wide chunk numbers
+    // (review fix: the card's chunk band is for every shot, not only the
+    // blasters that carry a chunk block).
     shot(r, f, 3, null, 1, "slug");
     stepUntilSettled(r, f);
     expect(f.state).toBe("down");
-    expect(r.foamers.stats.chunks).toBe(0);
-    expect(before - body.voxelCount).toBeLessThan(before * 0.6);
+    expect(r.foamers.stats.chunks).toBe(1);
 
     const r2 = rig();
     const g = await spawn(r2, "F05");

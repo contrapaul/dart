@@ -760,6 +760,34 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-03 review, merged (Claude Opus 5.5): impact from overkill and distance, B03, punch-through
+
+- dgx-spark began it and its model server went down (502) halfway
+  through stage 1; the partial work was saved (d5e7cd2). qwen-machine
+  (Qwen 3.8-27B) finished all three stages in about six hours.
+- **Fix: the chunk band only worked for three blasters.** A kill between
+  `chunkAt` and `popAt` blew a hole only when the shot carried a `chunk`
+  block (B01 slug, B02 heavy, B03); every other blaster just went down.
+  It now carves with the Foamer-wide `catastrophic.chunk` numbers. Seen
+  on the range: a B05 heavy round through the pierce row chunked the
+  first F01 (impact 0.54). New test (b03.test.ts 5); chunk.test.ts 8,
+  which asserted the old gap, updated.
+- Played on the range (pane hidden, stepped by hand):
+  - B03, one barrel at 1.5 m: F01 pops (impact 15.5); F05 chunks, 54
+    damage (0.79); F08 takes 33, two barrels down it; F11's shield takes
+    most of it (11).
+  - B03 at 15 m: one barrel took an F12 from 25 to 9. **Damage does not
+    fall off with distance**; only the impact does (the card's rule).
+  - B01 slug: through the first F01 of the row, killed the second.
+  - B05 heavy: through all three of the row.
+- **For Paul to tune:** qwen-machine set `buck` damage to 11 a pellet,
+  not the card's 3: at 3 the 7 degree scatter rarely gave the worked
+  examples. A full point-blank barrel can do 88. `data/foamers.json`
+  test.damage.buck.
+- 934 tests pass (2 skipped) three times running, tsc and build green.
+- Not checked by eye: the pop and chunk sizes on screen, the exit hole
+  of a punch-through, the feel of B03 at mid range.
+
 ### 2026-11-09: PT-03, one impact scale to judge every kill (Qwen 3.8-27B via Pi, dgx-spark, branch `pt-03`, three commits, not merged)
 
 - **The task.** `tasks/PT-03.md`: one impact scale from overkill and

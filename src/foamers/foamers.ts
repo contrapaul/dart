@@ -2162,7 +2162,7 @@ export class FoamerSystem {
       })();
     if (verdict.outcome === "pop") {
       this.pop(f, verdict.impact);
-    } else if (verdict.outcome === "chunk" && sum && hit?.shot?.chunk) {
+    } else if (verdict.outcome === "chunk" && sum && hit?.shot) {
       // GAME-09b: the shot blows a hole through it instead.
       this.chunk(f, hit, verdict.impact);
     } else {
@@ -2298,10 +2298,12 @@ export class FoamerSystem {
    *  Pops are untouched: a chunk is never a pop. */
   private chunk(f: Foamer, hit: DartHit, impact: number) {
     const shot = hit.shot!;
-    if (!shot.chunk) return this.goDown(f, hit, downPushOf(f.spec.catastrophic, impact));
     const sum = shotSummary(f.shotDamage, shot.id, this.time, f.spec.catastrophic.window)!;
     const spec = f.spec.catastrophic.chunk;
-    const r = impactChunkRadius(f.spec.catastrophic, chunkRadius(spec, shot.chunk), impact);
+    // A blaster or mod with no chunk block of its own carves with the
+    // Foamer-wide one (review fix: the card's chunk band is for every shot).
+    const base = shot.chunk ? chunkRadius(spec, shot.chunk) : spec.carveRadius;
+    const r = impactChunkRadius(f.spec.catastrophic, base, impact);
     let left = spec.debrisMax + chunkDebrisExtra(f.spec.catastrophic, impact);
     // The mean point is world space; each part carves it in its own voxel
     // space, so a hole through a hip takes the body and the leg. The debris

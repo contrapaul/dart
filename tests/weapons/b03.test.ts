@@ -133,4 +133,24 @@ describe("PT-03 stage 2: the B03's impact from distance", () => {
     expect(out.inList).toBe(true);
     expect(out.health).toBeLessThan(f.maxHealth);
   });
+  it("5. a blaster with no chunk block still chunks in the chunk band (review fix)", async () => {
+    const r = arena();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, -1.2), EYE, "F01") as unknown as F;
+    hold(r, f);
+    await settle(r);
+    // A B05 heavy round, fired as the B05 fires it: one precisionHeavy dart,
+    // no chunk block, no impact block of its own. Its overkill on a 6 health
+    // F01 at point blank is in the chunk band (chunkAt 0.5 to popAt 1.5),
+    // so it blows a hole with the Foamer-wide chunk numbers, not only a down.
+    // centre is its feet: aim at the middle of its body.
+    const mid = f.centre.clone().add(new THREE.Vector3(0, (f as unknown as { height: number }).height * 0.5, 0));
+    const aim = mid.sub(MUZP).normalize();
+    const before = r.foamers.stats.chunks;
+    r.darts.fire(MUZP.clone(), aim, "precisionHeavy", { id: 5005, muzzle: MUZP.clone(), chunk: null });
+    for (let i = 0; i < 200 && f.state !== "down"; i++) {
+      r.darts.update(DT); r.foamers.update(DT, EYE); r.world.step();
+    }
+    expect(f.state).toBe("down");
+    expect(r.foamers.stats.chunks - before).toBe(1);
+  });
 });
