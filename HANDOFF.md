@@ -760,6 +760,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: Paul's second playtest, four cards (Claude Opus 5.5)
+
+Paul's notes: the F10 jet drone, loud footsteps, the weapon switch sound,
+the B04 flywheel sound and the Foamer dying sound must go; B06 has a delay
+before firing; darts look bad and do not turn after a bounce; blasters are
+held too far forward; explosions barely mark Foamers, survivors teleport,
+walls do not block them, and the explosive mods are too weak; F11's shield
+cannot break; weapon parts count toward health.
+
+Causes found: the dying sound is `FX-fizz-out` (3 s of crackle); B06's
+delay is `spinUp` 0.25; dart orientation is set only at launch and rest;
+`explode()` carves only the level, ignores walls, shoves in one step and
+cannot chunk; the `dart` blast profile has no push; `kinds.weapon.total`
+is 0.5; F11's shield armour turns darts whole so only parries break it.
+
+Cards: PT-04 sounds and B06 (dgx-spark), PT-05 explosions (DeepSeek),
+PT-06 dart look (qwen-machine), PT-07 weapons and the F11 shield
+(dgx-spark after PT-04). The blaster hold positions are done by Claude
+in the browser (they need looking at).
+
 ### 2026-11-09: PT-03 review, merged (Claude Opus 5.5): impact from overkill and distance, B03, punch-through
 
 - dgx-spark began it and its model server went down (502) halfway
