@@ -760,6 +760,60 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-06 dart look, in flight and after a bounce (Qwen 3.8-27B via Pi, qwen-machine)
+
+PT-06 code done on `pt-06`, not reviewed, not merged, not pushed. This was
+a continuation of an earlier run of mine that had saved a work-in-progress
+commit (`0752c72`) before its context ran out; I kept what was right
+(the shape rewrite, Paul's colours, the in-flight turn) and finished the
+card.
+
+The shape in `src/weapons/dart-model.ts` is now a plain cylinder, flat at
+the back, with a rounded foam tip of the body's own radius. The old tip
+was 22% of the length and bulged 1.25x the body radius; both are gone. The
+tip's share is a new `tipShare` 0.15 in `data/darts.json` (only the shape,
+size and colour lines changed, edited by hand, layout kept).
+
+The cause of the black triangles streaked with blue that Paul saw: the tip
+quads used two diagonals with opposite winding, so roughly half of every
+tip face was backfacing and unlit. `quad()` now takes one diagonal (`a, b,
+c, a, c, d`) so both triangles wind outward, and every face's triangle
+normal points away from the dart. `tests/weapons/dart-look.test.ts` proves
+it: the tip is one point at +Z, the back is flat, all normals point
+outward, the tip has no bulge, and the per-vertex colours are the data's
+colours with
+a float32 tolerance (the colour attribute is linear float32, so exact
+equality fails on rounding; that was the only remaining failure, as
+`0752c72`'s message and the card both predicted).
+
+Paul's colours, as given: standard body `#2ec4ff` tip `#ff5a1a` (reddish
+orange); mega body `#e8332a` tip `#ffd23f` (yellow); precision body
+`#ffd23f` tip `#2ec4ff` (blue). The launcher round is a yellow ball
+`#ffd23f` of its current radius (`#ffd23f`, the `shape: ball` path B08
+already had). For the types Paul did not name, I kept: `precisionHeavy`
+like precision (yellow body, blue tip), `buck` like standard (blue body,
+reddish orange tip), `b01slug` and `slug` keep their purple body and cream
+tip, `suction` keeps its yellow body and pink tip, and `ball` stays as it
+is. [Paul] please confirm those defaults against your intent.
+
+Orientation: `DartSystem.update` now turns every flying non-ball dart
+along its velocity each step (`setFromUnitVectors(AXIS_Z, dir)`), so the
+tip leads through the arc and takes the new direction at each bounce.
+Resting and stuck darts keep their old rules; the two ball types do not
+turn (they are round, nothing to point). Two card tests: a dart fired at
+45 degrees up points within 10 degrees of its (downward) velocity near the
+end of its arc, and a dart after a wall bounce has its +Z axis within 15
+degrees of its new velocity. Both pass headless.
+
+Not seen by eye: I can see no images and open no browser, so the new look
+(the colours, the rounded tip, the darts turning in flight and after a
+bounce) was only checked by the headless geometry and scene tests. The
+reviewer has to look at it in the browser.
+
+`npx tsc --noEmit`, `npx vitest run` (946 passed, 2 skipped) and
+`npm run build` all pass. No em or en dashes in the files I touched
+(perl check clean).
+
 ### 2026-11-09: Paul's second playtest, four cards (Claude Opus 5.5)
 
 Paul's notes: the F10 jet drone, loud footsteps, the weapon switch sound,

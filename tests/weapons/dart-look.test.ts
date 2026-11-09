@@ -13,6 +13,20 @@ const DT = 1 / 60;
 // vertex) and the in-flight orientation (a dart turns along its velocity
 // every step, so its tip leads near the end of the arc and after a bounce).
 
+// Vertex colours are stored as float32 (THREE's colour attribute), so a
+// float64 linear value round-trips within about 1e-7 relative. Compare with
+// a tolerance, not exact equality (PT-06).
+const COLOUR_EPS = 1e-4;
+function isColour(
+  cr: number, cg: number, cb: number, target: [number, number, number],
+) {
+  return (
+    Math.abs(cr - target[0]) < COLOUR_EPS &&
+    Math.abs(cg - target[1]) < COLOUR_EPS &&
+    Math.abs(cb - target[2]) < COLOUR_EPS
+  );
+}
+
 function sceneWorld(rapier: typeof RAPIER) {
   const scene = new THREE.Scene();
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
@@ -21,11 +35,12 @@ function sceneWorld(rapier: typeof RAPIER) {
   return { scene, world, system: new DartSystem(scene, world, rapier, ignore) };
 }
 
+// "shape" is only on the ball lines of data/darts.json, so "in", not a type.
 const cylinderTypes = (Object.keys(tuning.types) as (keyof typeof tuning.types)[]).filter(
-  (t) => tuning.types[t].shape !== "ball",
+  (t) => !("shape" in tuning.types[t]),
 );
 const ballTypes = (Object.keys(tuning.types) as (keyof typeof tuning.types)[]).filter(
-  (t) => tuning.types[t].shape === "ball",
+  (t) => "shape" in tuning.types[t],
 );
 
 describe("dart geometry is a cylinder with a rounded tip", () => {
@@ -103,8 +118,8 @@ describe("dart geometry is a cylinder with a rounded tip", () => {
       // the body part is all body, the tip part is all tip.
       for (let i = 0; i < pos.count; i++) {
         const cr = col.getX(i), cg = col.getY(i), cb = col.getZ(i);
-        const onBody = cr === body[0] && cg === body[1] && cb === body[2];
-        const onTip = cr === tip[0] && cg === tip[1] && cb === tip[2];
+        const onBody = isColour(cr, cg, cb, body);
+        const onTip = isColour(cr, cg, cb, tip);
         expect(onBody || onTip, `vertex ${i} has a dart colour`).toBe(true);
         const z = pos.getZ(i);
         if (z < z1 - 1e-4) expect(onBody, `body vertex ${i} is the body colour`).toBe(true);
@@ -131,9 +146,7 @@ describe("dart geometry is a cylinder with a rounded tip", () => {
         expect(p.length()).toBeCloseTo(spec.radius, 3);
         const n = new THREE.Vector3(nrm.getX(i), nrm.getY(i), nrm.getZ(i));
         expect(n.dot(p.sub(cx))).toBeGreaterThan(0);
-        expect(col.getX(i)).toBe(body[0]);
-        expect(col.getY(i)).toBe(body[1]);
-        expect(col.getZ(i)).toBe(body[2]);
+        expect(isColour(col.getX(i), col.getY(i), col.getZ(i), body), "ball vertex is the body colour").toBe(true);
       }
     });
   }
