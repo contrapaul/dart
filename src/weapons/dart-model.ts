@@ -101,7 +101,7 @@ export function buildDartGeometry(spec: DartTypeSpec): THREE.BufferGeometry {
   for (let i = 0; i < SEGMENTS; i++) indices.push(capC, b0 + i + 1, b0 + i);
 
   // Tip: half an ellipsoid of the body's own radius, from z1 to zEnd.
-  // One row at latitude t (equator, mid, pole apex); its analytic surface
+  // One row at latitude t; its analytic surface
   // normal points radially plus (radius / tipLen) * tan(t) forward. All tip
   // rows are the tip colour, no blend.
   const tipRow = (t: number) => {
@@ -113,9 +113,14 @@ export function buildDartGeometry(spec: DartTypeSpec): THREE.BufferGeometry {
     return row(z, r, tip, kz / kn);
   };
 
-  const e0 = tipRow(0);
-  const e1 = tipRow(Math.PI / 3);
-  for (let i = 0; i < SEGMENTS; i++) quad(e0 + i, e0 + i + 1, e1 + i + 1, e1 + i);
+  // Four rings from the equator up, so the tip reads round, not pointed
+  // (review: two rings looked like a crayon point).
+  let e1 = tipRow(0);
+  for (let k = 1; k < 4; k++) {
+    const e0 = e1;
+    e1 = tipRow((k / 4) * (Math.PI / 2));
+    for (let i = 0; i < SEGMENTS; i++) quad(e0 + i, e0 + i + 1, e1 + i + 1, e1 + i);
+  }
   // The tip's pole is one vertex; the last ring fans to it.
   const pole = positions.length / 3;
   positions.push(0, 0, zEnd);

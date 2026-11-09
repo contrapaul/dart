@@ -760,6 +760,23 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-06 review, merged (Claude Opus 5.5): the dart look
+
+- qwen-machine stopped once when Pi's context compaction failed and it
+  read the harness note as an order to pause; restarted from its saved
+  work, it finished in about 30 minutes.
+- The black streaks were the winding: the old side quads mixed two
+  triangle orders, so half the faces pointed inward. Fixed at the cause.
+- Seen in the browser, close up: standard blue with a reddish orange
+  tip, mega red with yellow, precision and precisionHeavy yellow with
+  blue, buck blue with reddish orange, the launcher a yellow ball; no
+  black faces from any angle.
+- Review fix: the tip had two rings and looked like a crayon point; it
+  now has four and reads as a rounded foam tip.
+- Darts turn along their velocity every step (tested after a bounce and
+  through an arc). Not seen in motion in the browser.
+- 946 tests pass (2 skipped), tsc and build green.
+
 ### 2026-11-09: PT-06 dart look, in flight and after a bounce (Qwen 3.8-27B via Pi, qwen-machine)
 
 PT-06 code done on `pt-06`, not reviewed, not merged, not pushed. This was
