@@ -13,15 +13,14 @@
 //   mod rebuild replaces the blaster's onShot.
 // - Cues: the active blaster's cue list for its state, sorted by at, is
 //   walked as progress crosses each cue's at, once per priming or reload.
-// - Switching: BX-holster when a switch starts, BX-draw when the new
-//   blaster comes in (the halfway swap of the loadout).
+// - Switching: PT-04 (Paul): silent. The BX-holster and BX-draw calls are
+//   gone; the halfway swap of the loadout plays nothing.
 // - Dry fire: BX-dry when the trigger is pressed with an empty blaster
 //   and nothing to reload (a blaster with reserve auto-reloads instead).
 // - Mods: BX-mod-on and BX-mod-off when the active blaster's mod list
 //   grows or shrinks.
-// - B04: one B04-rev-loop while it is the active blaster; the volume is
-//   wheelSpeed (silent when the wheels are still), the rate 0.6 to 1 with
-//   the wheel. The loop stops when B04 is switched away.
+// - B04: PT-04 (Paul): no B04-rev-loop while it is the active blaster. The
+//   flywheel loop went; B04-fire on each shot stays.
 // - Player: PlayerController.onMove (one callback field, in the style of
 //   onShot): jump, dash, mantle, dash-ready and land. Steps are watched
 //   instead: as long as the player is grounded and not dashing, the run
@@ -40,7 +39,7 @@ import type { DartSystem, DartHit } from "../weapons/darts";
 import type { DartImpacts } from "../weapons/impacts";
 import type { FoamerSystem } from "../foamers/foamers";
 import soundsJson from "../../data/sounds.json";
-import type { AudioSink, LoopHandle } from "./sink";
+import type { AudioSink } from "./sink";
 import { FoamerSounds } from "./foamer-sounds";
 
 // A dart's hit plays its surface sound at full volume at this speed and up,
@@ -83,18 +82,14 @@ export class GameSounds {
   // switch resumes its walk (cues already heard on this priming are not
   // replayed) instead of restarting it.
   private cueWalk = new WeakMap<Blaster, { state: string; idx: number }>();
-  // The last active index, for the switch sounds; -1 before the first
-  // update so the blaster the game starts with is drawn silently. And the
-  // switch flag of the last step, so BX-holster fires once per switch start.
+  // The last active index, for the switch bookkeeping; -1 before the first
+  // update so the blaster the game starts with is seeded silently.
   private lastIdx = -1;
-  private wasSwitching = false;
   // The last-seen shot count of each blaster, per blaster object. A step
   // where the active blaster's count rises by k plays k fire sounds.
   // Reading the count instead of the onShot hook means the range page and
   // Loadout.setMod may replace that hook freely and never lose a shot.
   private lastShots = new WeakMap<Blaster, number>();
-  // The B04 rev loop.
-  private rev: LoopHandle | null = null;
   // The active blaster's mods, as a comma string, for the mod sounds.
   private lastMods = "";
   // The stride accumulator for footsteps and the sprint flag this step.
@@ -158,23 +153,16 @@ export class GameSounds {
 
   // ---- blasters ----
 
-  /** The active blaster: the switch sounds, the shot wrap, the cues, the
-   *  dry fire, the B04 rev loop and the mod sounds. */
+  /** The active blaster: the shot wrap, the cues, the dry fire and the
+   *  mod sounds. (PT-04: the switch sounds and the B04 rev loop are gone.) */
   private watchBlaster(controls: GameSoundsControls): void {
     const lo = this.loadout;
     const idx = lo.activeIndex;
     const b = lo.active;
-    // A switch just started: the old blaster is holstered. Fires once per
-    // switch (the flag goes high at the start and stays high to the end).
-    if (!this.wasSwitching && lo.switching) this.sink.play("BX-holster");
-    this.wasSwitching = lo.switching;
     if (idx !== this.lastIdx) {
-      // The halfway swap: the new blaster rises in. The initial blaster
-      // (lastIdx still -1) is in hand from the start, no draw for it.
-      if (this.lastIdx >= 0) this.sink.play("BX-draw");
+      // PT-04 (Paul): the halfway swap is silent, no holster and no draw.
       this.lastIdx = idx;
       this.lastMods = lo.modsOf(idx).join(",");
-      this.stopRev();
       return; // the new blaster has not moved this step
     }
     if (lo.switching) return; // mid-switch: the active blaster sits still
@@ -182,12 +170,6 @@ export class GameSounds {
     this.walkCues(b);
     const empty = b.spec.mode === "break" ? !b.loaded.some(Boolean) : b.mag === 0;
     if (controls.firePressed && empty && b.reserve <= 0) this.sink.play("BX-dry");
-    if (lo.activeId() === "B04") {
-      if (!this.rev) this.rev = this.sink.loop("B04-rev-loop");
-      this.rev.set(b.wheelSpeed, 0.6 + 0.4 * b.wheelSpeed);
-    } else {
-      this.stopRev();
-    }
     const mods = lo.modsOf(idx).join(",");
     if (mods !== this.lastMods) {
       this.sink.play(mods.length >= this.lastMods.length ? "BX-mod-on" : "BX-mod-off");
@@ -221,15 +203,6 @@ export class GameSounds {
       if (list[w.idx].state === b.state) this.sink.play(list[w.idx].sound);
       w.idx += 1;
     }
-  }
-
-  /** The B04 rev loop: a soft stop (volume to zero) when B04 is not the
-   *  active blaster, so the fade out is not a click. */
-  private stopRev(): void {
-    if (!this.rev) return;
-    this.rev.set(0, 1);
-    this.rev.stop();
-    this.rev = null;
   }
 
   // ---- darts (stage 3a) ----
