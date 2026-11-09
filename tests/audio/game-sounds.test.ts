@@ -23,7 +23,6 @@ import { DebrisSystem } from "../../src/voxel/debris";
 import { FoamerSystem } from "../../src/foamers/foamers";
 import type { Foamer } from "../../src/foamers/foamer";
 import type { FoamerPart } from "../../src/foamers/foamer-part";
-import foamerData from "../../data/foamers.json";
 import type { DartTypeName } from "../../src/weapons/darts";
 import type {
   AudioSink,

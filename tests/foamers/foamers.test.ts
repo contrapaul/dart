@@ -279,15 +279,20 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     const player = new THREE.Vector3(0, 1.6, 1);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     await settle(f.parts.get("body")!.mesh, r.world);
-    // The suction dart flies first and starts the burst; the two
-    // standards behind it follow (all in the window), and the last one
-    // kills.
-    f.health = 3;
+    // The suction dart sticks to the body first, so it is sitting on the
+    // body when the popping hit removes it. PT-03: the popping hit is no
+    // longer a burst of standard darts (their max overkill is a down or a
+    // chunk, 15b); a precisionHeavy close to the player needs an overkill
+    // of 9.5 on the F01 (10 minus the half a life the suction dart will
+    // already have taken) to clear popAt at 1.58, so f starts on 1.
+    f.health = 1;
     const body = f.parts.get("body")!;
     const c = body.voxelToWorld(new THREE.Vector3(
       body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
     r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "suction");
-    burst(r, f);
+    for (let i = 0; i < 60 && r.darts.stats().stuck < 1; i++) tick(r, player);
+    expect(r.darts.stats().stuck).toBe(1);
+    r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "precisionHeavy");
     for (let i = 0; i < 240 && r.foamers.stats.popped === 0; i++) tick(r, player);
     expect(r.foamers.stats.popped).toBe(1);
     for (let i = 0; i < 30; i++) tick(r, player);

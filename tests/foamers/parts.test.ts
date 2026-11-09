@@ -55,6 +55,7 @@ function rig() {
   const debris = new DebrisSystem(RAPIER, world);
   const targets: VoxelTarget[] = [];
   const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
+  foamers.spawnCount = 0; // the test owns the population; a respawn here would reuse a popped Foamer's handles
   new DartImpacts(darts, debris, targets);
   world.step();
   return { world, darts, debris, targets, foamers };

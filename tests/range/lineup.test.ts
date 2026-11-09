@@ -180,9 +180,11 @@ describe("PT-01 stage 2: the line of Foamers", () => {
     const line = createLineup(r.foamers, player, TYPES, LINEUP.distanceMetres, LINEUP.spacingMetres);
     await settle(r);
     expect(line.length).toBe(TYPES.length);
-    // Wound and kill some of them, and let the parts wear.
+    // Wound and kill some of them, and let the parts wear. A killing
+    // blast without overkill now downs (PT-03), so the kill carries
+    // enough blast to leave the overkill a pop needs.
     for (const e of line) r.foamers.blastDamage(e.foamer, e.foamer.maxHealth * 0.3);
-    r.foamers.blastDamage(line[0]!.foamer, line[0]!.foamer.maxHealth); // down or pop
+    r.foamers.blastDamage(line[0]!.foamer, line[0]!.foamer.maxHealth * 3); // pop
     tick(r, player, 1);
     expect(r.foamers.list.length).toBeLessThan(TYPES.length);
     const fresh = respawnLineup(
