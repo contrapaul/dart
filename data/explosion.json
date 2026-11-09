@@ -1,6 +1,7 @@
 {
-  "_note": "GAME-09d: the shared explosion (CONTENT-PLAN 4: B05, B06 and B07 all gain explosive options; explosions carve). One explosion system serves every explosive dart, not one per blaster. GAME-09f: named profiles. Today's numbers are the dart profile (B05 and B06 blasts keep them); launcher is B07's round, bigger and it shoves Foamers; cluster is a cluster mod's four small follow-up blasts. Per profile: carveRadius and rangeMetres in metres; damageCentre is the health taken off at the blast's centre, falling linearly to 0 at rangeMetres (it never falls below 0 outside). burstChunks foam chunks fly from the blast point (the debris system's own ring caps the total). pushSpeed is the speed an outward push gives a loose body, capped by the body's own mass so it never changes its speed by more than that. pushMetres is how far a Foamer in range is shoved away from the blast through the Foamer system's knockStep, falling linearly to 0 at the edge (0: no shove; the player is never in the Foamer list, so never pushed). maxPerSecond is the hard cap on blasts across every profile: a request over the cap does nothing. GAME-09f: it is 10 so two full B07 rounds (five blasts each, the clusters still inside their second) never lose a blast to the cap (the card: it must not cut a cluster short). cluster (GAME-09f mod 2): a blast fired as clustered also puts count small blasts of the named profile around it, distanceMetres out at the four sides, delaySeconds later. Start values for Paul to tune on the range.",
+  "_note": "GAME-09d: the shared explosion (CONTENT-PLAN 4: B05, B06 and B07 all gain explosive options; explosions carve). One explosion system serves every explosive dart, not one per blaster. GAME-09f: named profiles. Today's numbers are the dart profile (B05 and B06 blasts keep them); launcher is B07's round, bigger and it shoves Foamers; cluster is a cluster mod's four small follow-up blasts. Per profile: carveRadius and rangeMetres in metres; damageCentre is the health taken off at the blast's centre, falling linearly to 0 at rangeMetres (it never falls below 0 outside). burstChunks foam chunks fly from the blast point (the debris system's own ring caps the total). PT-05: pushLift is the only upward bias a blast's loose debris and broken pieces get; everything else goes straight out from the point in 3D (Paul: the blast used to throw straight up). pushSpeed is the speed an outward push gives a loose body, capped by the body's own mass so it never changes its speed by more than that. PT-05: knockSpeed is the speed (m/s) the blast gives a Foamer at its centre, falling linearly to 0 at the edge; the Foamer's own movement controller spends it a step at a time, decaying by knockDecay (1/s, the share of speed lost per second) so nothing teleports and a wall stops it. liftSpeed is the small upward speed the same shove gives at the centre, decaying the same way (0: none). The player is never in the Foamer list, so never pushed. maxPerSecond is the hard cap on blasts across every profile: a request over the cap does nothing. GAME-09f: it is 10 so two full B07 rounds (five blasts each, the clusters still inside their second) never lose a blast to the cap (the card: it must not cut a cluster short). cluster (GAME-09f mod 2): a blast fired as clustered also puts count small blasts of the named profile around it, distanceMetres out at the four sides, delaySeconds later. Start values for Paul to tune on the range.",
   "maxPerSecond": 10,
+  "pushLift": 0.15,
   "cluster": { "count": 4, "distanceMetres": 1.5, "delaySeconds": 0.25, "profile": "cluster" },
   "profiles": {
     "dart": {
@@ -11,7 +12,9 @@
       "burstSize": 0.09,
       "burstMaterial": "foam-white",
       "pushSpeed": 3,
-      "pushMetres": 0
+      "knockSpeed": 0,
+      "knockDecay": 6,
+      "liftSpeed": 0
     },
     "launcher": {
       "_note": "GAME-09f: B07 Collateral's launcher round: a bigger blast than the dart's that pushes every Foamer in range away from it.",
@@ -22,7 +25,9 @@
       "burstSize": 0.11,
       "burstMaterial": "foam-white",
       "pushSpeed": 3,
-      "pushMetres": 2.5
+      "knockSpeed": 8,
+      "knockDecay": 5,
+      "liftSpeed": 2
     },
     "cluster": {
       "_note": "GAME-09f mod 2: one of the four small blasts a clustered round throws around its first blast.",
@@ -33,7 +38,9 @@
       "burstSize": 0.07,
       "burstMaterial": "foam-white",
       "pushSpeed": 3,
-      "pushMetres": 0
+      "knockSpeed": 3,
+      "knockDecay": 6,
+      "liftSpeed": 0.8
     }
   }
 }

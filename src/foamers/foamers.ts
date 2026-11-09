@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
-import { DEBRIS_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
+import RAPIER_V from "@dimforge/rapier3d-compat";
+import { CAPSULE_GROUPS, DEBRIS_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
 import type { Rapier } from "../physics/world";
 import type { Mesher } from "../voxel/pieces";
 import type { DebrisSystem } from "../voxel/debris";
@@ -212,6 +213,13 @@ const _sc = new THREE.Vector3();
 const _kbB = new THREE.Vector3(); // kill push: a part's centre
 const _kbV = new THREE.Vector3(); // kill push: the shot's horizontal direction
 const _exitC = new THREE.Vector3(); // PT-03: the pierce exit carve centre
+const _blastP = new THREE.Vector3(); // PT-05: a part's box centre, for the blast
+/** PT-05: the blast's wall ray, from the point to a part. */
+const _blastRay = new RAPIER_V.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
+const EXCLUDE_SENSORS = 8;
+/** PT-05: a blast's ray may not cross the level; Foamers, debris and
+ *  ragdolls are not walls, so the sight groups (solid geometry only) fit. */
+const BLAST_BLOCK_GROUPS = SIGHT_QUERY_GROUPS;
 const _one = new THREE.Vector3(1, 1, 1);
 const _snd = new THREE.Vector3(); // onSound's part point (not reused per frame)
 // ENG-08 stage 3b: the line of sight ray's ends, and the direction between.
@@ -330,6 +338,14 @@ export class FoamerSystem {
   /** The type the keep-alive spawner makes (GAME-10a; the range page sets
    *  it from its type row). */
   spawnType = "F01";
+  /** PT-05: each shoved Foamer's knock decay (1/s), set by blastKnock and
+   *  read every step the shove is spent. A WeakMap so a Foamer the system
+   *  has dropped needs no clean-up line. */
+  private readonly knockDecay = new WeakMap<Foamer, number>();
+  /** PT-05: each shoved Foamer's knock speed (m/s, horizontal), spent a
+   *  step at a time by stepFoamer. */
+  private readonly knockVX = new WeakMap<Foamer, number>();
+  private readonly knockVZ = new WeakMap<Foamer, number>();
   /** PT-01: the Foamers the range lineup holds. A held one steps nothing but
    *  the part mesh refresh and the part wear below: no brain, no bid, no
    *  walk, no attack, no heal, no hover. It still takes damage, loses parts,
@@ -374,6 +390,7 @@ export class FoamerSystem {
   private readonly allBodies = new Set<number>();
   private respawn = SPAWNER.respawnDelay; // start full, so the first Foamer appears straight away
   private _wish = new THREE.Vector3();
+  private _knock = new THREE.Vector3(); // PT-05: one step's share of a blast shove
   private _vel = new THREE.Vector3();
   private _velXZ: Velocity = { x: 0, z: 0 };
   /** GAME-10e: a one-point path to a Blocker's slot, reused each step. */
@@ -1270,6 +1287,28 @@ export class FoamerSystem {
       const stepMetres = Math.min(flightSpec.speed * dt, f.leapLeft);
       f.leapLeft -= stepMetres;
       this._wish.set(f.leapDirX * stepMetres, 0, f.leapDirZ * stepMetres);
+    }
+    // PT-05: the blast's shove is spent here, a step's share of its speed
+    // at a time, so nothing jumps; the controller below stops it at a wall
+    // the way the shield's knockStep does. The decay is the profile's, per
+    // second, so the shove eases off instead of stopping dead.
+    if (this.knockVX.has(f)) {
+      const vx = this.knockVX.get(f)!;
+      const vz = this.knockVZ.get(f)!;
+      this._knock.set(vx * dt, 0, vz * dt);
+      this._wish.add(this._knock);
+      const decay = Math.max(0, this.knockDecay.get(f) ?? 0);
+      const keep = decay > 0 ? Math.exp(-decay * dt) : 1;
+      const nvx = vx * keep;
+      const nvz = vz * keep;
+      if (Math.hypot(nvx, nvz) < 0.05) {
+        this.knockVX.delete(f);
+        this.knockVZ.delete(f);
+        this.knockDecay.delete(f);
+      } else {
+        this.knockVX.set(f, nvx);
+        this.knockVZ.set(f, nvz);
+      }
     }
     let stepDist = 0;
     if (f.legs().length === 0) {
@@ -2251,6 +2290,72 @@ export class FoamerSystem {
       f.finishWeakened = true;
       this.startStagger(f, true);
     }
+  }
+
+  /** PT-05: the sphere of a blast reaches a Foamer's parts, not only its
+   *  feet. Returns the distance from the point to the nearest part whose arm
+   *  (its box centre) a ray from the point reaches with no level wall in
+   *  between, or Infinity when every part is out of reach or behind a wall.
+   *  Foamers, loose debris and ragdolls never block the ray; only fixed
+   *  level geometry does (BLAST_BLOCK_GROUPS). */
+  blastDistance(f: Foamer, point: THREE.Vector3): number {
+    let best = Infinity;
+    for (const part of f.parts.values()) {
+      const sz = part.spec.size;
+      _blastP.set(sz[0] / 2, sz[1] / 2, sz[2] / 2);
+      part.voxelToWorld(_blastP);
+      const d = _blastP.distanceTo(point);
+      if (d >= best) continue;
+      if (this.blastBlocked(point, _blastP, d)) continue;
+      best = d;
+    }
+    return best;
+  }
+
+  /** PT-05: true when a level wall stands between the blast point and the
+   *  part. The ray stops just short of the part so its own box is never the
+   *  thing it meets. */
+  private blastBlocked(point: THREE.Vector3, at: THREE.Vector3, dist: number): boolean {
+    if (dist <= 1e-4) return false;
+    _blastRay.origin = { x: point.x, y: point.y, z: point.z };
+    _blastRay.dir = {
+      x: (at.x - point.x) / dist,
+      y: (at.y - point.y) / dist,
+      z: (at.z - point.z) / dist,
+    };
+    // solid false: a ray that starts inside a shape (a blast point on the
+    // floor's surface) does not report that shape, only a wall in the way.
+    const hit = this.world.castRay(
+      _blastRay, dist - 0.02, false, EXCLUDE_SENSORS, BLAST_BLOCK_GROUPS, undefined,
+      undefined, (c) => c.collisionGroups() !== CAPSULE_GROUPS,
+    );
+    // A blast that goes off on a surface (a launcher round on the floor)
+    // starts a hair inside it, and Rapier reports that shape at time 0 for
+    // every ray: a hit at the start is not a wall in the way.
+    if (hit !== null && hit.timeOfImpact <= 1e-4) return false;
+    return hit !== null;
+  }
+
+  /** PT-05: the blast's timed shove. It sets the Foamer's own knock speed
+   *  (knockVX, knockVZ) out from the point, falling with the blast, plus the
+   *  profile's lift into vy. The next steps spend it through the movement
+   *  controller (see walkLive), so no single step moves further than that
+   *  speed allows and a wall stops it. Zero fall spends nothing. */
+  blastKnock(
+    f: Foamer, point: THREE.Vector3, fall: number, profile: { knockSpeed?: number; knockDecay?: number; liftSpeed?: number },
+  ): void {
+    const speed = (profile.knockSpeed ?? 0) * fall;
+    if (!(speed > 0) || f.state === "down" || f.state === "fall") return;
+    const dx = f.centre.x - point.x;
+    const dz = f.centre.z - point.z;
+    const d = Math.hypot(dx, dz) || 1e-3;
+    // Its own walk goes on top of this, and the walk is capped by f.speed():
+    // the knock is a speed of its own, spent for the same step.
+    this.knockVX.set(f, (dx / d) * speed);
+    this.knockVZ.set(f, (dz / d) * speed);
+    this.knockDecay.set(f, profile.knockDecay ?? 0);
+    const lift = (profile.liftSpeed ?? 0) * fall;
+    if (lift > 0) f.vy = Math.max(f.vy, lift);
   }
 
   /** GAME-05: one step of the shield's knockback: drive the Foamer up to

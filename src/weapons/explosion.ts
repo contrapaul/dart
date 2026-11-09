@@ -41,17 +41,32 @@ export interface ExplosionTarget {
   carveScale?: number;
 }
 
+/** PT-05: one blast's falloff at a Foamer, as the Foamer system needs it.
+ *  point is the blast's centre in world space, fall is 1 at the centre and
+ *  0 at rangeMetres. */
+export interface BlastContact {
+  readonly point: THREE.Vector3;
+  readonly fall: number;
+}
+
 /** What the system calls on the Foamer system (a structural subset, so a
  *  test can pass a fake). blastDamage is the non-dart damage path (see
- *  Foamers.blastDamage); list is every live Foamer. GAME-09f: knockStep is
- *  the shield's existing shove (optional so an old fake still fits): a
- *  launcher profile with pushMetres above 0 shoves every Foamer it
- *  damaged away from the blast through it, a wall stopping them. The
- *  player is not in the Foamer list, so the push never reaches them. */
+ *  Foamers.blastDamage); list is every live Foamer. CutCapable is the
+ *  PT-05 carve hook: a Foamer that can say how close the point comes to any
+ *  part (blastDistance, Infinity when none) and carve its parts (blastCarve),
+ *  so a blast marks a Foamer the way a dart does. PT-05: knock is the
+ *  timed shove (Foamers.blastKnock): it sets the Foamer's own knock speed,
+ *  which its movement controller spends over the next steps, so no step
+ *  moves it further than that speed allows and a wall stops it. The player
+ *  is not in the Foamer list, so the blast never reaches them. */
 export interface BlastDamageTargets {
   readonly list: readonly { centre: THREE.Vector3 }[];
   blastDamage(f: { centre: THREE.Vector3 }, amount: number): void;
-  knockStep?(f: { centre: THREE.Vector3 }, dirX: number, dirZ: number, want: number): number;
+  blastDistance?(f: { centre: THREE.Vector3 }, point: THREE.Vector3): number;
+  blastCarve?(f: { centre: THREE.Vector3 }, point: THREE.Vector3, radiusMetres: number): number;
+  blastKnock?(
+    f: { centre: THREE.Vector3 }, point: THREE.Vector3, fall: number, profile: BlastProfile,
+  ): void;
 }
 
 // Shared scratch: explode allocates nothing per blast after construction.
@@ -143,29 +158,29 @@ export class ExplosionSystem {
       this.onCarve(target, removed);
     }
 
-    // 2. Damage every Foamer whose centre is in range, linearly to 0 at the
-    // edge, through the non-dart path (it can go down or pop). GAME-09f: a
-    // profile with pushMetres above 0 also shoves each one hit away from
-    // the blast through knockStep with the same falloff, so a wall stops
-    // them, and the player is never in the list.
+    // 2. Damage every Foamer the sphere reaches, linearly to 0 at the edge,
+    // through the non-dart path (it can go down or pop).
+    // PT-05: the test is the sphere, not the feet centre: a Foamer whose arm
+    // is in range takes it too. The Foamer system measures the nearest part
+    // (blastDistance) and casts from the point to that part, so a wall in
+    // between stops the damage. A fake with no blastDistance falls back to
+    // its centre, the way the old blast worked.
     if (this.foamers) {
-      const range2 = T.rangeMetres * T.rangeMetres;
       for (const f of this.foamers.list) {
-        const d2 = f.centre.distanceToSquared(point);
-        if (d2 > range2) continue;
-        const dist = Math.sqrt(d2);
+        const dist = this.foamers.blastDistance
+          ? this.foamers.blastDistance(f, point)
+          : f.centre.distanceTo(point);
+        if (!(dist <= T.rangeMetres)) continue;
         const fall = 1 - dist / T.rangeMetres;
         const amount = T.damageCentre * fall;
         if (amount <= 0) continue;
         this.stats.damage++;
         this.foamers.blastDamage(f, amount);
-        const want = T.pushMetres * fall;
-        if (want > 0 && this.foamers.knockStep) {
-          const d = dist || 1e-3;
-          this.foamers.knockStep(
-            f, (f.centre.x - point.x) / d, (f.centre.z - point.z) / d, want,
-          );
-        }
+        // PT-05: the shove is a speed the Foamer spends over the next
+        // steps (blastKnock), not one moved position, so no step jumps and
+        // a wall stops it inside the movement controller. A fake with no
+        // blastKnock keeps the old one-step shove.
+        if (T.knockSpeed > 0) this.foamers.blastKnock?.(f, point, fall, T);
       }
     }
 
@@ -185,12 +200,17 @@ export class ExplosionSystem {
       const d = Math.sqrt(d2) || 1e-3;
       const fall = 1 - d / T.rangeMetres;
       const k = Math.min(b.mass() * push * fall, b.mass() * T.pushSpeed);
-      _push.set(dx / d, dy / d + 0.5, dz / d).normalize().multiplyScalar(k);
+      // PT-05: straight out from the point in 3D, not mainly up: a sphere
+      // throws a body along the ray it stands on, with only the data's
+      // small lift on top (Paul: "the launcher ball blasts straight up").
+      _push.set(dx / d, dy / d + tuning.pushLift, dz / d).normalize().multiplyScalar(k);
       b.applyImpulse({ x: _push.x, y: _push.y, z: _push.z }, true);
     });
 
     // 4. A foam burst of chunks at the point. The debris system's ring is
     // the cap on chunks (destruction.json debris.max), as everywhere else.
+    // The debris system's own burst: its spray and the ring cap are its
+    // look and its limit (src/voxel/debris.ts is not this card's file).
     this.debris.burst(point, T.burstChunks, T.burstSize, materialId(T.burstMaterial));
 
     // 5. GAME-09f mod 2 (Paul): a clustered blast throws four small blasts
