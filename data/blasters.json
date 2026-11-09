@@ -9,7 +9,7 @@
     "magSize": 8, "reserveMax": 40, "reserveStart": 40,
     "primeTime": 0.45, "reloadTime": 1.4, "autoReload": true,
     "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3"],
-    "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.85 },
+    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.04, "tiltDeg": 5, "return": 12, "triggerDeg": 15, "pumpTravel": 0.06, "magDrop": 0.15 },
     "mods": {
       "slug": { "_note": "PT-03 stage 2 (CONTENT-PLAN 4: slugs punch holes): B01 uses its own dart type, b01slug, which pierces one Foamer. B02 heavy keeps the plain slug, so it does not pierce.", "dartType": "b01slug", "dartsPerShot": 1, "spreadDeg": 0,
@@ -24,7 +24,7 @@
     "fireInterval": 0.1, "spinUp": 0.15, "spinDown": 1.0, "reloadTime": 1.8, "autoReload": true,
     "recoil": { "spreadPerShot": 0.4, "spreadMax": 6, "climbDegPerShot": 0.25, "climbDegMax": 4, "recover": 0.4 },
     "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.75 },
+    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.01, "tiltDeg": 1, "return": 18, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.18, "reloadRollDeg": -8 },
     "mods": {
       "suppress": { "recoil": { "spreadPerShot": 0.12, "climbDegPerShot": 0.08 } },
@@ -40,7 +40,7 @@
     "reloadTime": 2.4, "autoReload": true,
     "recoil": { "spreadPerShot": 0.5, "spreadMax": 7, "climbDegPerShot": 0.35, "climbDegMax": 5, "recover": 0.5 },
     "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.22, -0.3, -0.42], "rotationDeg": [2, 5, 0], "scale": 0.7 },
+    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.03, "tiltDeg": 3, "return": 12, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.2, "boltTravel": 0.04 },
     "mods": {
       "rate": { "_note": "GAME-09d mod 1 (Paul): increased rate of fire, about 8 a second.", "fireInterval": 0.12 },
@@ -55,7 +55,7 @@
     "primeTime": 0.9, "reloadTime": 1.8, "autoReload": true,
     "zoom": { "fovShare": 0.4, "easeTime": 0.12 },
     "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.22, -0.3, -0.5], "rotationDeg": [2, 5, 0], "scale": 0.62 },
+    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.05, "tiltDeg": 6, "return": 12, "triggerDeg": 15, "pumpTravel": 0.05, "magDrop": 0.12, "boltLiftDeg": 60, "boltTravel": 0.05 },
     "mods": {
       "explosive": { "_note": "GAME-09e mod 1 (Paul): every shot explodes where it first hits, through the shared ExplosionSystem (the count is on the blaster: Blaster.beginShot reads explosiveEvery).", "explosiveEvery": 1 },
@@ -72,7 +72,7 @@
     "magSize": 2, "reserveMax": 24, "reserveStart": 12,
     "fireInterval": 0.25, "reloadTime": 1.6, "autoReload": true,
     "muzzles": ["muzzle_1", "muzzle_2"],
-    "viewmodel": { "position": [0.2, -0.24, -0.38], "rotationDeg": [2, 5, 0], "scale": 0.75 },
+    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.06, "tiltDeg": 8, "return": 8, "triggerDeg": 15, "breachOpenDeg": -40, "latchDeg": 30 },
     "chunk": { "_note": "GAME-09b: eight darts at once, close in. carveRadius is the hole's radius in metres at no impact, the biggest carve in the game (PT-03 dropped rangeMetres: the impact block now carries the distance). push multiplies the ragdoll's kill push.", "carveRadius": 0.35, "push": 2.0 },
     "mods": {
@@ -103,7 +103,7 @@
     "recoil": { "spreadPerShot": 1.2, "spreadMax": 6, "climbDegPerShot": 0.8, "climbDegMax": 4, "recover": 0.6 },
     "muzzles": ["muzzle_1"],
     "explosiveEvery": 1,
-    "viewmodel": { "position": [0.21, -0.29, -0.4], "rotationDeg": [2, 5, 0], "scale": 0.78 },
+    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.05, "tiltDeg": 4, "return": 12, "triggerDeg": 15, "pumpTravel": 0.07, "drumStepDeg": 60, "magDrop": 0.18 },
     "mods": {
       "remote": { "_note": "GAME-09f: mod 1, remote detonate.", "remote": true },
@@ -119,7 +119,7 @@
     "fireMoveShare": 0.6,
     "recoil": { "spreadPerShot": 0.9, "spreadMax": 14, "climbDegPerShot": 0.6, "climbDegMax": 10, "recover": 0.5 },
     "muzzles": ["muzzle_1"],
-    "viewmodel": { "position": [0.2, -0.28, -0.42], "rotationDeg": [2, 5, 0], "scale": 0.8 },
+    "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.05, "tiltDeg": 4, "return": 12, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.2, "reloadRollDeg": -8 },
     "mods": {
       "control": { "_note": "GAME-09g mod 1 (Paul): recoil control and reduced movement penalty: much less spread and climb, and the firing slow eased to 0.85.", "recoil": { "spreadPerShot": 0.2, "spreadMax": 6, "climbDegPerShot": 0.15, "climbDegMax": 4 }, "fireMoveShare": 0.85 },
