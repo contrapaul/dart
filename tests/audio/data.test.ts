@@ -81,6 +81,11 @@ describe("data/sounds.json", () => {
     }
   });
 
+  it("PT-04: the player's step is at 20% of what it was", () => {
+    // Paul's second playtest: about 80% quieter (0.7 to 0.14).
+    expect(S.sounds["PL-step-hard"].volume).toBeCloseTo(0.14, 6);
+  });
+
   it("every ID used by a cue or a surface exists in sounds", () => {
     for (const [bl, cues] of Object.entries(S.blasterCues)) {
       expect(cues.length, bl).toBeGreaterThan(0);

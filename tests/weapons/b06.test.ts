@@ -133,7 +133,9 @@ describe("GAME-09d: B06 The Standard", () => {
     expect(S.reserveStart).toBe(60);
     expect(S.reloadTime).toBe(2.4);
     expect(S.muzzles).toEqual(["muzzle_1"]);
-    expect(S.spinUp).toBeGreaterThan(0);
+    // PT-04 (Paul): The Standard has no flywheels, so no spin-up. The
+    // first dart leaves on the first step the trigger is held.
+    expect(S.spinUp).toBe(0);
     expect(S.recoil.climbDegPerShot).toBeGreaterThan(0);
   });
 
@@ -141,10 +143,13 @@ describe("GAME-09d: B06 The Standard", () => {
     const { b, darts } = make("B06");
     expect(b.mag).toBe(60);
     expect(b.reserve).toBe(60);
-    // Spin up first: no darts before spinUp seconds of held trigger.
-    let t = 0;
-    while (t < S.spinUp - DT / 2) { darts.now = t; b.update(DT, HOLD, AIM); t += DT; }
-    expect(darts.count).toBe(0);
+    // PT-04: no spin-up, so the very first held step fires a dart. An auto
+    // blaster with spinUp 0 must not divide by zero and must not wait for
+    // wheels it does not have.
+    darts.now = 0;
+    b.update(DT, HOLD, AIM);
+    expect(darts.count, "fires on the first held step").toBe(1);
+    let t = DT;
     for (let i = 0; i < Math.round(2 / DT); i++) { darts.now = t; b.update(DT, HOLD, AIM); t += DT; }
     expect(darts.types.every((x) => x === "mega")).toBe(true);
     expect(b.wheelSpeed).toBe(1);

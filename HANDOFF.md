@@ -18,6 +18,17 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+PT-04 done 2026-11-09 by Qwen 3.8 Flash Next via Pi (dgx-spark): the sound
+cuts (F10 jet loop, weapon switch, B04 flywheel loop, Foamer fizz-out),
+footsteps at 20%, and B06 firing with no spin-up delay, on `pt-04`, not
+reviewed, not merged, not pushed. See the log entry below for what was not
+heard or seen by eye.
+PT-05 code done 2026-11-09 by DeepSeek V4.1 Flash via Pi: blasts that reach
+and carve Foamers, a shove over time instead of a teleport, and stronger
+explosive mods. Three stage commits on `pt-05` (`eb9f75f`, `fe182d2`,
+`895098c`) plus a docs commit, not reviewed, not merged, not pushed. Nothing
+was seen by eye; see the top log entry.
+
 PT-02 code done 2026-11-08 by Qwen 3.8 Flash Next via Pi (dgx-spark): a
 Foamer that loses its head goes down whatever its health, on `pt-02`, not
 reviewed, not merged, not pushed. See the log entry below for what was not
@@ -760,6 +771,16 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-04 review, merged (Claude Opus 5.5): sound cuts and B06
+
+- dgx-spark did it to the card: the F10 jet loop, `BX-holster` and
+  `BX-draw`, the `B04-rev-loop` and `FX-fizz-out` are no longer played
+  (their data stays for Paul's recordings); `PL-step-hard` volume 0.14;
+  B06 `spinUp` 0, and it fires on the first held step (tested; the auto
+  code already clamped the divisor).
+- Nothing was listened to (no audio in the review pane). Paul to check by
+  ear: the footstep level, and that the F10 still reads alive silent.
+- 949 tests pass (2 skipped) after merging main, tsc and build green.
 ### 2026-11-09: PT-07, done, not merged (Qwen 3.8 Flash Next via Pi, dgx-spark): weapons off the health, the Seawall's shield wears
 
 - Task (Paul, second playtest): "Enemy weapons should not contribute to
@@ -908,6 +929,140 @@ reviewer has to look at it in the browser.
 - Seen in the browser for all eight. Not checked: a 16:9 window (the
   pane is 4:3), and whether the recoil and sway now clip the screen edge.
 - 934 tests pass (2 skipped), tsc and build green.
+### 2026-11-09: PT-04, the sound cuts and The Standard's fire delay (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `pt-04`, two commits, not merged)
+
+What Paul asked for (second playtest): the F10's jet loop gone, footsteps
+about 80 per cent quieter, the change-weapon sound gone, the B04 flywheel
+sound dropped, the foamer dying sound dropped, and The Standard firing with
+no delay. All six are in. The sound definitions stay in `data/sounds.json`
+(his recordings will reuse the IDs), so what was removed is only the code
+that played them, noted as "Not played since PT-04, Paul" in
+`design/SOUNDS.md` against `F10-jet`, `FX-fizz-out`, `BX-holster`,
+`BX-draw`, `B04-rev-loop`, `B06-spin` and `PL-step-hard`.
+
+What was decided and why. The F10 keeps the float-or-fly path in
+`src/audio/foamer-sounds.ts` rather than being excluded from it, because
+that path is also what sounds `F10-fall` when the last jet breaks: its
+`hums` map entry now holds null for a Turbo instead of a `LoopHandle`, so
+the state is tracked and nothing plays. The F06 hum is untouched. The
+fizz-out queue (`Fizz`, `FIZZ_DELAY`, `FIZZ_CAP`) went entirely, so
+`FoamerSounds.update` no longer uses its `dt` (renamed `_dt`): it had no
+other caller. With the B04 loop went `stopRev`, the `rev` field and the
+`LoopHandle` import; `Blaster.wheelSpeed` itself stays, since
+`src/weapons/viewmodel.ts` still spins the wheels with it, and `B04-fire`
+per shot is kept.
+
+B06 is a data line only: `spinUp` 0.25 to 0. No code change was needed for
+zero, and that was checked rather than assumed: `updateAuto` divides by
+`Math.max(s.spinUp, 1e-6)` and `updateAutoFire` gates on `wheelSpeed < 1`,
+which zero spin-up reaches on the first held step, so the first mega dart
+leaves on step one. `B06-spin` had never been wired (game-sounds.ts loops
+only B04 today, as its own `_note` in the data said), so there was nothing
+to remove for it.
+
+Tests. Added: the card cases in `tests/audio/game-sounds.test.ts` (a new
+`PT-04: the sound cuts` block: a switch plays neither `BX-holster` nor
+`BX-draw`; the F10 starts no loop while the F06 still hums once, and the
+F10 still sounds its flop; B04 active starts no loop and still fires its
+fire sound), and a `PL-step-hard` volume assertion in
+`tests/audio/data.test.ts`. Updated where they asserted the old sounds,
+as the card asked: `a standard-dart kill ... FX-fizz-out 0.3 s later` in
+`tests/audio/game-sounds.test.ts` now asserts no fizz-out after the topple
+(stepped 60 ticks past the old delay), and the whole old `card test 10`
+rev-loop case (one loop, volume follows wheelSpeed) is deleted, replaced by
+the no-loop test above. In `tests/weapons/b06.test.ts`, spec test 3 expects
+`spinUp` 0 and test 4 fires on the first held step. `tests/foamers/fall.test.ts`
+already asserted no fizz-out on a fall and still passes unchanged.
+`npx tsc --noEmit`, `npx vitest run` (134 files, 937 passed, 2 skipped) and
+`npm run build` are green; no em or en dashes in the files touched.
+
+Not checked by eye or ear. Nothing here was heard: no dev server was run, so
+the mix is unverified, and the footsteps at 0.14 in particular is Paul's
+number, not a listened level. Whether B06 at zero delay now feels right, and
+whether the F10 reads as silent-but-alive with only its flop left, are for
+the reviewer's ear on the range and in the arena.
+### 2026-11-09: PT-05 review, merged (Claude Opus 5.5): explosions that blow Foamers apart
+
+- DeepSeek did all three stages in about 20 minutes: the blast reaches
+  the nearest part, walls block it, the shove is a speed spent over the
+  steps, it carves every part in its sphere, a kill can chunk, pop or
+  obliterate (`obliterateAt` 3), and the explosive mods are small
+  launcher blasts (20 at the centre, 2.2 m, a shove).
+- **Fix: every Foamer in range was judged as if hit dead on.** The kill
+  used the profile's `damageCentre`, not the damage taken at its
+  distance, so a nearly dead F05 at the edge was chunked. It now uses
+  the damage taken. Test 2 of blast-carve, which locked in the old
+  result, rewritten; it fails without the fix.
+- **Fix: loose debris blocked Foamer movement.** The movement queries had
+  no group filter, so a foam chunk (thrown at a `Math.random` speed in
+  debris.ts) in a Foamer's path stopped its walk or its shove on some
+  runs: the cause of blast.test 4 failing under load. Both movement
+  queries now use `SOLID_QUERY_GROUPS` (no debris, no ragdolls).
+- **Fix: the range line was never shoved.** Held Foamers skip the step
+  where the shove is spent; they now spend it through the wall-safe
+  `knockStep`. New test in tests/range/lineup.test.ts.
+- Three time-to-kill tests assumed a B01 kill is always a plain down;
+  since PT-03 the random spread can make it a chunk or a pop. Loosened.
+- On the range: a launcher round 1.6 m from an F05 took 15 and carved
+  1742 voxels; 1.2 m from an F07, 18 and 5285 voxels, shoved 1.1 m over
+  the steps; an F03 beside a blast popped. The F04 takes nothing from
+  the front: its own shield wall blocks the blast (as it does darts).
+- Note: `src/voxel/debris.ts` uses `Math.random` for chunk speeds
+  (pre-existing; debris is visual and no longer blocks movement).
+- Not seen close up: the hole sizes, an obliteration against a pop.
+- 945 tests pass (2 skipped) three runs running, tsc and build green.
+
+### 2026-11-09: PT-05, blasts that blow Foamers apart (DeepSeek V4.1 Flash via Pi, branch `pt-05`, three commits plus this docs commit, not reviewed, not merged)
+
+Card: `tasks/PT-05.md`, from Paul's second playtest ("explosions barely
+mark Foamers, survivors teleport, walls do not block them, the explosive
+mods are too weak").
+
+**Stage 1 (eb9f75f)**: a blast now reaches a Foamer by its parts, not its
+feet: `FoamerSystem.blastDistance` finds the nearest part box centre with
+no fixed level geometry between it and the blast point, so an arm in the
+sphere takes the blast when the feet are out of it, and a wall in between
+does not. Only level geometry blocks; Foamers, debris and ragdolls never
+do. One trap worth knowing: a blast point resting on the floor sits a hair
+inside the floor collider and Rapier reports that shape at ray time 0 for
+every ray, which made every part read as blocked until the ray was started
+1 cm in and a hit at time 0 was ignored. The shove is now a speed, not a
+step: `blastKnock` sets the Foamer's own knock speed out from the point,
+the movement controller spends it through `computeColliderMovement` with
+the data decay, so no step moves further than the speed allows and a wall
+stops it mid-walk. Debris and broken pieces go straight out from the point
+in 3D with only `pushLift` (0.15) on top instead of straight up.
+
+**Stage 2 (fe182d2)**: `blastCarve` carves each Foamer part inside
+`foamerCarveRadius` (per profile), the sphere set down so it just reaches
+the part's centre, so the hole is on the side facing the blast and a
+survivor is visibly marked. A killing blast is judged by the same impact
+rule a dart kill uses, with the profile's `damageCentre` as the shot and
+near 1: the chunk band carves and goes down, `popAt` pops with the foam
+thrown outward from the point, and the new `obliterateAt` (data, 3) bursts
+every part and leaves nothing, inside the debris caps.
+
+**Stage 3 (895098c)**: the `dart` profile (B05 explosive mod, B06 every
+fifth shot) is a small launcher blast: 20 damage at the centre (was 12),
+2.2 m range, shove 5 m/s. Numbers for Paul: `data/explosion.json`, per
+profile `damageCentre`, `rangeMetres`, `foamerCarveRadius`, `knockSpeed`,
+`knockDecay`, `liftSpeed`, and top level `obliterateAt` and `pushLift`.
+
+Tests: `tests/foamers/blast.test.ts` (walls block, an arm in range, the
+shove over time, a wall stopping it), `tests/foamers/blast-carve.test.ts`
+(an F01 obliterated at 1 m, an F05 chunked at 2.5 m on the near side, a
+surviving F07 losing voxels), `tests/foamers/blast-mods.test.ts` (a dart
+blast at least twice a plain mega dart's damage, the neighbour shoved).
+
+**Not checked by eye.** I cannot see images or run a browser: nothing here
+was watched in the game. Worth a look by the reviewer: how big the hole
+reads on a survivor at each profile's radius, whether the obliteration
+looks like a pop or distinct, and whether 5 m/s of shove on the dart
+profile feels right on the range. Two tests changed for the rule change,
+not to make a failure go away: `tests/weapons/b07.test.ts` test 9 now
+expects the dart profile to shove (it deliberately did not in stage 1, so
+B05/B06 kept their old numbers for one stage), and `blast.test.ts` test 5
+checks the shove numbers on the launcher and cluster profiles only.
 
 ### 2026-11-09: Paul's second playtest, four cards (Claude Opus 5.5)
 

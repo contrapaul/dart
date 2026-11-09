@@ -11,17 +11,6 @@ import { flyOf } from "../foamers/fly";
 import { healOf, canHeal } from "../foamers/heal";
 import type { LoopHandle } from "./sink";
 
-// FX-topple is heard at go-down; FX-fizz-out lands this much later.
-const FIZZ_DELAY = 0.3;
-// The fizz-out timers are a fixed-size array advanced in update, not
-// setTimeout: one per Foamer that goes down, capped at FIZZ_CAP.
-const FIZZ_CAP = 16;
-
-interface Fizz {
-  f: Foamer;
-  t: number;
-}
-
 /**
  * The Foamer sounds. When the system is null (a page without Foamers), the
  * module is inert but the interface stays the same.
@@ -29,12 +18,12 @@ interface Fizz {
 export class FoamerSounds {
   private sink: AudioSink;
   private system: FoamerSystem | null;
-  /** The queue of fizz-outs yet to land, oldest first. */
-  private fizz: Fizz[] = [];
   /** The last foot-plant integer seen per living Foamer. */
   private plantSeen = new WeakMap<Foamer, number>();
-  /** GAME-10c: the float hum per flying Floater, stopped when it lands. */
-  private hums = new Map<Foamer, LoopHandle>();
+  /** GAME-10c: the float hum per flying Floater, stopped when it lands.
+   *  PT-04: the F10 is tracked here too but mapped to null: it flies
+   *  silently, no jet loop (Paul: the hiss went on and on). */
+  private hums = new Map<Foamer, LoopHandle | null>();
   /** GAME-10l stage 3: the wand's heal loop per streaming Biomechanic,
    *  stopped when the stream hides. */
   private healLoops = new Map<Foamer, LoopHandle>();
@@ -56,8 +45,9 @@ export class FoamerSounds {
     };
   }
 
-  /** One fixed step, after the Foamer system's own step. */
-  update(dt: number): void {
+  /** One fixed step, after the Foamer system's own step. (PT-04: the step
+   *  no longer needs dt, the fizz queue it advanced is gone.) */
+  update(_dt: number): void {
     const sys = this.system;
     if (!sys) return;
     // A foot plants each time the integer part of gait rises. The first
@@ -87,38 +77,31 @@ export class FoamerSounds {
         this.plantSeen.set(f, step);
       }
     }
-    for (let i = this.fizz.length - 1; i >= 0; i--) {
-      const el = this.fizz[i]!;
-      el.t -= dt;
-      if (el.t <= 0) {
-        this.fizz.splice(i, 1);
-        this.sink.play("FX-fizz-out", { position: el.f.centre });
-      }
-    }
     // GAME-10c: a Floater whose fins still hold it up hums; the hum stops
-    // when the last fin goes or it goes down. GAME-10j: the F10's jet hiss
-    // is the same hum on the same path, and its last jet going is the F10's
-    // own fall (the jet hiss stops and it flops).
+    // when the last fin goes or it goes down. GAME-10j: the F10's flight
+    // runs on the same path, and its last jet going is the F10's own fall.
+    // PT-04 (Paul): the F10's own loop is gone, so its entry maps to null
+    // and the fall is still heard once when the last jet breaks.
     for (const f of sys.list) {
       const su = floatOf(f.spec) ?? flyOf(f.spec);
       if (!su) continue;
       const finsLeft = su.fins.reduce((n, id) => n + (f.parts.has(id) ? 1 : 0), 0);
       const flying = finsLeft > 0 && f.state !== "fall" && f.state !== "down" && f.state !== "finish";
-      const hum = this.hums.get(f);
-      if (flying && !hum)
-        this.hums.set(f, this.sink.loop(f.spec.rig === "F10" ? "F10-jet" : "F06-hum", { position: f.centre }));
-      else if (!flying && hum) {
-        // GAME-10j: one last jet goes and the hiss stops: the fall is heard
-        // once at the same time (not over the fizz of a go-down).
+      const seen = this.hums.has(f);
+      if (flying && !seen) {
+        this.hums.set(f, f.spec.rig === "F10" ? null : this.sink.loop("F06-hum", { position: f.centre }));
+      } else if (!flying && seen) {
+        // GAME-10j: the last jet goes: the flop is heard once (not over the
+        // topple of a go-down).
         if (f.spec.rig === "F10" && f.state !== "down" && f.state !== "finish")
           this.sink.play("F10-fall", { position: f.centre });
-        hum.stop();
+        this.hums.get(f)?.stop();
         this.hums.delete(f);
-      } else if (hum) hum.setPosition(f.centre);
+      } else this.hums.get(f)?.setPosition(f.centre);
     }
     for (const [f, hum] of this.hums) {
       if (!sys.list.includes(f)) {
-        hum.stop();
+        hum?.stop();
         this.hums.delete(f);
       }
     }
@@ -244,9 +227,9 @@ export class FoamerSounds {
         this.sink.play("FX-topple", p);
         break;
       case "down":
+        // PT-04 (Paul): no FX-fizz-out after the topple. The 3 s of
+        // crackle read as speakers breaking.
         this.sink.play("FX-topple", p);
-        if (this.fizz.length >= FIZZ_CAP) this.fizz.shift();
-        this.fizz.push({ f, t: FIZZ_DELAY });
         break;
       case "sink":
         this.sink.play("FX-sink", p);

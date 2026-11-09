@@ -36,7 +36,7 @@
     "name": "The Standard", "model": "/models/blasters/B06.glb",
     "mode": "auto", "dartType": "mega", "dartsPerShot": 1, "spreadDeg": 1.5,
     "magSize": 60, "reserveMax": 120, "reserveStart": 60,
-    "fireInterval": 0.17, "spinUp": 0.25, "spinDown": 1.2,
+    "fireInterval": 0.17, "spinUp": 0, "spinDown": 1.2,
     "reloadTime": 2.4, "autoReload": true,
     "recoil": { "spreadPerShot": 0.5, "spreadMax": 7, "climbDegPerShot": 0.35, "climbDegMax": 5, "recover": 0.5 },
     "muzzles": ["muzzle_1"],
