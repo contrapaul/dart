@@ -56,13 +56,26 @@ export class Input {
   private mouseY = 0;
   private padButtons = new Set<number>();
   private padAxes = [0, 0, 0, 0];
+  /** True once this browser has refused raw mouse input: from then on only
+   *  the plain form is asked for, inside the click (Firefox will not take a
+   *  request that arrives later, once the click's user activation is gone). */
+  private plainLock = false;
+  /** True once a raw request has been granted: a browser that took raw input
+   *  keeps it, and a refusal there is only the fast re-lock after Esc. */
+  private rawWorked = false;
 
   constructor(private canvas: HTMLCanvasElement) {
     canvas.addEventListener("click", () => {
       if (!this.locked) this.requestLock();
     });
+    document.addEventListener("pointerlockerror", () => {
+      // Firefox reports a refused request only here, never as a rejected
+      // promise. Raw input is refused outright there, so remember it.
+      if (!this.rawWorked) this.plainLock = true;
+    });
     document.addEventListener("pointerlockchange", () => {
       this.locked = document.pointerLockElement === canvas;
+      if (this.locked && !this.plainLock) this.rawWorked = true;
       if (!this.locked) {
         this.releaseAll("key:");
         this.releaseAll("mouse:");
@@ -99,11 +112,48 @@ export class Input {
   }
 
   requestLock() {
-    // Raw mouse input where supported; some platforms refuse it, so fall back.
-    // Browsers also refuse a re-lock for about a second after Esc: the
-    // player just clicks again, so the rejection is ignored.
-    const p = this.canvas.requestPointerLock({ unadjustedMovement: true }) as Promise<void> | undefined;
-    p?.catch(() => (this.canvas.requestPointerLock() as Promise<void> | undefined)?.catch(() => {}));
+    // Raw mouse input where supported; some platforms refuse it (Firefox has
+    // no raw input), so fall back to the plain form. The fallback must run
+    // inside the click: a request sent after the promise rejects can arrive
+    // once the user activation has gone, and Firefox refuses it. So a refusal
+    // also flips `plainLock`, and the next click asks for the plain lock
+    // straight away. Browsers refuse a re-lock for about a second after Esc:
+    // the player just clicks again, so that refusal is ignored too.
+    if (this.plainLock) {
+      this.lockPlain();
+      return;
+    }
+    let p: Promise<void> | undefined;
+    try {
+      p = this.canvas.requestPointerLock({ unadjustedMovement: true }) as Promise<void> | undefined;
+    } catch {
+      // Refused synchronously (a browser that will not take the option): the
+      // click's activation is still live, so ask for the plain lock here.
+      this.plainLock = true;
+      this.lockPlain();
+      return;
+    }
+    // Firefox returns undefined: the lock either happens or the browser fires
+    // pointerlockerror, which the listener above turns into plain next click.
+    p?.then(
+      () => { this.rawWorked = true; },
+      () => {
+        // Raw input is not on offer here (or the lock was refused): plain from
+        // now on, and ask now while the click's activation is still live.
+        if (!this.rawWorked) this.plainLock = true;
+        this.lockPlain();
+      },
+    );
+  }
+
+  /** The plain lock request. Only ever called from inside a click handler or
+   *  the microtask right after it, where the user activation is still live. */
+  private lockPlain() {
+    try {
+      (this.canvas.requestPointerLock() as Promise<void> | undefined)?.catch(() => {});
+    } catch {
+      // Refused: the player clicks again.
+    }
   }
 
   /** Call once per render frame, before the fixed steps. Reads the gamepad. */
