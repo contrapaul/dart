@@ -55,6 +55,7 @@ function rig() {
   const debris = new DebrisSystem(RAPIER, world);
   const targets: VoxelTarget[] = [];
   const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
+  foamers.spawnCount = 0; // the test owns the population; a respawn here would reuse a popped Foamer's handles
   new DartImpacts(darts, debris, targets);
   world.step();
   return { world, darts, debris, targets, foamers };
@@ -188,9 +189,8 @@ function countMeshes(node: THREE.Object3D): number {
 }
 
 beforeAll(async () => {
-  // The pop tests use standard darts; in the game no starter type pops
-  // (catastrophic.popTypes is empty), so allow it for this file.
-  (foamerData.test.catastrophic.popTypes as string[]).push("standard");
+  // PT-03: the impact rule replaced the popTypes list, so nothing has to be
+  // edited in for the pop tests any more.
   await RAPIER.init();
 });
 
@@ -638,28 +638,22 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(r.foamers.stats.popped, "not a pop").toBe(0);
   });
 
-  it("14. catastrophic: three standard darts on the body in the same step at low health pop it (all bodies gone, debris spawned); one dart killing it at 1 health downs it instead", async () => {
+  it("14. impact: a standard-dart burst at low health downs it without popping (a starter dart has no overkill to spare); one dart killing it at 1 health downs it too", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 1);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     r.world.step();
     await settleAll(r, f);
-    // Health at 3 or less: three standard darts (3 >= 0.4 x 6) fly in
-    // back to back and land in the same step: the whole blast counts in
-    // the window, so it pops.
+    // Health at 3: three standard darts (3 damage) land in the same step.
+    // PT-03: a pop needs impact at popAt (1.5) and so overkill of 9 here,
+    // which three standard darts cannot leave, so it goes down.
     f.health = 3;
-    const rootHandle = f.root.handle;
-    const partHandles = [...f.parts.values()].map((p) => p.body.handle);
     for (let i = 0; i < 3; i++) fireAt(r, f.parts.get("body")!, [0, 0, -1]);
-    for (let i = 0; i < 240 && r.foamers.stats.popped < 1; i++) tick(r, player);
-    expect(r.foamers.stats.popped, "it popped").toBe(1);
-    expect(r.foamers.live).toBe(0);
-    expect(r.world.getRigidBody(rootHandle)).toBeNull();
-    for (const h of partHandles) expect(r.world.getRigidBody(h)).toBeNull();
-    expect(r.debris.live, "debris spawned").toBeGreaterThan(0);
+    for (let i = 0; i < 240 && f.state !== "down"; i++) tick(r, player);
+    expect(f.state, "the burst downs it").toBe("down");
+    expect(r.foamers.stats.popped, "no pop without overkill").toBe(0);
 
-    // One dart killing it at 1 health: the single hit is under the
-    // catastrophic share, so it goes down instead.
+    // One dart killing it at 1 health: no overkill, so it goes down.
     const r2 = rig();
     const f2 = r2.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     r2.world.step();
@@ -671,23 +665,29 @@ describe("Foamer parts (ENG-10, rig F01)", () => {
     expect(r2.foamers.stats.popped).toBe(0);
   });
 
-  it("14b. no starter dart pops: with the shipped popTypes, the same three-dart burst downs it (Paul, 2026-11-01)", async () => {
-    const popTypes = foamerData.test.catastrophic.popTypes as string[];
-    const allowed = popTypes.splice(0); // the shipped list, as the game has it
-    try {
-      const r = rig();
-      const player = new THREE.Vector3(0, 1.6, 1);
-      const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
-      r.world.step();
-      await settleAll(r, f);
-      f.health = 3;
-      for (let i = 0; i < 3; i++) fireAt(r, f.parts.get("body")!, [0, 0, -1]);
-      for (let i = 0; i < 240 && f.state !== "down"; i++) tick(r, player);
-      expect(f.state, "the burst downs it").toBe("down");
-      expect(r.foamers.stats.popped).toBe(0);
-    } finally {
-      popTypes.push(...allowed);
-    }
+  it("14b. impact: a heavy dart on a nearly dead F01 leaves the overkill a pop needs (all bodies gone, debris spawned)", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 1);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
+    r.world.step();
+    await settleAll(r, f);
+    // A precisionHeavy dart (10 damage) on an F01 at 0.5 health: overkill
+    // 9.5, impact 9.5 / 6 = 1.58, at or above popAt (1.5), so it pops.
+    f.health = 0.5;
+    const rootHandle = f.root.handle;
+    const partHandles = [...f.parts.values()].map((p) => p.body.handle);
+    const body = f.parts.get("body")!;
+    const c = body.voxelToWorld(new THREE.Vector3(
+      body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
+    r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "precisionHeavy");
+    for (let i = 0; i < 240 && r.foamers.stats.popped < 1; i++) tick(r, player);
+    expect(r.foamers.stats.popped, "it popped").toBe(1);
+    // This Foamer is out of the live list (the spawner may have put another
+    // in its place) and its bodies are gone.
+    expect(r.foamers.list).not.toContain(f);
+    expect(r.world.getRigidBody(rootHandle)).toBeNull();
+    for (const h of partHandles) expect(r.world.getRigidBody(h)).toBeNull();
+    expect(r.debris.live, "debris spawned").toBeGreaterThan(0);
   });
 
   it("15. caps: broken pieces stay at or under brokenParts.max; with down.max + 2 Foamers downed, at least two are sinking early", async () => {

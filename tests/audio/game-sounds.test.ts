@@ -23,7 +23,6 @@ import { DebrisSystem } from "../../src/voxel/debris";
 import { FoamerSystem } from "../../src/foamers/foamers";
 import type { Foamer } from "../../src/foamers/foamer";
 import type { FoamerPart } from "../../src/foamers/foamer-part";
-import foamerData from "../../data/foamers.json";
 import type { DartTypeName } from "../../src/weapons/darts";
 import type {
   AudioSink,
@@ -529,18 +528,17 @@ describe("card test 8: Foamers", () => {
   });
 
   it("a pop plays FX-pop and FX-chunk", async () => {
-    // The card lets pop types come from the data: edit them in, pop,
-    // restore.
-    const popTypes = foamerData.test.catastrophic.popTypes as string[];
-    const saved = popTypes.splice(0);
-    popTypes.push("standard");
-    try {
+    // PT-03: a pop comes from overkill now, not from a dart type list: one
+    // precisionHeavy dart (10 damage) on an F01 at 0.5 health is impact
+    // 9.5 / 6 = 1.58, at or above popAt (1.5), so the burst pops.
+    {
       const R = surfRig();
       const f = await spawnF01(R, new THREE.Vector3(0, 0, 1));
-      // Three body darts in the 0.1 s catastrophic window: the sum (3)
-      // is past the pop share (0.4 x 6 = 2.4), so the burst pops.
-      f.health = 3;
-      for (let i = 0; i < 3; i++) fireAtPart(R, f.parts.get("body")!, [0, 0, 1]);
+      f.health = 0.5;
+      const body = f.parts.get("body")!;
+      const c = body.voxelToWorld(new THREE.Vector3(
+        body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
+      R.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "precisionHeavy");
       let guard = 0;
       while (
         R.foamers.stats.popped < 1 &&
@@ -557,8 +555,6 @@ describe("card test 8: Foamers", () => {
       expect(seen.indexOf("FX-chunk")).toBeGreaterThanOrEqual(
         seen.indexOf("FX-pop"),
       );
-    } finally {
-      popTypes.push(...saved);
     }
   });
 

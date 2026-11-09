@@ -114,6 +114,42 @@ export function createLineup(
   return out;
 }
 
+/** PT-03 stage 3: the punch test's row: three F01s straight ahead, one
+ *  behind another, each `spacingMetres` further. All of them stand nearer
+ *  than the arc, so it keeps the arc clear, but a straight shot from the
+ *  player passes all three. They are held like the line. Returns the Foamers
+ *  made, near first. */
+export function createPierceRow(
+  foamers: FoamerSystem,
+  playerStart: THREE.Vector3,
+  type: string,
+  distanceMetres: number,
+  spacingMetres: number,
+  count: number,
+): Foamer[] {
+  const out: Foamer[] = [];
+  // The row and the line share the cap, so it takes at least the sum of
+  // what is already in the world and the row's size.
+  if (foamers.spawnCap < foamers.list.length + count) foamers.spawnCap = foamers.list.length + count;
+  for (let i = 0; i < count; i++) {
+    const f = foamers.spawn(
+      new THREE.Vector3(playerStart.x, 0, playerStart.z - distanceMetres - i * spacingMetres),
+      playerStart,
+      type,
+    );
+    if (!f) break; // the spawner's hard cap is in the way
+    // Stand still, and stay in the pose it spawned in, like the line.
+    f.state = "idle";
+    f.stateTime = 0;
+    f.agent = null;
+    f.agentInput = null;
+    f.setAttack(null);
+    foamers.held.add(f);
+    out.push(f);
+  }
+  return out;
+}
+
 /** PT-01 stage 2: Respawn (the menu's button, and key T: R is reload). Take
  *  the whole line out and put it back fresh, in the same order, at full
  *  health. Returns the new line, in data order, so the page can put its
@@ -124,7 +160,10 @@ export function respawnLineup(
   types: string[],
   distanceMetres: number,
   spacingMetres: number,
+  pierceRow?: { type: string; distanceMetres: number; spacingMetres: number; count: number },
 ): { type: string; foamer: Foamer }[] {
   foamers.clear();
-  return createLineup(foamers, playerStart, types, distanceMetres, spacingMetres);
+  const line = createLineup(foamers, playerStart, types, distanceMetres, spacingMetres);
+  if (pierceRow) createPierceRow(foamers, playerStart, pierceRow.type, pierceRow.distanceMetres, pierceRow.spacingMetres, pierceRow.count);
+  return line;
 }

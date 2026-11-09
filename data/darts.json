@@ -86,6 +86,7 @@
       "pierce": 1
     },
     "slug": {
+      "_note": "GAME-09c mod 2 (B02 heavy): the Rugburn slug. PT-03 split the slug: B01's slug is its own type (below) that pierces one Foamer (CONTENT-PLAN 4), and B02 keeps this without pierce.",
       "speed": 34,
       "gravityScale": 0.5,
       "drag": 0.4,
@@ -99,6 +100,38 @@
       "fireInterval": 0.3,
       "carveRadius": 0.25,
       "pierce": 0
+    },
+    "buck": {
+      "_note": "GAME-09b + PT-03: B03 Leviathan's pellet. Like standard but bigger and punchier; the damage line is foamers.json's buck. The card wrote the line start at 3, and its worked examples (one barrel on an F01 is impact 3, both barrels on an F05 is 0.6) assume every pellet lands on a full-share part; the type's real 7 degree scatter makes that happen at start 3 only for a few seeds, so the line is 11: the probed scene (tests/weapons/b03.test.ts, held targets, seed 7) then gives point blank one barrel on an F01 a pop, both barrels point blank on an F05 a chunk at about impact 0.7, and nothing at 15 m. Start values for Paul to tune on the range.",
+      "speed": 36,
+      "gravityScale": 0.4,
+      "drag": 0.4,
+      "length": 0.18,
+      "radius": 0.024,
+      "bodyColor": "#2ec4ff",
+      "tipColor": "#ffd23f",
+      "sticks": false,
+      "restitution": 0.35,
+      "impulse": 1.0,
+      "fireInterval": 0.25,
+      "carveRadius": 0.14,
+      "pierce": 0
+    },
+    "b01slug": {
+      "_note": "PT-03 stage 2 (Paul: B01 slugs punch holes in enemies, CONTENT-PLAN 4): B01's slug mod fires this, the slug's profile with pierce 1. B02's heavy keeps the plain slug, so two blasters stop sharing dart types. Start values for Paul to tune on the range.",
+      "speed": 34,
+      "gravityScale": 0.5,
+      "drag": 0.4,
+      "length": 0.2,
+      "radius": 0.03,
+      "bodyColor": "#9b5cff",
+      "tipColor": "#fff6e8",
+      "sticks": false,
+      "restitution": 0.35,
+      "impulse": 1.5,
+      "fireInterval": 0.3,
+      "carveRadius": 0.25,
+      "pierce": 1
     },
     "ball": {
       "_note": "GAME-09g: the foam ball (B08 Firehose, D14): a round ball, fast (30 m/s), a little drop, light. shape: ball draws it as a sphere (src/weapons/dart-model.ts). bounces: it ricochets off a hard surface this many times, keeping restitution of its speed each time, then falls and rests like a dart. Start values for Paul to tune on the range.",

@@ -5,7 +5,7 @@ import { greedyMesh } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
 import type { Mesher } from "../../src/voxel/pieces";
 import { DartSystem } from "../../src/weapons/darts";
-import { createLineup, createRangeSystems, respawnLineup } from "../../src/range/setup";
+import { createLineup, createPierceRow, createRangeSystems, respawnLineup } from "../../src/range/setup";
 import foamerData from "../../data/foamers.json";
 import rangeJson from "../../data/range.json";
 
@@ -180,9 +180,11 @@ describe("PT-01 stage 2: the line of Foamers", () => {
     const line = createLineup(r.foamers, player, TYPES, LINEUP.distanceMetres, LINEUP.spacingMetres);
     await settle(r);
     expect(line.length).toBe(TYPES.length);
-    // Wound and kill some of them, and let the parts wear.
+    // Wound and kill some of them, and let the parts wear. A killing
+    // blast without overkill now downs (PT-03), so the kill carries
+    // enough blast to leave the overkill a pop needs.
     for (const e of line) r.foamers.blastDamage(e.foamer, e.foamer.maxHealth * 0.3);
-    r.foamers.blastDamage(line[0]!.foamer, line[0]!.foamer.maxHealth); // down or pop
+    r.foamers.blastDamage(line[0]!.foamer, line[0]!.foamer.maxHealth * 3); // pop
     tick(r, player, 1);
     expect(r.foamers.list.length).toBeLessThan(TYPES.length);
     const fresh = respawnLineup(
@@ -203,5 +205,49 @@ describe("PT-01 stage 2: the line of Foamers", () => {
     // Nothing left of the old line: no downed body still sinking, no part
     // still in the dart targets.
     expect(r.foamers.downed.length).toBe(0);
+  });
+
+  it("three F01s in a line straight ahead: the pierce row, nearer than the arc, and respawn brings it back (PT-03)", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1, SPAWN.z);
+    const rc = rangeJson.range.lineup.pierceRow;
+    createLineup(r.foamers, player, TYPES, LINEUP.distanceMetres, LINEUP.spacingMetres);
+    const row = createPierceRow(
+      r.foamers, player, rc.type, rc.distanceMetres, rc.spacingMetres, rc.count,
+    );
+    await settle(r);
+    // All three, all held, all facing the player.
+    expect(row.length).toBe(rc.count);
+    row.forEach((f, i) => {
+      expect(f.state).toBe("idle");
+      expect(r.foamers.held.has(f)).toBe(true);
+      // Straight ahead: same x as the player, one further back than the last.
+      expect(f.centre.x).toBeCloseTo(player.x, 6);
+      expect(f.centre.z).toBeCloseTo(player.z - rc.distanceMetres - i * rc.spacingMetres, 6);
+      // Nearer than the arc: it does not block it.
+      expect(Math.hypot(f.centre.x - player.x, f.centre.z - player.z)).toBeLessThan(LINEUP.distanceMetres);
+    });
+    // The arc and the row coexist in the list.
+    expect(r.foamers.list.length).toBe(TYPES.length + rc.count);
+    // Wound the line and the row, and respawn: the whole thing comes back.
+    for (const f of r.foamers.list) r.foamers.blastDamage(f, f.maxHealth * 0.3);
+    expect(r.foamers.list.length).toBe(TYPES.length + rc.count);
+    const freshLine = respawnLineup(
+      r.foamers, player, TYPES, LINEUP.distanceMetres, LINEUP.spacingMetres, rc,
+    );
+    await settle(r);
+    expect(freshLine.length).toBe(TYPES.length);
+    // The fresh row: three in the line, all new, all held, all in place.
+    const rowBack = r.foamers.list.filter((f) => f.health === f.maxHealth)
+      .filter((f) => Math.abs(f.centre.x - player.x) < 0.01
+        && f.centre.z > player.z - rc.distanceMetres - (rc.count - 1) * rc.spacingMetres - 0.5
+        && f.centre.z < player.z - rc.distanceMetres + 0.5)
+      .sort((a, b) => b.centre.z - a.centre.z);
+    expect(rowBack.length, "the three back on the row").toBe(rc.count);
+    rowBack.forEach((f, i) => {
+      expect(f.centre.z).toBeCloseTo(player.z - rc.distanceMetres - i * rc.spacingMetres, 6);
+      expect(f.state).toBe("idle");
+      expect(r.foamers.held.has(f)).toBe(true);
+    });
   });
 });

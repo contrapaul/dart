@@ -10,13 +10,22 @@ import { CAPSULE_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
 export type { DartTypeName } from "./dart-model";
 
 /** GAME-09b: the chunk block of a blaster or mod that can blow a hole
- *  through a Foamer. rangeMetres: the farthest the muzzle may be from the
- *  hit. carveRadius: the hole's radius in metres. push: multiplies the
- *  ragdoll's kill push along the shot. */
+ *  through a Foamer. carveRadius: the hole's radius in metres. push:
+ *  multiplies the ragdoll's kill push along the shot. PT-03 dropped
+ *  rangeMetres: the impact rule reads distance itself. */
 export interface ShotChunk {
-  rangeMetres: number;
   carveRadius: number;
   push: number;
+}
+
+/** PT-03: how far the shot still counts as point blank for the impact
+ *  rule (src/foamers/impact.ts). near is 1 within fullMetres of the muzzle
+ *  and falls in a straight line to 0 at zeroMetres. A blaster or a mod may
+ *  carry its own block; resolveSpec falls back to the shared defaults in
+ *  data/blasters.json's impact block. */
+export interface ImpactRange {
+  fullMetres: number;
+  zeroMetres: number;
 }
 
 /** GAME-09b: what a shot's darts carry so a hit can judge the chunk rule.
@@ -32,6 +41,9 @@ export interface DartShot {
   id: number;
   muzzle: THREE.Vector3;
   chunk: ShotChunk | null;
+  /** PT-03: the distance half of the impact rule, or null to fall back to
+   *  the shared defaults. Optional so a test shot without one still compiles. */
+  impact?: ImpactRange | null;
   explodes?: boolean;
   exploded?: boolean;
   clustered?: boolean;
@@ -147,6 +159,13 @@ export class DartSystem {
    *  hit (walls, the floor and Foamer parts all count). DartImpacts wires
    *  it to the shared ExplosionSystem when the page passes one. */
   onExplosiveHit: (hit: DartHit) => void = () => {};
+
+  /** PT-03 stage 3: called once per piercing dart, when its pass through
+   *  a body starts. It passes the entry hit and the exit hit: where the
+   *  line leaves that body's far side, or null when it does not. The
+   *  Foamer system carves the exit face into a part, so the hole shows
+   *  on the far side of the body too, not only where the dart met it. */
+  onPierceExit: (entry: DartHit, exit: DartHit | null) => void = () => {};
 
   /** GAME-09f: called once per remote round that goes off, with where it
    *  sits, its dart type (the blast's profile) and its cluster flag. Fires
@@ -497,7 +516,59 @@ export class DartSystem {
       const pierce = s.spec.pierce;
       if (pierce > 0 && typeof key === "number" && !s.pierced.includes(key) && s.pierced.length < pierce) {
         s.pierced.push(key);
-        for (const h of dartHit.foamerBodies ?? []) if (!s.piercedBodies.includes(h)) s.piercedBodies.push(h);
+        const bodies = dartHit.foamerBodies ?? [];
+        for (const h of bodies) if (!s.piercedBodies.includes(h)) s.piercedBodies.push(h);
+        // PT-03 stage 3: where its line leaves the body it goes through:
+        // the punch shows on that far face. The entry carve may have
+        // opened the near face (in the test, whose mesher is at once) or
+        // not (in the game, whose colliders remesh behind), so the line is
+        // walked face to face: a face met is stepped past, and the LAST
+        // face the walk meets is the exit. It ends when a step past a face
+        // meets no other part of any crossed body. The exit is measured
+        // from the walk's own line (the face's own origin and distance),
+        // not from the entry, and a body gone to debris tells as null.
+        this._po.x = this._hp.x + this._dn.x * 0.02;
+        this._po.y = this._hp.y + this._dn.y * 0.02;
+        this._po.z = this._hp.z + this._dn.z * 0.02;
+        this._ray.origin = this._po;
+        this._ray.dir = this._pd;
+        const faceOf = () =>
+          this.world.castRay(
+            this._ray, 12, true, EXCLUDE_SENSORS, undefined, undefined, undefined,
+            (c) => {
+              const h = c.parent()?.handle;
+              return h !== undefined && bodies.includes(h);
+            },
+          ) ?? null;
+        let cur = faceOf();
+        let exX = NaN, exY = NaN, exZ = NaN;
+        for (let face = 0; face < 4 && cur && cur.timeOfImpact >= 1e-4; face++) {
+          const t = Math.min(12, cur.timeOfImpact);
+          exX = this._po.x + this._dn.x * t;
+          exY = this._po.y + this._dn.y * t;
+          exZ = this._po.z + this._dn.z * t;
+          this._po.x += this._dn.x * (t + 0.02);
+          this._po.y += this._dn.y * (t + 0.02);
+          this._po.z += this._dn.z * (t + 0.02);
+          this._ray.origin = this._po;
+          cur = faceOf();
+        }
+        if (!Number.isNaN(exX)) {
+          this.onPierceExit(dartHit, {
+            point: new THREE.Vector3(exX, exY, exZ),
+            normal: dartHit.normal.clone(),
+            direction: dartHit.direction.clone(),
+            speed: dartHit.speed,
+            type: s.type,
+            collider: dartHit.collider,
+            material: dartHit.material,
+            shot: dartHit.shot,
+            foamerKey: key,
+            foamerBodies: bodies,
+          });
+        } else {
+          this.onPierceExit(dartHit, null);
+        }
         s.pos.copy(this._hp).addScaledVector(this._dn, 0.03);
         if (s.pos.y < KILL_Y) this.killSlot(s);
         return;

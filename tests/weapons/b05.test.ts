@@ -284,7 +284,9 @@ describe("GAME-09e: pierce", () => {
     const types = ["F01", "F01", "F01", "F01"] as const;
     for (let i = 0; i < 4; i++) r.foamers.spawn(new THREE.Vector3(0, 0, -4 - i * 2), eye, types[i]);
     await settle(r.foamers, r.world, r.darts);
-    const before = r.foamers.list.map((f) => f.health);
+    // Hurt is accounted by identity: destroy kills re-spawn into the same
+    // list slot, so matching by position misreads the damage.
+    const before = new Map(r.foamers.list.map((f) => [f, f.health] as const));
     const b = new Blaster(
       resolveSpec("B05", ["heavy"]), r.darts, () => new THREE.Vector3(0, 1.1, -1), lcg(5),
     );
@@ -296,7 +298,7 @@ describe("GAME-09e: pierce", () => {
       r.world.step();
       return r.darts.stats().flying === 0;
     });
-    const hurt = r.foamers.list.filter((f, i) => f.health < before[i]).length;
+    const hurt = [...before.keys()].filter((f) => f.health < before.get(f)!).length;
     expect(hurt, "the heavy dart damaged at least three of the four").toBeGreaterThanOrEqual(3);
   });
 

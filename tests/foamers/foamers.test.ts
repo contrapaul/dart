@@ -96,9 +96,8 @@ function burst(r: ReturnType<typeof rig>, f: NonNullable<ReturnType<FoamerSystem
 }
 
 beforeAll(async () => {
-  // The pop tests use standard darts; in the game no starter type pops
-  // (catastrophic.popTypes is empty), so allow it for this file.
-  (foamerData.test.catastrophic.popTypes as string[]).push("standard");
+  // PT-03: the impact rule replaced the popTypes list; a pop now comes from
+  // overkill, not from a dart type list.
   await RAPIER.init();
 });
 
@@ -196,10 +195,9 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     // The body part must be meshed, so its trimesh collider exists: the
     // darts carve the part, not the root capsule.
     await settle(f.parts.get("body")!.mesh, r.world);
-    // A single dart that takes the health to 0 now downs the Foamer
-    // (it only pops when the killing damage is a burst, ENG-10 stage 3),
-    // so each round fires three darts close together: they land in the
-    // same step, count as one blast and clear the catastrophic share.
+    // PT-03: a pop needs impact at popAt, so the killing blow is one
+    // precisionHeavy dart (10 damage) on a low-health F01: the overkill is
+    // past 1.5 x max health and it pops.
     // Chunks a carve throws out are kicked with Math.random
     // (src/voxel/debris.ts), so where the rebounding darts fly is set by
     // the random state of the process at that moment; that flaked the
@@ -210,10 +208,14 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     Math.random = seededRandom(0x1bdcb3d2);
     try {
       let rounds = 0;
-      while (r.foamers.stats.popped === 0 && rounds++ < 20) {
-        r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
-        r.darts.fire(new THREE.Vector3(0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
-        r.darts.fire(new THREE.Vector3(-0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+      while (r.foamers.stats.popped === 0 && rounds++ < 40) {
+        // Chip it down one standard dart at a time (each is 1 damage and
+        // has no overkill to spare), then finish it with one heavy.
+        if (f.health > 1) {
+          r.darts.fire(new THREE.Vector3(0, 0.8, 3), new THREE.Vector3(0, 0, -1), "standard");
+        } else if (f.state !== "down") {
+          r.darts.fire(new THREE.Vector3(-0.3, 0.8, 3), new THREE.Vector3(0, 0, -1), "precisionHeavy");
+        }
         for (let i = 0; i < 120 && r.foamers.stats.popped === 0 && f.health > 0; i++) {
           tick(r, player);
         }
@@ -277,15 +279,20 @@ describe("test Foamer (ENG-10, rig F01)", () => {
     const player = new THREE.Vector3(0, 1.6, 1);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0))!;
     await settle(f.parts.get("body")!.mesh, r.world);
-    // The suction dart flies first and starts the burst; the two
-    // standards behind it follow (all in the window), and the last one
-    // kills.
-    f.health = 3;
+    // The suction dart sticks to the body first, so it is sitting on the
+    // body when the popping hit removes it. PT-03: the popping hit is no
+    // longer a burst of standard darts (their max overkill is a down or a
+    // chunk, 15b); a precisionHeavy close to the player needs an overkill
+    // of 9.5 on the F01 (10 minus the half a life the suction dart will
+    // already have taken) to clear popAt at 1.58, so f starts on 1.
+    f.health = 1;
     const body = f.parts.get("body")!;
     const c = body.voxelToWorld(new THREE.Vector3(
       body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
     r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "suction");
-    burst(r, f);
+    for (let i = 0; i < 60 && r.darts.stats().stuck < 1; i++) tick(r, player);
+    expect(r.darts.stats().stuck).toBe(1);
+    r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1), new THREE.Vector3(0, 0, -1), "precisionHeavy");
     for (let i = 0; i < 240 && r.foamers.stats.popped === 0; i++) tick(r, player);
     expect(r.foamers.stats.popped).toBe(1);
     for (let i = 0; i < 30; i++) tick(r, player);

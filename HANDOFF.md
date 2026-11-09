@@ -760,6 +760,131 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-03 review, merged (Claude Opus 5.5): impact from overkill and distance, B03, punch-through
+
+- dgx-spark began it and its model server went down (502) halfway
+  through stage 1; the partial work was saved (d5e7cd2). qwen-machine
+  (Qwen 3.8-27B) finished all three stages in about six hours.
+- **Fix: the chunk band only worked for three blasters.** A kill between
+  `chunkAt` and `popAt` blew a hole only when the shot carried a `chunk`
+  block (B01 slug, B02 heavy, B03); every other blaster just went down.
+  It now carves with the Foamer-wide `catastrophic.chunk` numbers. Seen
+  on the range: a B05 heavy round through the pierce row chunked the
+  first F01 (impact 0.54). New test (b03.test.ts 5); chunk.test.ts 8,
+  which asserted the old gap, updated.
+- Played on the range (pane hidden, stepped by hand):
+  - B03, one barrel at 1.5 m: F01 pops (impact 15.5); F05 chunks, 54
+    damage (0.79); F08 takes 33, two barrels down it; F11's shield takes
+    most of it (11).
+  - B03 at 15 m: one barrel took an F12 from 25 to 9. **Damage does not
+    fall off with distance**; only the impact does (the card's rule).
+  - B01 slug: through the first F01 of the row, killed the second.
+  - B05 heavy: through all three of the row.
+- **For Paul to tune:** qwen-machine set `buck` damage to 11 a pellet,
+  not the card's 3: at 3 the 7 degree scatter rarely gave the worked
+  examples. A full point-blank barrel can do 88. `data/foamers.json`
+  test.damage.buck.
+- 934 tests pass (2 skipped) three times running, tsc and build green.
+- Not checked by eye: the pop and chunk sizes on screen, the exit hole
+  of a punch-through, the feel of B03 at mid range.
+
+### 2026-11-09: PT-03, one impact scale to judge every kill (Qwen 3.8-27B via Pi, dgx-spark, branch `pt-03`, three commits, not merged)
+
+- **The task.** `tasks/PT-03.md`: one impact scale from overkill and
+  distance decides down, chunk or pop and how big; B03 fires `buck`
+  pellets that hit far harder close in; B01 slugs pierce; punch-through
+  carves right through and the range gets a pierce row. Another model
+  started stage 1 (commit d5e7cd2, stopped mid-route when the server
+  went down); its engine side stood and was kept. Its failures went in
+  order, and each one was recorded here.
+- **Stage 1 (b1112c5).** Four failures on the list, looked at one
+  by one; the fix was on the test side of every one (the commit
+  touched the five test files, and only the test files). (a) tsc: the
+  unused `foamerData` import in `tests/audio/game-sounds.test.ts` was
+  removed. (b) `tests/foamers/foamers.test.ts` 8b: the test was
+  asserting the old pop rule (three standard darts burst, from the
+  `popTypes`'s share), but that rule is no longer there. The new card's
+  code is right; the test was rewritten to the new rule: a
+  `precisionHeavy` raw dart against an F that a suction dart had already
+  cut to half health has impact 1.58 and clears `popAt`. (c)
+  `tests/range/lineup.test.ts` (Respawn restores the whole line): the
+  kill was one max blast against a healthy F09, and since a kill with no
+  overkill is now down (not pop), the downed Foamer stays in the list
+  and `list.length` does not drop. The test keeps its reason (respawn
+  refreshes the line where a member has gone down) and gives the kill
+  enough overkill (three max blasts) that a pop happens. (d)
+  `tests/weapons/b05.test.ts` 8 (the heavy mod passes three Foamers):
+  the code was right, the test was fragile. The heavy darts killed the
+  first two Foamers, which respawned into the same hole in the list;
+  the damage count was position-based and was reading the replacements.
+  The damage is now counted by identity. The pierce tests 6 and 7 pass
+  unchanged: a piercing dart that still has pierce
+  left to spend goes on to the next Foamer, whatever the kill does to the one it leaves.
+- **Stage 2 (58c4228).** B03 gets its own dart type `buck` in
+  `data/darts.json` (the standard dart's profile, `carveRadius` 0.14,
+  `pierce` 0) and its own `impact` block in `data/blasters.json`
+  (full 3, zero 12; the shared block stays a default of 2 to 10). The
+  tune the test forced (the card told us to tune and say so): the test
+  block's line for `buck` is **11**, not the card's worked 3. At
+  3, a real 7-degree burst of 8 pellets mostly lands on the legs and
+  the half-share chest, and the F01 survives it, so a point-blank pop
+  never comes out on the real rig (the worked math only holds if the
+  whole barrel lands on one part; the test notes the real scatter reads
+  impact about 4.2, which pops either way). B01's slug mod is now its
+  own dart type `b01slug` (the slug's profile with `pierce` 1): its
+  slug knocks through, B02's (a plain `slug`, `pierce` 0) does not,
+  and the mods no longer share one dart type across two blasters.
+  New: `tests/foamers/impact.test.ts` (10 pure-math tests against the
+  card's worked numbers, including an explosion kill read at `near` 1),
+  `tests/weapons/b03.test.ts` (the card's cases driven by a real B03:
+  point blank, one barrel pops a fresh F01; point blank, both barrels
+  take a fresh F05 to a chunk; 15 m neither pops nor chunks; 15 m a
+  fresh F05 survives the burst with health left; the spread is the
+  type's real 7, so the seed is pinned to the run that lands each case),
+  and `tests/weapons/slug-pierce.test.ts` (a b01slug meets the first
+  F01 and then the one right behind it, and does not reach the third;
+  the B02 heavy keeps the plain slug, pierce 0). Gate green: tsc,
+  133 files / 930 pass / 2 skipped, build.
+- **Stage 3 (4d81527).** The punch-through becomes visible. The dart
+  gets an `onPierceExit` hook (`src/weapons/darts.ts`): when a dart
+  exits a body it has punched through, it walks its own flight line
+  forward through only that body's own colliders, up to 12 m, and hands the exit point to the
+  Foamer system (`handlePierceExit`), which carves it there
+  (`handlePierceExit`, no debris: the burst's chunks would clog the
+  hole's mouth and stop every dart that still has pierce left to spend).
+  The carve looks for a live part that owns the exit collider; no part,
+  no carve. A `pierceRow` in `data/range.json` (three F01s, 9.5
+  m ahead of the player, 1.5 m apart, one behind another, nearer than
+  the 15 m arc so it does not block it) is built by
+  `createPierceRow` in `src/range/setup.ts` (the cap is shared with the
+  line) and `respawnLineup` restores it. `tests/weapons/punchthrough.test.ts`
+  proves a slug leaves the near and far face of the head open, that
+  the exit lies behind the entry along the dart's own line, and that
+  the carve emptied voxels that were solid before the shot.
+  `tests/range/lineup.test.ts` covers the row's placement and the
+  respawn. Gate green: tsc, 134 files / 933 passing / 2 skipped,
+  build.
+- **The tests as the card set out:** the impact rule (overkill, the
+  three outcomes, the debris and pop boosts, `near`) is tested by
+  `tests/foamers/impact.test.ts`. B03's point blank pops an F01, both
+  barrels chunk an F05, 15 m does neither (`tests/weapons/b03.test.ts`).
+  The slug pierces (`tests/weapons/slug-pierce.test.ts`). B05's
+  precision and precisionHeavy counts (`tests/weapons/b05.test.ts`
+  6 and 8, passing through the new code). A blast kill is read as
+  `near` 1 (`impact.test.ts` 7). The punch-through is visible
+  (`tests/weapons/punchthrough.test.ts`). The row and the respawn
+  (`tests/range/lineup.test.ts`).
+- **Could not check by eye:** no images, no browser open. Whether the
+  hole reads as a punch at game speed, how the burst feels on the B03, and the row
+  reads on the range are test numbers here. They are for the reviewer.
+- **The docs.** PLAN.md's PT-03 line says done, not merged, section 14
+  got three decisions (stage 1's rule, stage 2's dart types, stage 3's
+  carve), and the D12 line got a PT-03 amendment. Since the card was
+  written, PT-01 and PT-02 are merged: the line is an arc and a head off
+  means down, so the row is straight ahead inside the arc, nearer than
+  the line, and the exit carve has to handle a killed body (it carves
+  no live part, and the tests show the pierce counts are unaffected).
+
 ### 2026-11-08: PT-02 review, merged (Claude Opus 5.5): head off means down
 
 - dgx-spark did it in about 45 minutes. The rule sits in `breakPart`, so

@@ -24,7 +24,7 @@ import { SettingsStore, DIFFICULTIES } from "../core/settings";
 import type { PathPoints } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
-import { createRangeSystems, createLineup, respawnLineup, fillReserves } from "./setup";
+import { createRangeSystems, createLineup, createPierceRow, respawnLineup, fillReserves } from "./setup";
 import { LineupLabels } from "./labels";
 import { TtkTracker, TtkPanel } from "./ttk";
 import { RangeMenu, RangeMenuPanel } from "./menu";
@@ -47,7 +47,11 @@ const R = (rangeJson as unknown as {
     playerSpawn: [number, number, number];
     cover: [number, number, number, number, number, number][];
     spawn: { count: number; points: [number, number, number][] };
-    lineup: { distanceMetres: number; spacingMetres: number };
+    lineup: {
+      distanceMetres: number;
+      spacingMetres: number;
+      pierceRow: { type: string; distanceMetres: number; spacingMetres: number; count: number };
+    };
   };
   bench: { seconds: number; strafePeriod: number };
 }).range;
@@ -192,6 +196,12 @@ scene.add(foamers.group);
 // plain div each above the line (its type, its name, its health now).
 const TYPES = Object.keys(foamerData.types);
 let lineup = createLineup(foamers, SPAWN_POSE, TYPES, R.lineup.distanceMetres, R.lineup.spacingMetres);
+// PT-03 stage 3: the punch test's row, straight ahead and nearer than the
+// arc, three F01s one behind another. Respawning puts it back with the line.
+createPierceRow(
+  foamers, SPAWN_POSE, R.lineup.pierceRow.type, R.lineup.pierceRow.distanceMetres,
+  R.lineup.pierceRow.spacingMetres, R.lineup.pierceRow.count,
+);
 const labels = new LineupLabels(
   document.querySelector<HTMLDivElement>("#hud")!, camera, foamers, lineup,
 );
@@ -201,6 +211,7 @@ const labels = new LineupLabels(
 function respawnLineupHere(): void {
   lineup = respawnLineup(
     foamers, SPAWN_POSE, TYPES, R.lineup.distanceMetres, R.lineup.spacingMetres,
+    R.lineup.pierceRow,
   );
   labels.retarget(lineup);
   ttk.reset(); // the line that is going is not being watched any more
