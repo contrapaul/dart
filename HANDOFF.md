@@ -760,6 +760,67 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-07, done, not merged (Qwen 3.8 Flash Next via Pi, dgx-spark): weapons off the health, the Seawall's shield wears
+
+- Task (Paul, second playtest): "Enemy weapons should not contribute to
+  their health. IE, F01 should not die because of heavy damage to the
+  club", and "F11's shield needs to be able to break with enough damage"
+  (`tasks/PT-07.md`).
+- Weapons: `data/foamers.json` base `partDamage.kinds.weapon.total` 0.5 to
+  0. `handleHit` (src/foamers/foamers.ts:2081) already did
+  `f.health -= dmg * kind.total`, so no code change was needed there: the
+  part keeps `part.hp -= dmg`, still carves, still breaks off, and the
+  Foamer keeps its health. `f.addDamage` and the shot's damage now see 0
+  from a weapon hit too, which is consistent: a weapon hit is not health
+  damage, so it should not feed the impact rule.
+- Rigs with a weapon part (from `data/foamer-rigs.json`): F01 club, F02
+  ball, F04 blaster, F07 fistL and sword, F08 launcherL/R, F09 barrelL/R,
+  F10 blaster, F11 handle and maceHead, F13 wand. All of them keep their
+  own hp (`hpShare` 0.25 of the rig's health, floor `minHp` 2), carve and
+  break off as before, and none of them can carry a Foamer to its death.
+  Attacks that `need` a broken part are dropped by `chooseAttack`, so F01
+  and F11 still lose the mace swings and F07 still falls back to the fists
+  (checked by the existing tests).
+- The F11's shield: `armour.shield` and `armour.shieldBoss` keep `damage` 0
+  and `arcDeg` 120, and gain a new optional `wear` 1 and `carve` 0.3. A new
+  `ArmourPart.wear` (src/foamers/armour.ts) is the share of the dart's
+  damage taken off the plate's own hp, applied in `handleHit` only when the
+  arc armour actually covers the hit (`shielded`), so the Blocker (F04, no
+  `wear`) is untouched and its darts still cannot break its shield. At the
+  plate's hp 0 the ordinary `breakPart` path runs, the same one the parry
+  break uses, and with the part gone `armourOf` finds nothing, so the arc
+  goes with it and the next front dart hurts. The `carve` 0.3 is the
+  part's `carveScale` in the dart carve (src/weapons/impacts.ts), so the
+  plate takes a small mark, not the whole crater. The two-parry break
+  (`meleeParry.parriesToBreak` 2) is unchanged and still tested.
+- The shield's hp in darts, from the part's `hpShare`: the shield is an
+  `ability` part (0.25) and the boss a `detail` (0.15), of the F11's health
+  60, so 15 and 9 hp, at standard damage 1 x `hit` 1 x `wear` 1. So 15
+  standard front darts break the shield and 9 break the boss; a mega (3) or
+  precision (8) spends that hp in fewer (5 and 2 for the shield); slug and
+  buck are 6 and 11, so one buck dart breaks the boss and two the shield.
+- Tests: new `tests/foamers/weapon-parts.test.ts` (the weapon kind's
+  shares; an F01 keeps full health through losing its club; a precisionHeavy
+  dart worth more than the F01's whole health on the club does not kill it;
+  an F07 keeps full health through losing its sword and still attacks).
+  `tests/foamers/seawall.test.ts` gained: the shield's own health is 15
+  standard front darts, fewer than that leave it on and worn, enough break
+  it off and the next front dart hurts, the boss wears the same way, the
+  two-parry break still works. Existing tests that asserted the old rules
+  were updated, not deleted: `brawler.test.ts` 2 now expects the sword's
+  damage to stay off the health, `seawall.test.ts` expects the mark and the
+  wear on a front dart, and `trawler-wall.test.ts` 9 reads the launcher's
+  own hp (a weapon part no longer moves the Trawler's health, which is the
+  only reason it failed).
+- Verified: `npx tsc --noEmit` clean, `npx vitest run` 955 passed 2 skipped
+  (136 files), `npm run build` built. No em or en dash in the files touched.
+- Not verified by eye: no browser and no image viewing here, so nobody has
+  looked at the shield wearing down on screen, the marks it takes, or the
+  plate flying off as a foam piece. The reviewer should look at that, at the
+  sound (a worn-front dart still plays `shield-hit`, and the break plays
+  `shield-break`), and at whether 15 standard darts feels right, since it
+  is the number to tune (`armour.shield.wear` in `data/foamers.json`).
+
 ### 2026-11-09: PT-06 review, merged (Claude Opus 5.5): the dart look
 
 - qwen-machine stopped once when Pi's context compaction failed and it
