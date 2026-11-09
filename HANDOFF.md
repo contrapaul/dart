@@ -18,6 +18,12 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+PT-04 done 2026-11-09 by Qwen 3.8 Flash Next via Pi (dgx-spark): the sound
+cuts (F10 jet loop, weapon switch, B04 flywheel loop, Foamer fizz-out),
+footsteps at 20%, and B06 firing with no spin-up delay, on `pt-04`, not
+reviewed, not merged, not pushed. See the log entry below for what was not
+heard or seen by eye.
+
 PT-02 code done 2026-11-08 by Qwen 3.8 Flash Next via Pi (dgx-spark): a
 Foamer that loses its head goes down whatever its health, on `pt-02`, not
 reviewed, not merged, not pushed. See the log entry below for what was not
@@ -760,6 +766,17 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-04 review, merged (Claude Opus 5.5): sound cuts and B06
+
+- dgx-spark did it to the card: the F10 jet loop, `BX-holster` and
+  `BX-draw`, the `B04-rev-loop` and `FX-fizz-out` are no longer played
+  (their data stays for Paul's recordings); `PL-step-hard` volume 0.14;
+  B06 `spinUp` 0, and it fires on the first held step (tested; the auto
+  code already clamped the divisor).
+- Nothing was listened to (no audio in the review pane). Paul to check by
+  ear: the footstep level, and that the F10 still reads alive silent.
+- 949 tests pass (2 skipped) after merging main, tsc and build green.
+
 ### 2026-11-09: PT-06 review, merged (Claude Opus 5.5): the dart look
 
 - qwen-machine stopped once when Pi's context compaction failed and it
@@ -847,6 +864,58 @@ reviewer has to look at it in the browser.
 - Seen in the browser for all eight. Not checked: a 16:9 window (the
   pane is 4:3), and whether the recoil and sway now clip the screen edge.
 - 934 tests pass (2 skipped), tsc and build green.
+### 2026-11-09: PT-04, the sound cuts and The Standard's fire delay (Qwen 3.8 Flash Next via Pi, dgx-spark, branch `pt-04`, two commits, not merged)
+
+What Paul asked for (second playtest): the F10's jet loop gone, footsteps
+about 80 per cent quieter, the change-weapon sound gone, the B04 flywheel
+sound dropped, the foamer dying sound dropped, and The Standard firing with
+no delay. All six are in. The sound definitions stay in `data/sounds.json`
+(his recordings will reuse the IDs), so what was removed is only the code
+that played them, noted as "Not played since PT-04, Paul" in
+`design/SOUNDS.md` against `F10-jet`, `FX-fizz-out`, `BX-holster`,
+`BX-draw`, `B04-rev-loop`, `B06-spin` and `PL-step-hard`.
+
+What was decided and why. The F10 keeps the float-or-fly path in
+`src/audio/foamer-sounds.ts` rather than being excluded from it, because
+that path is also what sounds `F10-fall` when the last jet breaks: its
+`hums` map entry now holds null for a Turbo instead of a `LoopHandle`, so
+the state is tracked and nothing plays. The F06 hum is untouched. The
+fizz-out queue (`Fizz`, `FIZZ_DELAY`, `FIZZ_CAP`) went entirely, so
+`FoamerSounds.update` no longer uses its `dt` (renamed `_dt`): it had no
+other caller. With the B04 loop went `stopRev`, the `rev` field and the
+`LoopHandle` import; `Blaster.wheelSpeed` itself stays, since
+`src/weapons/viewmodel.ts` still spins the wheels with it, and `B04-fire`
+per shot is kept.
+
+B06 is a data line only: `spinUp` 0.25 to 0. No code change was needed for
+zero, and that was checked rather than assumed: `updateAuto` divides by
+`Math.max(s.spinUp, 1e-6)` and `updateAutoFire` gates on `wheelSpeed < 1`,
+which zero spin-up reaches on the first held step, so the first mega dart
+leaves on step one. `B06-spin` had never been wired (game-sounds.ts loops
+only B04 today, as its own `_note` in the data said), so there was nothing
+to remove for it.
+
+Tests. Added: the card cases in `tests/audio/game-sounds.test.ts` (a new
+`PT-04: the sound cuts` block: a switch plays neither `BX-holster` nor
+`BX-draw`; the F10 starts no loop while the F06 still hums once, and the
+F10 still sounds its flop; B04 active starts no loop and still fires its
+fire sound), and a `PL-step-hard` volume assertion in
+`tests/audio/data.test.ts`. Updated where they asserted the old sounds,
+as the card asked: `a standard-dart kill ... FX-fizz-out 0.3 s later` in
+`tests/audio/game-sounds.test.ts` now asserts no fizz-out after the topple
+(stepped 60 ticks past the old delay), and the whole old `card test 10`
+rev-loop case (one loop, volume follows wheelSpeed) is deleted, replaced by
+the no-loop test above. In `tests/weapons/b06.test.ts`, spec test 3 expects
+`spinUp` 0 and test 4 fires on the first held step. `tests/foamers/fall.test.ts`
+already asserted no fizz-out on a fall and still passes unchanged.
+`npx tsc --noEmit`, `npx vitest run` (134 files, 937 passed, 2 skipped) and
+`npm run build` are green; no em or en dashes in the files touched.
+
+Not checked by eye or ear. Nothing here was heard: no dev server was run, so
+the mix is unverified, and the footsteps at 0.14 in particular is Paul's
+number, not a listened level. Whether B06 at zero delay now feels right, and
+whether the F10 reads as silent-but-alive with only its flop left, are for
+the reviewer's ear on the range and in the arena.
 
 ### 2026-11-09: Paul's second playtest, four cards (Claude Opus 5.5)
 

@@ -473,7 +473,7 @@ async function breakLeg(
 }
 
 describe("card test 8: Foamers", () => {
-  it("a standard-dart kill plays FX-wound per damaging hit, one FX-topple, and FX-fizz-out 0.3 s later", async () => {
+  it("a standard-dart kill plays FX-wound per damaging hit and one FX-topple, and never FX-fizz-out", async () => {
     const R = surfRig();
     const player = new THREE.Vector3(0, 1, 11);
     const f = await spawnF01(R, new THREE.Vector3(0, 0, 1));
@@ -496,18 +496,11 @@ describe("card test 8: Foamers", () => {
     expect(w.opts?.position, "the hit part's position").toBeDefined();
     // One topple for the down.
     expect(countOf(seen, "FX-topple"), "one topple for the down").toBe(1);
-    // The fizz-out lands 0.3 s (about 18 ticks) after the topple, not
-    // with it: step until it has been heard.
-    let i = 0;
-    while (ids(R.sink.log).indexOf("FX-fizz-out") < 0 && i++ < 60) {
-      tick8(R, player, 1);
-    }
+    // PT-04 (Paul): no fizz-out after the down. Step on for well over the
+    // old 0.3 s delay to show nothing follows the topple.
+    tick8(R, player, 60);
     const seen2 = ids(R.sink.log);
-    expect(countOf(seen2, "FX-fizz-out"), "the fizz-out once").toBe(1);
-    const ti = seen2.indexOf("FX-topple");
-    const fi = seen2.indexOf("FX-fizz-out");
-    expect(fi).toBeGreaterThan(ti);
-    expect(fi - ti, "about 0.3 s, not 1 s").toBeLessThan(32);
+    expect(countOf(seen2, "FX-fizz-out"), "no fizz-out").toBe(0);
   });
 
   it("a broken leg plays FX-part-off once, at the part", async () => {
@@ -670,8 +663,71 @@ describe("card test 9: player", () => {
   });
 });
 
+describe("PT-04: the sound cuts", () => {
+  it("a weapon switch plays neither BX-holster nor BX-draw", () => {
+    const { lo, sink, gs } = makeProbed();
+    const step = (c: typeof NO) => {
+      lo.update(DT, c, AIM);
+      gs.update(DT, c);
+    };
+    // A switch that goes through and back, so both edges are covered: the
+    // start of the switch (the old holster) and the halfway swap (the draw).
+    lo.select(1);
+    while (lo.switching) step(NO);
+    lo.select(2);
+    while (lo.switching) step(NO);
+    expect(lo.activeId()).toBe("B03");
+    const seen = ids(sink.log);
+    expect(countOf(seen, "BX-holster"), "no holster").toBe(0);
+    expect(countOf(seen, "BX-draw"), "no draw").toBe(0);
+  });
+
+  it("the F10 starts no jet loop and the F06 still hums", async () => {
+    const R = surfRig();
+    R.foamers.spawnCount = 0; // the test owns the population
+    R.foamers.spawnPoints = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    const face = new THREE.Vector3(0, 0, 14);
+    const f10 = R.foamers.spawn(new THREE.Vector3(0, 0, 0), face, "F10")!;
+    const f06 = R.foamers.spawn(new THREE.Vector3(6, 0, 0), face, "F06")!;
+    for (const f of [f10, f06]) {
+      for (const part of f.parts.values()) part.mesh.update();
+    }
+    await new Promise((r) => setTimeout(r, 0));
+    for (let i = 0; i < 10; i++) {
+      R.foamers.update(DT, face);
+      R.world.step();
+      R.gs.update(DT, NO);
+    }
+    // The Floater keeps its hum; the Turbo is silent on the same path.
+    expect(
+      R.sink.loopLog.filter((id) => id === "F06-hum").length,
+      "the F06 hums once",
+    ).toBe(1);
+    expect(
+      R.sink.loopLog.filter((id) => id === "F10-jet").length,
+      "the F10 starts no loop",
+    ).toBe(0);
+    // Breaking the F10's last jet still drops it with one flop.
+    f10.parts.delete("jetL");
+    f10.parts.delete("jetR");
+    for (let i = 0; i < 5; i++) {
+      R.foamers.update(DT, face);
+      R.world.step();
+      R.gs.update(DT, NO);
+    }
+    expect(
+      countOf(ids(R.sink.log), "F10-fall"),
+      "the flop is still heard",
+    ).toBe(1);
+    expect(
+      R.sink.loopLog.filter((id) => id === "F10-jet").length,
+      "and still no loop",
+    ).toBe(0);
+  });
+});
+
 describe("card test 10: B04 loop", () => {
-  it("one loop however long fire is held; the volume follows wheelSpeed and is 0 after the wheels stop", () => {
+  it("PT-04: B04 active starts no rev loop, and its shots still sound", () => {
     const { lo, sink, gs } = makeProbed();
     const step = (fire: boolean) => {
       const c = { ...NO, fireHeld: fire, firePressed: fire };
@@ -681,26 +737,20 @@ describe("card test 10: B04 loop", () => {
     lo.select(1); // to the B04
     while (lo.switching) step(false);
     expect(lo.activeId()).toBe("B04");
-
-    // Hold the trigger across the spin up and beyond.
-    for (let i = 0; i < 15; i++) step(true);
+    // Hold the trigger across the spin up and beyond: no flywheel loop.
+    for (let i = 0; i < 60; i++) step(true);
     expect(
       sink.loopLog.filter((id) => id === "B04-rev-loop").length,
-    ).toBe(1);
-    const loop = sink.loops.get("B04-rev-loop");
-    expect(loop).toBeDefined();
-    // The spin up passes through the middle, and the wheels reach full.
-    expect(loop!.sets.some((s) => s.v > 0.2 && s.v < 0.9)).toBe(true);
-    expect(loop!.sets.some((s) => s.v === 1 && s.r === 1)).toBe(true);
-
-    // Release: the wheels run down over spinDown (1 s) and the volume is
-    // 0 a moment after. The rate parks at its floor (0.6) with the wheels
-    // still. Still exactly one loop for the whole test.
-    for (let i = 0; i < 75; i++) step(false);
-    expect(lo.blasters[1].wheelSpeed).toBe(0);
-    const last = loop!.sets[loop!.sets.length - 1];
-    expect(last.v).toBe(0);
-    expect(last.r).toBeGreaterThanOrEqual(0.6);
-    expect(last.r).toBeLessThanOrEqual(1);
+      "no rev loop while B04 is active",
+    ).toBe(0);
+    expect(
+      countOf(ids(sink.log), "B04-fire"),
+      "B04-fire is kept",
+    ).toBeGreaterThan(0);
+    // And back to the B01: still nothing looped.
+    lo.select(0);
+    while (lo.switching) step(false);
+    for (let i = 0; i < 30; i++) step(false);
+    expect(sink.loopLog.filter((id) => id === "B04-rev-loop").length).toBe(0);
   });
 });
