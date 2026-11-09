@@ -9,13 +9,16 @@ import { DartSystem } from "../../src/weapons/darts";
 import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
 import { FoamerSystem, specFor } from "../../src/foamers/foamers";
 import { armourOf, plateFaces } from "../../src/foamers/armour";
+import type { Foamer } from "../../src/foamers/foamer";
 
 const DT = 1 / 60;
 
 // GAME-10k stage 1: the Seawall's shield. Like the Blocker's (GAME-10e) it
-// is arc armour on the shield parts, but it is complete: inside its arc a
-// dart does no damage and carves nothing, and darts never break it. Darts
-// from the side or the back hit as usual.
+// is arc armour on the shield parts: inside its arc a dart does no damage
+// to the Seawall. PT-07 (Paul, 2026-11-09): it is no longer immune to
+// darts: a front dart wears the plate's own hp and leaves a small mark, and
+// enough of them break it off, the way the parries do. Darts from the side
+// or the back hit as usual.
 
 const SPEC = specFor("F11");
 
@@ -71,12 +74,13 @@ describe("GAME-10k: the Seawall's spec", () => {
     expect(f.parts.has("maceHead")).toBe(true);
   });
 
-  it("armours the shield and its boss across the front, turning darts wholly", () => {
+  it("armours the shield and its boss across the front, turning darts to plate wear", () => {
     for (const id of ["shield", "shieldBoss"]) {
       const a = armourOf(SPEC, id);
       expect(a).not.toBeNull();
       expect(a!.damage).toBe(0);
-      expect(a!.carve).toBe(0);
+      expect(a!.carve).toBe(0.3); // PT-07: a small mark, not nothing
+      expect(a!.wear).toBe(1); // PT-07: the dart's whole damage off the plate
       expect(a!.arcDeg).toBe(120);
     }
     // The body and the mace are not armoured.
@@ -94,22 +98,29 @@ describe("GAME-10k: the Seawall's spec", () => {
 });
 
 describe("GAME-10k: the shield against darts", () => {
-  it("a dart inside the arc does no damage and carves nothing", async () => {
+  it("a dart inside the arc hurts the Seawall not at all but wears the plate", async () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 6);
     const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1), "F11")!;
     const shield = f.parts.get("shield")!;
     await settle(shield.mesh, r.world);
     const voxelsBefore = shield.voxelCount;
+    const hpBefore = shield.hp;
     const healthBefore = f.health;
     const aim = shield.voxelToWorld(new THREE.Vector3(
       shield.spec.size[0] / 2, shield.spec.size[1] / 2, shield.spec.size[2] + 0.5));
     r.darts.fire(new THREE.Vector3(aim.x, aim.y, aim.z + 1), new THREE.Vector3(0, 0, -1), "standard");
     for (let i = 0; i < 120 && r.foamers.stats.hits === 0; i++) tick(r, player);
     expect(r.foamers.stats.hits).toBe(1);
-    expect(f.health).toBe(healthBefore);
-    expect(shield.voxelCount).toBe(voxelsBefore);
-    expect(shield.carveScale).toBe(0);
+    expect(f.health, "the Seawall's health is untouched").toBe(healthBefore);
+    // PT-07: the plate's own hp took the dart's damage (damage 1 x hit 1 x
+    // wear 1), and it still has foam to lose.
+    expect(hpBefore - shield.hp, "the plate wore by the dart's damage")
+      .toBeCloseTo(SPEC.damage.standard, 5);
+    expect(shield.voxelCount, "the mark is small: the plate is still there")
+      .toBeLessThan(voxelsBefore);
+    expect(shield.voxelCount).toBeGreaterThan(0);
+    expect(shield.carveScale).toBe(0.3);
   });
 
   it("a dart from behind hurts", async () => {
@@ -181,6 +192,114 @@ describe("GAME-10k: the combo", () => {
     // Once the windup is over it is purple foam again.
     for (let i = 0; i < 600 && f.state !== "recover" && f.state !== "approach"; i++) tick(r, player);
     expect(chunkMat()).toBe(voxelFoamMaterial());
+  });
+});
+
+// PT-07 (Paul, 2026-11-09): the shield is no longer immune to darts. A
+// front dart still takes nothing off the Seawall, but it wears the plate's
+// own hp, and enough of them break it off as a foam piece, the way a parry
+// break does, with the arc armour gone with it.
+
+describe("PT-07: the shield wears down under front darts", () => {
+  /** One front dart on one part through the system's own hit path. */
+  function dartOnShield(r: ReturnType<typeof rig>, f: Foamer, id: string): void {
+    const part = f.parts.get(id)!;
+    const probe = r.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(0.1, 0.1, 0.1).setTranslation(0.2, 0.2, 0.2),
+      part.body,
+    );
+    const size = part.spec.size;
+    r.darts.onHit({
+      point: part.voxelToWorld(new THREE.Vector3(size[0] / 2, size[1] / 2, size[2] - 0.5)),
+      normal: new THREE.Vector3(0, 0, 1),
+      direction: new THREE.Vector3(0, 0, -1),
+      speed: 25,
+      type: "standard",
+      collider: probe,
+      material: null,
+      shot: null,
+    });
+  }
+
+  /** The F11's shield health in standard darts: its own hp over the wear
+   *  of one standard dart (damage 1 x hit 1 x wear 1). */
+  function shieldDarts(): number {
+    const hp = Math.max(
+      SPEC.partDamage.minHp,
+      Math.round(60 * SPEC.partDamage.kinds.ability.hpShare),
+    );
+    return Math.ceil(hp / (SPEC.damage.standard * SPEC.partDamage.kinds.ability.hit * 1));
+  }
+
+  it("the shield's own health is 15 standard front darts", () => {
+    expect(shieldDarts()).toBe(15);
+  });
+
+  it("fewer darts than that leave the shield on and worn, not broken", async () => {
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1), "F11")!;
+    const healthBefore = f.health;
+    for (let i = 0; i < Math.floor(shieldDarts() / 3); i++) dartOnShield(r, f, "shield");
+    expect(f.parts.has("shield"), "still on").toBe(true);
+    expect(f.parts.get("shield")!.hp, "worn but not through").toBeGreaterThan(0);
+    expect(f.health, "the Seawall never lost health to the shield").toBe(healthBefore);
+    expect(f.health).toBe(f.maxHealth);
+  });
+
+  it("enough front darts break the shield off, and the next one hurts", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 6);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1), "F11")!;
+    const healthBefore = f.health;
+    let n = 0;
+    while (f.parts.has("shield") && n < 40) {
+      dartOnShield(r, f, "shield");
+      n++;
+    }
+    expect(f.parts.has("shield"), "the shield broke off").toBe(false);
+    expect(f.parts.has("shieldBoss"), "its boss went with it").toBe(false);
+    expect(n, "its own health in darts is the bound").toBeLessThanOrEqual(shieldDarts());
+    expect(n, "it took more than one dart").toBeGreaterThan(1);
+    expect(f.health, "none of that came off the Seawall").toBe(healthBefore);
+    // The arc is gone: a dart straight at the helm from the front hurts.
+    const helm = f.parts.get("helm") ?? f.parts.get("head") ?? f.parts.get("body")!;
+    await settle(helm.mesh, r.world);
+    const size = helm.spec.size;
+    const c = helm.voxelToWorld(new THREE.Vector3(size[0] / 2, size[1] / 2, size[2] - 0.5));
+    const before = f.health;
+    r.darts.fire(new THREE.Vector3(c.x, c.y, c.z + 1.5), new THREE.Vector3(0, 0, -1), "standard");
+    for (let i = 0; i < 120 && f.health === before; i++) tick(r, player);
+    expect(f.health, "the next front dart hurt the Seawall").toBeLessThan(before);
+  });
+
+  it("darts at the shieldBoss wear it too, and the boss breaking leaves the shield", async () => {
+    const r = rig();
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 1), "F11")!;
+    const boss = f.parts.get("shieldBoss")!;
+    expect(boss.spec.kind, "the boss is a detail part with its own health")
+      .toBe("detail");
+    const healthBefore = f.health;
+    let n = 0;
+    while (f.parts.has("shieldBoss") && n < 40) {
+      dartOnShield(r, f, "shieldBoss");
+      n++;
+    }
+    expect(f.parts.has("shieldBoss"), "the orange weak point broke off").toBe(false);
+    expect(f.health).toBe(healthBefore);
+    expect(f.health).toBe(f.maxHealth);
+  });
+
+  it("the two-parry break still works after the wear rule", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = r.foamers.spawn(new THREE.Vector3(0, 0, 1.4), player, "F11")!;
+    for (const p of f.parts.values()) await settle(p.mesh, r.world);
+    r.foamers.parryAttack(f);
+    expect(f.parts.has("shield"), "one parry: still on").toBe(true);
+    while (f.state === "stagger") tick(r, player);
+    r.foamers.parryAttack(f);
+    expect(f.parts.has("shield"), "two parries: off").toBe(false);
+    expect(f.parts.has("shieldBoss")).toBe(false);
   });
 });
 

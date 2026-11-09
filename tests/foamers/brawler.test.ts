@@ -260,7 +260,9 @@ describe("the F07 foam sword (GAME-10i stage 1)", () => {
     // The hilt and the cross guard fell off with it (they are its children).
     expect(f.parts.has("swordHilt")).toBe(false);
     expect(f.parts.has("swordGuard")).toBe(false);
-    expect(f.health, "the breaks hurt too").toBeLessThan(before);
+    // PT-07 (Paul, 2026-11-09): a hit on a weapon part wears that part
+    // only, never the Foamer's health.
+    expect(f.health, "the sword's damage never came off the health").toBe(before);
     // The sword is a weapon part, so it has its own health, the way the
     // Crawler's gun does, and the Brawler survives its loss.
     const g = brawler(r, 8, player);

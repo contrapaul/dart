@@ -2076,8 +2076,15 @@ export class FoamerSystem {
       (wp && wp.parts.includes(part.spec.id) ? wp.damage : 1) *
       wallWeakMultiplier(f.spec, part.spec.id);
     // The card's Damage: P.hp -= d * hit; foamer.health -= d * hit * total.
+    // PT-07 (Paul, 2026-11-09): a weapon part's kind total is 0, so a hit
+    // on a club, a mace or a sword wears that part and never the health.
+    // PT-07: a dart the arc armour turns away does nothing to the Foamer,
+    // but it wears the plate: the plate's own hp takes the armour's wear
+    // share of the dart's damage, and enough of them break it off.
+    const shielded = armour?.arcDeg !== undefined && covered;
+    const wear = shielded ? d * (armour?.wear ?? 0) : 0;
     const healthBefore = f.health;
-    part.hp -= dmg;
+    part.hp -= dmg + wear;
     f.health -= dmg * kind.total;
     // PT-03: every dart's damage counts toward the impact window; there is
     // no popTypes list any more.
@@ -2097,7 +2104,6 @@ export class FoamerSystem {
     this.paintWound(f, part, hit);
     // GAME-10e: a dart that the Blocker shield turns away thuds into the
     // foam plate rather than into the Foamer.
-    const shielded = armour?.arcDeg !== undefined && covered;
     sound(this, shielded ? "shield-hit" : "wound", f, partPoint(part));
     // Breaking: hp <= 0, or the carve took the part to wearBreak of its
     // starting voxels. The body never breaks; wear from slow chipping is
