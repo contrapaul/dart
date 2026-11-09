@@ -760,6 +760,24 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-09: PT-08, blaster hold positions (Claude Opus 5.5)
+
+- Paul: blasters are held too far forward; B02 Musketeer is the closest
+  to correct and looks larger than the rest; B05 Shrike is so far out
+  two hands could not hold it.
+- Measured: scales ran 0.62 to 0.85 and triggers sat 33 to 51 cm in
+  front of the eye (B05 worst: 0.62 at 51 cm), so the rifles looked
+  small and floating.
+- Every blaster's `viewmodel` is now B02's: position (0.18, -0.22,
+  -0.32), scale 0.85, its own small rotation kept. They keep their true
+  relative sizes (B05 is long, B02 short) and all sit low right, the
+  fore-end within a left hand's reach. A first try at scale 1 and 28 cm
+  was far too big (a live trial had not taken the scale; the page
+  resets it each frame).
+- Seen in the browser for all eight. Not checked: a 16:9 window (the
+  pane is 4:3), and whether the recoil and sway now clip the screen edge.
+- 934 tests pass (2 skipped), tsc and build green.
+
 ### 2026-11-09: Paul's second playtest, four cards (Claude Opus 5.5)
 
 Paul's notes: the F10 jet drone, loud footsteps, the weapon switch sound,
