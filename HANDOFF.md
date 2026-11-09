@@ -18,6 +18,11 @@ by key until game.ts gains a fifth weapon slot (left for the review).
 
 ## Status
 
+PT-09 code done 2026-11-09 by DeepSeek V4.1 Flash via Pi: the pointer
+lock taken inside the click for Firefox, and a mesher pool that always
+finishes a part. Branch `pt-09`, not reviewed, not merged, not pushed. Not
+checked in Firefox: see the top log entry.
+
 PT-04 done 2026-11-09 by Qwen 3.8 Flash Next via Pi (dgx-spark): the sound
 cuts (F10 jet loop, weapon switch, B04 flywheel loop, Foamer fizz-out),
 footsteps at 20%, and B06 firing with no spin-up delay, on `pt-04`, not
@@ -770,6 +775,82 @@ github.com/contrapaul/dart (public), MIT licence.
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
 
 ## Log
+
+### 2026-11-09: PT-09 review, merged (Claude Opus 5.5): Firefox
+
+- DeepSeek: pointer lock now takes the plain form inside the click after
+  any refusal (promise, throw or `pointerlockerror`), raw input kept
+  where it worked; the mesher pool meshes a job on the main thread when
+  its worker errors, its reply cannot be cloned or no worker starts,
+  with one `console.warn` naming the cause. 11 new tests with fakes.
+- **Firefox tested headless here** (Firefox 159, macOS, WebDriver BiDi
+  from a small Node script): current main, the PT-09 build and the live
+  site all load the range and draw all 16 Foamers with no console
+  errors. So Paul's "mobs do not fully load" did not reproduce on this
+  Mac; his Firefox differs (version, OS, privacy settings or an
+  extension). The fallback covers a worker failure there. Pointer lock
+  cannot be tested headless.
+- The live page takes about 20 to 30 s to start in a fresh browser (it
+  loads about 4.7 MB of blaster models before the game starts), which
+  may read as "not loading".
+- **For Paul:** the live page also loads
+  `static.cloudflareinsights.com/beacon.min.js` (Cloudflare Web
+  Analytics, injected by Cloudflare, not in the repo). That is an
+  outside host, against the no-external-hosts rule. It is turned off in
+  the Cloudflare dashboard (Web Analytics for the site), not in code.
+- Known limit: in a browser that reports a refusal only by event, the
+  first click fails and the second locks.
+- 980 tests pass (2 skipped), tsc and build green.
+
+### 2026-11-09: PT-09, Firefox pointer lock and Foamers that finish loading (DeepSeek V4.1 Flash via Pi)
+
+Card: `tasks/PT-09.md`. Paul: the range does not let him look with the
+mouse in Firefox, and Foamers do not finish loading there. Chrome is fine.
+
+- **Mouse.** `Input.requestLock` called
+  `requestPointerLock({ unadjustedMovement: true })` and only asked for the
+  plain lock inside the promise's `.catch`. Firefox has no raw mouse input:
+  it either returns `undefined` and fires `pointerlockerror`, or rejects.
+  Either way the fallback arrived after the click, once the user activation
+  could be gone, so Firefox refused it and the player never got the lock.
+  My belief: this was the cause, and I am fairly sure, not certain, because
+  I could not run Firefox. Now a refusal (rejected promise, synchronous
+  throw, or `pointerlockerror` before raw input has ever been granted) sets
+  `plainLock`, and `requestLock` asks for the plain form directly inside the
+  click. `pointerlockchange` sets `rawWorked` when a raw lock is granted, so
+  Chrome and Safari keep raw input and the fast re-lock refused after Esc is
+  not mistaken for a refusal of raw input.
+- **Foamers.** `MesherPool` resolved a job only from `onmessage`, with no
+  `onerror` and no `onmessageerror`: a worker that failed to start, threw,
+  or answered with something that could not be cloned left the job pending
+  forever, the part's `VolumeMesh` stayed `busy`, and it was never drawn and
+  had no collider. My belief: this was the cause of Foamers that never
+  finish loading, either because a module worker failed in Firefox or
+  because one worker error stuck the whole part. Also fairly sure, not
+  certain; I found no Firefox-only fault in the worker's imports (no JSON
+  is imported by `mesher.worker.ts`; `materials.ts` imports
+  `data/materials.json`, which Vite inlines into the worker bundle) and no
+  buffer listed twice in either transfer list. Now each slot keeps its job;
+  `onerror` and `onmessageerror` warn once with the cause, terminate and
+  drop that worker, and mesh the job here with the same `greedyMesh` call;
+  when no worker is left every job is meshed here. `pump` keeps a copy of
+  the padded buffer before transferring it, and a late reply from a dropped
+  worker is ignored by job id. A `new Worker` that throws (no module
+  workers) is caught and the pool goes straight to the main thread.
+- Tests: `tests/core/input-lock.test.ts` (undefined return plus
+  `pointerlockerror`, a rejected promise, a synchronous throw, the next
+  click straight to plain, raw-only in a browser that takes it, and the Esc
+  refusal not switching a raw browser) and `tests/voxel/mesher-pool.test.ts`
+  (a worker `onerror` gives the same mesh on the main thread, a
+  `messageerror` ditto, construction that throws still meshes, a normal
+  worker path unchanged, a stale reply ignored). 980 pass, 2 skipped; tsc
+  and build green.
+- What only Paul can check in Firefox: that the first click gives the lock
+  and that the mouse looks without the need for a second click; that the
+  console shows no `mesher:` warning when a Foamer loads (a warning means a
+  worker failed and a part was meshed on the main thread, which works but is
+  slower); and that Foamers are drawn and can be hit. Nothing here was seen
+  by eye (no browser, cannot view images).
 
 ### 2026-11-09: PT-07 review, merged (Claude Opus 5.5): weapons and the F11 shield
 
