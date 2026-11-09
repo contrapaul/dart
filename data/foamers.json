@@ -63,7 +63,8 @@
         "weapon": {
           "hpShare": 0.25,
           "hit": 1,
-          "total": 0.5
+          "total": 0,
+          "_doc": "PT-07 (Paul, 2026-11-09): a hit on a weapon part wears that part only, never the Foamer's health."
         },
         "ability": {
           "hpShare": 0.25,
@@ -658,21 +659,23 @@
     },
     "F11": {
       "rig": "F11",
-      "_note": "GAME-10k: the Seawall. A 3.4 m armoured knight (CONTENT-PLAN 3.3): it walks in like the F01 (the melee brain), slow, and its shield is armour on the shield and shieldBoss parts across the front arc: a dart inside it does no damage and carves nothing, and darts can never break it. Darts from the side or back hit as usual. Health 60 and speed 1.4 come from the rig. Stage 1 keeps a plain bonk; the three-hit combo comes in stage 2.",
+      "_note": "GAME-10k: the Seawall. A 3.4 m armoured knight (CONTENT-PLAN 3.3): it walks in like the F01 (the melee brain), slow, and its shield is armour on the shield and shieldBoss parts across the front arc: a dart inside it does no damage to the Seawall, but (PT-07, Paul 2026-11-09) it wears the plate and enough of them break it off. Darts from the side or back hit as usual. Health 60 and speed 1.4 come from the rig. Stage 1 keeps a plain bonk; the three-hit combo comes in stage 2.",
       "turnRate": 2.2,
       "attackRange": 2.2,
       "armour": {
         "shield": {
           "damage": 0,
-          "carve": 0,
+          "carve": 0.3,
+          "wear": 1,
           "arcDeg": 120
         },
         "shieldBoss": {
           "damage": 0,
-          "carve": 0,
+          "carve": 0.3,
+          "wear": 1,
           "arcDeg": 120
         },
-        "_doc": "GAME-10k: the tower shield (the weak point, orange). Inside its arcDeg front a dart is turned away whole: no damage, no carve. It is never broken by darts; only the finisher's parries break it (stage 2)."
+        "_doc": "GAME-10k: the tower shield (the weak point, orange). Inside its arcDeg front a dart does no damage to the Seawall, but PT-07: it wears the plate. wear is the share of the dart's damage taken off the part's own hp, carve the small mark it leaves. When the part's hp runs out it breaks off as a foam piece and the arc armour goes with it; the finisher's parries break it too (stage 2)."
       },
       "attacks": [
         {

@@ -252,6 +252,7 @@ describe("the F08 wall (GAME-10h stage 2)", () => {
         part.body,
       );
       f.health = f.maxHealth;
+      part.hp = part.maxHp; // PT-07: a weapon part never takes health off the Foamer
       f.state = "approach";
       r.darts.onHit({
         point: part.voxelToWorld(new THREE.Vector3(10, 10, 10)),
@@ -263,10 +264,12 @@ describe("the F08 wall (GAME-10h stage 2)", () => {
         material: null,
         shot: null,
       });
-      return f.maxHealth - f.health;
+      // PT-07: a weapon part's damage comes off its own hp, not the
+      // Trawler's health, so the part's hp is the measure for both.
+      return part.maxHp - part.hp;
     };
-    // leg and launcher are kinds with the same hit and total shares
-    // (partDamage in the base spec), so the only difference is the weak point.
+    // leg and launcher are kinds with the same hit share (partDamage in the
+    // base spec), so the only difference is the weak point.
     const leg = hit("legL");
     const launcher = hit("launcherR");
     expect(leg, "a dart on a leg hurts").toBeGreaterThan(0);

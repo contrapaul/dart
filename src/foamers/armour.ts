@@ -16,6 +16,10 @@ export interface ArmourPart {
   carve: number;
   /** GAME-10e: degrees of the front that the plate covers; unset means all. */
   arcDeg?: number;
+  /** PT-07: the share of a turned dart's damage taken off the plate's own
+   *  hp (the F11's shield wears down under darts and breaks off). Only
+   *  meaningful on an arc plate, where a covered dart does no damage. */
+  wear?: number;
 }
 
 /** The armour on one part id, or null when the part is not armoured. */
@@ -23,7 +27,7 @@ export function armourOf(spec: FoamerSpec, partId: string): ArmourPart | null {
   const table = (spec as { armour?: Record<string, Partial<ArmourPart>> }).armour;
   const a = table?.[partId];
   if (!a || partId.startsWith("_")) return null;
-  return { damage: a.damage ?? 1, carve: a.carve ?? 1, arcDeg: a.arcDeg };
+  return { damage: a.damage ?? 1, carve: a.carve ?? 1, arcDeg: a.arcDeg, wear: a.wear };
 }
 
 /**
