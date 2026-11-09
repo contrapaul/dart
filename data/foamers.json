@@ -10,7 +10,9 @@
       "precision": 8,
       "precisionHeavy": 10,
       "launcher": 4,
-      "ball": 1.5
+      "ball": 1.5,
+      "buck": 11,
+      "b01slug": 6
     },
     "minDamageSpeed": 8,
     "turnRate": 6,

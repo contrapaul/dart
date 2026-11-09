@@ -259,7 +259,7 @@ describe("GAME-09 fire modes, mods, reload rules", () => {
     expect(darts.n).toBe(s.dartsPerShot * 2);
   });
 
-  it("10. mods: B01 double gives 6 darts per shot from muzzles 1 to 6 and magSize 12; B01 slug fires one slug dart", () => {
+  it("10. mods: B01 double gives 6 darts per shot from muzzles 1 to 6 and magSize 12; B01 slug fires one b01slug dart (PT-03: its own type, pierces one Foamer)", () => {
     {
       const { b, darts } = make("B01", ["double"]);
       const s = b.spec;
@@ -275,13 +275,13 @@ describe("GAME-09 fire modes, mods, reload rules", () => {
     {
       const { b, darts } = make("B01", ["slug"]);
       const s = b.spec;
-      expect(s.dartType).toBe("slug");
+      expect(s.dartType).toBe("b01slug");
       expect(s.dartsPerShot).toBe(1);
       expect(s.spreadDeg).toBe(0);
       expect(b.mag).toBe(s.magSize);
       step(b, PRESS);
       expect(darts.n).toBe(1);
-      expect(darts.types[0]).toBe("slug");
+      expect(darts.types[0]).toBe("b01slug");
     }
   });
 

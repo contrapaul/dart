@@ -12,7 +12,7 @@
     "viewmodel": { "position": [0.2, -0.26, -0.36], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.04, "tiltDeg": 5, "return": 12, "triggerDeg": 15, "pumpTravel": 0.06, "magDrop": 0.15 },
     "mods": {
-      "slug": { "dartType": "slug", "dartsPerShot": 1, "spreadDeg": 0,
+      "slug": { "_note": "PT-03 stage 2 (CONTENT-PLAN 4: slugs punch holes): B01 uses its own dart type, b01slug, which pierces one Foamer. B02 heavy keeps the plain slug, so it does not pierce.", "dartType": "b01slug", "dartsPerShot": 1, "spreadDeg": 0,
         "chunk": { "_note": "GAME-09b: the slug is one heavy dart, so it carves a smaller hole than the Leviathan's close blast; PT-03 dropped rangeMetres (the impact rule reads its own distance now).", "carveRadius": 0.3, "push": 1.6 } },
       "double": { "dartsPerShot": 6, "magSize": 12, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4", "muzzle_5", "muzzle_6"], "show": ["mod_double"] }
     }
@@ -64,14 +64,17 @@
   },
   "B03": {
     "name": "Leviathan", "model": "/models/blasters/B03.glb",
-    "mode": "break", "dartType": "standard", "dartsPerShot": 8, "spreadDeg": 7,
+    "mode": "break", "dartType": "buck", "dartsPerShot": 8, "spreadDeg": 7,
+    "impact": {
+      "_note": "PT-03 (Paul: point blank shots did not feel nearly as catastrophic as desired): the Leviathan is the game's close-range weapon, so its darts count as point blank out to 3 m and fall to no impact at 12 m. With these, point blank one barrel on an F01 is a big pop and both barrels on an F05 chunk it. Start values for Paul to tune on the range.",
+      "fullMetres": 3, "zeroMetres": 12
+    },
     "magSize": 2, "reserveMax": 24, "reserveStart": 12,
     "fireInterval": 0.25, "reloadTime": 1.6, "autoReload": true,
     "muzzles": ["muzzle_1", "muzzle_2"],
     "viewmodel": { "position": [0.2, -0.24, -0.38], "rotationDeg": [2, 5, 0], "scale": 0.75 },
     "motion": { "kick": 0.06, "tiltDeg": 8, "return": 8, "triggerDeg": 15, "breachOpenDeg": -40, "latchDeg": 30 },
     "chunk": { "_note": "GAME-09b: eight darts at once, close in. carveRadius is the hole's radius in metres at no impact, the biggest carve in the game (PT-03 dropped rangeMetres: the impact block now carries the distance). push multiplies the ragdoll's kill push.", "carveRadius": 0.35, "push": 2.0 },
-    "impact": { "_note": "PT-03 (Paul: point blank shots did not feel nearly as catastrophic as desired): the Leviathan is the game's close-range weapon, so its darts count as point blank out to 3 m and fall to no impact at 12 m. With these, point blank one barrel on an F01 is a big pop and both barrels on an F05 chunk it. Start values for Paul to tune on the range.", "fullMetres": 3, "zeroMetres": 12 },
     "mods": {
       "both": { "bothBarrels": true },
       "quad": { "magSize": 4, "muzzles": ["muzzle_1", "muzzle_2", "muzzle_3", "muzzle_4"], "show": ["mod_quad"], "hide": ["fore-end"] }
