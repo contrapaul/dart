@@ -185,12 +185,14 @@ function targetOf(v: VoxelVolume): ExplosionTarget {
   };
 }
 
-/** Fake Foamer system: blastDamage records the damage, knockStep records
- *  the shove (dir times the want it was asked for, clipped here to want). */
+/** Fake Foamer system: blastDamage records the damage, blastKnock records
+ *  the shove (its direction and the speed it asked for at this falloff).
+ *  PT-05: the shove is a speed the Foamer spends over time, not a distance
+ *  moved in one call. */
 function fakeFoamers(centres: THREE.Vector3[]) {
   const list = centres.map((c) => ({ centre: c }));
   const damaged = new Map<object, number>();
-  const shoved = new Map<object, { x: number; z: number; moved: number }>();
+  const shoved = new Map<object, { x: number; z: number; speed: number }>();
   return {
     list,
     damaged,
@@ -198,10 +200,16 @@ function fakeFoamers(centres: THREE.Vector3[]) {
     blastDamage(f: { centre: THREE.Vector3 }, amount: number) {
       damaged.set(f, (damaged.get(f) ?? 0) + amount);
     },
-    knockStep(f: { centre: THREE.Vector3 }, dirX: number, dirZ: number, want: number) {
-      // A wall would clip this; here there is none, so the full want.
-      shoved.set(f, { x: dirX, z: dirZ, moved: want });
-      return want;
+    blastKnock(
+      f: { centre: THREE.Vector3 }, point: THREE.Vector3, fall: number,
+      profile: { knockSpeed?: number },
+    ) {
+      const d = Math.hypot(f.centre.x - point.x, f.centre.z - point.z) || 1e-3;
+      shoved.set(f, {
+        x: (f.centre.x - point.x) / d,
+        z: (f.centre.z - point.z) / d,
+        speed: (profile.knockSpeed ?? 0) * fall,
+      });
     },
   };
 }
@@ -240,46 +248,48 @@ describe("GAME-09f: the launcher blast", () => {
     expect(d.get(r.foamers.list[0])).toBeCloseTo(P.damageCentre, 6);
     expect(d.get(r.foamers.list[1])).toBeCloseTo(P.damageCentre / 2, 5);
     expect(d.has(r.foamers.list[2])).toBe(false);
-    // Shove: each one hit pushed directly away from the blast, centre
-    // full pushMetres, the half-range one half. None outside.
+    // Shove: each one hit shoved directly away from the blast, centre at
+    // the full knockSpeed, the half-range one half of it. None outside.
     const s = r.foamers.shoved;
-    expect(s.get(r.foamers.list[0])!.moved).toBeCloseTo(P.pushMetres, 6);
+    expect(s.get(r.foamers.list[0])!.speed).toBeCloseTo(P.knockSpeed, 6);
     // The centre one sits on the blast point: no direction to push (it is
     // the half-range one, straight out along +x, that shows the away
     // direction).
     expect(s.get(r.foamers.list[1])!.x).toBeCloseTo(1, 6);
     expect(s.get(r.foamers.list[1])!.z).toBeCloseTo(0, 6);
-    expect(s.get(r.foamers.list[1])!.moved).toBeCloseTo(P.pushMetres / 2, 5);
+    expect(s.get(r.foamers.list[1])!.speed).toBeCloseTo(P.knockSpeed / 2, 5);
     expect(s.has(r.foamers.list[2])).toBe(false);
   });
 
-  it("8. the shove stops at a wall: knockStep's return is what moved, and the player is never in the list", () => {
-    // The system asks knockStep for the want and never moves anyone
-    // itself: a fake that returns 0 (a wall right behind) must be the
-    // only thing that decides how far a Foamer gets.
+  it("8. a Foamer on the blast's own centre takes the damage with no shove direction, and the player is never in the list", () => {
+    // PT-05: the shove is a speed the Foamer system spends through its own
+    // movement controller, so a wall is its stop, not the blast's. Here the
+    // blast only has to hand the speed over; the Foamer's step does the
+    // moving (tests/foamers/blast.test.ts covers that, wall included).
     const P = explosionTuning.profiles.launcher;
     const at = new THREE.Vector3(1.2, 1.2, 1.2);
     const c = at.clone();
     const r = blastRig([c]);
-    r.foamers.knockStep = () => 0; // against a wall
     r.explosion.explode(at, "launcher");
     expect(r.foamers.damaged.size).toBe(1); // still damaged where it stood
     // The player: the system only ever touches its foamers list, and the
     // pages never put the player in it (explosion.test.ts 3 covers the
     // same rule for the dart profile).
     expect(r.foamers.list.length).toBe(1);
-    expect(P.pushMetres).toBeGreaterThan(0);
+    expect(P.knockSpeed).toBeGreaterThan(0);
+    expect(P.knockDecay).toBeGreaterThan(0);
   });
 
-  it("9. B06 and B05 blasts keep the dart profile's numbers", () => {
+  it("9. B06 and B05 blasts use the dart profile's numbers", () => {
     const D = explosionTuning.profiles.dart;
     const at = new THREE.Vector3(1.2, 1.2, 1.2);
     const c = at.clone();
     const r = blastRig([c]);
-    r.explosion.explode(at); // no profile: the old call, the dart numbers
+    r.explosion.explode(at); // no profile: the dart numbers
     expect(r.foamers.damaged.get(r.foamers.list[0])).toBeCloseTo(D.damageCentre, 6);
-    // The dart profile does not shove (B05/B06 blasts never pushed).
-    expect(r.foamers.shoved.size).toBe(0);
+    // PT-05 stage 3: the dart profile is a small launcher blast now, so it
+    // shoves as well.
+    expect(r.foamers.shoved.get(r.foamers.list[0])!.speed).toBeCloseTo(D.knockSpeed, 6);
     // Its carve is the original 0.6 m: 0.8 m out survives.
     expect(r.volume.get(12, 12, 12 + Math.round(0.8 / 0.1))).not.toBe(0);
   });
