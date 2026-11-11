@@ -4,6 +4,49 @@ Running record of what is built, what was decided, and what the next session
 should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 `CLAUDE.md`.
 
+CI gate and smoke check, 2026-11-12 (session by Claude via pi). Paul
+asked for the CI workflow and `tools/smoke.mjs`, and said performance has
+been good apart from solved bugs, with graphics options for older machines
+needed later but not now. So:
+
+- `.github/workflows/check.yml` (new) runs on every push to `main` and
+  every pull request: `npm ci`, `npm run build`, `npm test`, then
+  `tools/check-no-em-dash.mjs` and `tools/check-no-remote.mjs`, then
+  installs Chromium and runs `tools/smoke.mjs` against `dist/`. This is
+  the gate Cloudflare's own build does not have: a red suite used to go
+  live.
+- `tools/smoke.mjs` (new) boots all four pages (`index.html`,
+  `arena.html`, `range.html`, `sandbox.html`) in Chromium over the
+  DevTools protocol, using the global `WebSocket` that Node 22+ has, so it
+  needs no new dependency. It serves `dist/` itself, or takes
+  `SMOKE_URL`. It fails on a boot error, on a page that never reaches its
+  ready text, on a missing or CSS-hidden canvas, and on a canvas that is
+  one flat colour: the picture is measured from a real screenshot,
+  decoded with `zlib`, because a WebGL canvas reads back empty through
+  `drawImage`.
+- `tools/check-no-remote.mjs` (new) fails when the built output fetches
+  from another host (an element `src`/`href`, a `fetch`/`Worker`/`Image`,
+  a CSS `url()`). `tools/check-no-em-dash.mjs` (new) fails on U+2014 in
+  the files we write. Both were written as scripts rather than grep lines
+  because `grep $'\u2014'` does not survive a YAML file.
+- `package.json` gained `npm run smoke` and `npm run check` (build, test
+  and the two text rules), so a local run matches CI.
+- Proven, not assumed: the live site passes all four pages
+  (`SMOKE_URL=https://dart.contrapaul.com`) and `dist/` passes locally;
+  deleting `B08.glb` fails `arena.html` with the boot error text; a
+  `canvas{visibility:hidden}` rule fails with "the canvas is hidden by
+  CSS"; a Google Fonts `<link>` fails the remote check; an em dash in a
+  test file fails the dash check. `npm run check` is green: build clean,
+  144 files / 989 passed / 2 skipped, no em dashes, no remote fetches.
+- Not verified: the workflow has never run on GitHub (nothing is pushed
+  yet), so the Linux paths in `smoke.mjs` (a Playwright Chromium under
+  `~/.cache/ms-playwright` or `/ms-playwright`, SwiftShader for WebGL) are
+  reasoned, not observed. First push to `main` is the test of that.
+- Still open from before: QA-01 on Paul's base Apple Silicon Mac with
+  numbers in this file, then the voxel go/no-go. Graphics options for
+  older machines are recorded as OPS-04 in PLAN.md section 12 and not
+  started.
+
 B08 named and wired, boot errors, model cache rule, 2026-11-12 (session
 by Claude via pi). Paul's decision, given this session: the 2026-11-10
 rebuild he picked is DeepSeek's, he renamed `art/blasters/B08-pi/` to
@@ -126,6 +169,12 @@ once Paul approves the palette. Not seen by eye in the game engine;
 the renders were checked by image only.
 
 ## Status
+
+CI gate and smoke check done 2026-11-12 by Claude via pi, on `main` with
+the B08 rename and the boot errors, none of it pushed. `.github/workflows/
+check.yml` gates the build and `tools/smoke.mjs` boots all four pages and
+checks there is a picture. The workflow has not run on GitHub yet. QA-01
+(P0 performance) and the voxel go/no-go are still open.
 
 PT-09 code done 2026-11-09 by DeepSeek V4.1 Flash via Pi: the pointer
 lock taken inside the click for Firefox, and a mesher pool that always
@@ -882,6 +931,15 @@ github.com/contrapaul/dart (public), MIT licence.
   `pointerlockchange`, then dispatch keyboard and mouse events.
 - **The dev server is started from the workspace launch config**
   (`GitHub/.claude/launch.json`, entry `dart`), not one inside this repo.
+- **A WebGL canvas reads back empty through `drawImage`.** The drawing
+  buffer is cleared once the frame is presented, so a canvas probe finds
+  one flat colour even when the game drew fine. `tools/smoke.mjs` takes a
+  real screenshot and decodes the PNG instead; copy that if you need to
+  check the picture again.
+- **`grep $'\u2014'` does not survive a YAML file.** The em dash check is
+  `tools/check-no-em-dash.mjs` for that reason.
+- **A check that has never failed proves nothing.** Every gate added on
+  2026-11-12 was made to fail once on purpose before it was trusted.
 
 ## Log
 

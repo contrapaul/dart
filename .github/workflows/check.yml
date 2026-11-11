@@ -1,0 +1,72 @@
+name: check
+
+# Build and test on every push and pull request. The deploy itself is
+# Cloudflare's: a push to main rebuilds and serves dist/, with no gate in
+# front of it. This job is that gate, so a red suite cannot go live.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # tsc --noEmit, vite build, and the inlined-wasm guard.
+      - run: npm run build
+
+      - run: npm test
+
+      # The CLAUDE.md rules no compiler checks: no em dash, and nothing
+      # fetched from another host.
+      - run: node tools/check-no-em-dash.mjs
+      - run: node tools/check-no-remote.mjs
+
+      # Boot every page in Chromium and prove there is a picture. The runner
+      # has no GPU, so SwiftShader draws; that is enough to catch a broken
+      # bundle, a 404 model or a renderer that never started.
+      - name: install Chromium
+        run: npx --yes playwright@1 install --with-deps chromium
+
+      - name: smoke check
+        run: node tools/smoke.mjs
+
+  # The live site, after Cloudflare has had time to rebuild and serve the
+  # same commit. Retried because the build is not instant and a first
+  # request during the switch can catch the old or a half-written deploy.
+  live:
+    needs: check
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: install Chromium
+        run: npx --yes playwright@1 install --with-deps chromium
+
+      - name: smoke check the live site
+        run: |
+          sleep 90
+          for attempt in 1 2 3; do
+            echo "attempt $attempt"
+            if SMOKE_URL=https://dart.contrapaul.com node tools/smoke.mjs; then
+              exit 0
+            fi
+            sleep 60
+          done
+          echo "::error::The live site did not pass after three attempts."
+          exit 1

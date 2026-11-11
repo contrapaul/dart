@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build && node tools/check-no-inlined-wasm.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke": "node tools/smoke.mjs",
+    "check": "npm run build && npm test && node tools/check-no-em-dash.mjs && node tools/check-no-remote.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d": "0.21.0",
