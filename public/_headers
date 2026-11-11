@@ -7,3 +7,9 @@
 # Vite puts a content hash in every filename under /assets: cache hard.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Model names carry no hash (data/blasters.json points at B01.glb and so on),
+# so a rebuilt blaster lands on the same URL. Revalidate every time; the
+# browser keeps the body and only re-downloads when the file changed.
+/models/*
+  Cache-Control: public, max-age=0, must-revalidate

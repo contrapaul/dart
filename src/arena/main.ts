@@ -4,6 +4,8 @@
 // settings, sounds, the loop) is shared with the test course in src/game/
 // (ENG-13); this page is its level file, the arena's own extras in
 // src/arena/extras.ts, and nothing else.
+// First import on purpose: a boot that fails says so on the overlay.
+import "../core/boot-errors";
 import { validateLevel } from "../level/validate";
 import { createGame } from "../game/game";
 import { arenaExtras, buildArena, type ArenaBuilt } from "./extras";

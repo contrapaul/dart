@@ -1,3 +1,5 @@
+// First import on purpose: a boot that fails says so on the overlay.
+import "./core/boot-errors";
 import * as THREE from "three";
 import { VoxelVolume } from "./voxel/chunk";
 import { materialId } from "./voxel/materials";

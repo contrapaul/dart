@@ -1,3 +1,5 @@
+// First import on purpose: a boot that fails says so on the overlay.
+import "../core/boot-errors";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { createRenderer } from "../render/scene";

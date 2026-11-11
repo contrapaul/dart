@@ -4,6 +4,8 @@
 // The frame and update steps must not allocate: every scratch vector lives
 // at module scope, the stats hook reuses the loop's one records, and
 // auto-strafe writes one reused object.
+// First import on purpose: a boot that fails says so on the overlay.
+import "../core/boot-errors";
 import * as THREE from "three";
 import { createRenderer } from "../render/scene";
 import { createPhysics } from "../physics/world";
