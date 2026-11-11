@@ -4,6 +4,98 @@ Running record of what is built, what was decided, and what the next session
 should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 `CLAUDE.md`.
 
+B08 named and wired, boot errors, model cache rule, 2026-11-12 (session
+by Claude via pi). Paul's decision, given this session: the 2026-11-10
+rebuild he picked is DeepSeek's, he renamed `art/blasters/B08-pi/` to
+`art/blasters/B08/` and deleted the other candidates, and B08 should be
+that blaster. The rename had landed on disk but not in the repo, so the
+work finished it:
+
+- Assets: `public/models/blasters/B08.glb` is now the approved build
+  (344,068 bytes, 7,622 tris, 4 materials, nodes `body`, `barrels`,
+  `barrels_2`, `mag`, `trigger`, `mod_twin`, `muzzle_1`, `muzzle_2`). The
+  old 990,444-byte hopper build that held that name and the runner-up
+  `B08-1cat.glb` are deleted, so no stale copy can be picked up.
+- Code and data: `art/blasters/B08/build.py` writes `B08.glb` into
+  `art/blasters/B08/renders/`; `data/blasters.json` B08 `model` is
+  `/models/blasters/B08.glb` and its `_note` names the new paths. The
+  twin wiring (`show: ["mod_twin"]`, `muzzles: ["muzzle_1", "muzzle_2"]`)
+  is as it was.
+- New guard: `tests/weapons/model-files.test.ts` fails when any blaster's
+  `model` is not a file in `public/`, and when two blasters share one
+  model. Before this, a rename like this one could land the data without
+  the file: the page then died on a 404 that Cloudflare's SPA fallback
+  turns into 200 text/html, so nothing said why.
+- Seen in a browser at last, headless Chromium against the built site:
+  `/arena.html` reaches "Click to play", takes the pointer lock, and draws
+  the Firehose in hand (six barrels, side magazine, handle over the body,
+  HUD reads `AMMO 120 / 120`). Screenshot taken. Still unseen by eye: the
+  spin at `wheelSpin` 60 rev/s (a data value to tune on the range), the
+  reload, and the Twin mod's second cluster in play.
+- Boot errors: `src/core/boot-errors.ts`, imported first by all four page
+  modules, puts the reason into `#status` ("Could not start: <reason>.
+  Reload the page to try again.") and logs it. Proven both ways in
+  headless Chromium: with `B08.glb` removed the overlay said
+  `Could not start: fetch for ".../models/blasters/B08.glb" responded
+  with 404: File not found.`; with it back, the game booted clean. All
+  four pages boot with no console exceptions.
+- `public/_headers`: `/models/*` now sends `max-age=0, must-revalidate`
+  (model names carry no hash; a rebuilt blaster lands on the same URL and
+  had no rule at all).
+- Docs: `design/blasters/B08.md` rewritten to the approved design (the
+  old file described the hopper brief Paul rejected), with the restated
+  brief quoted verbatim, the as-built dimensions, the node table and the
+  motion notes for ART-05. `PLAN.md` rows and decisions log updated.
+
+Verified: `npm test` 144 files, 989 passed, 2 skipped; `npm run build`
+clean (tsc, vite, the wasm guard). Not done: the changes are uncommitted
+and unpushed; the dead code for the old hopper build is gone with it.
+Real fps on the base Apple Silicon Mac is still the open QA-01 question.
+
+B08 rebuild, two competing models, 2026-11-10 (Paul: "B08 is awful and
+needs a new from-scratch build", and "no 'hopper' atop the barrel, this is
+a side magazine fed blaster. The handle is over the body of the blaster.
+The mod which adds a 2nd barrel adds the entire 6 barrel assembly, and
+both would spin on individual axis when fired"). This supersedes the
+hopper-and-shroud brief in `design/blasters/B08.md` (that file still
+describes the old design; it needs a rewrite once Paul picks a winner).
+Two builds, both from scratch in Blender 5.2.3 (Steam), kept for the
+record; only the first is still in the tree:
+- pi's (DeepSeek via pi, the one Paul picked, since renamed to plain B08):
+  `art/blasters/B08/build.py` to
+  `public/models/blasters/B08.glb`, renders in
+  `art/blasters/B08/renders/`. 7,622 tris, 4 materials, check_glb
+  PASS, plus a numeric geometry audit (`art/blasters/B08/audit.py`)
+  that checks six-barrel ring, no top hopper, top handle over the body,
+  right-side mag, twin is a whole second cluster, both cluster sweeps
+  clear of static parts, muzzles on axis.
+- 1Cat-vLLM's (qwen-machine/qwen3.8-27b-1cat via acp_delegate worker):
+  `art/blasters/B08-1cat/build.py` to `public/models/blasters/B08-1cat.glb`,
+  renders in `art/blasters/B08-1cat/renders/`. 11,028 tris, 4 materials,
+  397 KB, check_glb PASS. The same audit found one jam risk: its static
+  feed collar puts 164 verts inside the main cluster's sweep disc (the
+  barrels would clip it when spinning); pi's has 0.
+Game hookup: the viewmodel now spins nodes `barrels` and `barrels_2` on
+their own axes beside the flywheels in the auto branch
+(`src/weapons/viewmodel.ts`); `tests/weapons/b08-gatling.test.ts` covers
+spin-up offset, twin spin and spin-down stop; `models.test.ts` accepts
+`barrels` as an auto blaster's moving part. Neither GLB is wired into
+`data/blasters.json` yet: B08 still points at the B04 placeholder until
+Paul picks the winner (one line).
+DECISION (Paul, 2026-11-10): the pi build (DeepSeek's) is the winner.
+Wired in 2026-11-12 under the plain name: `data/blasters.json` B08
+`model` is `/models/blasters/B08.glb`,
+the Twin mod carries `show: ["mod_twin"]` and `muzzles: ["muzzle_1",
+"muzzle_2"]` (one muzzle per cluster), and its `_note` records the
+restated brief. `tests/weapons/b08.test.ts` cases 4 and 10 now assert
+the own model and the two-cluster twin. The 1cat runner-up (it had the
+feed-collar jam) was deleted on 2026-11-12 with the rejected 2026-11-08
+build; `art/blasters/B08-1cat/` is gone too.
+Unverified: not seen in a browser by eye; the spin at wheelSpin 60
+rev/s is a data value to tune on the range; the old B08 sounds still
+play. `design/blasters/B08.md` rewrite and the ART-05 motion brief
+(barrel spin-up, reload as a magazine drop) still to do.
+
 GAME-09d code done 2026-11-07, two stage commits on `game-09d`, not
 reviewed, not merged, not pushed (Qwen 3.8 Flash Next via Pi): B06 The
 Standard and the shared explosion. The `mega` dart type, B06's spec
@@ -15,6 +107,23 @@ that carves, damages with a falloff through the non-dart
 The model in hand, the carve, the push and the burst were not seen by
 eye and the four placeholder sounds not heard; B06 cannot be selected
 by key until game.ts gains a fifth weapon slot (left for the review).
+
+ART-04B code done 2026-11-10: B08 Firehose model built from the approved
+written brief in `design/blasters/B08.md`. Script at
+`art/blasters/B08/build.py`, GLB exported to
+`public/models/blasters/B08.glb`, renders at
+`art/blasters/B08/renders/` (side, three-quarter, top, first-person,
+barrel-front, twin-mod). All six views rendered. The `check_glb.py`
+contract passes every check: 18,116 triangles, 1.0 MB, 7 materials,
+origin at the pistol grip, magazine origin at rest centre, trigger
+pulls toward the grip on positive local X, `mod_twin` hidden by
+default, `muzzle_1` and `muzzle_2` forward along +Y. Colours as
+proposed in the brief: white body, charcoal grips and barrels,
+yellow accents on ribs and rings, orange bumper, smoke hopper with
+foam-blue balls inside. The gameplay is already in from GAME-09g on
+B04's model; swapping to B08's own model is a one-line data change
+once Paul approves the palette. Not seen by eye in the game engine;
+the renders were checked by image only.
 
 ## Status
 
