@@ -60,11 +60,13 @@ describe("GAME-09 models", () => {
         ).toBe(true);
       } else if (spec.mode === "auto") {
         // GAME-09d: an auto blaster spins a pair of flywheels (B04) or
-        // cycles a bolt (B06, whose approved model has one). Either is a
-        // moving part; the viewmodel animates whichever the file has.
+        // cycles a bolt (B06, whose approved model has one) or spins a
+        // barrel cluster (B08's gatling: barrels, plus barrels_2 with
+        // the Twin mod). Either is a moving part; the viewmodel animates
+        // whichever the file has.
         expect(
-          names.has("flywheel_l") && names.has("flywheel_r") || names.has("bolt"),
-          `${id}: no flywheels and no bolt`,
+          names.has("flywheel_l") && names.has("flywheel_r") || names.has("bolt") || names.has("barrels"),
+          `${id}: no flywheels, bolt or barrels`,
         ).toBe(true);
         expect(names.has("mag"), `${id}: no mag`).toBe(true);
       } else if (spec.mode === "semi") {

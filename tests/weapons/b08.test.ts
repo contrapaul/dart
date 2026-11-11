@@ -25,8 +25,8 @@ import type { DartTypeName } from "../../src/weapons/darts";
 const DT = 1 / 60;
 const AIM = new THREE.Vector3(0, 0, -1);
 const MUZ = [new THREE.Vector3(0, 1.4, -0.5)];
-// A twin blaster asks for muzzle index 1 too; the placeholder model has one
-// muzzle, so both entries point at the same point until B08's model exists.
+// A twin blaster asks for muzzle index 1 too; the rig has one point, and
+// the test only checks which index was asked for, so both map to it.
 const muzzleAt = (i: number) => MUZ[i % MUZ.length];
 
 function lcg(seed: number): () => number {
@@ -189,9 +189,9 @@ describe("GAME-09g: the foam ball type", () => {
 describe("GAME-09g: B08 Firehose", () => {
   const S = resolveSpec("B08");
 
-  it("4. B08 reads its spec: name, placeholder model, auto, balls, 120/240, long spin-up", () => {
+  it("4. B08 reads its spec: name, own gatling model, auto, balls, 120/240, long spin-up", () => {
     expect(S.name).toBe("Firehose");
-    expect(S.model).toBe("/models/blasters/B04.glb"); // the ART-01/04 placeholder
+    expect(S.model).toBe("/models/blasters/B08.glb"); // the 2026-11-10 rebuild
     expect(S.mode).toBe("auto");
     expect(S.dartType).toBe("ball");
     expect(S.dartsPerShot).toBe(1);
@@ -312,12 +312,14 @@ describe("GAME-09g: B08's mods", () => {
     expect(C.fireMoveShare).toBe(0.85);
   });
 
-  it("10. Twin (mod 2, Paul): a second barrel for 2x fire rate, alternating muzzles", () => {
+  it("10. Twin (mod 2, Paul): the whole second cluster shows, 2x fire rate, alternating muzzles", () => {
     const T = resolveSpec("B08", ["twin"]);
     expect(T.fireInterval).toBeCloseTo(BASE.fireInterval / 2, 6);
-    // The placeholder model has one muzzle, so both entries name muzzle_1
-    // until B08's own model exists (tests/weapons/b08.test.ts, HANDOFF).
-    expect(T.muzzles).toEqual(["muzzle_1", "muzzle_1"]);
+    // B08's own model (2026-11-10) carries the second six-barrel
+    // assembly hidden as mod_twin; the mod shows it and the two
+    // clusters fire from their own muzzles.
+    expect(T.muzzles).toEqual(["muzzle_1", "muzzle_2"]);
+    expect(T.show).toContain("mod_twin");
     const { b, darts } = make("B08", ["twin"]);
     const muzzleIdx: number[] = [];
     b.onShot = (i) => muzzleIdx.push(i);

@@ -328,6 +328,16 @@ export class Viewmodel {
         const r = this.restR.get("flywheel_r");
         if (r) wr.rotation.set(r[0], r[1] - this.wheelA, r[2]);
       }
+      // GAME-09g (B08 gatling): a barrel cluster node spins on its own
+      // bore axis (its local Y, like the flywheels); the Twin mod's
+      // second cluster is barrels_2 and turns on its own axis too.
+      for (const nm of ["barrels", "barrels_2"]) {
+        const bn = this.nodeByName.get(nm);
+        if (bn) {
+          const r = this.restR.get(nm);
+          if (r) bn.rotation.set(r[0], r[1] + this.wheelA, r[2]);
+        }
+      }
       this.applyBolt(blaster);
       this.applyMagDrop(blaster, m.magDrop ?? 0);
     } else if (sp.mode === "semi" || sp.mode === "burst") {
