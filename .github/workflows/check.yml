@@ -1,8 +1,9 @@
 name: check
 
 # Build and test on every push and pull request. The deploy itself is
-# Cloudflare's: a push to main rebuilds and serves dist/, with no gate in
-# front of it. This job is that gate, so a red suite cannot go live.
+# Cloudflare's: a push to main rebuilds and serves dist/ whatever this job
+# says, so a red run here reports a bad build; it does not stop it going
+# live.
 on:
   push:
     branches: [main]
@@ -25,7 +26,11 @@ jobs:
       # tsc --noEmit, vite build, and the inlined-wasm guard.
       - run: npm run build
 
+      # The runner's shared CPU is slower than a dev machine: wall-clock
+      # budgets in the tests (the nav bake and path query) get this much room.
       - run: npm test
+        env:
+          PERF_BUDGET_SCALE: "3"
 
       # The CLAUDE.md rules no compiler checks: no em dash, and nothing
       # fetched from another host.

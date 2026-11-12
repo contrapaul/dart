@@ -348,7 +348,12 @@ describe("NavGrid bake", () => {
     console.info(`nav bake 40x40 at ${CELL} m: ${bakeMs.toFixed(1)} ms; ` +
       `path query: ${queryMs.toFixed(3)} ms (${found} waypoints)`);
     expect(found).toBeGreaterThan(0);
-    expect(bakeMs).toBeLessThan(150);
-    expect(queryMs).toBeLessThan(2);
+    // OPS-03: CI runs on a slower shared CPU; the workflow sets
+    // PERF_BUDGET_SCALE so the budget still means something there. Here it
+    // is 1, the game's real budget.
+    const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env;
+    const scale = Number(env?.PERF_BUDGET_SCALE ?? 1);
+    expect(bakeMs).toBeLessThan(150 * scale);
+    expect(queryMs).toBeLessThan(2 * scale);
   });
 });
