@@ -82,7 +82,9 @@ function findChrome() {
 const PAGES = [
   { file: "index.html", name: "test course", settle: "#status", ready: "Click to play" },
   { file: "arena.html", name: "the arena", settle: "#status", ready: "Click to play" },
-  { file: "range.html", name: "test range", settle: "#overlay:not([hidden])", ready: "" },
+  // The range's overlay is static HTML, so it proves nothing; the menu's
+  // blaster label reads "-" until the loadout has loaded, then names B01.
+  { file: "range.html", name: "test range", settle: "#menuBlaster", ready: "B01" },
   { file: "sandbox.html", name: "sandbox", settle: "#roster li", ready: "" },
 ];
 
