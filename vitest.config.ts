@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config";
 
@@ -15,7 +16,13 @@ export default mergeConfig(viteConfig, defineConfig({
     // bake's or query's own cost (loaded runs, 6 workers: bake about 42 ms,
     // query 1.2 ms; the suite still takes about the same 7 s, because the
     // total CPU work is unchanged, only the self-oversubscription is gone).
-    maxWorkers: 6,
+    // CI (OPS-03): a GitHub runner has 2 cores, so a fixed 6 oversubscribed
+    // it threefold and the heavy level tests ran ten times slower than here.
+    // Never more workers than cores.
+    maxWorkers: Math.max(1, Math.min(6, availableParallelism())),
+    // The level and nav bakes take about 0.5 s here; a slow runner needs
+    // room before a test is called hung.
+    testTimeout: 20000,
     server: {
       deps: {
         // One module identity for the whole engine (OPS-02): evaluated
