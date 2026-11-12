@@ -834,6 +834,19 @@ github.com/contrapaul/dart (public), MIT licence.
   readout's look, the range status line's place in the panel, and Firefox's
   real first click after boot are for the reviewer. The Firefox boot itself
   was not timed, only the steps it now reports.
+### 2026-11-12: a piercing dart flies through loose foam chunks (Claude Opus 5.5)
+
+- CI failed on a docs-only commit: `tests/weapons/b05.test.ts` 9 (a dart
+  never hits the same Foamer twice). Reproduced here about 1 run in 15
+  alone and more under load, with test 8 (heavy round damaged 2 of 4)
+  flaky too. Cause: the dart's entry hole throws foam chunks at random
+  speeds (`Math.random` in debris.ts); darts hit loose debris, and a
+  debris hit takes the stop-or-bounce path, so a piercing round could be
+  stopped by its own debris. Test 9 also counted debris hits as Foamer
+  hits.
+- Fix: a dart with `pierce` above 0 ignores colliders in the debris group
+  (`src/weapons/darts.ts`). Ordinary darts still knock chunks about.
+  Test 9 counts only non-debris hits. 60 of 60 runs green under load.
 
 ### 2026-11-12: CI timing budgets off on CI, QA-01 passed (Claude Opus 5.5)
 
