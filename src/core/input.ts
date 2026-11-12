@@ -68,6 +68,10 @@ export class Input {
   /** True once a raw request has been granted: a browser that took raw input
    *  keeps it, and a refusal there is only the fast re-lock after Esc. */
   private rawWorked = false;
+  /** What the mouse has done, for the `?diag` readout: whether a lock was
+   *  asked for and granted, and whether moves arrive while locked (Paul's
+   *  Firefox takes the lock but the camera does not turn). */
+  readonly lockStats = { requests: 0, errors: 0, locks: 0, moves: 0, lockedMoves: 0, moveSum: 0 };
 
   constructor(private canvas: HTMLCanvasElement) {
     canvas.addEventListener("click", () => {
@@ -76,10 +80,12 @@ export class Input {
     document.addEventListener("pointerlockerror", () => {
       // Firefox reports a refused request only here, never as a rejected
       // promise. Raw input is refused outright there, so remember it.
+      this.lockStats.errors++;
       if (!this.rawWorked) this.plainLock = true;
     });
     document.addEventListener("pointerlockchange", () => {
       this.locked = document.pointerLockElement === canvas;
+      if (this.locked) this.lockStats.locks++;
       if (this.locked && !this.plainLock) this.rawWorked = true;
       if (!this.locked) {
         this.releaseAll("key:");
@@ -99,7 +105,10 @@ export class Input {
     });
     window.addEventListener("mouseup", (e) => this.sourceUp(`mouse:${e.button}`));
     window.addEventListener("mousemove", (e) => {
+      this.lockStats.moves++;
       if (!this.locked) return;
+      this.lockStats.lockedMoves++;
+      this.lockStats.moveSum += Math.abs(e.movementX) + Math.abs(e.movementY);
       this.mouseX += e.movementX;
       this.mouseY += e.movementY;
     });
@@ -116,6 +125,15 @@ export class Input {
     });
   }
 
+  /** One line for the `?diag` readout. */
+  diagLine(): string {
+    const st = this.lockStats;
+    const el = document.pointerLockElement;
+    return `Mouse: lock ${this.locked ? "on" : "off"} (element ${el ? el.tagName.toLowerCase() : "none"}, ` +
+      `${this.plainLock ? "plain" : "raw"}), asked ${st.requests}, granted ${st.locks}, refused ${st.errors}, ` +
+      `moves ${st.moves} (${st.lockedMoves} locked, ${Math.round(st.moveSum)} px)`;
+  }
+
   /** The page's first frame has been drawn: from now on a click may take
    *  the mouse. Called once, by the page's loop. */
   setReady(): void {
@@ -126,6 +144,7 @@ export class Input {
     // PT-10: no lock before the game runs. The page's own buttons ask for it
     // too, so the guard is here and not only in the click listener.
     if (!this.ready) return;
+    this.lockStats.requests++;
     // Raw mouse input where supported; some platforms refuse it (Firefox has
     // no raw input), so fall back to the plain form. The fallback must run
     // inside the click: a request sent after the promise rejects can arrive

@@ -185,6 +185,15 @@ describe("the diag readout follows a late boot (review)", () => {
   });
 });
 
+describe("the diag readout carries a live mouse line", () => {
+  it("appends the page's extra line after the steps", () => {
+    const boot = new BootReport(null, () => 0);
+    boot.step("First frame");
+    const text = diagText(boot, null, 0, () => "Mouse: lock on, moves 3");
+    expect(text.split("\n").at(-1)).toBe("Mouse: lock on, moves 3");
+  });
+});
+
 describe("no pointer lock before the game runs (PT-10)", () => {
   function setup() {
     const canvas = new FakeCanvas();

@@ -878,7 +878,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // loading).
     if (!bootDone) {
       bootDone = true;
-      firstFrame(boot, READY_TEXT, mesherPool);
+      firstFrame(boot, READY_TEXT, mesherPool, () => input.diagLine());
       input.setReady();
     }
   }

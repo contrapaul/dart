@@ -779,6 +779,24 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-12: Firefox boots fine now; the mouse is next (Claude Opus 5.5)
+
+- Paul's `?diag` from Firefox 159 on macOS, live range after PT-10:
+  4 mesher workers, none on the main thread; Rapier 0 ms, range 2 ms,
+  loadout ready at 2746 ms (the eight blaster models), first frame at
+  3067 ms, Foamers meshed at 3160 ms. Monsters load. So the slow boot is
+  gone (PT-10 builds the line behind the menu), and the models take
+  about 2.7 s on a first visit.
+- Still broken in Firefox: the mouse is taken but the camera does not
+  turn. Gamepad look only adds to mouse look, so that is not it.
+- To find out which half fails, `?diag` now ends with a live line:
+  `Mouse: lock on/off (element, raw/plain), asked N, granted N,
+  refused N, moves N (N locked, N px)`, redrawn twice a second. If
+  locked moves stay 0 while the lock is on, Firefox is not delivering
+  moves to the page; if they count up, the game is dropping them.
+- Paul's Firefox numbers recorded here because the text could not be
+  copied (a screenshot).
+
 ### 2026-11-12: PT-10 review, merged (Claude Opus 5.5): a visible boot
 
 - DeepSeek built it to the card: `src/core/boot-report.ts` (steps with

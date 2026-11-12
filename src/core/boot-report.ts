@@ -132,7 +132,7 @@ export function mesherMode(pool: unknown): string {
 
 /** The lines of the `?diag` readout. Redrawn on every boot change after
  *  the first frame (a late Foamer mesh shows when it lands). */
-export function diagText(boot: BootReport, pool: unknown, fallbackCount: number): string {
+export function diagText(boot: BootReport, pool: unknown, fallbackCount: number, extra?: () => string): string {
   const browser = typeof navigator === "undefined" ? "unknown" : navigator.userAgent;
   const lines = [
     `Browser: ${browser}`,
@@ -141,20 +141,25 @@ export function diagText(boot: BootReport, pool: unknown, fallbackCount: number)
   for (const s of boot.steps) lines.push(`${s.name}: ${Math.round(s.ms)} ms (at ${Math.round(s.at)} ms)`);
   const waiting = boot.stillWaiting;
   if (waiting) lines.push(`Waiting: ${waiting}`);
+  if (extra) lines.push(extra());
   return lines.join("\n");
 }
 
 /** Put the readout up, bottom left and small: `?diag` only. */
-export function showDiag(boot: BootReport, pool: unknown): HTMLElement | null {
+export function showDiag(boot: BootReport, pool: unknown, extra?: () => string): HTMLElement | null {
   if (!new URLSearchParams(location.search).has("diag")) return null;
   const el = document.createElement("pre");
   el.id = "diag";
   el.style.cssText =
     "position:fixed;left:8px;bottom:8px;margin:0;padding:6px;font:11px/1.4 monospace;" +
     "color:#fff;background:rgba(0,0,0,.65);pointer-events:none;z-index:30;white-space:pre";
-  el.textContent = diagText(boot, pool, fallbacks?.() ?? 0);
+  const draw = () => { el.textContent = diagText(boot, pool, fallbacks?.() ?? 0, extra); };
+  draw();
   document.body.appendChild(el);
-  boot.onChange = () => { el.textContent = diagText(boot, pool, fallbacks?.() ?? 0); };
+  boot.onChange = draw;
+  // The mouse line changes without a boot step, so redraw twice a second
+  // (`?diag` only).
+  if (extra) setInterval(draw, 500);
   return el;
 }
 
@@ -162,8 +167,8 @@ export function showDiag(boot: BootReport, pool: unknown): HTMLElement | null {
  *  with `?diag` put the readout up. Call once, from the page's first render
  *  after it has drawn (that frame is also when the Input may take the
  *  mouse). */
-export function firstFrame(boot: BootReport, ready: string, pool?: unknown): void {
+export function firstFrame(boot: BootReport, ready: string, pool?: unknown, extra?: () => string): void {
   boot.step("First frame");
   boot.finish(ready);
-  showDiag(boot, pool);
+  showDiag(boot, pool, extra);
 }

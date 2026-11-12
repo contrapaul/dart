@@ -992,7 +992,7 @@ loopCtl = startLoop({
     // loading, as the card asks.
     if (!bootDone) {
       bootDone = true;
-      firstFrame(boot, READY_TEXT, mesherPool);
+      firstFrame(boot, READY_TEXT, mesherPool, () => input.diagLine());
       input.setReady();
     }
   },
