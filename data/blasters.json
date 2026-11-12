@@ -21,11 +21,11 @@
     "name": "Shredder", "model": "/models/blasters/B04.glb",
     "mode": "auto", "dartType": "standard", "dartsPerShot": 1, "spreadDeg": 1,
     "magSize": 35, "reserveMax": 175, "reserveStart": 105,
-    "fireInterval": 0.1, "spinUp": 0.15, "spinDown": 1.0, "reloadTime": 1.8, "autoReload": true,
+    "fireInterval": 0.1, "spinUp": 0, "spinDown": 0, "reloadTime": 1.8, "autoReload": true,
     "recoil": { "spreadPerShot": 0.4, "spreadMax": 6, "climbDegPerShot": 0.25, "climbDegMax": 4, "recover": 0.4 },
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
-    "motion": { "kick": 0.01, "tiltDeg": 1, "return": 18, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.18, "reloadRollDeg": -8 },
+    "motion": { "kick": 0.01, "tiltDeg": 1, "return": 18, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.18, "reloadRollDeg": -8 },
     "mods": {
       "suppress": { "recoil": { "spreadPerShot": 0.12, "climbDegPerShot": 0.08 } },
       "bounce": { "_note": "Every 5th shot bounces to another target: GAME-09b. Data only for now." }

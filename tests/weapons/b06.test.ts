@@ -161,6 +161,15 @@ describe("GAME-09d: B06 The Standard", () => {
     for (const g of late) expect(Math.abs(g - S.fireInterval)).toBeLessThan(DT * 1.5);
   });
 
+  it("4b. B04 is plain fast full-auto too: it fires on the first held step (Paul, 2026-11-12)", () => {
+    const { b, darts } = make("B04");
+    expect(b.spec.spinUp).toBe(0);
+    expect(b.spec.spinDown).toBe(0);
+    darts.now = 0;
+    b.update(DT, HOLD, AIM);
+    expect(darts.count, "fires on the first held step").toBe(1);
+  });
+
   it("5. the rate mod fires faster", () => {
     const { b, darts } = make("B06", ["rate"]);
     expect(b.spec.fireInterval).toBe(0.12);

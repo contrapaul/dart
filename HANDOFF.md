@@ -779,6 +779,26 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-12: B04 is plain fast full-auto; Firefox plays until B07 (Claude Opus 5.5)
+
+- Paul: in Firefox the range now plays (mouse and keys) and performance
+  is good, until B07 "triggered an error". Not reproduced: B07 fired
+  through the real page loop in headless Chromium raised no loop error
+  (the F05 took 5.5); the run with sound on could not be done headless
+  (the click needs a pointer lock headless Chromium refuses). Since the
+  audio listener fix, a loop error no longer stops the game and `?diag`
+  shows `Loop errors: N, last: <message> <where>`; Paul to send that
+  line (his screenshot was the earlier one, without the Mouse and Loop
+  lines). A message in the status line instead would be an error outside
+  the loop (an event or a promise), caught by boot-errors.ts.
+- B04 Shredder (Paul): no delay before firing and no flywheel sound;
+  plain fast full-auto. `spinUp` 0 and `spinDown` 0 (it fires on the
+  first held step, test b06.test.ts 4b), `wheelSpin` 0 (the flywheels no
+  longer spin). The flywheel sound: PT-04 already removed
+  `B04-rev-loop`, and no loop or cue plays for B04 now; only `B04-fire`,
+  a short thud, about 10 a second. If Paul still hears a flywheel, it is
+  that thud at full rate, or a stale cache.
+
 ### 2026-11-12: Firefox: the audio listener stopped the game loop (Claude Opus 5.5)
 
 - Paul's `?diag` mouse line from Firefox: lock asked 2, granted 2, 403
