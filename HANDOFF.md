@@ -779,7 +779,7 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
-### 2026-11-12: review of the 11-12 work, then pushed (Claude Opus 5.5)
+### 2026-11-12: review of the 11-12 work, pushed, CI made green on GitHub (Claude Opus 5.5)
 
 - Reviewed the four unpushed commits (B08 wired under its plain name,
   boot errors, the model cache rule, the CI gate). `npm run check` and
@@ -795,6 +795,19 @@ github.com/contrapaul/dart (public), MIT licence.
 - Open: `range.html` has no `#status`, so a range boot error is only in
   the console (by design in boot-errors.ts; worth showing on the range
   now that it is the test page).
+- **First CI runs on GitHub.** Run 1 failed 8 tests, all on speed: the
+  fixed `maxWorkers: 6` oversubscribed the 2-core runner threefold (the
+  BUG-10 problem) and the level and nav bakes went past vitest's 5 s
+  timeout. Now `maxWorkers` is never more than the cores and
+  `testTimeout` is 20 s. Run 2 failed one wall-clock budget (path query
+  3.4 ms against 2 ms on the runner's slower CPU): the workflow now sets
+  `PERF_BUDGET_SCALE` 3 for `npm test`; locally it is 1, the real
+  budget. Run 3 green end to end, including the smoke check of the live
+  site.
+- The workflow does not stop a deploy: Cloudflare builds every push to
+  `main` whatever CI says. Its comment claimed otherwise and is fixed.
+  To truly gate, Cloudflare's build command would have to run the
+  checks, or the deploy move into the workflow.
 
 ### 2026-11-12: OPS-03, the CI gate and the smoke check (Claude via pi)
 
