@@ -12,6 +12,7 @@ import { Blaster, resolveSpec, type BlasterControls, type DartFiring } from "../
 import dartTuning from "../../data/darts.json";
 import foamerData from "../../data/foamers.json";
 import type { DartTypeName } from "../../src/weapons/darts";
+import { DEBRIS_GROUPS } from "../../src/physics/world";
 
 // GAME-09e stage 1: the precision dart and B05 Shrike. The dart reads its
 // own type (fast, flat, thin, piercing), B05 reads its spec and needs the
@@ -310,7 +311,12 @@ describe("GAME-09e: pierce", () => {
     const hitHandles: number[] = [];
     const previous = r.darts.onHit;
     r.darts.onHit = (hit) => {
-      hitHandles.push(hit.collider.parent()?.handle ?? -1);
+      // Only Foamer bodies count: the dart may knock a loose foam chunk (from
+      // its own carve, thrown at a random speed) more than once, which is
+      // allowed, and made this test fail about one run in fifteen.
+      if (hit.collider.collisionGroups() !== DEBRIS_GROUPS) {
+        hitHandles.push(hit.collider.parent()?.handle ?? -1);
+      }
       previous(hit);
     };
     const b = new Blaster(

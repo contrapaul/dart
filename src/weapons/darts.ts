@@ -5,7 +5,7 @@ import tuning from "../../data/darts.json";
 import { buildDartGeometry } from "./dart-model";
 import type { DartTypeSpec, DartTypeName } from "./dart-model";
 import { DART_TYPES } from "./dart-model";
-import { CAPSULE_GROUPS, RAGDOLL_GROUPS } from "../physics/world";
+import { CAPSULE_GROUPS, RAGDOLL_GROUPS, DEBRIS_GROUPS } from "../physics/world";
 
 export type { DartTypeName } from "./dart-model";
 
@@ -447,6 +447,10 @@ export class DartSystem {
       (c) => {
         const g = c.collisionGroups();
         if (g === RAGDOLL_GROUPS || g === CAPSULE_GROUPS) return false;
+        // A piercing dart flies through loose foam chunks: the ones its own
+        // entry hole throws out at random speeds stopped it on some shots
+        // (review: B05 heavy flaky, "damaged 2 of 4").
+        if (s.spec.pierce > 0 && g === DEBRIS_GROUPS) return false;
         // GAME-09e: a dart that has pierced a Foamer ignores that Foamer's
         // colliders for the rest of its flight, so it never meets the same
         // one twice (the far side of the one it just went through).
