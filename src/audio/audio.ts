@@ -52,6 +52,33 @@ interface ActiveVoice {
   panner: PannerNode | null;
 }
 
+/** Put the listener at p looking along fwd, up being +Y. Firefox has no
+ *  AudioParams on the listener (`positionX` and the rest are undefined
+ *  there), so it takes the older setPosition and setOrientation calls:
+ *  setting `.value` on undefined threw every frame once the audio ran, and
+ *  that stopped the game loop (Paul, 2026-11-12: no mouse or keys in
+ *  Firefox). */
+export function placeListener(
+  l: AudioListener,
+  p: { x: number; y: number; z: number },
+  fwd: { x: number; y: number; z: number },
+): void {
+  if (l.positionX) {
+    l.positionX.value = p.x;
+    l.positionY.value = p.y;
+    l.positionZ.value = p.z;
+    l.forwardX.value = fwd.x;
+    l.forwardY.value = fwd.y;
+    l.forwardZ.value = fwd.z;
+    l.upX.value = 0;
+    l.upY.value = 1;
+    l.upZ.value = 0;
+  } else {
+    l.setPosition(p.x, p.y, p.z);
+    l.setOrientation(fwd.x, fwd.y, fwd.z, 0, 1, 0);
+  }
+}
+
 export class AudioEngine implements AudioSink {
   private ctx: AudioContext;
   private master: GainNode;
@@ -281,16 +308,7 @@ export class AudioEngine implements AudioSink {
   updateListener(): void {
     if (!this.camera || this.ctx.state !== "running") return;
     this.camera.getWorldDirection(this._fwd);
-    const p = this.camera.position;
-    this.ctx.listener.positionX.value = p.x;
-    this.ctx.listener.positionY.value = p.y;
-    this.ctx.listener.positionZ.value = p.z;
-    this.ctx.listener.forwardX.value = this._fwd.x;
-    this.ctx.listener.forwardY.value = this._fwd.y;
-    this.ctx.listener.forwardZ.value = this._fwd.z;
-    this.ctx.listener.upX.value = 0;
-    this.ctx.listener.upY.value = 1;
-    this.ctx.listener.upZ.value = 0;
+    placeListener(this.ctx.listener, this.camera.position, this._fwd);
   }
 
   /** Pauses on losing the pointer lock; resumes when it returns. */

@@ -70,6 +70,21 @@ export function createFrameClock(initialSnap = true) {
   };
 }
 
+/** Errors a frame threw (Firefox, 2026-11-12: one error used to stop the
+ *  loop for good, so the game drew and then took no input). */
+const errors = { count: 0, last: "" };
+const logged = new Set<string>();
+
+/** What the loop has caught, for the `?diag` readout. */
+export function loopErrors(): { count: number; last: string } {
+  return errors;
+}
+
+/** One line for the `?diag` readout. */
+export function loopDiagLine(): string {
+  return errors.count === 0 ? "Loop errors: 0" : `Loop errors: ${errors.count}, last: ${errors.last}`;
+}
+
 export function startLoop(hooks: LoopHooks) {
   const clock = createFrameClock();
   const stats: FrameStats = { raw: 0, dt: 0, steps: 0, work: 0, updateWork: 0 };
@@ -80,6 +95,28 @@ export function startLoop(hooks: LoopHooks) {
   // performance.now(), which is resolution enough for spotting a long
   // frame, not timing one.
   function frame(t: number) {
+    // Ask for the next frame first: a hook that throws must not end the
+    // loop. The error is caught below, logged once per message and kept
+    // for the diag readout.
+    requestAnimationFrame(frame);
+    try {
+      step(t);
+    } catch (e) {
+      // Drop the time owed: a step that throws every frame must not pile
+      // up steps for the next one.
+      acc = 0;
+      errors.count++;
+      const err = e instanceof Error ? e : new Error(String(e));
+      const where = (err.stack ?? "").split("\n").find((l) => l.includes("/")) ?? "";
+      errors.last = `${err.message} ${where.trim()}`.slice(0, 300);
+      if (!logged.has(err.message)) {
+        logged.add(err.message);
+        console.error("DART: loop error", err);
+      }
+    }
+  }
+
+  function step(t: number) {
     const w0 = performance.now();
     const dt = clock.tick(t);
     acc += dt;
@@ -101,7 +138,6 @@ export function startLoop(hooks: LoopHooks) {
       stats.work = performance.now() - w0;
       hooks.stats(stats);
     }
-    requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
   return {

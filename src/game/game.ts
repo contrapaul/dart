@@ -3,7 +3,7 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import { createRenderer, type SceneOptions } from "../render/scene";
 import { createFoamMaterial } from "../render/foam-material";
 import { createPhysics, type Rapier } from "../physics/world";
-import { startLoop, STEP } from "../core/loop";
+import { startLoop, STEP, loopDiagLine } from "../core/loop";
 import { firstFrame, pageBoot } from "../core/boot-report";
 import { Input, settings as lookSettings } from "../core/input";
 import { Zoom } from "./zoom";
@@ -878,7 +878,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // loading).
     if (!bootDone) {
       bootDone = true;
-      firstFrame(boot, READY_TEXT, mesherPool, () => input.diagLine());
+      firstFrame(boot, READY_TEXT, mesherPool, () => `${input.diagLine()}\n${loopDiagLine()}`);
       input.setReady();
     }
   }

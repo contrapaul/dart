@@ -9,7 +9,7 @@ import "../core/boot-errors";
 import * as THREE from "three";
 import { createRenderer } from "../render/scene";
 import { createPhysics } from "../physics/world";
-import { startLoop, STEP, type FrameStats } from "../core/loop";
+import { startLoop, STEP, type FrameStats, loopDiagLine } from "../core/loop";
 import { Input } from "../core/input";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
@@ -992,7 +992,7 @@ loopCtl = startLoop({
     // loading, as the card asks.
     if (!bootDone) {
       bootDone = true;
-      firstFrame(boot, READY_TEXT, mesherPool, () => input.diagLine());
+      firstFrame(boot, READY_TEXT, mesherPool, () => `${input.diagLine()}\n${loopDiagLine()}`);
       input.setReady();
     }
   },

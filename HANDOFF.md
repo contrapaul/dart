@@ -779,6 +779,31 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-12: Firefox: the audio listener stopped the game loop (Claude Opus 5.5)
+
+- Paul's `?diag` mouse line from Firefox: lock asked 2, granted 2, 403
+  moves while locked (7616 px), and no keys either; only Esc paused. So
+  Firefox delivered the input and the game was not running.
+- Cause: `AudioEngine.updateListener()` set `listener.positionX.value`
+  and the other listener AudioParams every render. Firefox has none of
+  them (they are undefined), so it threw a TypeError. It only runs while
+  the audio context is running, and the range suspends audio while
+  paused: behind the menu nothing threw, and the first frame after the
+  click (lock taken, audio resumed) threw. A throwing hook skipped the
+  loop's next `requestAnimationFrame`, so the loop stopped for good: the
+  picture froze, the mouse and keys did nothing, and Esc still paused
+  because that is a browser event.
+- Fix: `placeListener()` in `src/audio/audio.ts` uses the AudioParams
+  where they exist and `setPosition`/`setOrientation` otherwise. Tested
+  both ways; with the old code the Firefox case throws "Cannot set
+  properties of undefined".
+- Also: the loop asks for its next frame before running the hooks, so
+  one error can no longer stop it; it drops the owed time, logs each
+  distinct error once (`DART: loop error`) and `?diag` shows a
+  `Loop errors:` line. Test in `tests/core/loop-errors.test.ts`.
+- Not verified in Firefox itself (headless Firefox here will not start
+  its remote agent since its update). Paul to confirm the range plays.
+
 ### 2026-11-12: Firefox boots fine now; the mouse is next (Claude Opus 5.5)
 
 - Paul's `?diag` from Firefox 159 on macOS, live range after PT-10:
