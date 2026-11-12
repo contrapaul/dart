@@ -13,6 +13,9 @@ export interface BootStep {
   name: string;
   /** Milliseconds since the previous step finished (the step's own wait). */
   ms: number;
+  /** Milliseconds since the report started (review: the total is what a
+   *  slow browser's report needs). */
+  at: number;
 }
 
 /** The one thing this needs from a status element: its text. */
@@ -27,7 +30,12 @@ export class BootReport {
   private done = 0;
   private total = 0;
   private last: number;
+  private readonly start: number;
   private clock: () => number;
+  /** Called after any step or progress change once set (the `?diag`
+   *  readout redraws itself from it; review: it was drawn once, at the
+   *  first frame, before the Foamers had landed). */
+  onChange: (() => void) | null = null;
   /** True after finish(): the status line is the page's, not the boot's. */
   private quiet = false;
 
@@ -37,6 +45,12 @@ export class BootReport {
   ) {
     this.clock = clock;
     this.last = clock();
+    this.start = this.last;
+  }
+
+  /** The step still being waited on, with its count, or "" for none. */
+  get stillWaiting(): string {
+    return this.waiting ? this.waitingText : "";
   }
 
   /** What the status line says right now. */
@@ -54,6 +68,7 @@ export class BootReport {
     this.done = done;
     this.total = total;
     if (this.status && !this.quiet) this.status.textContent = this.waitingText;
+    this.onChange?.();
   }
 
   /** Record a step that just finished: its time is since the last one.
@@ -63,8 +78,9 @@ export class BootReport {
     const ms = Math.max(0, now - this.last);
     this.last = now;
     this.waiting = "";
-    this.steps.push({ name, ms });
+    this.steps.push({ name, ms, at: Math.max(0, now - this.start) });
     console.log(`DART boot: ${name} ${Math.round(ms)}`);
+    this.onChange?.();
   }
 
   /** The boot is over: the status line hands over to the page's own text. */
@@ -114,14 +130,17 @@ export function mesherMode(pool: unknown): string {
   return `${n} worker${n === 1 ? "" : "s"}`;
 }
 
-/** The lines of the `?diag` readout. Built once, at the first frame. */
+/** The lines of the `?diag` readout. Redrawn on every boot change after
+ *  the first frame (a late Foamer mesh shows when it lands). */
 export function diagText(boot: BootReport, pool: unknown, fallbackCount: number): string {
   const browser = typeof navigator === "undefined" ? "unknown" : navigator.userAgent;
   const lines = [
     `Browser: ${browser}`,
     `Mesher: ${mesherMode(pool)}, ${fallbackCount} on the main thread`,
   ];
-  for (const s of boot.steps) lines.push(`${s.name}: ${Math.round(s.ms)} ms`);
+  for (const s of boot.steps) lines.push(`${s.name}: ${Math.round(s.ms)} ms (at ${Math.round(s.at)} ms)`);
+  const waiting = boot.stillWaiting;
+  if (waiting) lines.push(`Waiting: ${waiting}`);
   return lines.join("\n");
 }
 
@@ -135,6 +154,7 @@ export function showDiag(boot: BootReport, pool: unknown): HTMLElement | null {
     "color:#fff;background:rgba(0,0,0,.65);pointer-events:none;z-index:30;white-space:pre";
   el.textContent = diagText(boot, pool, fallbacks?.() ?? 0);
   document.body.appendChild(el);
+  boot.onChange = () => { el.textContent = diagText(boot, pool, fallbacks?.() ?? 0); };
   return el;
 }
 

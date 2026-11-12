@@ -854,7 +854,20 @@ loopCtl = startLoop({
     // PT-10: the Foamers mesh a part at a time, and the loop runs while
     // they land, so count them until the whole line is done.
     if (!foamersDone) reportFoamerMeshes();
-    if (paused) return;
+    if (paused) {
+      // Review fix: the line meshes behind the menu, so it is ready when
+      // the player clicks Play (it waited for the first unpaused step).
+      // The pose is solved too, or the line is drawn in a heap at the
+      // origin until the first step (the PT-01 lesson).
+      if (!foamersDone) {
+        for (const f of foamers.list) {
+          f.applyPose();
+          f.poseParts(0, false, false);
+          for (const part of f.parts.values()) part.mesh.update();
+        }
+      }
+      return;
+    }
     if (switches.strafe) strafeStep(dt);
     const look = input.takeLook(dt);
     player.yaw -= look.yaw;

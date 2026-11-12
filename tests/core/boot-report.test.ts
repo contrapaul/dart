@@ -166,6 +166,25 @@ describe("boot report (PT-10)", () => {
   });
 });
 
+describe("the diag readout follows a late boot (review)", () => {
+  it("a Foamer step after the first frame reaches the readout, with its time since the start", () => {
+    let t = 0;
+    const boot = new BootReport(null, () => t);
+    t = 100; boot.step("Loadout ready");
+    t = 400; boot.step("First frame");
+    boot.finish("Click to play");
+    let redraws = 0;
+    boot.onChange = () => { redraws++; };
+    boot.progress("Building Foamers", 9, 16);
+    expect(diagText(boot, null, 0)).toContain("Waiting: Building Foamers 9 / 16");
+    t = 2400; boot.step("Foamers meshed");
+    expect(redraws).toBe(2);
+    const text = diagText(boot, null, 0);
+    expect(text).toContain("Foamers meshed: 2000 ms (at 2400 ms)");
+    expect(text).not.toContain("Waiting:");
+  });
+});
+
 describe("no pointer lock before the game runs (PT-10)", () => {
   function setup() {
     const canvas = new FakeCanvas();
