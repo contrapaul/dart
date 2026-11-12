@@ -779,6 +779,35 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-12: PT-10, a boot you can see, and no mouse lock before the game runs (DeepSeek V4.1 Flash via Pi)
+
+- What was asked: a boot report with step times on every page, a `?diag`
+  readout, the range's status line so a boot error shows there, and no
+  pointer lock before the game runs.
+- Built: `src/core/boot-report.ts` (`pageBoot`, `BootReport` with
+  `progress`/`step`/`finish`, `firstFrame`, `diagText`, `mesherMode`,
+  `countMesherFallbacks`). Steps log one `DART boot: <step> <ms>` line each
+  and write the waiting step into `#status` ("Loading blasters 3 / 8").
+  Wired into `src/game/game.ts`, `src/range/main.ts` and
+  `src/sandbox/main.ts`; `Loadout.load` takes an optional `onLoaded`.
+  `Input.ready`/`setReady()` refuses both the canvas click and
+  `requestLock` until the first drawn frame.
+- Range: `range.html` has `<p id="status">Loading</p>` (styled in
+  `src/range/range.css`), so `boot-errors.ts` shows a failed range boot on
+  the page. `tools/smoke.mjs` waits for the range's ready text now.
+- Decisions: the mesher fallback count wraps `console.warn` instead of
+  changing `MesherPool` (the reviewer may prefer a counter on the pool);
+  after `finish()` a late Foamer mesh still logs its step but cannot
+  overwrite the ready line.
+- Checks run here: `npm run check` green (1000 passed, 2 skipped; one
+  `tests/weapons/b05.test.ts` timing failure under load, green when run
+  alone), `npm run smoke` green on all four pages (range now reports
+  "Click to play. Esc shows the panel.").
+- Not checked by eye: no browser and no image reading here, so the `?diag`
+  readout's look, the range status line's place in the panel, and Firefox's
+  real first click after boot are for the reviewer. The Firefox boot itself
+  was not timed, only the steps it now reports.
+
 ### 2026-11-12: CI timing budgets off on CI, QA-01 passed (Claude Opus 5.5)
 
 - Two more CI runs failed on the path-query budget alone: the fastest of
