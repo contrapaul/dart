@@ -44,6 +44,11 @@ export class Input {
   locked = false;
   /** Called when the mouse is captured or released. */
   onLockChange: (locked: boolean) => void = () => {};
+  /** PT-10: true once the page has drawn its first frame. Before that a
+   *  click on the canvas is ignored: taking the lock during boot hides the
+   *  cursor while no frame loop reads the mouse yet, so the camera does not
+   *  turn and the player has lost the pointer for nothing. */
+  ready = false;
   /** Move to use in place of the computed one (the range page auto-strafe
    *  feeds a sideways vector here). Null until set. */
   moveOverride: { x: number; y: number } | null = null;
@@ -66,7 +71,7 @@ export class Input {
 
   constructor(private canvas: HTMLCanvasElement) {
     canvas.addEventListener("click", () => {
-      if (!this.locked) this.requestLock();
+      if (this.ready && !this.locked) this.requestLock();
     });
     document.addEventListener("pointerlockerror", () => {
       // Firefox reports a refused request only here, never as a rejected
@@ -111,7 +116,16 @@ export class Input {
     });
   }
 
+  /** The page's first frame has been drawn: from now on a click may take
+   *  the mouse. Called once, by the page's loop. */
+  setReady(): void {
+    this.ready = true;
+  }
+
   requestLock() {
+    // PT-10: no lock before the game runs. The page's own buttons ask for it
+    // too, so the guard is here and not only in the click listener.
+    if (!this.ready) return;
     // Raw mouse input where supported; some platforms refuse it (Firefox has
     // no raw input), so fall back to the plain form. The fallback must run
     // inside the click: a request sent after the promise rejects can arrive

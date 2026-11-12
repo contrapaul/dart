@@ -84,7 +84,10 @@ const PAGES = [
   { file: "arena.html", name: "the arena", settle: "#status", ready: "Click to play" },
   // The range's overlay is static HTML, so it proves nothing; the menu's
   // blaster label reads "-" until the loadout has loaded, then names B01.
-  { file: "range.html", name: "test range", settle: "#menuBlaster", ready: "B01" },
+  // PT-10: the range has a status line now, so the check waits for it like
+  // the game pages' do: that text is written at the first drawn frame, so it
+  // also proves the boot finished and the range may take the mouse.
+  { file: "range.html", name: "test range", settle: "#status", ready: "Click to play" },
   { file: "sandbox.html", name: "sandbox", settle: "#roster li", ready: "" },
 ];
 

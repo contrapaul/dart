@@ -86,6 +86,7 @@ export class Loadout {
   static async load(
     camera: THREE.Camera,
     darts: DartFiring,
+    onLoaded?: (id: string, done: number, total: number) => void,
   ): Promise<Loadout> {
     const parts: LoadoutPart[] = [];
     for (const id of ORDER) {
@@ -95,6 +96,8 @@ export class Loadout {
       const blaster = new Blaster(spec, darts, (i) =>
         Loadout.muzzleToWorld(viewmodel.muzzleCameraPoint(i, Loadout._scratch), Loadout._world));
       parts.push({ id, blaster, viewmodel });
+      // PT-10: the boot report shows which model is being waited on.
+      onLoaded?.(id, parts.length, ORDER.length);
     }
     return new Loadout(parts, darts, SWITCH_TIME);
   }

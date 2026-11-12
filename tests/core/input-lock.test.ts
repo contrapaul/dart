@@ -53,6 +53,10 @@ function setup() {
   g.window = win;
   Object.defineProperty(g, "navigator", { value: { getGamepads: () => [] }, configurable: true });
   const input = new Input(canvas as unknown as HTMLCanvasElement);
+  // PT-10: a click takes the mouse only once the game runs, so every test
+  // here stands after the first frame (the before-ready case is its own test
+  // in tests/core/boot-report.test.ts).
+  input.setReady();
   return {
     canvas,
     doc,

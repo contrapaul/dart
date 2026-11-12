@@ -4,6 +4,7 @@ import { createRenderer, type SceneOptions } from "../render/scene";
 import { createFoamMaterial } from "../render/foam-material";
 import { createPhysics, type Rapier } from "../physics/world";
 import { startLoop, STEP } from "../core/loop";
+import { firstFrame, pageBoot } from "../core/boot-report";
 import { Input, settings as lookSettings } from "../core/input";
 import { Zoom } from "./zoom";
 import { SettingsStore, type Settings, DIFFICULTIES } from "../core/settings";
@@ -184,6 +185,10 @@ function applySettings(
   audio.applyVolume(s.volume, s.muted);
 }
 
+/** The status line's text once the game runs: the same line the pause menu
+ *  writes (src/game/ui.ts), so the handover from boot to playing is invisible. */
+const READY_TEXT = "Click to play. Esc to pause.";
+
 export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Promise<Game<T>> {
   const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
   const overlay = document.querySelector<HTMLDivElement>("#overlay")!;
@@ -193,11 +198,16 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   camera.rotation.order = "YXZ";
   scene.add(camera); // needed so children (the blaster viewmodel) render
   const input = new Input(canvas);
+  const boot = pageBoot();
   const hud = new Hud(document.querySelector<HTMLDivElement>("#hud")!);
+  boot.progress("Loading physics");
   const { rapier, world } = await createPhysics();
+  boot.step("Rapier ready");
   const mesherPool = new MesherPool();
 
+  boot.progress("Building level");
   const built = hooks.build({ rapier, world, scene, mesherPool });
+  boot.step("Level built");
   const { voxels, voxelMesh, crates } = built;
   const voxelSize = voxels.voxelSize;
   const debris = new DebrisSystem(rapier, world);
@@ -218,7 +228,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const darts = new DartSystem(scene, world, rapier, player.collider);
   // The loadout loads before the start overlay can resolve, so by the time
   // the player can act every viewmodel is on screen.
-  const loadout = await Loadout.load(camera, darts);
+  boot.progress("Loading blasters");
+  const loadout = await Loadout.load(camera, darts, (_id, i, n) =>
+    boot.progress("Loading blasters", i, n));
+  boot.step("Loadout ready");
 
   // GAME-09e: the zoom. It holds the player's own field of view and look
   // sensitivity, and narrows both while the `zoom` action is held with a
@@ -859,12 +872,50 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // The spatial listener follows the camera each render frame.
     audio.engine?.updateListener();
     renderer.render(scene, camera);
+    // PT-10: the first drawn frame is when the game counts as running: the
+    // boot report gets its last step, and only now may a click take the
+    // mouse (before that the cursor stays and the status line says it is
+    // loading).
+    if (!bootDone) {
+      bootDone = true;
+      firstFrame(boot, READY_TEXT, mesherPool);
+      input.setReady();
+    }
+  }
+
+  // PT-10: the Foamers' meshes arrive from the mesher pool a part at a time,
+  // so the boot report shows them as a count. The counter is read only while
+  // the boot is running, and the status line is written only when it moved.
+  let bootDone = false;
+  let foamersDone = false;
+  let meshedDone = -1;
+  let meshedTotal = -1;
+  function reportFoamerMeshes(): void {
+    let done = 0;
+    for (const f of foamers.list) {
+      let ready = true;
+      for (const part of f.parts.values()) if (part.mesh.busy) { ready = false; break; }
+      if (ready) done++;
+    }
+    if (done === meshedDone && foamers.list.length === meshedTotal) return;
+    meshedDone = done;
+    meshedTotal = foamers.list.length;
+    boot.progress("Building Foamers", done, meshedTotal);
+    if (meshedTotal > 0 && done === meshedTotal) {
+      foamersDone = true;
+      boot.step("Foamers meshed");
+    }
   }
 
   const loop = startLoop({
     frame(dt) {
       input.poll();
       voxelMesh.update();
+      // PT-10: the Foamer meshes are the slow part of a Firefox boot, and
+      // the loop itself starts before they land, so keep counting them after
+      // the first frame too (the report logs a late step; the ready line
+      // stays).
+      if (!foamersDone) reportFoamerMeshes();
       if (!piecesReady && !voxelMesh.busy) {
         piecesReady = true;
         levelAI.piecesReady();
