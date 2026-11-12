@@ -779,6 +779,61 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-12: PT-10 review, merged (Claude Opus 5.5): a visible boot
+
+- DeepSeek built it to the card: `src/core/boot-report.ts` (steps with
+  times, the status line's "Loading blasters 3 / 8", one `DART boot:`
+  console line per step, the `?diag` readout), wired into the game pages,
+  the range and the sandbox; `range.html` has a `#status` line, so a
+  range boot error shows there; `Input` takes no pointer lock before the
+  first drawn frame, the page's own buttons included.
+- **Fix: the `?diag` readout was drawn once, at the first frame,** before
+  the Foamers had landed, so the step that matters for Firefox never
+  showed. It now redraws on every boot change, shows each step's time
+  since the start ("at N ms"), and a live "Waiting: Building Foamers
+  9 / 16" line until the line is done.
+- **Fix: the range built its Foamers only after Play.** Their meshes
+  update inside the paused game step, so behind the menu the line was not
+  built at all, and a slow browser built it while the player was trying
+  to play. The range now meshes and poses the line while paused (the
+  PT-01 lesson: without the pose they draw in a heap). Seen in headless
+  Chromium: line built 0.4 s after load, standing in its arc, behind the
+  menu.
+- Chromium numbers from `?diag`: loadout 46 ms, first frame at 297 ms,
+  Foamers meshed at 410 ms.
+- **For Paul:** open `https://dart.contrapaul.com/range?diag` in Firefox,
+  wait, and send the readout (or the `DART boot:` console lines if it
+  never gets to the first frame).
+- `npm run check` (1002 tests) and `npm run smoke` green.
+
+### 2026-11-12: PT-10, a boot you can see, and no mouse lock before the game runs (DeepSeek V4.1 Flash via Pi)
+
+- What was asked: a boot report with step times on every page, a `?diag`
+  readout, the range's status line so a boot error shows there, and no
+  pointer lock before the game runs.
+- Built: `src/core/boot-report.ts` (`pageBoot`, `BootReport` with
+  `progress`/`step`/`finish`, `firstFrame`, `diagText`, `mesherMode`,
+  `countMesherFallbacks`). Steps log one `DART boot: <step> <ms>` line each
+  and write the waiting step into `#status` ("Loading blasters 3 / 8").
+  Wired into `src/game/game.ts`, `src/range/main.ts` and
+  `src/sandbox/main.ts`; `Loadout.load` takes an optional `onLoaded`.
+  `Input.ready`/`setReady()` refuses both the canvas click and
+  `requestLock` until the first drawn frame.
+- Range: `range.html` has `<p id="status">Loading</p>` (styled in
+  `src/range/range.css`), so `boot-errors.ts` shows a failed range boot on
+  the page. `tools/smoke.mjs` waits for the range's ready text now.
+- Decisions: the mesher fallback count wraps `console.warn` instead of
+  changing `MesherPool` (the reviewer may prefer a counter on the pool);
+  after `finish()` a late Foamer mesh still logs its step but cannot
+  overwrite the ready line.
+- Checks run here: `npm run check` green (1000 passed, 2 skipped; one
+  `tests/weapons/b05.test.ts` timing failure under load, green when run
+  alone), `npm run smoke` green on all four pages (range now reports
+  "Click to play. Esc shows the panel.").
+- Not checked by eye: no browser and no image reading here, so the `?diag`
+  readout's look, the range status line's place in the panel, and Firefox's
+  real first click after boot are for the reviewer. The Firefox boot itself
+  was not timed, only the steps it now reports.
 ### 2026-11-12: a piercing dart flies through loose foam chunks (Claude Opus 5.5)
 
 - CI failed on a docs-only commit: `tests/weapons/b05.test.ts` 9 (a dart

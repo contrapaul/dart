@@ -32,6 +32,7 @@ import { TtkTracker, TtkPanel } from "./ttk";
 import { RangeMenu, RangeMenuPanel } from "./menu";
 import { foamerLabel } from "./labels";
 import { MesherPool } from "../voxel/mesher-pool";
+import { firstFrame, pageBoot } from "../core/boot-report";
 import { AudioEngine } from "../audio/audio";
 import { GameSounds } from "../audio/game-sounds";
 import rangeJson from "../../data/range.json";
@@ -75,7 +76,10 @@ const { renderer, scene, camera } = createRenderer(canvas);
 camera.rotation.order = "YXZ";
 scene.add(camera); // the blaster viewmodel is a child of the camera
 const input = new Input(canvas);
+const boot = pageBoot();
+boot.progress("Loading physics");
 const { rapier, world } = await createPhysics();
+boot.step("Rapier ready");
 const mesherPool = new MesherPool();
 
 // The level: a flat floor, 4 m outer walls, the cover boxes from the data
@@ -106,6 +110,7 @@ addBox(half, 2, 0, 1, 4, R.size, WALL);
 for (const c of R.cover) addBox(c[0], c[1], c[2], c[3], c[4], c[5], COVER);
 for (let m = 5; m <= 30; m += 5)
   addBox(0, 0.01, R.playerSpawn[2] - m, 0.5, 0.02, 2, MARK, false);
+boot.step("Range built");
 
 const player = new PlayerController(rapier, world, SPAWN_POSE);
 // UI-01 stage 1: health on the range too, with a God mode switch. The
@@ -134,7 +139,10 @@ function startAudio() {
 // The loadout loads all three blasters and their GLTF viewmodels before the
 // start overlay can resolve. The panel's blaster and mod rows drive this;
 // the dart type buttons set the active blaster's dart type.
-const loadout = await Loadout.load(camera, darts);
+boot.progress("Loading blasters");
+const loadout = await Loadout.load(camera, darts, (_id, done, total) =>
+  boot.progress("Loading blasters", done, total));
+boot.step("Loadout ready");
 // Darts leave from the active muzzle's world point, pulled out of walls.
 const _aimUnused = new THREE.Vector3();
 Loadout.muzzleToWorld = (camPoint, out) => {
@@ -811,10 +819,55 @@ const WEAPON_KEYS = ["weapon1", "weapon2", "weapon3", "weapon4", "weapon5", "wea
 const PAUSED_FRAME_MS = renderJson.pausedFrame * 1000;
 let pausedClock = PAUSED_FRAME_MS;
 
+/** The status line's text once the range runs (PT-10). */
+const READY_TEXT = "Click to play. Esc shows the panel.";
+/** True once the first frame has been drawn (PT-10). */
+let bootDone = false;
+/** True once every Foamer in the line has been meshed (PT-10). */
+let foamersDone = false;
+/** The Foamers' mesh count the boot report last wrote, so a frame that did
+ *  not change it writes nothing. */
+let meshedDone = -1;
+let meshedTotal = -1;
+/** PT-10: the lineup's meshes arrive a part at a time, so the boot report
+ *  shows them as a count. Read once per frame until the line is done. */
+function reportFoamerMeshes(): void {
+  let done = 0;
+  for (const f of foamers.list) {
+    let ready = true;
+    for (const part of f.parts.values()) if (part.mesh.busy) { ready = false; break; }
+    if (ready) done++;
+  }
+  if (done === meshedDone && foamers.list.length === meshedTotal) return;
+  meshedDone = done;
+  meshedTotal = foamers.list.length;
+  boot.progress("Building Foamers", done, meshedTotal);
+  if (meshedTotal > 0 && done === meshedTotal) {
+    foamersDone = true;
+    boot.step("Foamers meshed");
+  }
+}
+
 loopCtl = startLoop({
   frame(dt) {
     input.poll();
-    if (paused) return;
+    // PT-10: the Foamers mesh a part at a time, and the loop runs while
+    // they land, so count them until the whole line is done.
+    if (!foamersDone) reportFoamerMeshes();
+    if (paused) {
+      // Review fix: the line meshes behind the menu, so it is ready when
+      // the player clicks Play (it waited for the first unpaused step).
+      // The pose is solved too, or the line is drawn in a heap at the
+      // origin until the first step (the PT-01 lesson).
+      if (!foamersDone) {
+        for (const f of foamers.list) {
+          f.applyPose();
+          f.poseParts(0, false, false);
+          for (const part of f.parts.values()) part.mesh.update();
+        }
+      }
+      return;
+    }
     if (switches.strafe) strafeStep(dt);
     const look = input.takeLook(dt);
     player.yaw -= look.yaw;
@@ -933,6 +986,15 @@ loopCtl = startLoop({
     hud.setHealth(health.hp, health.max);
     if (engine) engine.updateListener();
     renderer.render(scene, camera);
+    // PT-10: the first drawn frame is when the range counts as running: the
+    // boot report gets its last step, and only now may a click take the
+    // mouse. Before that the cursor stays and the status line says it is
+    // loading, as the card asks.
+    if (!bootDone) {
+      bootDone = true;
+      firstFrame(boot, READY_TEXT, mesherPool);
+      input.setReady();
+    }
   },
   stats: pushStats,
 });

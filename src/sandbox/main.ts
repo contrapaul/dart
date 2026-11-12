@@ -11,6 +11,7 @@ import { buildPartVolume, rigHeight, solvePose, type RigMotion, type RigSpec } f
 import { rigMotion } from "../foamers/rig-motion";
 import { material as voxelMaterial, materialId } from "../voxel/materials";
 import { Burst } from "./burst";
+import { firstFrame, pageBoot } from "../core/boot-report";
 import rigData from "../../data/foamer-rigs.json";
 
 // Foamer sandbox (sandbox.html): every greybox rig from data/foamer-rigs.json
@@ -452,6 +453,12 @@ let playing = true;
 let speed = 1;
 let showPartLabels = false;
 let views: RigView[] = [];
+/** PT-10: the boot report, and how many rigs have finished meshing. The
+ *  sandbox has no status element, so the report's steps go to the console
+ *  and the `?diag` readout; the count is only for the console line. */
+const boot = pageBoot();
+let meshed = 0;
+let bootDone = false;
 let t = 0;
 let roamAngle = 0;
 let weapon: WeaponId = "dart";
@@ -485,7 +492,7 @@ function build() {
   for (const v of views) {
     labelLayer.append(v.label);
     for (const l of v.partLabels.values()) labelLayer.append(l);
-    void v.mesh();
+    void v.mesh().then(() => { meshed++; });
   }
   focus();
 }
@@ -672,6 +679,14 @@ function frame(now: number) {
   if (hpEl) hpEl.textContent = sel ? String(Math.max(0, Math.round(sel.health * 10) / 10)) : "";
   controls.update();
   renderer.render(scene, camera);
+  // PT-10: the boot ends at the first drawn frame, with the meshed rigs
+  // counted in the step it records.
+  if (!bootDone) {
+    bootDone = true;
+    boot.progress("Meshing rigs", meshed, views.length);
+    boot.step("Rigs meshed");
+    firstFrame(boot, "", pool);
+  }
   requestAnimationFrame(frame);
 }
 
