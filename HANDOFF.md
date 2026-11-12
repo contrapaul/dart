@@ -779,6 +779,25 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-12: CI timing budgets off on CI, QA-01 passed (Claude Opus 5.5)
+
+- Two more CI runs failed on the path-query budget alone: the fastest of
+  nine queries took 7.7 and 8.1 ms on GitHub against 3.4 ms one run
+  earlier, so a scaled budget (`PERF_BUDGET_SCALE`, now removed) could
+  not make it reliable. The nav bake and query budgets now run only off
+  CI (GitHub sets `CI`); on CI the numbers are logged. They hold on a
+  dev machine.
+- QA-01 passed (Paul): above 60 fps without issue on the range. More
+  will come from level testing. The voxel go/no-go gate is Paul's call
+  and still open in PLAN.md.
+- Firefox (Paul, 2026-11-12): not playable. The mouse is taken but the
+  camera does not turn; Foamers never load or load very late. Edge is
+  playable. Both symptoms fit a boot that has not finished: the canvas
+  takes the lock on click before the loop runs. Headless Firefox here
+  measured the live range at 20 to 30 s to boot against about 3 s in
+  Chromium (models fetched in under 1 s each), so the time is spent
+  elsewhere in Firefox. Card PT-10 adds a boot report to find it.
+
 ### 2026-11-12: review of the 11-12 work, pushed, CI made green on GitHub (Claude Opus 5.5)
 
 - Reviewed the four unpushed commits (B08 wired under its plain name,
