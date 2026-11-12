@@ -734,7 +734,7 @@ describe("card test 10: B04 loop", () => {
       lo.update(DT, c, AIM);
       gs.update(DT, c);
     };
-    lo.select(1); // to the B04
+    lo.select(lo.ids.indexOf("B04")); // to the B04
     while (lo.switching) step(false);
     expect(lo.activeId()).toBe("B04");
     // Hold the trigger across the spin up and beyond: no flywheel loop.

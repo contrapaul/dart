@@ -779,6 +779,19 @@ github.com/contrapaul/dart (public), MIT licence.
 
 ## Log
 
+### 2026-11-12: keys 1 to 8 are B01 to B08 (Claude Opus 5.5)
+
+- Paul: B07 no longer errors in Firefox and B04 fires at once. Then:
+  map B01 to B08 on keys 1 to 8; 1, 2 and 3 were out of place.
+- `data/blasters.json` `order` is now B01 to B08 (was B01, B04, B03,
+  B06, B02, B05, B07, B08). The wheel cycles in the same order.
+- Found on the way: `Loadout.ids` was always the full data order, even
+  for a loadout built with only some blasters, so an index named the
+  wrong one. It now comes from the loadout's own blasters (the pages
+  load every blaster, so play was not affected; three tests relied on
+  the old coincidence and now select by id).
+- 1007 tests pass (2 skipped); check and smoke green.
+
 ### 2026-11-12: B04 is plain fast full-auto; Firefox plays until B07 (Claude Opus 5.5)
 
 - Paul: in Firefox the range now plays (mouse and keys) and performance

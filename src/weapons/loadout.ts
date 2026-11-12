@@ -49,7 +49,10 @@ export interface LoadoutPart {
 // the old viewmodel hides and the new one shows at the halfway point.
 // update passes the step to the active Blaster and allocates nothing.
 export class Loadout {
-  readonly ids = ORDER;
+  /** The ids of the blasters this loadout holds, in its own order (it was
+   *  always the full data order, so a loadout built with only some of them
+   *  named the wrong blaster for an index). */
+  readonly ids: string[];
   readonly blasters: Blaster[] = [];
   readonly viewmodels: LoadoutViewmodel[] = [];
   readonly switchTime: number;
@@ -68,6 +71,7 @@ export class Loadout {
     switchTime: number,
   ) {
     this.darts = darts;
+    this.ids = parts.map((p) => p.id);
     this.switchTime = switchTime;
     for (const p of parts) {
       this.blasters.push(p.blaster);

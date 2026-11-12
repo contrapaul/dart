@@ -161,8 +161,8 @@ function loadoutOf(ids: string[]): { lo: Loadout; darts: FakeDarts } {
 
 describe("PT-01 stage 1: the reserve never runs out", () => {
   it("fillReserves tops the reserve back and leaves the magazine alone", () => {
-    const { lo } = loadoutOf(["B01", "B04", "B03", "B06", "B02", "B05", "B07", "B08"]);
-    expect(lo.ids).toEqual(["B01", "B04", "B03", "B06", "B02", "B05", "B07", "B08"]);
+    const { lo } = loadoutOf(["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"]);
+    expect(lo.ids).toEqual(["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"]);
     const b = lo.blasters[0];
     b.reserve = 3;
     const mag = b.mag;

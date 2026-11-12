@@ -185,10 +185,10 @@ describe("GAME-09d: B06 The Standard", () => {
     expect(0.12).toBeLessThan(S.fireInterval);
   });
 
-  it("6. B06 is in the loadout order after B05", async () => {
+  it("6. B06 is sixth in the loadout order, on key 6", async () => {
     const blastersJson = await import("../../data/blasters.json");
-    // B02 (GAME-09c) and B05 (GAME-09e) joined after B06 when the branches met.
-    expect(blastersJson.order.slice(0, 4)).toEqual(["B01", "B04", "B03", "B06"]);
+    // Paul, 2026-11-12: key N selects BN.
+    expect(blastersJson.order.indexOf("B06")).toBe(5);
   });
 });
 

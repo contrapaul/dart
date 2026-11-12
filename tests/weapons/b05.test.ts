@@ -213,13 +213,14 @@ describe("GAME-09e: B05 Shrike", () => {
     expect(darts.count).toBe(5);
   });
 
-  it("5. B05 is in the loadout order, after B02", async () => {
+  it("5. B05 is in the loadout order, on key 5", async () => {
     const blastersJson = await import("../../data/blasters.json");
     // Review: B05 joined after B02 when the branches met, so every
     // earlier blaster keeps its slot and key. GAME-09f: B07 joins at the
     // end for the same reason (key 7). GAME-09g: B08 joins at the end
     // (key 8).
-    expect(blastersJson.order).toEqual(["B01", "B04", "B03", "B06", "B02", "B05", "B07", "B08"]);
+    // Paul, 2026-11-12: key N selects BN, so the order is by number.
+    expect(blastersJson.order).toEqual(["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"]);
   });
 });
 

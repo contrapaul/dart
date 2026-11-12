@@ -155,7 +155,7 @@ describe("PT-01 stage 3: the time-to-kill record", () => {
     expect(f.health).toBeLessThan(f.maxHealth);
     expect(f.state).not.toBe("down");
     for (let i = 0; i < 60 && r.loadout.activeId() === "B01"; i++) {
-      r.loadout.select(1);
+      r.loadout.select(r.loadout.ids.indexOf("B04"));
       tick(r, DT);
     }
     tick(r, 12, true);
