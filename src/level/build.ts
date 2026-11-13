@@ -9,7 +9,8 @@ import { material, materialId } from "../voxel/materials";
 import { Crates, type CrateBox } from "../voxel/crates";
 import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
-import type { Door, DoorState, Level, PieceVolume, ShellBox } from "./format";
+import { buildPrims, type PrimHandle } from "./prims";
+import type { Door, DoorState, Level, LevelDoor, PieceVolume, ShellBox } from "./format";
 
 // Turns a validated level into meshes, colliders and voxels. Shell boxes are
 // fixed colliders like src/main.ts's addBox. Every piece volume goes into one
@@ -62,6 +63,9 @@ export interface BuiltLevel {
    *  owns their timer and the crush (src/arena/extras.ts); a level with
    *  none gives an empty list. */
   readonly presses: PressHandle[];
+  /** ED-01: a handle for every prim that starts hidden, keyed by prim id,
+   *  so a trigger can show it. */
+  readonly prims: Map<string, PrimHandle>;
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -212,7 +216,13 @@ function fillPieces(
  *  walls. The nav grid covers the whole level, corridors included. */
 function navBoundsOf(level: Level): NavBounds {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (const b of level.shell) {
+  // ED-01: a level may be built from prims alone, so the solid ones count
+  // for the bounds as well as the shell.
+  const boxes = [
+    ...level.shell,
+    ...(level.prims ?? []).filter((p) => p.behaviour === "solid" || p.behaviour === "breakable"),
+  ];
+  for (const b of boxes) {
     minX = Math.min(minX, b.pos[0] - b.size[0] / 2);
     maxX = Math.max(maxX, b.pos[0] + b.size[0] / 2);
     minZ = Math.min(minZ, b.pos[2] - b.size[2] / 2);
@@ -238,6 +248,9 @@ export function buildLevel(
     else addShell(group, rapier, world, box.pos, box.size, colourOf(box.material));
   }
 
+  // ED-01: the editor's prims, merged per colour where they never hide.
+  const prims = buildPrims(level, rapier, world, group);
+
   // One voxel volume for every piece, snapped to a shared grid origin.
   let minX = Infinity, minY = Infinity, minZ = Infinity;
   for (const piece of level.pieces ?? []) {
@@ -259,9 +272,16 @@ export function buildLevel(
   group.add(voxelMesh.group);
 
   // Doors: a fixed box that hides and drops its collider when it opens.
+  // ED-01: the level's own doors (outside any arena) are built the same
+  // way, with lock "none" open and every other lock shut until something
+  // opens it.
   const doors = new Map<string, DoorHandle>();
   for (const door of level.arenas?.flatMap((a) => a.doors) ?? []) {
     const handle = makeDoor(door, group, rapier, world);
+    doors.set(door.id, handle);
+  }
+  for (const door of level.doors ?? []) {
+    const handle = makeLevelDoor(door, group, rapier, world);
     doors.set(door.id, handle);
   }
 
@@ -280,37 +300,62 @@ export function buildLevel(
 
   if (scene) scene.add(group);
   return {
-    group, voxels, voxelMesh, doors, buttons, presses,
+    group, voxels, voxelMesh, doors, buttons, presses, prims,
     crates: new Crates(voxels, crateBoxes),
     navBounds: navBoundsOf(level),
+  };
+}
+
+/** A door's box, its collider and the state that hides it. Both the
+ *  arena's doors and the editor's (ED-01) go through here, so they look
+ *  and slide the same. */
+function doorOf(
+  id: string, size: [number, number, number], pos: [number, number, number],
+  colour: number, rotY: number, state: DoorState,
+  group: THREE.Group, rapier: Rapier, world: RAPIER.World,
+): DoorHandle {
+  const mesh = boxMesh(size[0], size[1], size[2], colour);
+  mesh.position.set(pos[0], pos[1], pos[2]);
+  const turn = THREE.MathUtils.degToRad(rotY);
+  mesh.rotation.y = turn;
+  group.add(mesh);
+  const q = mesh.quaternion;
+  const collider = world.createCollider(
+    rapier.ColliderDesc.cuboid(size[0] / 2, size[1] / 2, size[2] / 2)
+      .setTranslation(pos[0], pos[1], pos[2])
+      .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }),
+  );
+  let current = state;
+  const apply = () => {
+    const open = current === "open";
+    mesh.visible = !open;
+    collider.setEnabled(!open);
+  };
+  apply();
+  return {
+    id,
+    get state() {
+      return current;
+    },
+    setState(next: DoorState) {
+      current = next;
+      apply();
+    },
   };
 }
 
 function makeDoor(
   door: Door, group: THREE.Group, rapier: Rapier, world: RAPIER.World,
 ): DoorHandle {
-  const mesh = boxMesh(door.size[0], door.size[1], door.size[2], 0xffd23f);
-  mesh.position.set(door.pos[0], door.pos[1], door.pos[2]);
-  group.add(mesh);
-  const collider = world.createCollider(
-    rapier.ColliderDesc.cuboid(door.size[0] / 2, door.size[1] / 2, door.size[2] / 2)
-      .setTranslation(door.pos[0], door.pos[1], door.pos[2]),
-  );
-  let state = door.state;
-  const apply = () => {
-    const open = state === "open";
-    mesh.visible = !open;
-    collider.setEnabled(!open);
-  };
-  apply();
-  return {
-    id: door.id,
-    get state() {
-      return state;
-    },
-    setState(next: DoorState) {
-      state = next;
-      apply();
-    },
-  };
+  return doorOf(door.id, door.size, door.pos, 0xffd23f, 0, door.state, group, rapier, world);
+}
+
+/** ED-01: a door the editor placed. `lock: "none"` starts open; a trigger
+ *  or key lock starts shut, which is what makes it a blocker. */
+function makeLevelDoor(
+  door: LevelDoor, group: THREE.Group, rapier: Rapier, world: RAPIER.World,
+): DoorHandle {
+  const colour = door.colour ? new THREE.Color(door.colour).getHex() : 0xffd23f;
+  const state: DoorState = door.lock === "none" ? "open" : "locked";
+  return doorOf(door.id, door.size, door.pos, colour, door.rotY ?? 0, state, group, rapier, world);
 }
