@@ -9,8 +9,12 @@ import { material, materialId } from "../voxel/materials";
 import { Crates, type CrateBox } from "../voxel/crates";
 import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
-import { buildPrims, type PrimHandle } from "./prims";
-import type { Door, DoorState, Level, LevelDoor, PieceVolume, ShellBox } from "./format";
+import { buildPrims, foamMaterialFor, type PrimHandle } from "./prims";
+import { isVoxelBreakable } from "./validate";
+import { Breakables } from "./breakables";
+import type {
+  Anchor, Door, DoorState, Level, LevelDoor, Piece, PieceVolume, Prim, ShellBox, Vec3,
+} from "./format";
 
 // Turns a validated level into meshes, colliders and voxels. Shell boxes are
 // fixed colliders like src/main.ts's addBox. Every piece volume goes into one
@@ -23,6 +27,9 @@ import type { Door, DoorState, Level, LevelDoor, PieceVolume, ShellBox } from ".
 
 const VOXEL = 0.1;
 const GREYBOX = 0x6f6788;
+/** ED-06 (design/EDITOR.md section 7): no voxel piece volume may be longer
+ *  than this along an axis, so a big breakable becomes several. */
+const MAX_VOLUME = 3.2;
 
 /** The voxel grid must start on a voxel boundary, or carving is ragged. */
 function snap(v: number) {
@@ -66,6 +73,10 @@ export interface BuiltLevel {
   /** ED-01: a handle for every prim that starts hidden, keyed by prim id,
    *  so a trigger can show it. */
   readonly prims: Map<string, PrimHandle>;
+  /** ED-06: the prims that break by hit points (every breakable prim that
+   *  is not voxel foam, a hidden one included). The page wires the darts,
+   *  blasts and swings to it, gives it the debris system, and resets it. */
+  readonly breakables: Breakables;
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -149,11 +160,80 @@ function bedLayer(
   voxels.fillBox(a[0], a[1], a[2], b[0], b[1], b[2], materialId("bedrock"));
 }
 
-/** Paints a piece's world-space volumes into the shared voxel volume. */
+/** ED-06: the volumes a voxel breakable prim becomes: its size box cut into
+ *  blocks of at most 3.2 m per axis, centred on the prim. A turn of 90 or
+ *  270 degrees about an axis swaps the two sizes it turns through, because
+ *  the blocks are axis aligned. */
+export function voxelPrimVolumes(prim: Prim): PieceVolume[] {
+  const size: Vec3 = [prim.size[0], prim.size[1], prim.size[2]];
+  // A turn about X swaps y and z, about Y swaps x and z, about Z x and y.
+  const pairs: [number, number][] = [[1, 2], [0, 2], [0, 1]];
+  const rot = prim.rot ?? [0, 0, 0];
+  for (let axis = 0; axis < 3; axis++) {
+    if (Math.abs(Math.round(rot[axis] / 90)) % 2 === 0) continue;
+    const [a, b] = pairs[axis];
+    const t = size[a];
+    size[a] = size[b];
+    size[b] = t;
+  }
+  const material = foamMaterialFor(prim.colour);
+  const counts = size.map((s) => Math.max(1, Math.ceil(s / MAX_VOLUME - 1e-9)));
+  const step: Vec3 = [size[0] / counts[0], size[1] / counts[1], size[2] / counts[2]];
+  const out: PieceVolume[] = [];
+  for (let i = 0; i < counts[0]; i++) {
+    for (let j = 0; j < counts[1]; j++) {
+      for (let k = 0; k < counts[2]; k++) {
+        out.push({
+          pos: [
+            prim.pos[0] - size[0] / 2 + step[0] * (i + 0.5),
+            prim.pos[1] - size[1] / 2 + step[1] * (j + 0.5),
+            prim.pos[2] - size[2] / 2 + step[2] * (k + 0.5),
+          ],
+          size: [step[0], step[1], step[2]],
+          material,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** ED-06: a voxel breakable's anchor: "floor" when its bottom touches a
+ *  solid prim or a shell box top within 0.05 m, else "none". */
+function breakableAnchor(level: Level, prim: Prim): Anchor {
+  const bottom = prim.pos[1] - prim.size[1] / 2;
+  const restsOn = (b: { pos: Vec3; size: Vec3 }) =>
+    Math.abs(bottom - (b.pos[1] + b.size[1] / 2)) <= 0.05 &&
+    Math.abs(b.pos[0] - prim.pos[0]) < (b.size[0] + prim.size[0]) / 2 &&
+    Math.abs(b.pos[2] - prim.pos[2]) < (b.size[2] + prim.size[2]) / 2;
+  for (const box of level.shell) if (restsOn(box)) return "floor";
+  for (const other of level.prims ?? []) {
+    if (other === prim || other.behaviour !== "solid") continue;
+    if (restsOn(other)) return "floor";
+  }
+  return "none";
+}
+
+/** ED-06: the voxel breakable prims as pieces. A hidden one is left out: it
+ *  has no voxels yet, so breakables.ts breaks it by hit points instead. */
+export function voxelPrimPieces(level: Level): Piece[] {
+  const out: Piece[] = [];
+  for (const prim of level.prims ?? []) {
+    if (!isVoxelBreakable(prim) || prim.hidden) continue;
+    out.push({
+      id: prim.id,
+      kind: "cover",
+      volumes: voxelPrimVolumes(prim),
+      anchor: breakableAnchor(level, prim),
+    });
+  }
+  return out;
+}
+
+/** Paints the pieces' world-space volumes into the shared voxel volume. */
 function fillPieces(
-  level: Level, voxels: VoxelVolume, origin: THREE.Vector3, crates: CrateBox[],
+  level: Level, pieces: Piece[], voxels: VoxelVolume, origin: THREE.Vector3, crates: CrateBox[],
 ) {
-  const pieces = level.pieces ?? [];
   for (const piece of pieces) {
     let bottom = Infinity;
     for (const v of piece.volumes) bottom = Math.min(bottom, v.pos[1] - v.size[1] / 2);
@@ -250,10 +330,18 @@ export function buildLevel(
 
   // ED-01: the editor's prims, merged per colour where they never hide.
   const prims = buildPrims(level, rapier, world, group);
+  // ED-06: the ones that break by hit points get a mesh and colliders of
+  // their own, and a handle if they start hidden.
+  const breakables = new Breakables(level, rapier, world, group);
+  for (const [id, handle] of breakables.handles) prims.set(id, handle);
+
+  // ED-06: the voxel breakable prims join the pieces, so one fill and one
+  // volume serve both.
+  const pieces = [...(level.pieces ?? []), ...voxelPrimPieces(level)];
 
   // One voxel volume for every piece, snapped to a shared grid origin.
   let minX = Infinity, minY = Infinity, minZ = Infinity;
-  for (const piece of level.pieces ?? []) {
+  for (const piece of pieces) {
     for (const v of piece.volumes) {
       minX = Math.min(minX, v.pos[0] - v.size[0] / 2);
       minY = Math.min(minY, v.pos[1] - v.size[1] / 2);
@@ -266,7 +354,7 @@ export function buildLevel(
     : new THREE.Vector3(0, 0, 0);
   const voxels = new VoxelVolume(VOXEL);
   const crateBoxes: CrateBox[] = [];
-  fillPieces(level, voxels, origin, crateBoxes);
+  fillPieces(level, pieces, voxels, origin, crateBoxes);
   const voxelMesh = new VolumeMesh(voxels, mesher, rapier, world, origin);
   voxelMesh.update();
   group.add(voxelMesh.group);
@@ -300,7 +388,7 @@ export function buildLevel(
 
   if (scene) scene.add(group);
   return {
-    group, voxels, voxelMesh, doors, buttons, presses, prims,
+    group, voxels, voxelMesh, doors, buttons, presses, prims, breakables,
     crates: new Crates(voxels, crateBoxes),
     navBounds: navBoundsOf(level),
   };

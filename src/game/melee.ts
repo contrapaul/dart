@@ -91,6 +91,10 @@ export class Melee {
    *  what else a swing reached reads the change, so a held key does not
    *  press a button every step. */
   presses = 0;
+  /** ED-06: the combo hit the last press swung (0 to hits-1, -1 for the
+   *  bash), null before the first press. `damageOf` turns it into the
+   *  damage that swing dealt, so a page can take the same off a breakable. */
+  lastSwung: number | null = null;
   /** HP-01: a melee hit killed a Foamer, at the point its health drops. The
    *  page sprays the kill's blobs there (data/melee.json killDrop), so the
    *  melee stays out of the pickups module's imports, the way the blaster
@@ -142,6 +146,13 @@ export class Melee {
   get reach(): number { return T.reach; }
   get arcDeg(): number { return T.arcDeg; }
   get comboHits(): number { return this.spec.hits.length; }
+  /** ED-06: the damage the swing just made dealt a Foamer, so the page can
+   *  take the same off a breakable. `swung` is the press's own index (0 to
+   *  hits-1, -1 for the bash), null when the press did nothing. */
+  damageOf(swung: number | null): number {
+    if (swung === null) return 0;
+    return swung < 0 ? T.bash.damage : this.spec.hits[swung]?.damage ?? 0;
+  }
   /** HP-01: the health a melee kill sprays, from data/melee.json. */
   get killDrop(): { count: number; amount: number } { return T.killDrop; }
   /** The bash's view kick in radians; the page adds it to the camera's
@@ -162,6 +173,7 @@ export class Melee {
     this.lastParries = 0;
     this.lastPress = -1e9;
     this.presses = 0;
+    this.lastSwung = null;
   }
 
   /** One fixed step: the timers. The parry refill reads the shield's own
@@ -230,6 +242,7 @@ export class Melee {
     }
     this.carveLine(eye, forward, T.reach, T.carveRadius, T.debrisMax, e);
     e.swung = idx;
+    this.lastSwung = idx;
     this.presses++;
     return e;
   }
@@ -252,6 +265,7 @@ export class Melee {
     }
     this.carveLine(eye, forward, T.bash.reach, T.bash.carveRadius, T.bash.debrisMax, e);
     e.swung = -1;
+    this.lastSwung = -1;
     this.presses++;
     return e;
   }
