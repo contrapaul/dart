@@ -8,7 +8,7 @@
 import "../core/boot-errors";
 import { validateLevel } from "../level/validate";
 import { createGame } from "../game/game";
-import { arenaExtras, buildArena, type ArenaBuilt } from "./extras";
+import type { ArenaBuilt } from "./extras";
 import { chosenLevel, loadLocalLevel } from "./levels";
 import { campaignMode, entryState, readSave, type CampaignState } from "../game/campaign";
 
@@ -20,6 +20,10 @@ const status = document.querySelector<HTMLParagraphElement>("#status")!;
 // key holding nothing, is the page's error: the message goes on the status
 // line and no level starts, the same as a level the validator refuses.
 const loadError = await loadLocalLevel(location.search);
+// extras.ts picks its level when it is evaluated, so it is imported only
+// now that the stored level is in place (a static import ran first and
+// played the Pit; found in the ED-02 review).
+const { arenaExtras, buildArena } = await import("./extras");
 
 // GAME-10b: `?level=1-4-ring` plays the Ring; the Pit stays the default.
 const chosen = chosenLevel();
