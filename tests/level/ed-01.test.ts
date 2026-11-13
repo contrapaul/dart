@@ -1,0 +1,53 @@
+import { describe, expect, it } from "vitest";
+import edOneJson from "../../data/levels/ed-01.json";
+import { validateLevel } from "../../src/level/validate";
+import { chosenLevel, loadLocalLevel, useLocalLevel } from "../../src/arena/levels";
+import type { Level } from "../../src/level/format";
+
+const level = edOneJson as unknown as Level;
+
+describe("the ED-01 test level", () => {
+  it("validates with no errors", () => {
+    const report = validateLevel(level);
+    expect(report.errors).toEqual([]);
+  });
+
+  it("has every new part once", () => {
+    const shapes = new Set(level.prims!.map((p) => p.shape));
+    expect([...shapes].sort()).toEqual(["box", "cylinder", "ramp", "stairs", "wedge"]);
+    expect(level.prims!.filter((p) => p.behaviour === "decor").length).toBe(3);
+    expect(level.prims!.filter((p) => p.hidden).map((p) => p.id)).toEqual(["blocker"]);
+    // ED-03 adds one lava pool.
+    expect(level.prims!.filter((p) => p.hazard !== undefined).map((p) => p.id)).toEqual(["lava-pool"]);
+    expect(level.foamers!.map((f) => f.wake ?? "sight")).toEqual(["sight", "trigger"]);
+    expect(level.doors!.map((d) => d.lock)).toEqual(["none", "trigger"]);
+    expect(level.sky!.kind).toBe("gradient");
+    expect(level.start).toEqual({ blasters: ["B01", "B04"], melee: ["M01"], health: 60 });
+  });
+
+  it("is one of the page's levels by name", () => {
+    expect(chosenLevel("?level=ed-01").level.meta.id).toBe("ed-01");
+    expect(chosenLevel("?level=ed-01").unknownLevel).toBeNull();
+  });
+});
+
+describe("?level=local:<key> (ED-01)", () => {
+  it("does nothing when the name is not a stored level", async () => {
+    expect(await loadLocalLevel("")).toBeNull();
+    expect(await loadLocalLevel("?level=1-1-pit")).toBeNull();
+  });
+
+  it("plays the level the store hands over", () => {
+    useLocalLevel("local:abc", level);
+    const chosen = chosenLevel("?level=local:abc");
+    expect(chosen.level).toBe(level);
+    expect(chosen.unknownLevel).toBeNull();
+    // A name that is not the one the store handed over still falls back.
+    expect(chosenLevel("?level=local:other").unknownLevel).toBe("local:other");
+  });
+
+  it("says so when the store will not open (Node has no database)", async () => {
+    expect(await loadLocalLevel("?level=local:abc")).toMatch(/store/);
+    expect(await loadLocalLevel("?level=local:")).toMatch(/names no stored level/);
+  });
+});

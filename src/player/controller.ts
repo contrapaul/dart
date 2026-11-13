@@ -49,6 +49,9 @@ export class PlayerController {
    *  every step (src/player/shield.ts), so B08 never writes there: the two
    *  slows combine, each page resets this one to 1 when it is not firing. */
   fireMoveScale = 1;
+  /** ED-03: a third scale, the slow of the hazard the player stands in
+   *  (a lake), written by the level page every step. */
+  hazardMoveScale = 1;
   /** GAME-10b: seconds left of a charge hit's stun. The body does not move
    *  (the look still works: yaw and pitch are set elsewhere), gravity and
    *  the floor still apply. Set by the game when a Darter runs into the
@@ -145,7 +148,7 @@ export class PlayerController {
       if (this.dashLeft <= 0) this.vel.setLength(P.sprintSpeed);
     } else {
       const speed = (input.isDown("sprint") && this.allowSprint
-        ? P.sprintSpeed : P.walkSpeed * this.speedScale) * this.fireMoveScale;
+        ? P.sprintSpeed : P.walkSpeed * this.speedScale) * this.fireMoveScale * this.hazardMoveScale;
       const accel = (this.grounded ? P.groundAccel : P.airAccel) * dt;
       // Move horizontal velocity toward the wished velocity.
       const dx = this.wish.x * speed - this.vel.x;

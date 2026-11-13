@@ -9,13 +9,21 @@ import "../core/boot-errors";
 import { validateLevel } from "../level/validate";
 import { createGame } from "../game/game";
 import { arenaExtras, buildArena, type ArenaBuilt } from "./extras";
-import { chosenLevel } from "./levels";
+import { chosenLevel, loadLocalLevel } from "./levels";
 import { campaignMode, entryState, readSave, type CampaignState } from "../game/campaign";
+
+const status = document.querySelector<HTMLParagraphElement>("#status")!;
+
+// ED-01: `?level=local:<key>` reads the level the player saved in this
+// browser before anything else looks at it, so the campaign's own entry
+// state and the level itself both come from it. A store that refuses, or a
+// key holding nothing, is the page's error: the message goes on the status
+// line and no level starts, the same as a level the validator refuses.
+const loadError = await loadLocalLevel(location.search);
 
 // GAME-10b: `?level=1-4-ring` plays the Ring; the Pit stays the default.
 const chosen = chosenLevel();
 const LEVEL = chosen.level;
-const status = document.querySelector<HTMLParagraphElement>("#status")!;
 // LVL-05: `&campaign` plays the level in the campaign, so the loadout owns
 // only what the campaign gives by the level's start. Without it the page is
 // the test page it has always been: every blaster owned.
@@ -26,11 +34,17 @@ const campaign = campaignMode(location.search);
 // the order's own start set. The loadout is told the owned ids from it, and
 // the arena writes it to the save as the level starts.
 const entry: CampaignState | null = campaign ? entryState(chosen.name, readSave()) : null;
-const startBlasters = entry ? entry.blasters.map((b) => b.id) : undefined;
+// ED-01: outside the campaign a level's own `start` block decides what the
+// player owns; within it the carried state does.
+const startBlasters = entry
+  ? entry.blasters.map((b) => b.id)
+  : LEVEL.start?.blasters;
 
 // A level with errors does not load: the page shows the list (BLOCKOUT 5).
 const report = validateLevel(LEVEL);
-if (chosen.unknownLevel) {
+if (loadError) {
+  status.textContent = `Cannot play ${new URLSearchParams(location.search).get("level")}: ${loadError}`;
+} else if (chosen.unknownLevel) {
   status.textContent = `No level called ${chosen.unknownLevel}: playing the Pit.`;
   await run();
 } else if (report.errors.length) {

@@ -17,6 +17,11 @@ import {
   HealthPressPlayer, PressSystem,
 } from "../level/presses";
 import { buildAmbushes } from "../level/ambush";
+import { applySky } from "../render/sky";
+import { PlacedFoamers } from "../level/placed";
+import { applyStart } from "../level/start";
+import { Hazards } from "../level/hazards";
+import type { Foamer } from "../foamers/foamer";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -45,6 +50,8 @@ export interface ArenaBuilt extends BuiltGame {
 
 /** Builds the level file's geometry in the shared game's build hook. */
 export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): ArenaBuilt {
+  // ED-01: the level's sky, before its geometry goes in.
+  applySky(scene, LEVEL.sky);
   const level = buildLevel(LEVEL, rapier, world, mesherPool, scene);
   return {
     voxels: level.voxels,
@@ -63,6 +70,9 @@ export interface ArenaExtras {
   hooks: Partial<GameHooks<ArenaBuilt>>;
   /** For the dev hook and the browser checks. */
   runner: LevelRunner;
+  /** ED-01: the Foamers the level placed by hand. A trigger waking one
+   *  calls `placed.wake(ids)` (ED-07). */
+  placed: PlacedFoamers;
 }
 
 export function arenaExtras(
@@ -114,6 +124,14 @@ export function arenaExtras(
     melee: melee.armed ? [melee.weaponId] : [],
     setOwnedMelee: (ids) => melee.setArmed(ids.includes(melee.weaponId)),
   });
+  // ED-01: outside the campaign, a level's own start block decides what the
+  // player holds: only its blasters (the first held), its hand weapon and
+  // its health. A level with none leaves the test page's full loadout.
+  const applyLevelStart = () => {
+    if (campaign.campaign || !LEVEL.start) return;
+    applyStart(LEVEL.start, { loadout, health, melee });
+  };
+  applyLevelStart();
   if (campaign.campaign && campaign.entry) {
     // The level starts with what the player carried in (a Continue, or a
     // level after one that was finished), and that is the state a restart
@@ -255,6 +273,11 @@ export function arenaExtras(
     pop: () => g.ui.pop(),
   };
   const pressPlayer = new HealthPressPlayer(health, pressUi, hud, audio);
+  // ED-03: the level's hazard prims (a lake, lava). Their ticks land
+  // through the press's own path (crush: no grace, so every tick counts,
+  // the HUD flash, the hurt sound and the go-down), Foamers take theirs as
+  // a hit that is not a dart, and the slow scales the walk.
+  const hazards = new Hazards(LEVEL.prims ?? [], scene);
   const presses = new PressSystem(level.presses);
 
   // GAME-10m: the ambushes. A level's hidden F12s live here, not in the
@@ -353,6 +376,8 @@ export function arenaExtras(
     player.teleport(entryPos());
     player.pitch = 0;
     foamers.clear();
+    // ED-01: the placed Foamers come back with the ammo boxes.
+    placed.spawnAll();
     pickups.clear();
     pickups.loadLevelBoxes(LEVEL); // LVL-02a: the file boxes come back
     stations.reset(); // ENV-03: the stations grant again on a restart
@@ -367,6 +392,9 @@ export function arenaExtras(
     if (entry) {
       applyState(entry, live(true));
     } else {
+      // ED-01: a level's own start comes back on a retry too, health and
+      // held blaster included.
+      applyLevelStart();
       // Back to the ammo the player had at the start: there are no pickups
       // yet, so a retry with what was left could not win the arena.
       for (const b of loadout.blasters) {
@@ -469,6 +497,12 @@ export function arenaExtras(
   // off on this page: the wave runner owns the count.
   foamers.spawnCount = 0;
 
+  // ED-01: the level's placed Foamers stand where the file puts them, every
+  // load and every restart (respawnAtEntry above clears the board, so the
+  // spawn goes in again beside the pickups).
+  const placed = new PlacedFoamers(LEVEL.foamers ?? [], foamers);
+  placed.spawnAll();
+
   const hooks: Partial<GameHooks<ArenaBuilt>> = {
     step(dt: number) {
       // LVL-05 stage 2: the end screen's clock, while the level is played.
@@ -510,6 +544,10 @@ export function arenaExtras(
       });
       for (const w of pressRes.windups) audio.play("ENV-press-windup", { position: w.pos });
       for (const s of pressRes.slams) audio.play("ENV-press-slam", { position: s.pos });
+      const hz = hazards.update(dt, at, foamers.list);
+      if (hz.playerDamage > 0) pressPlayer.crush(hz.playerDamage);
+      player.hazardMoveScale = hz.slow;
+      for (const [f, amount] of hz.foamerDamage) foamers.parryDamage(f as Foamer, amount);
       // ENV-02: a swing presses a button within its own reach and arc, and
       // a step presses a floor one. The melee counts its presses, so a held
       // key does not press a button every step: only a new swing asks.
@@ -535,6 +573,7 @@ export function arenaExtras(
       if (player.feet < FALL_LIMIT) {
         player.teleport(start);
         foamers.clear();
+        placed.spawnAll();
         pickups.clear();
         pickups.loadLevelBoxes(LEVEL);
         runner.resetAll();
@@ -600,8 +639,10 @@ export function arenaExtras(
       presses: Object.fromEntries(presses.ids.map((id) => [id, presses.phaseOf(id)])),
       // GAME-10m: which ambushers are still hidden.
       ambushes: Object.fromEntries(ambushes.ids.map((id) => [id, ambushes.isHidden(id)])),
+      // ED-01: which placed Foamers are still waiting for their trigger.
+      placedFoamers: placed.waitingIds,
     }),
   };
 
-  return { hooks, runner };
+  return { hooks, runner, placed };
 }

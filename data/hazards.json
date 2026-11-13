@@ -6,5 +6,5 @@
     "molten-metal": { "name": "Molten metal", "color": "#ffc23a", "opacity": 0.75, "glow": 1.4 },
     "goo": { "name": "Goo", "color": "#c26bff", "opacity": 0.6, "glow": 0.4 }
   },
-  "defaults": { "dps": 20, "slow": 0.6 }
+  "defaults": { "dps": 20, "slow": 0.6, "tickSeconds": 0.25 }
 }
