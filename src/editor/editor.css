@@ -372,3 +372,37 @@ button.on {
   display: grid;
   gap: 0.3rem;
 }
+
+/* ED-09 stage 4: the Help panel. A key or a thing on the left, what it does
+   on the right, so the rows read as a table without a table's borders. */
+#dialogs .help h3 {
+  margin: 0.8rem 0 0.25rem;
+  font-size: 13px;
+  color: #ffd23f;
+}
+
+#dialogs .help h3:first-child {
+  margin-top: 0;
+}
+
+#dialogs .help-rows {
+  display: grid;
+  gap: 0.2rem;
+}
+
+#dialogs .help-row {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: 0.6rem;
+  font-size: 12px;
+}
+
+#dialogs .help-key {
+  color: #b6ff3b;
+}
+
+#dialogs .help .hint {
+  margin: 0.3rem 0 0;
+  font-size: 12px;
+  color: #b9aee0;
+}

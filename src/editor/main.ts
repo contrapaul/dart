@@ -21,6 +21,7 @@ import { deleteLevel, listLevels, putLevel } from "./store";
 import { playUrl } from "./play";
 import { openChoice } from "./open";
 import { builtInCopy } from "./builtin";
+import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -172,6 +173,15 @@ $("hiddenBtn").addEventListener("click", () => {
     ? `Not drawing ${count} prim${count === 1 ? "" : "s"} that start hidden.`
     : `Drawing the prims that start hidden see-through again (${count}).`;
   selectInView();
+});
+
+$("helpBtn").addEventListener("click", () => {
+  void dialog("Help", (body) => {
+    const host = document.createElement("div");
+    host.className = "help";
+    body.append(host);
+    buildHelp(host);
+  });
 });
 
 $("problemsBtn").addEventListener("click", () => {
