@@ -9,6 +9,7 @@ import {
 } from "./inspector-parts";
 import { EXIT_ID, START_ID } from "./markers";
 import { AMMO_TYPES, RIGS, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
+import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, putLevel, LOCAL_PREFIX } from "./store";
 import { EditorView, type TransformMode } from "./view";
@@ -88,6 +89,12 @@ function updateTopBar() {
   $<HTMLButtonElement>("undoBtn").disabled = !doc.canUndo;
   $<HTMLButtonElement>("redoBtn").disabled = !doc.canRedo;
   counts.textContent = countText(doc.level);
+  // ED-05 stage 5: the validator runs on every change, and the top bar says
+  // how many problems it found.
+  problems = problemsFor(doc.level, allIds(), START_ID, EXIT_ID);
+  const button = $<HTMLButtonElement>("problemsBtn");
+  button.textContent = problemsLabel(problems);
+  button.classList.toggle("over", problems.some((p) => p.severity === "error"));
   counts.title = `Caps from data/editor.json: ${LIMITS.prims} prims, ${LIMITS.foamers} foamers, ${LIMITS.triggers} triggers`;
   counts.classList.toggle("over", overCaps(doc.level).length > 0);
 }
@@ -114,6 +121,47 @@ function overCaps(level: Level): string[] {
   if (triggers > LIMITS.triggers) over.push(`${triggers} triggers, over ${LIMITS.triggers}`);
   return over;
 }
+
+/** Every id the document holds, in any kind. */
+function allIds(): string[] {
+  const ids: string[] = [];
+  for (const kind of ["prims", "foamers", "pickups", "doors", "spawnPoints", "zones"] as const) {
+    for (const entry of doc.entries(kind)) ids.push(entry.id);
+  }
+  return ids;
+}
+
+/** The problems the last change left, and the panel that lists them. */
+let problems: Problem[] = [];
+
+$("problemsBtn").addEventListener("click", () => {
+  void dialog("Problems", (body) => {
+    const list = document.createElement("div");
+    list.className = "problems";
+    body.append(list);
+    if (!problems.length) {
+      const none = document.createElement("p");
+      none.className = "hint";
+      none.textContent = "Nothing: the validator has no errors or warnings for this level.";
+      list.append(none);
+      return;
+    }
+    for (const problem of problems) {
+      const row = document.createElement("div");
+      row.className = `problem ${problem.severity}`;
+      row.textContent = problem.text;
+      if (problem.id) {
+        row.classList.add("selectable");
+        row.title = "Select it";
+        row.addEventListener("click", () => {
+          pick(problem.id!, false);
+          $("dialogs").hidden = true;
+        });
+      }
+      list.append(row);
+    }
+  });
+});
 
 /** The level groups the outliner shows for the placed things, in the order
  *  design/EDITOR.md section 4 lists them. */
