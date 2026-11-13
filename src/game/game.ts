@@ -82,6 +82,9 @@ export interface BuiltGame {
   navBounds: NavBounds;
   spawn: THREE.Vector3;
   yaw?: number;
+  /** ED-03b: an extra "Foamers do not walk here" test for the nav bake
+   *  (the arena's damaging hazards). Omitted: voxels only, as before. */
+  blockedAt?: (x: number, y: number, z: number) => boolean;
 }
 
 /** The hooks. The first block is called by the loop; the second is the
@@ -270,6 +273,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // changed the ground.
   const levelAI = makeLevelAI(
     rapier, world, built.navBounds, store.value.difficulty, built.voxels, built.voxelMesh.group.position,
+    built.blockedAt,
   );
   // BUG-03: the level's voxel pieces are meshed off the main thread, so the
   // load-time bake of the grid meets only their surfaces. When the mesher

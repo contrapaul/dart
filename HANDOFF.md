@@ -88,6 +88,19 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
+
+- strata added `Hazards.blocksAt` (a shown hazard that damages Foamers),
+  the extra solid test in `makeLevelAI`, and `onChanged` with the
+  hazard's world rectangle for a rebake. 5 tests.
+- Wired by the reviewer: hazards are now built in the arena's build hook
+  (`buildArena`), before the game bakes the nav grid, and handed over as
+  `BuiltGame.blockedAt`; a trigger showing or hiding a hazard rebakes its
+  rectangle through `levelAI.carveChanged`.
+- Seen in the browser on `ed-01`: the grid's cells over the lava pool are
+  not walkable, the floor beside it is.
+- Not seen: a Foamer actually walking round the pool in a fight.
+
 ### 2026-11-13: ED-07b, triggers and keys in play (Claude Opus 5.5)
 
 - The arena page runs the editor's triggers (`src/arena/extras.ts`):
