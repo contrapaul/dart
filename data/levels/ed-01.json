@@ -1,0 +1,419 @@
+{
+  "_note": "ED-01: a test level, not a level to ship. It exercises every new part of the format once: all five primitive shapes (a solid box, a ramp, a wedge, a cylinder and a stairs), an orange decor strip of three boxes merged into one mesh, a hidden foam-purple blocker (a prim that only a trigger shows, standing in the doorway), two placed Foamers (one that wakes on sight, one that waits for a trigger), a door with lock none that starts open and a door with lock trigger that starts shut, a gradient sky, and a start loadout that owns only B01 and B04 with the sword and 60 health. The room is env-01's: 18 x 18 m, floor at y 0, 4 m to the ceiling. The prims stand on the floor (a box's pos is its centre, so a 1 m box sits at y 0.5). The ramp is 3 m long rising 1.5 m, the wedge is a roof over the crate end of the room, the cylinder is a pillar, and the stairs rise 1.5 m to a 1.5 m platform so the shapes can be walked over as well as looked at. Decor never collides: the strip runs along the north wall where the player cannot stand on it by accident. The hidden blocker is a 2 x 2 x 0.4 m wall across the middle doorway (between the open door and the shut one), so the test can watch it appear when a trigger names it. Metres, Y up, -z is north, positions are box centres, sizes are full extents.",
+  "meta": {
+    "id": "ed-01",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 60,
+    "accent": "#[Paul]",
+    "setting": "[Paul]"
+  },
+  "shell": [
+    {
+      "id": "room-floor",
+      "shape": "box",
+      "pos": [
+        0,
+        -0.5,
+        0
+      ],
+      "size": [
+        18,
+        1,
+        18
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "room-ceiling",
+      "shape": "box",
+      "pos": [
+        0,
+        4.5,
+        0
+      ],
+      "size": [
+        16,
+        1,
+        16
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-w",
+      "shape": "box",
+      "pos": [
+        -8.5,
+        2.5,
+        0
+      ],
+      "size": [
+        1,
+        5,
+        18
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-e",
+      "shape": "box",
+      "pos": [
+        8.5,
+        2.5,
+        0
+      ],
+      "size": [
+        1,
+        5,
+        18
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-n",
+      "shape": "box",
+      "pos": [
+        0,
+        2.5,
+        -8.5
+      ],
+      "size": [
+        16,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "room-wall-s",
+      "shape": "box",
+      "pos": [
+        0,
+        2.5,
+        8.5
+      ],
+      "size": [
+        16,
+        5,
+        1
+      ],
+      "material": "greybox"
+    },
+    {
+      "id": "mid-wall-l",
+      "shape": "box",
+      "pos": [
+        -5.75,
+        2,
+        0
+      ],
+      "size": [
+        4.5,
+        4,
+        0.6
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "mid-wall-mid",
+      "shape": "box",
+      "pos": [
+        0,
+        2,
+        0
+      ],
+      "size": [
+        3,
+        4,
+        0.6
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "mid-wall-r",
+      "shape": "box",
+      "pos": [
+        5.75,
+        2,
+        0
+      ],
+      "size": [
+        4.5,
+        4,
+        0.6
+      ],
+      "material": "greybox-dark"
+    },
+    {
+      "id": "exit-pad",
+      "shape": "box",
+      "pos": [
+        0,
+        0.01,
+        -7
+      ],
+      "size": [
+        2,
+        0.02,
+        2
+      ],
+      "material": "foam-white"
+    }
+  ],
+  "prims": [
+    {
+      "id": "box-solid",
+      "shape": "box",
+      "pos": [
+        -6,
+        0.5,
+        -3
+      ],
+      "size": [
+        1.5,
+        1,
+        1.5
+      ],
+      "colour": "#2ec4ff",
+      "behaviour": "solid"
+    },
+    {
+      "id": "ramp",
+      "shape": "ramp",
+      "pos": [
+        -6,
+        0.75,
+        -1
+      ],
+      "size": [
+        2,
+        1.5,
+        3
+      ],
+      "colour": "#2ec4ff",
+      "behaviour": "solid"
+    },
+    {
+      "id": "wedge",
+      "shape": "wedge",
+      "pos": [
+        -6,
+        0.75,
+        -6.5
+      ],
+      "size": [
+        3,
+        1.5,
+        2
+      ],
+      "colour": "#2ec4ff",
+      "behaviour": "solid"
+    },
+    {
+      "id": "pillar",
+      "shape": "cylinder",
+      "pos": [
+        5.5,
+        1.5,
+        -4
+      ],
+      "size": [
+        1.2,
+        3,
+        1.2
+      ],
+      "colour": "#8a5cff",
+      "behaviour": "solid"
+    },
+    {
+      "id": "stairs",
+      "shape": "stairs",
+      "pos": [
+        6,
+        0.75,
+        3
+      ],
+      "size": [
+        2,
+        1.5,
+        3
+      ],
+      "colour": "#8a5cff",
+      "behaviour": "solid",
+      "steps": 3
+    },
+    {
+      "id": "platform",
+      "shape": "box",
+      "pos": [
+        6,
+        1.5,
+        5.2
+      ],
+      "size": [
+        2,
+        0.4,
+        1.4
+      ],
+      "colour": "#8a5cff",
+      "behaviour": "solid"
+    },
+    {
+      "id": "strip-a",
+      "shape": "box",
+      "pos": [
+        -6,
+        0.3,
+        8
+      ],
+      "size": [
+        3,
+        0.6,
+        0.4
+      ],
+      "colour": "#ff7a1a",
+      "behaviour": "decor"
+    },
+    {
+      "id": "strip-b",
+      "shape": "box",
+      "pos": [
+        -3,
+        0.3,
+        8
+      ],
+      "size": [
+        3,
+        0.6,
+        0.4
+      ],
+      "colour": "#ff7a1a",
+      "behaviour": "decor"
+    },
+    {
+      "id": "strip-c",
+      "shape": "box",
+      "pos": [
+        0,
+        0.3,
+        8
+      ],
+      "size": [
+        3,
+        0.6,
+        0.4
+      ],
+      "colour": "#ff7a1a",
+      "behaviour": "decor"
+    },
+    {
+      "id": "blocker",
+      "shape": "box",
+      "pos": [
+        -2.5,
+        1.5,
+        0
+      ],
+      "size": [
+        2,
+        3,
+        0.4
+      ],
+      "colour": "#b6ff3b",
+      "behaviour": "solid",
+      "hidden": true
+    }
+  ],
+  "doors": [
+    {
+      "id": "ed-door-open",
+      "pos": [
+        -2.5,
+        1.5,
+        0
+      ],
+      "size": [
+        2,
+        3,
+        0.5
+      ],
+      "lock": "none"
+    },
+    {
+      "id": "ed-door-locked",
+      "pos": [
+        2.5,
+        1.5,
+        0
+      ],
+      "size": [
+        2,
+        3,
+        0.5
+      ],
+      "lock": "trigger",
+      "colour": "#ffd23a"
+    }
+  ],
+  "foamers": [
+    {
+      "id": "placed-sight",
+      "foamer": "F01",
+      "pos": [
+        -4,
+        0,
+        -6
+      ],
+      "yaw": 3.1416,
+      "wake": "sight"
+    },
+    {
+      "id": "placed-waiting",
+      "foamer": "F03",
+      "pos": [
+        4,
+        0,
+        -6
+      ],
+      "yaw": 3.1416,
+      "wake": "trigger"
+    }
+  ],
+  "sky": {
+    "kind": "gradient",
+    "top": "#3a6ff0",
+    "horizon": "#bfe3ff",
+    "bottom": "#3a3550"
+  },
+  "start": {
+    "blasters": [
+      "B01",
+      "B04"
+    ],
+    "melee": [
+      "M01"
+    ],
+    "health": 60
+  },
+  "arenas": [],
+  "playerStart": {
+    "pos": [
+      0,
+      0,
+      6
+    ],
+    "yaw": 0
+  },
+  "exit": {
+    "pos": [
+      0,
+      1,
+      -7
+    ],
+    "size": [
+      2,
+      2,
+      2
+    ]
+  }
+}

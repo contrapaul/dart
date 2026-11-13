@@ -19,6 +19,7 @@ import {
 import { buildAmbushes } from "../level/ambush";
 import { applySky } from "../render/sky";
 import { PlacedFoamers } from "../level/placed";
+import { applyStart } from "../level/start";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -121,6 +122,14 @@ export function arenaExtras(
     melee: melee.armed ? [melee.weaponId] : [],
     setOwnedMelee: (ids) => melee.setArmed(ids.includes(melee.weaponId)),
   });
+  // ED-01: outside the campaign, a level's own start block decides what the
+  // player holds: only its blasters (the first held), its hand weapon and
+  // its health. A level with none leaves the test page's full loadout.
+  const applyLevelStart = () => {
+    if (campaign.campaign || !LEVEL.start) return;
+    applyStart(LEVEL.start, { loadout, health, melee });
+  };
+  applyLevelStart();
   if (campaign.campaign && campaign.entry) {
     // The level starts with what the player carried in (a Continue, or a
     // level after one that was finished), and that is the state a restart
@@ -376,6 +385,9 @@ export function arenaExtras(
     if (entry) {
       applyState(entry, live(true));
     } else {
+      // ED-01: a level's own start comes back on a retry too, health and
+      // held blaster included.
+      applyLevelStart();
       // Back to the ammo the player had at the start: there are no pickups
       // yet, so a retry with what was left could not win the arena.
       for (const b of loadout.blasters) {
