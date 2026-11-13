@@ -207,6 +207,12 @@ export class EditorView {
     this.controls.setScaleSnap(GRID);
     this.controls.enabled = false;
     this.scene.add(this.controls.getHelper());
+    // Review fix: the click that ends a handle drag must not reselect what
+    // is under the cursor, and the browser's click comes after the drag
+    // has already ended.
+    this.controls.addEventListener("dragging-changed", (e) => {
+      if (!e.value) this.dragEndedAt = performance.now();
+    });
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -300,8 +306,11 @@ export class EditorView {
   private addPrim(prim: Prim) {
     const geo = primGeometry(prim);
     const mesh = new THREE.Mesh(geo, primMaterial(prim));
-    mesh.matrixAutoUpdate = false;
-    mesh.matrix.copy(primMatrix(prim));
+    // Review fix: position and rotation, not a fixed matrix. The handles
+    // and the link outline read the mesh's own position, which a fixed
+    // matrix left at the origin (the handles sat in the middle of the
+    // floor and a drag started from there).
+    primMatrix(prim).decompose(mesh.position, mesh.quaternion, mesh.scale);
     mesh.userData.id = prim.id;
     mesh.visible = !(this.skippingHidden && prim.hidden === true);
     this.prims.add(mesh);
@@ -463,8 +472,9 @@ export class EditorView {
 
   /** True while the handles are being dragged, so clicks do not reselect. */
   get dragging(): boolean {
-    return this.controls.dragging;
+    return this.controls.dragging || performance.now() - this.dragEndedAt < 250;
   }
+  private dragEndedAt = -Infinity;
 
   get isLooking(): boolean {
     return this.looking;

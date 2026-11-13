@@ -93,6 +93,26 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-08 review, merged (Claude Opus 5.5): triggers in the editor
+
+- DeepSeek built it (resumed after the power cut). Seen in the browser: a
+  spawn point, a box ticked "starts hidden" (drawn see-through) and a zone
+  placed; Build an arena on the zone opened the dialog with the hidden
+  box ticked as the blocker and the spawn point ticked; with a second
+  wave added it built three triggers, listed under Logic with their
+  summaries ("enter zone-3: show 1, spawn 3 F01" and so on). Played
+  (stepped by hand, the pane was hidden): entering the zone spawned 3
+  Slowmers, clearing them spawned wave 2, clearing those ended the fight.
+- Review fixes, both from ED-02: editor prims were placed by a fixed
+  matrix, so a mesh's own position stayed at the origin and the move
+  handles and the link outline appeared in the middle of the floor (a
+  drag started from there); they are now placed by position and rotation.
+  The click that ends a handle drag no longer selects what is under the
+  cursor.
+- Not seen: Link mode clicked through, a trigger written by hand in the
+  inspector, the blocker shown and hidden in play (the runner's show and
+  hide were seen in ED-07b).
+
 ### 2026-11-13: ED-10a review, merged (Claude Opus 5.5): Make a level, Play a level
 
 - strata built it (resumed after the power cut). Review: the run had
