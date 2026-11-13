@@ -15,5 +15,13 @@
   "sky": { "kind": "gradient", "top": "#3a6ff0", "horizon": "#bfe3ff", "bottom": "#3a3550" },
   "triggerDefaults": {
     "messageSeconds": 3
+  },
+  "keys": {
+    "_note": "ED-07b: key pickups and key doors in play. collectRadius: metres from the feet a key is taken. doorReach: metres from a key door's centre (across the floor) at which the held key opens it. size: the key's length. colours: the key and its door.",
+    "collectRadius": 1,
+    "doorReach": 2.5,
+    "size": 0.5,
+    "turnRate": 1.2,
+    "colours": { "red": "#ff3b3b", "blue": "#2e7dff", "yellow": "#ffd23a" }
   }
 }

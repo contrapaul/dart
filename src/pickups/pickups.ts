@@ -81,6 +81,9 @@ interface Item {
   turn: number;
   /** MEL-01, melee only: the hand weapon id the level gives here. */
   meleeId?: string;
+  /** ED-07b: the level file's id for a placed pickup, so taking it can
+   *  fire a "taken" trigger. Blobs have none. */
+  fileId?: string;
 }
 
 const _t = new THREE.Vector3();
@@ -122,6 +125,9 @@ export class PickupSystem {
   melee: PickupMelee | null = null;
   /** MEL-01: a melee pickup was taken this step, with its id. */
   onMelee: (id: string, pos: THREE.Vector3) => void = () => {};
+  /** ED-07b: a placed pickup with a file id was taken (not cleared by a
+   *  restart): the trigger runner's "taken". */
+  onTaken: (id: string) => void = () => {};
 
   constructor(
     private rapier: Rapier,
@@ -268,7 +274,7 @@ export class PickupSystem {
       if (t === "blaster") {
         const id = p.blaster;
         if (!id) continue; // the validator rejects such a file
-        this.spawn("blaster", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), undefined, undefined, id);
+        this.spawn("blaster", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), undefined, undefined, id).fileId = p.id;
         continue;
       }
       if (t === "health") {
@@ -277,19 +283,20 @@ export class PickupSystem {
         if (!(typeof p.amount === "number" && p.amount > 0)) continue;
         const it = this.spawn("healthPack", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0));
         it.amount = p.amount;
+        it.fileId = p.id;
         continue;
       }
       // MEL-01: a hand weapon place the same way.
       if (t === "melee") {
         const id = p.melee;
         if (!id) continue; // the validator rejects such a file
-        this.spawn("melee", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), undefined, undefined, undefined, id);
+        this.spawn("melee", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), undefined, undefined, undefined, id).fileId = p.id;
         continue;
       }
       if (!t.startsWith("darts-")) continue;
       const dartType = t.slice("darts-".length) as DartTypeName;
       if (!(dartType in (dartsData as { types: Record<string, unknown> }).types)) continue;
-      this.spawn("ammo", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), dartType, p.count ?? 0);
+      this.spawn("ammo", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), dartType, p.count ?? 0).fileId = p.id;
     }
   }
 
@@ -497,7 +504,9 @@ export class PickupSystem {
 
   /** Take a blob out of the scene and the world, at index i. */
   private remove(i: number) {
+    const id = this.list[i]?.fileId;
     this.removeItem(i);
+    if (id) this.onTaken(id);
   }
   private removeItem(i: number) {
     const it = this.list[i]!;
