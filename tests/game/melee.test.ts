@@ -6,11 +6,14 @@ import type { Shield } from "../../src/player/shield";
 import { FoamerSystem } from "../../src/foamers/foamers";
 import { DartSystem } from "../../src/weapons/darts";
 import { DebrisSystem } from "../../src/voxel/debris";
-import type { VoxelTarget } from "../../src/weapons/impacts";
+import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
 import { VoxelVolume } from "../../src/voxel/chunk";
 import { greedyMesh } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
 import type { Foamer } from "../../src/foamers/foamer";
+import { PickupSystem } from "../../src/pickups/pickups";
+import { PlayerHealth } from "../../src/player/health";
+import pickupData from "../../data/pickups.json";
 import meleeJson from "../../data/melee.json";
 import playerJson from "../../data/player.json";
 
@@ -68,12 +71,15 @@ function rig() {
   const debris = new DebrisSystem(RAPIER, world);
   const targets: VoxelTarget[] = [];
   const foamers = new FoamerSystem(RAPIER, world, fakeMesher(), debris, darts, targets);
+  // HP-01: the dart test needs the dart path wired (the other tests never
+  // fire a dart, so this changes nothing for them).
+  new DartImpacts(darts, debris, targets);
   const playerCollider = world.createCollider(
     RAPIER.ColliderDesc.capsule(0.6, 0.3).setTranslation(0, 0.9, 0),
   );
   const melee = new Melee(RAPIER, world, foamers, debris, targets, playerCollider);
   world.step();
-  return { world, foamers, melee, targets, playerCollider };
+  return { world, foamers, melee, targets, playerCollider, darts, debris };
 }
 
 /** The eye and the view aimed at the Foamer's chest (a player aims). */
@@ -272,5 +278,116 @@ describe("GAME-06: the rules with the shield and the finisher", () => {
     const e2 = meleePress(g.melee, aimAt(f).eye, aimAt(f).fwd, DOWN, () => false);
     expect(e2?.swung).toBe(0);
     expect(g.melee.charges).toBe(T.charges - 1);
+  });
+});
+
+// HP-01: a melee kill sprays health blobs of data/melee.json killDrop, and a
+// dart kill sprays none. The melee reports the kill; the page sprays (the
+// same hook the finisher's pop uses), so the test wires the hook the page
+// wires and reads the pickups' own count.
+describe("HP-01: a melee kill sprays health, a dart kill does not", () => {
+  const K = (meleeJson as unknown as { killDrop: { count: number; amount: number } }).killDrop;
+  const P = pickupData.healthPack;
+  const H = pickupData.health;
+
+  function killRig() {
+    const g = rig();
+    const health = new PlayerHealth();
+    const pickups = new PickupSystem(RAPIER, g.world, new THREE.Scene(), health);
+    const drops: { count: number; amount: number }[] = [];
+    g.melee.onKill = (_f, at) => {
+      pickups.sprayHealth(at, g.melee.killDrop.count, g.melee.killDrop.amount);
+      drops.push({ count: g.melee.killDrop.count, amount: g.melee.killDrop.amount });
+    };
+    return { ...g, pickups, health, drops };
+  }
+
+  it("sprays killDrop.count blobs of killDrop.amount on a combo hit that kills", () => {
+    const g = killRig();
+    const f = g.foamers.spawn(new THREE.Vector3(0, 0, -1.6))!;
+    f.health = 0.5; // one hit of 1 downs it
+    swing(g, f);
+    expect(f.state).toBe("down");
+    expect(g.drops).toEqual([{ count: K.count, amount: K.amount }]);
+    expect(g.pickups.count("health")).toBe(K.count);
+    for (const it of g.pickups.list) expect(it.amount).toBe(K.amount);
+  });
+
+  it("sprays once, not again for a later swing at the same downed Foamer", () => {
+    const g = killRig();
+    const f = g.foamers.spawn(new THREE.Vector3(0, 0, -1.6))!;
+    f.health = 0.5;
+    swing(g, f);
+    rest(g);
+    swing(g, f);
+    rest(g);
+    expect(g.drops.length).toBe(1);
+    expect(g.pickups.count("health")).toBe(K.count);
+  });
+
+  it("a charged swing (the third hit) sprays too", () => {
+    const g = killRig();
+    const f = g.foamers.spawn(new THREE.Vector3(0, 0, -1.6))!;
+    f.health = 100; // never dies from the first two hits
+    swing(g, f); rest(g);
+    swing(g, f); rest(g);
+    f.health = 1; // the third hit is the charged one (damage 2)
+    swing(g, f);
+    expect(f.state).toBe("down");
+    expect(g.drops.length).toBe(1);
+    expect(g.pickups.count("health")).toBe(K.count);
+  });
+
+  it("a bash that kills sprays too", () => {
+    const g = killRig();
+    const f = g.foamers.spawn(new THREE.Vector3(0, 0, -1.2))!;
+    f.health = 0.2; // a bash's 0.5 downs it
+    g.melee.charges = 0; // no charge left, so the press is the bash
+    swing(g, f);
+    expect(f.state).toBe("down");
+    expect(g.drops.length).toBe(1);
+    expect(g.pickups.count("health")).toBe(K.count);
+  });
+
+  it("a dart kill sprays nothing, and the finisher's spray is unchanged", async () => {
+    const g = killRig();
+    // 6 m out, so the muzzle 3 m from its chest is clear of the player's
+    // own capsule at the origin.
+    const f = g.foamers.spawn(new THREE.Vector3(0, 0, -6))!;
+    // Every part builds its collider, so the dart can carve it.
+    for (const part of f.parts.values()) {
+      while (true) {
+        part.mesh.update();
+        if (!part.mesh.busy) break;
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      g.world.step();
+    }
+    f.health = 0.5;
+    // The chunk test's shot: from the body's own centre, 3 m out, straight
+    // down -Z, so the darts meet the chest.
+    const body = f.parts.get("body")!;
+    const c = body.voxelToWorld(new THREE.Vector3(
+      body.spec.size[0] / 2, body.spec.size[1] / 2, body.spec.size[2] / 2));
+    const muzzle = new THREE.Vector3(c.x, c.y, c.z + 3);
+    const eye = new THREE.Vector3(0, EYE, 0);
+    for (let i = 0; i < 8; i++) g.darts.fire(muzzle, new THREE.Vector3(0, 0, -1), "standard");
+    for (let i = 0; i < 240 && f.state !== "down"; i++) {
+      g.darts.update(DT);
+      g.foamers.update(DT, eye);
+      g.world.step();
+    }
+    expect(f.state).toBe("down");
+    expect(g.drops.length).toBe(0);
+    expect(g.pickups.count("health")).toBe(0);
+    // The finisher's own spray keeps its own numbers (data/pickups.json).
+    g.pickups.sprayHealth(new THREE.Vector3(0, 0, 0));
+    expect(g.pickups.count("health")).toBe(H.count);
+    for (const it of g.pickups.list) expect(it.amount).toBe(H.amount);
+    expect(H.count).toBe(3);
+    expect(H.amount).toBe(10);
+    expect(K.count).toBe(2);
+    expect(K.amount).toBe(5);
+    expect(P.max).toBe(8);
   });
 });

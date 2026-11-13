@@ -2717,6 +2717,36 @@
         0,
         57.5
       ]
+    },
+    {
+      "id": "store-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        4,
+        0.2,
+        -16.5
+      ]
+    },
+    {
+      "id": "crossroads-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        -6,
+        0.2,
+        -47
+      ]
+    },
+    {
+      "id": "breather2-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        -3,
+        0.2,
+        -80
+      ]
     }
   ],
   "playerStart": {

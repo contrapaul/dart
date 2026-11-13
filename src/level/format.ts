@@ -168,6 +168,9 @@ export interface Pickup {
   /** LVL-05: the blaster a `blaster` pickup gives (an id in
    *  data/blasters.json). */
   blaster?: string;
+  /** HP-01: health a `health` pickup heals, capped at the player's
+   *  maximum. Must be positive (the validator says so). */
+  amount?: number;
 }
 
 export interface PlayerStart {

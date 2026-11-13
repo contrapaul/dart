@@ -172,6 +172,13 @@ export function validateLevel(level: Level): ValidationResult {
       }
       continue;
     }
+    if (p.type === "health") {
+      // HP-01: a placed health pack heals its own amount.
+      if (!(typeof p.amount === "number" && p.amount > 0)) {
+        errors.push(`pickup ${p.id}: a health pickup needs a positive amount`);
+      }
+      continue;
+    }
     if (!p.type.startsWith("darts-")) continue;
     if (!dartNames.has(p.type.slice("darts-".length))) {
       errors.push(`pickup ${p.id}: ${p.type} is not a dart type in data/darts.json`);

@@ -2751,6 +2751,26 @@
         0,
         -7
       ]
+    },
+    {
+      "id": "breather-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        -2,
+        -3.8,
+        -71
+      ]
+    },
+    {
+      "id": "breather2-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        -2.5,
+        -9.8,
+        -152
+      ]
     }
   ],
   "playerStart": {

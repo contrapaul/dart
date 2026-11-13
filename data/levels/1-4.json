@@ -3687,6 +3687,36 @@
         0,
         -7
       ]
+    },
+    {
+      "id": "alcove-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        5,
+        0.2,
+        -113
+      ]
+    },
+    {
+      "id": "lift-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        0,
+        -8.8,
+        -292
+      ]
+    },
+    {
+      "id": "corr6-health",
+      "type": "health",
+      "amount": 25,
+      "pos": [
+        0,
+        -8.8,
+        -248
+      ]
     }
   ],
   "playerStart": {

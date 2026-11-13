@@ -27,6 +27,7 @@ const T = meleeJson as unknown as {
   maxTargets: number;
   carveRadius: number;
   debrisMax: number;
+  killDrop: { count: number; amount: number };
   bash: {
     damage: number; push: number; cooldown: number; reach: number; arcDeg: number;
     maxTargets: number; carveRadius: number; debrisMax: number; kick: number; kickTime: number;
@@ -70,6 +71,7 @@ const _chest = new THREE.Vector3();
 const _to = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _carve = new THREE.Vector3();
+const _drop = new THREE.Vector3();
 
 export class Melee {
   /** Charges left (full at level start and on retry). */
@@ -84,6 +86,11 @@ export class Melee {
    *  what else a swing reached reads the change, so a held key does not
    *  press a button every step. */
   presses = 0;
+  /** HP-01: a melee hit killed a Foamer, at the point its health drops. The
+   *  page sprays the kill's blobs there (data/melee.json killDrop), so the
+   *  melee stays out of the pickups module's imports, the way the blaster
+   *  pickup's loadout hook does. A dart or a blast kill never reaches this. */
+  onKill: (f: Foamer, at: THREE.Vector3) => void = () => {};
   private rechargeLeft = T.rechargeSeconds;
   private lastParries = 0;
   private lastPress = -1e9; // sim time of the last press (the combo window)
@@ -111,6 +118,8 @@ export class Melee {
   get reach(): number { return T.reach; }
   get arcDeg(): number { return T.arcDeg; }
   get comboHits(): number { return this.spec.hits.length; }
+  /** HP-01: the health a melee kill sprays, from data/melee.json. */
+  get killDrop(): { count: number; amount: number } { return T.killDrop; }
   /** The bash's view kick in radians; the page adds it to the camera's
    *  climb like the shield's kicks. */
   get kick(): number {
@@ -245,6 +254,12 @@ export class Melee {
       // The non-dart hit: health and the finishable band, no part break
       // and no pop (a foam baton is a bounce, not a dart).
       this.foamers.parryDamage(p.f, damage);
+      // HP-01: this hit took it down, so the page sprays the kill's health
+      // blobs. The strike skips Foamers already down, so this is the hit
+      // that killed it, once.
+      if (p.f.state === "down") {
+        this.onKill(p.f, _drop.set(p.f.centre.x, p.f.centre.y + 0.3, p.f.centre.z));
+      }
       e.hits.push(p.f);
     }
   }

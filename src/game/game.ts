@@ -371,6 +371,11 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // GAME-06: melee weapon 1 and its charges. It reads the shield's public
   // state only (raised, charging, parries): GAME-04c owns that module.
   const melee = new Melee(rapier, world, foamers, debris, voxelTargets, player.collider);
+  // HP-01: a melee kill sprays health blobs of the melee's own numbers
+  // (data/melee.json killDrop), the way the finisher's pop sprays its own.
+  // The melee reports the kill; the pickups are the page's, so the melee
+  // never imports them. A dart or a blast kill never reaches this.
+  melee.onKill = (_f, at) => pickups.sprayHealth(at, melee.killDrop.count, melee.killDrop.amount);
   // The placeholder baton's sweep, and the blaster dip that goes with it.
   const meleeView = new MeleeView(camera);
   /** What the last watch swing() press did (null: nothing swung). */
@@ -1035,7 +1040,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
           balls: projectiles.list.length },
         // GAME-07: the watch gets pickup counts and each Foamer's
         // finishable flag (a stagger is what the finisher acts on).
-        pickups: { health: pickups.count("health") },
+        // HP-01: the placed health packs still on the floor, so a check can
+        // see them without walking the level.
+        pickups: { health: pickups.count("health"), packs: pickups.count("healthPack") },
         finishable: foamers.list.map((f) => f.state === "stagger"),
         // GAME-06: the melee's charges, the combo step it is on, and the
         // seconds left of the running swing.
@@ -1054,6 +1061,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
           f.state === "stagger" && f.finishWeakened && vacuum.canVacuum(f)),
       }),
       moveTo: (x: number, y: number, z: number) => player.teleport(_move.set(x, y, z)),
+      /** HP-01: the watch's damage helper, so a check can walk a hurt
+       *  player over a placed pack and see it heal. */
+      hurt: (amount: number) => health.damage(amount),
       look: (yaw: number, pitch: number) => {
         player.yaw = yaw;
         player.pitch = THREE.MathUtils.clamp(pitch, -1.5, 1.5);

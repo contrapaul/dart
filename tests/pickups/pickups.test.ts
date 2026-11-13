@@ -9,7 +9,7 @@ import type { DartFiring } from "../../src/weapons/blaster";
 import type { DartTypeName } from "../../src/weapons/dart-model";
 import pitJson from "../../data/levels/1-1-pit.json";
 import ringJson from "../../data/levels/1-4-ring.json";
-import type { Level } from "../../src/level/format";
+import type { Level, Pickup } from "../../src/level/format";
 
 const DT = 1 / 60;
 const H = pickupData.health;
@@ -301,3 +301,123 @@ describe("PickupSystem (LVL-02a review)", () => {
     expect(r.pickups.count("ammo")).toBe(0);
   });
 });
+
+// HP-01: a level file's health pack. It is a placed pickup like the ammo
+// box: on the floor, no hop, no lifetime, no drift to the player, and it
+// comes back with the file on a restart. Its amount is the file's.
+describe("PickupSystem (HP-01, the placed health pack)", () => {
+  const P = pickupData.healthPack;
+
+  /** A level with one health entry at the origin, as a file would write it. */
+  function packLevel(amount?: number): Level {
+    const p = { id: "test-health", type: "health", pos: [0, P.size / 2, 0] } as Pickup;
+    if (amount !== undefined) p.amount = amount;
+    return { ...(pitJson as unknown as Level), pickups: [p] };
+  }
+
+  it("loads from the level file and heals its own amount, then is gone", () => {
+    const r = rig();
+    r.health.hp = 50;
+    r.pickups.loadLevelBoxes(packLevel(25));
+    expect(r.pickups.count("healthPack")).toBe(1);
+    let onC = 0;
+    r.pickups.onCollected = (kind) => { if (kind === "healthPack") onC++; };
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(r.health.hp).toBe(75); // 25, not the finisher blob's 10
+    expect(r.pickups.count("healthPack")).toBe(0);
+    expect(onC).toBe(1);
+  });
+
+  it("heals no further than the player's maximum", () => {
+    const r = rig();
+    r.health.hp = 90;
+    r.pickups.loadLevelBoxes(packLevel(25));
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(r.health.hp).toBe(r.health.max);
+    expect(r.pickups.count("healthPack")).toBe(0);
+  });
+
+  it("stays at full health, and a dead player never collects it", () => {
+    const r = rig();
+    r.health.hp = r.health.max;
+    r.pickups.loadLevelBoxes(packLevel(25));
+    for (let i = 0; i < 120; i++) tick(r, new THREE.Vector3(0, 0, 0));
+    expect(r.health.hp).toBe(r.health.max);
+    expect(r.pickups.count("healthPack")).toBe(1);
+    r.health.hp = 0;
+    for (let i = 0; i < 60; i++) tick(r, new THREE.Vector3(0, 0, 0));
+    expect(r.pickups.count("healthPack")).toBe(1);
+  });
+
+  it("never expires and never drifts to the player", () => {
+    const r = rig();
+    r.health.hp = 50;
+    r.pickups.loadLevelBoxes(packLevel(25));
+    // Past the finisher blob's lifetime, and inside its attract radius.
+    const near = new THREE.Vector3(P.collectRadius + 0.5, 0, 0);
+    for (let i = 0; i < Math.ceil((H.lifetime + 5) / DT); i++) tick(r, near);
+    expect(r.pickups.count("healthPack")).toBe(1);
+    const t = r.pickups.list[0]!.body.translation();
+    expect(t.x).toBeCloseTo(0, 2); // it did not walk to the player
+    expect(r.health.hp).toBe(50);
+  });
+
+  it("sits on the floor, turning and bobbing like the ammo box", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(packLevel(25));
+    for (let i = 0; i < 120; i++) tick(r, FAR);
+    const it = r.pickups.list[0]!;
+    const t = it.body.translation();
+    // The collider is a ball of half the box's edge hung half an edge up,
+    // so a settled pack's body sits on the floor (y 0), not half an edge up.
+    expect(Math.abs(t.y)).toBeLessThan(0.05);
+    r.pickups.syncRender(1);
+    const y0 = it.mesh.position.y;
+    expect(y0).toBeGreaterThanOrEqual(t.y + P.size / 2 - 1e-6);
+    expect(y0).toBeLessThanOrEqual(t.y + P.size / 2 + P.bobHeight + 1e-6);
+    const rot0 = it.mesh.rotation.y;
+    for (let i = 0; i < 60; i++) tick(r, FAR);
+    r.pickups.syncRender(1);
+    expect(it.mesh.rotation.y).not.toBe(rotY(rot0));
+  });
+
+  it("comes back on a restart (clear, then loadLevelBoxes)", () => {
+    const r = rig();
+    r.health.hp = 50;
+    r.pickups.loadLevelBoxes(packLevel(25));
+    tick(r, new THREE.Vector3(0, 0, 0));
+    expect(r.pickups.count("healthPack")).toBe(0);
+    r.pickups.clear();
+    r.pickups.loadLevelBoxes(packLevel(25));
+    expect(r.pickups.count("healthPack")).toBe(1);
+  });
+
+  it("a health entry with no positive amount builds nothing", () => {
+    const r = rig();
+    r.pickups.loadLevelBoxes(packLevel(undefined));
+    expect(r.pickups.count("healthPack")).toBe(0);
+    r.pickups.loadLevelBoxes(packLevel(0));
+    expect(r.pickups.count("healthPack")).toBe(0);
+    r.pickups.loadLevelBoxes(packLevel(-5));
+    expect(r.pickups.count("healthPack")).toBe(0);
+  });
+
+  it("the pack's cap trims its own oldest, never a blob", () => {
+    const r = rig();
+    r.health.hp = 50;
+    r.pickups.loadLevelBoxes(packLevel(25));
+    for (let i = 0; i < P.max + 2; i++) {
+      const it = r.pickups.spawn("healthPack", new THREE.Vector3(5, P.size / 2, 0), new THREE.Vector3());
+      it.amount = 25;
+    }
+    expect(r.pickups.count("healthPack")).toBe(P.max);
+    r.pickups.sprayHealth(new THREE.Vector3(0, 0, 0));
+    expect(r.pickups.count("health")).toBe(H.count);
+    expect(r.pickups.count("healthPack")).toBe(P.max);
+  });
+});
+
+/** A rotation angle normalised, so a turn test compares angles not floats. */
+function rotY(a: number): number {
+  return Math.round(a * 1000) / 1000;
+}
