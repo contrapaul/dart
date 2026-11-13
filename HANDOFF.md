@@ -83,6 +83,107 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review.
 
 ## Log
 
+### 2026-11-13: ENV-05 review, merged (Claude Opus 5.5): the leaking barrel
+
+- DeepSeek V4.1 Flash 1017 built the card in one run, first try. The
+  fuse rules match Paul's ask exactly (`src/level/barrel-fuse.ts`, 10
+  tests). One file outside the card, with its reason: `DebrisSystem`
+  gained `sprayCube` so the spray can use a seeded PRNG.
+- Seen in the browser (range, Chromium, shots fired by script): one B04
+  standard dart punctured a barrel, it leaked and went off 10 s later;
+  from 4 m the leak jets small orange foam cubes out of the hole and they
+  pool on the floor beside the barrel. The barrel reads as a toy (orange
+  with a yellow band and a white lid).
+- The dev-only `window.__range` handle now has `barrels`.
+- 1116 tests pass (2 skipped); check and smoke green.
+- For Paul: the jet is gentle (2 m/s, rising to 4.5 m/s near the end); if
+  it should spurt harder or read from further away, raise
+  `data/barrel.json` `spray` `speedStart`, `speedEnd` or `cubeSizeMetres`.
+  The barrel's orange and yellow are the colours ENV-01's review kept for
+  weak points and darts; a barrel being a "shoot this" target fits that,
+  but it is Paul's call.
+- Not verified: Firefox, the chain of two barrels, and the blast at the
+  end of the fuse seen by eye.
+
+### 2026-11-13: ENV-05 (E15) the leaking foam barrel, on the range
+
+Built on branch `env-05`, not reviewed, not pushed. Card `tasks/ENV-05.md`.
+
+**What was asked.** Paul: a barrel on the range that sprays cubes out of
+punctures "as if it's leaking fuel", a standard dart sets a 10 s fuse, a
+second cuts it in half, a third sets it off (so B01 Dartman's three dart
+cluster does it), all other ammo sets it off at once. Built as a reusable
+element for explosive terrain (FX-01) later.
+
+**What was built.**
+
+- `src/level/barrel-fuse.ts`: the rules with no world in them. `startFuse`,
+  `puncture` (1st gives `fuseSeconds`, 2nd halves what is left, 3rd sets
+  off), `advance` (never fires twice), `classifyHit` (the data's
+  `punctureType` is the only round that punctures), `blastReaches`, and the
+  constants `FUSE_SECONDS` and `CHAIN_DELAY`.
+- `src/level/barrels.ts`: the system. One `THREE.Group` and one fixed
+  cylinder collider per barrel, a leak per puncture (its own seeded
+  `makeRng` stream, a narrow cone around the hit normal, faster as the
+  fuse runs down), the spray through `DebrisSystem` so its ring is the
+  hard cap, one `explosion.explode(centre, "barrel")` when it goes, then
+  the barrel leaves the world. A blast that reaches a barrel sets it off
+  a `chainDelay` later, so a row ripples.
+- `data/barrel.json` (fuse, chain delay, the look, the spray numbers),
+  a `barrel` profile in `data/explosion.json` (carveRadius 1.2,
+  damageCentre 30, rangeMetres 4.5, fxRadius 3.6, the rest like
+  `launcher`), two barrels in `data/range.json`.
+- `src/range/main.ts`: builds the barrels, chains `barrels.hit` after the
+  existing `darts.onHit` (so the impacts and the Foamers see the hit
+  first), calls `barrels.onBlast` from the page's `explosion.onExplode`,
+  steps `barrels.update` with the other systems, and `T` (or the menu's
+  Respawn) puts the barrels back with the line.
+- `design/levels/ENVIRONMENT.md`: an E15 entry. `PLAN.md`: an ENV-05 row
+  after ENV-04.
+
+**Checks.** `npm run check` green and `npm run smoke` green (4 pages,
+`/range` drawn). New tests, 29 in three files: `tests/level/barrel-fuse.test.ts`
+(10), `tests/level/barrels.test.ts` (15), `tests/level/range-barrels.test.ts`
+(4).
+
+**How to try it.** `npm run dev`, open `/range.html`. Two barrels: one to
+your right in the open, one to the left and nearer than the Foamer line.
+Hit one with a standard dart (B04 and B01's default round are standard):
+the fuse starts and a jet of cubes comes out of the puncture, quickening
+as the time runs out, and it goes off after 10 s. Hit it again to halve
+it, a third time (or B01's three dart cluster in one shot) to set it off.
+A mega, ball or precision dart, or a launcher round's blast, sets it off
+at once. Shoot the left barrel from near the line to watch a chain.
+
+**Decisions and why.**
+
+- One file outside the card's list: `src/voxel/debris.ts` gained a public
+  `sprayCube(at, vel, size, mat)` that calls the existing private `add`.
+  The card asks for seeded spray through `DebrisSystem`, and its only
+  entry points used `Math.random`, so there was no way to do it without
+  touching that file.
+- `makeRng` stays in `src/audio/synth.ts` and is imported, as
+  `src/foamers/foamers.ts` already does. Moving it would have touched
+  unrelated files for no gain.
+- The chain is aged from the state at the start of the step, so a blast
+  that lands in a step waits its own delay instead of going off at once
+  inside the same walk. That is what makes a row ripple rather than pop
+  together (a test covers it).
+- The blast is the shared `ExplosionSystem`, so the range's existing rules
+  hold: Foamers take it, the player does not, the per-second cap applies.
+
+**Not verified.** No browser here, so nothing was seen by eye: the look of
+the barrel, the read of the spray (the part Paul said he would judge), or
+whether the barrel's collider is solid under a walked-into player. The
+smoke check loaded `/range` and found the page drawn, and the unit tests
+build the real system in Rapier, but nobody has watched a barrel leak.
+
+**Question for the reviewer.** The card asks for an orange body with a
+yellow band. ENV-01's review reserved orange (weak point) and yellow (the
+player's darts) for those meanings. Followed the card, but say if the
+barrel should move to another pair of palette colours.
+
+
 ### 2026-11-13: B05 makes a dent; every blaster's own impact range now works (Claude Opus 5.5)
 
 - Paul: B05's impact is extremely weak; it kills but hardly makes a dent,

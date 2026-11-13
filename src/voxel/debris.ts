@@ -98,6 +98,13 @@ export class DebrisSystem {
     }
   }
 
+  /** ENV-05: one loose chunk with a velocity the caller picked (a barrel's
+   *  leak spray), so a seeded caller can aim it. The same ring slots and
+   *  the same hard cap as every other chunk; the colour is a material id. */
+  sprayCube(at: THREE.Vector3, vel: THREE.Vector3, size: number, mat: number) {
+    this.add(at, vel, size, mat);
+  }
+
   /** Fixed step, before world.step(): age chunks and free the expired ones. */
   update(dt: number) {
     for (const s of this.slots) {

@@ -1,0 +1,24 @@
+{
+  "_note": "ENV-05 (E15): the leaking foam barrel. Paul's ask: a barrel on the range that sprays foam cubes from each puncture, then blows up, like leaking fuel, so a three dart cluster of the Dartman (B01) blows it. fuseSeconds is the fuse a standard dart's first puncture starts, in simulation seconds; a second puncture halves the time that is left and a third sets it off at once. chainDelay is how long a barrel waits when a blast (another barrel's, a dart's or a Foamer's) reaches it, so a row of barrels ripples instead of popping as one. maxLeaks is the most punctures that keep spraying. look gives the toy barrel's size in metres and its materials from data/materials.json: a bright foam-orange body with a foam-yellow band and a foam-white lid (Paul's warning colours, [Paul] for the final look and any print). spray is one leak: cubesPerSecond is the chunk rate per leak (each leak adds its own, and the debris system's ring cap is the hard cap over all of them), cubeSizeMetres the chunk's size, coneDegrees the half angle of the jet around the hit normal, speedStart and speedEnd the launch speed at the first puncture and at the end of the fuse (the jet quickens as the fuse runs down, so the player can read it), and material the chunk's colour (the barrel's own light foam, never a fluid). Start values for Paul to tune on the range.",
+  "fuseSeconds": 10,
+  "punctureType": "standard",
+  "chainDelay": 0.15,
+  "maxLeaks": 3,
+  "look": {
+    "diameterMetres": 0.6,
+    "heightMetres": 0.9,
+    "bodyMaterial": "foam-orange",
+    "bandMaterial": "foam-yellow",
+    "bandHeightMetres": 0.16,
+    "lidMaterial": "foam-white",
+    "lidHeightMetres": 0.06
+  },
+  "spray": {
+    "cubesPerSecond": 25,
+    "cubeSizeMetres": 0.06,
+    "coneDegrees": 20,
+    "speedStart": 2,
+    "speedEnd": 4.5,
+    "material": "foam-orange-light"
+  }
+}
