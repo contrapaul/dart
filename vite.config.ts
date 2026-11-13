@@ -32,6 +32,8 @@ export default defineConfig({
         range: resolve(import.meta.dirname, "range.html"),
         sandbox: resolve(import.meta.dirname, "sandbox.html"),
         arena: resolve(import.meta.dirname, "arena.html"),
+        // ED-02: the level editor page.
+        editor: resolve(import.meta.dirname, "editor.html"),
       },
       output: {
         // TheRapier glue (rapier_wasm3d.js) imports its .wasm and calls

@@ -88,6 +88,60 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-07b, triggers and keys in play (Claude Opus 5.5)
+
+- The arena page runs the editor's triggers (`src/arena/extras.ts`):
+  spawns at spawn points, refused ones retried every step; every Foamer a
+  trigger can count is tagged (placed id or spawn id) and reported once
+  when down or gone; show and hide reach hidden prims, hazards and
+  placed Foamers; open and close use the page's door verb (sound
+  included); message is the banner; checkpoint sets where a restart puts
+  the player.
+- Keys: `src/level/key-pickups.ts`, a code-built key in its colour that
+  turns, taken within 1 m; a door locked to a colour opens within 2.5 m
+  when the key is held, and says "Needs the red key" otherwise; a small
+  HUD line lists the keys held. Numbers in `data/editor.json` `keys`.
+  Placed pickups now report "taken" with their file id
+  (`Pickups.onTaken`).
+- A restart puts all editor logic back to the level's start (triggers,
+  hidden prims, hazards, the level's doors, keys), keeping the trigger
+  checkpoint. Decided so: the Foamers a half run fight spawned are
+  cleared by the restart, so a fight left half done could never finish.
+- Test level `ed-07` (`arena.html?level=ed-07`). Seen in the browser:
+  entering the arena raised the pink blocker behind the player and
+  spawned 3 Slowmers; downing them spawned wave 2; downing those dropped
+  the blocker and opened the side door; the exit door said it needs the
+  red key, the key showed "Red key" on the HUD and the door then opened.
+- Not seen: a death and restart in a trigger level, a refused spawn being
+  retried, a "pressed" trigger from a button.
+
+### 2026-11-13: ED-07a review, merged (Claude Opus 5.5): the trigger runner
+
+- qwen-machine (Qwen 3.8 27B) wrote `src/level/triggers.ts` and
+  `src/level/keys.ts` with 17 tests. Reviewed line by line: zones fire on
+  entering, spawns run round robin with their hold, "killed all" counts
+  every Foamer a named spawn makes, `after` re-arms when its trigger
+  fires again, reset clears everything.
+- Noted for the wiring (ED-07b): a spawn the game refuses (the live
+  Foamer cap) must be retried by the page, or a "killed all" over that
+  spawn can never fire and the blockers never drop.
+- Not in the game yet: nothing calls the runner until ED-07b.
+
+### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
+
+- DeepSeek built `editor.html`. Seen in the browser: a new level opens on
+  a 32 m floor under the gradient sky; Box then a click on the floor
+  places a box with the move handles; the inspector set it to a toxic
+  hazard (drawn see-through) and changed its size; the top bar showed
+  Saving then Saved; Play opened `arena.html?level=local:<key>` and the
+  game played that level, the toxic box standing on the floor.
+- Review fix (on main, ED-01's bug): `src/arena/extras.ts` picked its
+  level when it was imported, before `main.ts` had read the store, so a
+  stored level always played the Pit. `main.ts` now imports `extras`
+  after the store read.
+- Not seen by eye: rotate and scale handles, undo and redo by key, export
+  and import of a file, the sky image upload, opening an Act 1 level as a
+  copy. The floor grid is 128 m and dense at 0.5 m: fine near, busy far.
 ### 2026-11-13: ED-03b Foamers walk round hazards (Pi, strata-dsv41)
 
 - Built `Hazards.blocksAt(x, y, z)`: true inside a shown hazard with
@@ -214,6 +268,77 @@ stands on yet (ED-03's job).
 - Decisions: damage is dealt in fixed ticks (`dps * tickSeconds`) so hits land on the HUD; overlapping hazards use the highest dps and the lowest slow; exposure only grows and drains inside, so leaving and returning does not reset the tick; Foamers skip hazards with `hurtsFoamers: false`; hidden hazards are invisible and do nothing until `setShown`.
 - `npm run check` green: 1186 tests pass, 2 skipped, build and text/remote checks green.
 - Not wired into the arena yet; the reviewer does that. No browser here, so the see-through look, shimmer and depth order are not checked by eye. `primContains` clones its point internally, so that allocation remains per body per frame in `src/level/prim-geometry.ts`, which this card did not touch.
+### 2026-11-13: ED-02, the level editor page (DeepSeek V4.1 Flash 1017 via Pi)
+
+Branch `ed-02`, five commits, not reviewed, not merged, not pushed.
+`editor.html` opens a level and lets you build one. Keys: right mouse
+and WASD to fly (shift sprints, the wheel changes speed), the palette
+and a click to place, click to select (shift adds), Delete to remove,
+Ctrl+D to duplicate, Ctrl+Z and Ctrl+Shift+Z for undo and redo, W, E and
+R for move, rotate and scale with the grid, Esc to let go of the mouse.
+
+- Stage 1: `src/editor/doc.ts` holds the `Level`; every change is a
+  command on one undo list. A new level is the smallest valid one (a
+  32 by 32 m floor, the player start, the exit, the default sky) and is
+  checked by `validateLevel`. Ids come from a per-shape count
+  (`box-1`, `ramp-2`). Tests in `tests/editor/doc.test.ts`.
+- Stage 2: the page, `src/editor/view.ts` (the scene's lights, the grid
+  from `data/editor.json`, the shell and pieces read only, every prim
+  from `primGeometry` and `primMatrix`) and the fly camera. The smoke
+  check loads the page and finds a picture.
+- Stage 3: placers, selection, the three handles and the inspector.
+  A hazard draws see-through, and a breakable asks for hit points.
+- Stage 4: saving and files. Autosave fires half a second after a
+  change through `putLevel`, and the top bar says Saving then Saved.
+  Open lists saved levels newest first (each can be deleted) under the
+  ten built-in levels, which open as copies so a save makes a new one.
+  Export writes `<name>.dart.json`; Import is checked with
+  `validateLevel` and refused with every error it finds, not just the
+  first. Play saves, then goes to `arena.html?level=local:<key>`.
+  The sky inspector sets the gradient's three colours, or an image
+  scaled to `limits.skyImageWidth` by `skyImageHeight` and stored as a
+  JPEG data URL, and the view draws it.
+- Stage 5: the top bar counts prims, foamers and triggers against the
+  caps in `data/editor.json` and goes red past one; placing and
+  duplicating stop at `limits.prims` and say why in the status line.
+
+Green: `npx tsc --noEmit`, `npx vitest run` (1219 pass, 2 skip),
+`npm run build`, `npm run smoke` (all 5 pages, editor 0.6 s, 9 bands),
+`npm run check` (no em dashes, no remote fetches in 36 built files).
+
+**Not seen by eye and still open:** `src/arena/` does not read a
+`?level=local:` key yet (that is ED-01's side), so Play saves the level
+and lands on the Pit with "No level called local:...". The sky image
+upload was not exercised in the browser. What was checked in headless
+Chromium: the fly camera and placing, the inspector for a hazard (look,
+damage, slow, hurts Foamers, starts hidden), the sky panel, the Open
+dialog's two lists, a broken import refused with three errors while the
+old level stayed, a good import loaded and named, the export file name
+following the level's name, and Play's single navigation to
+`arena.html?level=local%3A...` with no console errors.
+
+Known gap worth a decision: `src/editor/store.ts` was used as it is, so
+nothing in ED-02 reads a key back by name for the arena page; the
+`?level=local:` half needs the arena page to do it.
+### 2026-11-13: ED-07a trigger runner and key rules (Qwen 3.8-27B via Pi, `tasks/ED-07A.md`)
+
+- `src/level/triggers.ts`: `TriggerRunner` fires a level's when/do
+  triggers (start, enter zone, `killed`, pressed, taken, `after`) through
+  a `TriggerHost` the page provides. Spawn dos count their calls, round
+  robin over their `at` list, `holdSeconds` apart, the first one at once;
+  kill counting covers named spawns (each Foamer one makes); a trigger
+  fires once unless it says `repeat`, and a kill or a press before it can
+  fire still counts. Reset puts it back to the start state.
+- `src/level/keys.ts`: `KeyRing` holds red, blue, yellow in that order
+  and `doorOpensFor` decides a door (none always, trigger never, colour
+  when held).
+- 18 tests in `tests/level/`, including the usual arena end to end and
+  reset. The message default (3 s) lives in `data/editor.json`
+  `triggerDefaults`, not in the code.
+- No Three.js and no DOM in either file; the editor page is wired by its
+  own card.
+- Not checked by eye: no browser in this environment; the headless
+  preflight (tsc, 1195 tests, build) and the em dash check all pass.
 
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 

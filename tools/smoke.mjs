@@ -89,6 +89,9 @@ const PAGES = [
   // also proves the boot finished and the range may take the mouse.
   { file: "range.html", name: "test range", settle: "#status", ready: "Click to play" },
   { file: "sandbox.html", name: "sandbox", settle: "#roster li", ready: "" },
+  // ED-02: the editor's status line reads Loading until the first frame is
+  // drawn and the panels are built, so it proves the page booted.
+  { file: "editor.html", name: "the level editor", settle: "#status", ready: "Ready" },
 ];
 
 const TYPES = {
