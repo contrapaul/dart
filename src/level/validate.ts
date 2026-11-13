@@ -630,7 +630,10 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
         break;
       default: errors.push(`${what}: unknown when ${(w as { kind?: string })?.kind}`);
     }
-    if (!Array.isArray(t.do) || t.do.length === 0) {
+    // A trigger that does nothing itself is fine when an `after` waits on
+    // it (a timer start: a converted arena's delayed first wave).
+    const timed = triggers.some((o) => o.when?.kind === "after" && o.when.trigger === t.id);
+    if (!Array.isArray(t.do) || (t.do.length === 0 && !timed)) {
       errors.push(`${what}: do is empty`);
       continue;
     }

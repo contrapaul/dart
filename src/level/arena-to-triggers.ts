@@ -162,10 +162,10 @@ export function arenaToTriggers(level: Level): ArenaConversion {
         triggers.push({
           id: `${wave.id}-start`,
           when: { kind: "killed", ids: prev.spawnIds },
-          // The validator rejects an empty do, and inventing text is
-          // banned, so the arm-only trigger carries the level's
-          // placeholder: a real breadcrumb for Paul in the editor.
-          do: [{ kind: "message", text: "[Paul]" }],
+          // Review: a trigger that only starts an `after` timer has an
+          // empty do; the validator accepts that when an `after` waits on
+          // it (no placeholder banner in play).
+          do: [],
         });
         triggers.push({
           id: `${wave.id}-after`,
@@ -184,7 +184,13 @@ export function arenaToTriggers(level: Level): ArenaConversion {
       });
     }
 
-    triggers.push({ id: lockId, when: { kind: "enter", zone: zone.id }, do: lockDo });
+    // Review: an arena that does nothing on entry (no waves, no lock: a
+    // door a button opens) needs no trigger; one that only starts a
+    // timer keeps its empty do, which the validator accepts.
+    const timed = triggers.some((t) => t.when.kind === "after" && t.when.trigger === lockId);
+    if (lockDo.length > 0 || timed) {
+      triggers.push({ id: lockId, when: { kind: "enter", zone: zone.id }, do: lockDo });
+    }
   }
 
   const level2: Level = {

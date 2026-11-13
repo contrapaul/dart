@@ -1,3 +1,4 @@
+import { ARENA_LEVELS } from "../../src/arena/levels";
 // ED-07c: the arena to triggers converter. The Ring (one wave) converts
 // to parts that pass the validator; the Pit (two waves) runs end to end
 // through the real TriggerRunner with a fake host (enter, wave 1 after
@@ -139,8 +140,8 @@ describe("the Pit runs end to end (two waves)", () => {
     expect(calls.filter((c) => c.fn === "spawnOne").length).toBe(3);
 
     runner.killed("pit-w1-0");
-    runner.update(1 / 60, IN); // all three: wave 2 arms, its message shows
-    expect(calls.at(-1)).toEqual({ fn: "message", args: ["[Paul]", 3] });
+    runner.update(1 / 60, IN); // all three: wave 2's timer starts, nothing shows
+    expect(calls.some((c) => c.fn === "message")).toBe(false);
     expect(calls.filter((c) => c.fn === "spawnOne").length).toBe(3);
 
     runner.update(1.0, IN); // 1 s in: not there yet (6)
@@ -187,5 +188,14 @@ describe("noLock and escape (the hall, from 1-3)", () => {
     expect(lock.do.some((d) => d.kind === "close")).toBe(false);
     expect(lock.do.some((d) => d.kind === "spawn" && (d as { id?: string }).id === "hall-w1-0")).toBe(true);
     expect(warnings.join("\n")).toMatch(/noLock drops wave hall-w1 delay of 0\.5/);
+  });
+});
+
+describe("ED-07c review: every built-in level converts", () => {
+  it("and the result passes the validator", () => {
+    for (const [name, level] of Object.entries(ARENA_LEVELS)) {
+      const { level: out } = arenaToTriggers(level);
+      expect(validateLevel(out).errors, name).toEqual([]);
+    }
   });
 });
