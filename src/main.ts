@@ -8,6 +8,7 @@ import { VolumeMesh } from "./voxel/volume-mesh";
 import { createGame } from "./game/game";
 import { courseExtras } from "./course/extras";
 import { wireTitleMenu } from "./game/title";
+import { wireMyLevels } from "./game/my-levels";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -26,6 +27,7 @@ let debugBlast: (() => void) | undefined;
 // loads (review: after it, the buttons did nothing for the seconds the
 // course took to boot). The test course behind them plays as it did.
 wireTitleMenu();
+wireMyLevels();
 
 const game = await createGame({
   build({ rapier, world, scene, mesherPool }) {

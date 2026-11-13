@@ -390,4 +390,19 @@ describe("HP-01: a melee kill sprays health, a dart kill does not", () => {
     expect(K.amount).toBe(5);
     expect(P.max).toBe(8);
   });
+
+  it("ED-06: damageOf names the damage the swing just dealt", () => {
+    const { melee } = rig();
+    const hits = meleeJson.weapons.M01.hits;
+    // Nothing swung yet: nothing to take off a breakable.
+    expect(melee.lastSwung).toBeNull();
+    expect(melee.damageOf(null)).toBe(0);
+    for (let i = 0; i < hits.length; i++) {
+      expect(melee.damageOf(i)).toBe(hits[i]!.damage);
+    }
+    // The bash is its own weaker number, and a hit past the combo's end is
+    // never read as some other hit's damage.
+    expect(melee.damageOf(-1)).toBe(meleeJson.bash.damage);
+    expect(melee.damageOf(hits.length)).toBe(0);
+  });
 });

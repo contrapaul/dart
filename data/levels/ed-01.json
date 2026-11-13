@@ -1,5 +1,5 @@
 {
-  "_note": "ED-01: a test level, not a level to ship. It exercises every new part of the format once: all five primitive shapes (a solid box, a ramp, a wedge, a cylinder and a stairs), an orange decor strip of three boxes merged into one mesh, a hidden foam-purple blocker (a prim that only a trigger shows, standing in the doorway), two placed Foamers (one that wakes on sight, one that waits for a trigger), a door with lock none that starts open and a door with lock trigger that starts shut, a gradient sky, and a start loadout that owns only B01 and B04 with the sword and 60 health. The room is env-01's: 18 x 18 m, floor at y 0, with no ceiling so the sky shows (review). The prims stand on the floor (a box's pos is its centre, so a 1 m box sits at y 0.5). The ramp is 3 m long rising 1.5 m, the wedge is a roof over the crate end of the room, the cylinder is a pillar, and the stairs rise 1.5 m to a 1.5 m platform so the shapes can be walked over as well as looked at. Decor never collides: the strip runs along the north wall where the player cannot stand on it by accident. The hidden blocker is a 2 x 2 x 0.4 m wall across the middle doorway (between the open door and the shut one), so the test can watch it appear when a trigger names it. Metres, Y up, -z is north, positions are box centres, sizes are full extents.",
+  "_note": "ED-01: a test level, not a level to ship. It exercises every new part of the format once: all five primitive shapes (a solid box, a ramp, a wedge, a cylinder and a stairs), an orange decor strip of three boxes merged into one mesh, a hidden foam-purple blocker (a prim that only a trigger shows, standing in the doorway), two placed Foamers (one that wakes on sight, one that waits for a trigger), a door with lock none that starts open and a door with lock trigger that starts shut, a gradient sky, and a start loadout that owns only B01 and B04 with the sword and 60 health. The room is env-01's: 18 x 18 m, floor at y 0, with no ceiling so the sky shows (review). The prims stand on the floor (a box's pos is its centre, so a 1 m box sits at y 0.5). The ramp is 3 m long rising 1.5 m, the wedge is a roof over the crate end of the room, the cylinder is a pillar, and the stairs rise 1.5 m to a 1.5 m platform so the shapes can be walked over as well as looked at. Decor never collides: the strip runs along the north wall where the player cannot stand on it by accident. The hidden blocker is a 2 x 2 x 0.4 m wall across the middle doorway (between the open door and the shut one), so the test can watch it appear when a trigger names it. Metres, Y up, -z is north, positions are box centres, sizes are full extents. ED-06: three breakables. foam-wall is an upright box, so it is voxel foam the darts carve; turned-block is a box turned 45 degrees, so it breaks by hit points (60); foam-column is a cylinder, so it breaks by hit points too (40). The wall stands south of the middle wall where the player starts, the turned block beside the stairs, the column in the open floor between them.",
   "meta": {
     "id": "ed-01",
     "name": "[Paul]",
@@ -290,6 +290,61 @@
       ],
       "colour": "#ff7a1a",
       "behaviour": "decor"
+    },
+    {
+      "id": "foam-wall",
+      "shape": "box",
+      "pos": [
+        -4,
+        1.5,
+        4
+      ],
+      "size": [
+        3,
+        3,
+        0.4
+      ],
+      "colour": "#ff7a1a",
+      "behaviour": "breakable"
+    },
+    {
+      "id": "turned-block",
+      "shape": "box",
+      "pos": [
+        3.6,
+        1,
+        4
+      ],
+      "size": [
+        1.6,
+        2,
+        1.6
+      ],
+      "rot": [
+        0,
+        45,
+        0
+      ],
+      "colour": "#2ec4ff",
+      "behaviour": "breakable",
+      "hitPoints": 60
+    },
+    {
+      "id": "foam-column",
+      "shape": "cylinder",
+      "pos": [
+        0,
+        1.5,
+        3
+      ],
+      "size": [
+        1.2,
+        3,
+        1.2
+      ],
+      "colour": "#8a5cff",
+      "behaviour": "breakable",
+      "hitPoints": 40
     },
     {
       "id": "blocker",

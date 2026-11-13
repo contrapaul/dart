@@ -45,7 +45,8 @@ menu's look).
 
 ## Done when
 
-- Tests (jsdom, with the store functions stubbed): the panel lists two
+- Tests (no DOM library: the project has none; keep the list, file and
+  URL logic in pure functions and test those, with the store stubbed): the panel lists two
   stored levels newest first; Play goes to the local URL; a bad file is
   refused with its errors and stores nothing; a good file is stored and
   played; an empty store shows the empty message.

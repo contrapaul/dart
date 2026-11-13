@@ -24,6 +24,7 @@ import { Hazards } from "../level/hazards";
 import { TriggerRunner } from "../level/triggers";
 import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
+import { dartDamageOf } from "../level/breakables";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -93,6 +94,8 @@ export function arenaExtras(
   // for the mod stations; input, finisher and vacuum are read from g in the
   // step hook, where the tools own the use key first.
   const { level } = built;
+  // ED-06: the prims that break by hit points, built with the level.
+  const breakables = level.breakables;
 
   // LVL-02a: the level file's ammo boxes: they refill the loadout's
   // blasters in place, and they respawn on every restart (respawnAtEntry)
@@ -324,7 +327,21 @@ export function arenaExtras(
   g.darts.onHit = (hit) => {
     dartOnHit(hit);
     playPress(buttons.pressByCollider(hit.collider, hit.point));
+    // ED-06: a breakable takes the damage that dart deals a Foamer, and a
+    // dart stuck in one is freed when it breaks (the barrel's own rule).
+    breakables.dartHit(hit, dartDamageOf(hit.type));
   };
+
+  // ED-06: the hit point breakables. They are built with the level; here
+  // they get the game's debris system, the sounds of a hit and a break, and
+  // the explosion's own hook (chained, so the blast FX still plays).
+  breakables.debris = g.debris;
+  breakables.onDamage = (_b, _amount, at) => audio.play("DT-hit-wood", { position: at });
+  breakables.onBreak = (b, at) => {
+    audio.play("FX-chunk", { position: at });
+    g.darts.releaseInSphere(at, b.radius);
+  };
+  g.explosion.onBlast = (point, profile) => breakables.blast(point, profile);
 
   // ENV-03: the mod stations (E13). A level with none builds an empty set
   // and the page never reads the use key for them, so a level without
@@ -429,6 +446,10 @@ export function arenaExtras(
     // ENV-02: the doors are back to the file's states, so the buttons are
     // back to unpressed, lit again and able to open them.
     buttons.reset();
+    // ED-06: every breakable comes back, hit points and all. Only a full
+    // restart puts them back (the checkpoint rule keeps the level's other
+    // damage: a retry inside an arena does not refill the walls).
+    if (all) breakables.reset();
     setRifts("dim");
   }
 
@@ -547,6 +568,7 @@ export function arenaExtras(
   function setShown(ids: string[], shown: boolean) {
     for (const id of ids) {
       level.prims.get(id)?.setShown(shown);
+      breakables.handles.get(id)?.setShown(shown);
       hazards.setShown(id, shown);
       if (shown) placed.wake([id]);
     }
@@ -584,6 +606,7 @@ export function arenaExtras(
     tagged.length = 0;
     pendingSpawns.length = 0;
     for (const id of level.prims.keys()) level.prims.get(id)!.setShown(false);
+    for (const h of breakables.handles.values()) h.setShown(false);
     for (const p of LEVEL.prims ?? []) if (p.behaviour === "hazard") hazards.setShown(p.id, !p.hidden);
     for (const [id, state] of levelDoorStart) level.doors.get(id)?.setState(state);
     keys.reset();
@@ -676,6 +699,11 @@ export function arenaExtras(
         const eye = player.eye(1, _playerPos);
         const fwd = camera.getWorldDirection(_aimDir);
         playPress(buttons.pressNear(eye, fwd, melee.reach, melee.arcDeg, player.collider));
+        // ED-06: the same swing takes the damage it deals a Foamer off the
+        // first breakable it reaches (the bash's own weaker number included,
+        // which is what the melee reports it swung).
+        const dmg = melee.damageOf(melee.lastSwung);
+        if (dmg > 0) breakables.swing(eye, fwd, melee.reach, dmg, player.collider);
       }
       playPress(buttons.step(at));
 
@@ -696,6 +724,9 @@ export function arenaExtras(
         placed.spawnAll();
         pickups.clear();
         pickups.loadLevelBoxes(LEVEL);
+        // ED-06: a fall out of the world is a full restart, so the
+        // breakables come back with it.
+        breakables.reset();
         runner.resetAll();
         setRifts("dim");
       }
@@ -761,6 +792,9 @@ export function arenaExtras(
       ambushes: Object.fromEntries(ambushes.ids.map((id) => [id, ambushes.isHidden(id)])),
       // ED-01: which placed Foamers are still waiting for their trigger.
       placedFoamers: placed.waitingIds,
+      // ED-06: the hit points left in each breakable (0 once broken).
+      breakables: Object.fromEntries(
+        breakables.list.map((b) => [b.prim.id, b.alive ? b.hp : 0])),
     }),
   };
 
