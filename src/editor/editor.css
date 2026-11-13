@@ -153,6 +153,23 @@
   font: inherit;
 }
 
+/* ED-05: a row of tick boxes (the start loadout, the marker kinds). */
+#inspector .ticks {
+  display: grid;
+  gap: 0.15rem;
+}
+
+#inspector .ticks label {
+  display: flex;
+  grid-template-columns: none;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+#inspector .ticks input {
+  width: auto;
+}
+
 #inspector .vec {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

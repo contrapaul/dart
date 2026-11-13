@@ -1,7 +1,7 @@
 import type { Level, LevelDoor, Pickup, PlacedFoamer, Rift, Vec3, Zone } from "../level/format";
 import { GRID, ROTATE_STEP, snapVec3, type EntryKind } from "./doc";
 import { EXIT_ID, START_ID } from "./markers";
-import { makePickup } from "./parts";
+import { BLASTERS, MELEE, makePickup } from "./parts";
 
 // ED-05 stage 3: the inspector's block for a placed thing that is not a
 // prim. Each kind shows its own fields and calls back with a patch; the page
@@ -124,6 +124,9 @@ export function buildPickupFields(host: HTMLElement, p: Pickup, ctx: PartContext
     { value: "blaster", label: "Blaster" },
     { value: "melee", label: "Hand weapon" },
     { value: "key", label: "Key" },
+    { value: "armor", label: "Armour" },
+    { value: "token", label: "Token" },
+    { value: "toy", label: "Toy" },
   ];
   if (!types.some((t) => t.value === p.type)) types.push({ value: p.type, label: p.type });
   host.append(label("type", selectField(types, p.type, (v) => {
@@ -139,6 +142,20 @@ export function buildPickupFields(host: HTMLElement, p: Pickup, ctx: PartContext
   }
   if (p.type === "health") {
     host.append(label("amount", numberInput(p.amount ?? 25, 5, (n) => ctx.change({ amount: Math.max(1, Math.round(n)) }, "amount"))));
+  }
+  if (p.type === "blaster") {
+    host.append(label("blaster", selectField(
+      BLASTERS.map((b) => ({ value: b.id, label: `${b.id} ${b.name}` })),
+      p.blaster ?? BLASTERS[0]?.id ?? "",
+      (v) => ctx.change({ blaster: v }, `blaster ${v}`),
+    )));
+  }
+  if (p.type === "melee") {
+    host.append(label("hand weapon", selectField(
+      MELEE.map((m) => ({ value: m.id, label: `${m.id} ${m.name}` })),
+      p.melee ?? MELEE[0]?.id ?? "",
+      (v) => ctx.change({ melee: v }, `hand weapon ${v}`),
+    )));
   }
   if (p.type === "key") {
     host.append(label("colour", selectField(

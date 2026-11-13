@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { LevelDoc, newLevel, ENTRY_KINDS } from "../../src/editor/doc";
 import {
-  doorColour, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, pickupColour, rigLabel,
+  AMMO_TYPES, BLASTERS, RIGS, START_LOADOUT, doorColour, dragPatch, makeDoor, makeFoamer, makePickup,
+  makeSpawn, makeZone, pickupColour, rigLabel,
 } from "../../src/editor/parts";
 import { capsuleFor } from "../../src/editor/markers";
 import { validateLevel } from "../../src/level/validate";
@@ -276,5 +277,40 @@ describe("ED-05 the markers' size and the handles' patch", () => {
 
   it("returns null for a drag that changed nothing", () => {
     expect(dragPatch({ kind: "foamers", pos: [1, 2, 3], yawDeg: 0, size: null }, [0, 0, 0], 0, [1, 1, 1], 0.5)).toBeNull();
+  });
+});
+
+describe("ED-05 stage 3 and 4: what the palette places", () => {
+  it("makes a pickup of every palette type that validates", () => {
+    const d = doc();
+    for (const ammo of AMMO_TYPES) {
+      const p = makePickup(d.nextId("pickup"), ammo.type, [0, 0, 0]);
+      expect(p.count).toBeGreaterThan(0);
+      expect(p.type).toBe(ammo.type);
+    }
+    for (const type of ["health", "armor", "token", "toy", "blaster", "melee", "key"] as const) {
+      const p = makePickup(d.nextId("pickup"), type, [0, 0, 0]);
+      d.add("pickups", p);
+    }
+    expect(validateLevel(d.level).errors).toEqual([]);
+  });
+
+  it("names every rig and every blaster the palette offers", () => {
+    expect(RIGS.length).toBeGreaterThan(0);
+    for (const rig of RIGS) expect(rig.id).toMatch(/^F\d\d$/);
+    expect(BLASTERS.length).toBeGreaterThan(0);
+    for (const b of BLASTERS) expect(b.name.length).toBeGreaterThan(0);
+  });
+
+  it("starts a level with the loadout data/editor.json names", () => {
+    expect(START_LOADOUT.blasters.length).toBeGreaterThan(0);
+    expect(START_LOADOUT.health).toBeGreaterThan(0);
+    for (const id of START_LOADOUT.blasters) expect(BLASTERS.some((b) => b.id === id)).toBe(true);
+  });
+
+  it("puts a new Foamer in a group per kind and names it by its type", () => {
+    const d = doc();
+    const f = makeFoamer(d.nextId("foamer"), [0, 0, 0], "F01");
+    expect(rigLabel(f.foamer)).toContain("Slowmer");
   });
 });
