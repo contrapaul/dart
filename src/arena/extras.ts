@@ -18,6 +18,7 @@ import {
 } from "../level/presses";
 import { buildAmbushes } from "../level/ambush";
 import { applySky } from "../render/sky";
+import { PlacedFoamers } from "../level/placed";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -66,6 +67,9 @@ export interface ArenaExtras {
   hooks: Partial<GameHooks<ArenaBuilt>>;
   /** For the dev hook and the browser checks. */
   runner: LevelRunner;
+  /** ED-01: the Foamers the level placed by hand. A trigger waking one
+   *  calls `placed.wake(ids)` (ED-07). */
+  placed: PlacedFoamers;
 }
 
 export function arenaExtras(
@@ -356,6 +360,8 @@ export function arenaExtras(
     player.teleport(entryPos());
     player.pitch = 0;
     foamers.clear();
+    // ED-01: the placed Foamers come back with the ammo boxes.
+    placed.spawnAll();
     pickups.clear();
     pickups.loadLevelBoxes(LEVEL); // LVL-02a: the file boxes come back
     stations.reset(); // ENV-03: the stations grant again on a restart
@@ -472,6 +478,12 @@ export function arenaExtras(
   // off on this page: the wave runner owns the count.
   foamers.spawnCount = 0;
 
+  // ED-01: the level's placed Foamers stand where the file puts them, every
+  // load and every restart (respawnAtEntry above clears the board, so the
+  // spawn goes in again beside the pickups).
+  const placed = new PlacedFoamers(LEVEL.foamers ?? [], foamers);
+  placed.spawnAll();
+
   const hooks: Partial<GameHooks<ArenaBuilt>> = {
     step(dt: number) {
       // LVL-05 stage 2: the end screen's clock, while the level is played.
@@ -538,6 +550,7 @@ export function arenaExtras(
       if (player.feet < FALL_LIMIT) {
         player.teleport(start);
         foamers.clear();
+        placed.spawnAll();
         pickups.clear();
         pickups.loadLevelBoxes(LEVEL);
         runner.resetAll();
@@ -603,8 +616,10 @@ export function arenaExtras(
       presses: Object.fromEntries(presses.ids.map((id) => [id, presses.phaseOf(id)])),
       // GAME-10m: which ambushers are still hidden.
       ambushes: Object.fromEntries(ambushes.ids.map((id) => [id, ambushes.isHidden(id)])),
+      // ED-01: which placed Foamers are still waiting for their trigger.
+      placedFoamers: placed.waitingIds,
     }),
   };
 
-  return { hooks, runner };
+  return { hooks, runner, placed };
 }
