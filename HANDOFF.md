@@ -91,6 +91,19 @@ tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-10a review, merged (Claude Opus 5.5): Make a level, Play a level
+
+- strata built it (resumed after the power cut). Review: the run had
+  added jsdom as a dependency, which the card wrongly asked for; undone,
+  and the tests now cover the pure list, file and URL functions with the
+  store stubbed. No new dependency.
+- Seen in the browser: the title shows New game, Make a level and Play a
+  level; the panel says there are no levels yet on an empty store; with a
+  level saved it lists it by name and time with Play and Edit; Play
+  opened the stored level in the game.
+- Not seen: Open a level file with a real file, Edit (the editor learns
+  `?open=<key>` in a later card), Esc closing the panel.
+
 ### 2026-11-13: ED-07c review, merged (Claude Opus 5.5): arenas to triggers
 
 - qwen-machine wrote `arenaToTriggers` (`src/level/arena-to-triggers.ts`):
@@ -139,6 +152,18 @@ tests, 2 skipped.
   the game draws them (test updated).
 - Not seen by eye: doors, spawn points and zones placed and moved, the
   Problems list clicked through, a marker turned with the rotate handle.
+### 2026-11-13: ED-10a, Make a level and Play a level (Pi, strata-dsv41)
+
+- `index.html` and `arena.html` gain Make a level and Play a level buttons. Make a level goes to `editor.html`; Play opens the My levels panel with the same look as Settings.
+- `src/game/my-levels.ts` is split into plain functions and the DOM wiring:
+  - `playLevelUrl(key)` builds `arena.html?level=local:<key>`, `editLevelUrl(key)` builds `editor.html?open=<key>`.
+  - `sortNewestFirst`, `levelRows` and `levelsView` return rows newest first, the name from `meta.name` or `[Paul]`, the saved time, and the two URLs; an empty store returns the empty message.
+  - `parseLevelFile` parses JSON, checks it with `validateLevel` and returns the validator's errors.
+  - `storeLevelFile` refuses a bad file with the first three errors and stores nothing; a good file is saved with `putLevel`, returns the key and its play URL; a store that refuses returns the save error.
+  - `wireMyLevels` renders the rows, wires Play, Edit, Open a level file, Back and Esc. Every control is a real button.
+- Decided: the list, file and URL logic stay DOM-free so `tests/game/my-levels.test.ts` (6 tests) can stub the store and run without jsdom. This follows the card's rewritten "no DOM library" line, and no dependency was added.
+- `npm run check` and `npm run smoke` pass (1293 tests, 2 skipped; 5 pages boot).
+- Not checked by eye: no browser here, so the panel's look, Esc closing it, and the actual file import flow are unverified. Edit's `?open=<key>` is wired by another editor card, so Edit is not yet known to open the level.
 
 ### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
 
