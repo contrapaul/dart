@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { LevelDoc, newLevel, ENTRY_KINDS } from "../../src/editor/doc";
 import {
-  doorColour, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, pickupColour, rigLabel,
+  doorColour, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, pickupColour, rigLabel,
 } from "../../src/editor/parts";
+import { capsuleFor } from "../../src/editor/markers";
 import { validateLevel } from "../../src/level/validate";
 import type { Level, LevelDoor, Pickup, PlacedFoamer, Zone } from "../../src/level/format";
 
@@ -223,5 +224,57 @@ describe("ED-05 key doors", () => {
   it("names the door when the key is missing", () => {
     const errors = validateLevel(keyLevel(false)).errors;
     expect(errors.some((e) => e.includes("door-1") && e.includes("red"))).toBe(true);
+  });
+});
+
+describe("ED-05 the markers' size and the handles' patch", () => {
+  it("makes a capsule per rig, taller for a taller rig", () => {
+    const a = capsuleFor("F01");
+    expect(a.height).toBeGreaterThan(1);
+    expect(a.radius).toBeGreaterThan(0.1);
+    expect(a.radius).toBeLessThanOrEqual(a.height / 2);
+    expect(capsuleFor("F01")).toEqual(a);
+  });
+
+  it("moves a marker by the drag, snapped", () => {
+    const patch = dragPatch(
+      { kind: "foamers", pos: [0, 0, 0], yawDeg: 0, size: null },
+      [0.74, 0, 0], 0, [1, 1, 1], 0.5,
+    );
+    expect(patch).toEqual({ pos: [0.5, 0, 0] });
+  });
+
+  it("turns a Foamer or the start into yaw in radians, a door into rotY", () => {
+    const f = dragPatch({ kind: "foamers", pos: [0, 0, 0], yawDeg: 0, size: null }, [0, 0, 0], 90, [1, 1, 1], 0);
+    expect(f?.yaw).toBeCloseTo(Math.PI / 2);
+    const s = dragPatch({ kind: "start", pos: [0, 0, 0], yawDeg: 0, size: null }, [0, 0, 0], 90, [1, 1, 1], 0);
+    expect(s?.yaw).toBeCloseTo(Math.PI / 2);
+    const d = dragPatch({ kind: "doors", pos: [0, 0, 0], yawDeg: 0, size: [2, 3, 0.4] }, [0, 0, 0], 90, [1, 1, 1], 0);
+    expect(d).toEqual({ rotY: 90 });
+    // 0 faces -z for all three (format.ts): no side is flipped.
+    expect(f?.yaw).toBe(s?.yaw);
+  });
+
+  it("resizes a zone, a door and the exit, and never a Foamer or a pickup", () => {
+    const z = dragPatch({ kind: "zones", pos: [0, 0, 0], yawDeg: 0, size: [4, 3, 4] }, [0, 0, 0], 0, [2, 1, 1], 0);
+    expect(z?.size).toEqual([8, 3, 4]);
+    const e = dragPatch({ kind: "exit", pos: [0, 0, 0], yawDeg: 0, size: [2, 1, 2] }, [0, 0, 0], 0, [2, 1, 2], 0);
+    expect(e?.size).toEqual([4, 1, 4]);
+    expect(dragPatch({ kind: "foamers", pos: [0, 0, 0], yawDeg: 0, size: null }, [0, 0, 0], 0, [2, 2, 2], 0)).toBeNull();
+    expect(dragPatch({ kind: "pickups", pos: [0, 0, 0], yawDeg: 0, size: null }, [0, 0, 0], 0, [2, 2, 2], 0)).toBeNull();
+  });
+
+  it("does not turn a zone or a spawn point", () => {
+    expect(dragPatch({ kind: "zones", pos: [0, 0, 0], yawDeg: 0, size: [1, 1, 1] }, [0, 0, 0], 45, [1, 1, 1], 0)).toBeNull();
+    expect(dragPatch({ kind: "spawnPoints", pos: [0, 0, 0], yawDeg: 0, size: null }, [0, 0, 0], 45, [1, 1, 1], 0)).toBeNull();
+  });
+
+  it("keeps a size above a floor of 0.1 m", () => {
+    const z = dragPatch({ kind: "zones", pos: [0, 0, 0], yawDeg: 0, size: [4, 3, 4] }, [0, 0, 0], 0, [0.001, 1, 1], 0);
+    expect((z?.size as number[] | undefined)?.[0]).toBe(0.1);
+  });
+
+  it("returns null for a drag that changed nothing", () => {
+    expect(dragPatch({ kind: "foamers", pos: [1, 2, 3], yawDeg: 0, size: null }, [0, 0, 0], 0, [1, 1, 1], 0.5)).toBeNull();
   });
 });

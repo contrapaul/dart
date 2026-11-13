@@ -6,7 +6,7 @@ import materialData from "../../data/materials.json";
 import type {
   KeyColour, LevelDoor, Pickup, PlacedFoamer, Rift, Vec3, Zone,
 } from "../level/format";
-import { GRID, snapVec3 } from "./doc";
+import { EDITOR, GRID, snapValue, snapVec3, type EntryKind } from "./doc";
 
 // ED-05 stage 1: the things the editor places besides prims, and the numbers
 // that describe them. Pure data, like the document: the view and the
@@ -119,4 +119,57 @@ export function makeSpawn(id: string, pos: Vec3): Rift {
 /** A zone a trigger's "enter" watches: a 4 by 3 by 4 m box on the floor. */
 export function makeZone(id: string, pos: Vec3): Zone {
   return { id, pos: at([pos[0], pos[1] + 1.5, pos[2]]), size: [4, 3, 4] };
+}
+
+/** What a placed thing's handles can change, as the view reads it back: a
+ *  position, a yaw in degrees and a size (null on the things that cannot be
+ *  resized). The player start and the exit are not level arrays, so their
+ *  kind is their own. */
+export interface Handles {
+  kind: EntryKind | "start" | "exit";
+  pos: Vec3;
+  yawDeg: number;
+  size: Vec3 | null;
+}
+
+/** The smallest a drag may shrink a size to, metres: a door is thinner than
+ *  a grid step (0.4 m), so the grid cannot be the floor. */
+const MIN_SIZE = 0.1;
+
+/** Only these kinds turn: a Foamer and the player start by yaw, a door by
+ *  rotY. The others keep their rotation. */
+function turns(kind: Handles["kind"]): boolean {
+  return kind === "foamers" || kind === "doors" || kind === "start";
+}
+
+/** Only these kinds have a size a drag can change. */
+function resizes(kind: Handles["kind"]): boolean {
+  return kind === "zones" || kind === "doors" || kind === "exit";
+}
+
+/** The document patch for one drag of the handles on a placed thing, or
+ *  null when the drag changed nothing it may change. `ratio` is the handles'
+ *  scale against the size they started at; a Foamer or a pickup ignores it,
+ *  and so does a prim (which has its own path). */
+export function dragPatch(
+  h: Handles, move: Vec3, turnDeg: number, ratio: Vec3, snap: number,
+): Record<string, unknown> | null {
+  const patch: Record<string, unknown> = {};
+  const pos: Vec3 = [h.pos[0] + move[0], h.pos[1] + move[1], h.pos[2] + move[2]];
+  if (move.some((n) => Math.abs(n) > 1e-4)) patch.pos = snapVec3(pos, snap);
+  if (turns(h.kind) && Math.abs(turnDeg) > 1e-4) {
+    const deg = ((h.yawDeg + turnDeg) % 360 + 360) % 360;
+    // A door's rotY and a Foamer's and the start's yaw are all "0 faces -z"
+    // (format.ts), so a turn of the handles is the same number in degrees
+    // for a door and the same angle in radians for the other two.
+    if (h.kind === "doors") patch.rotY = snap > 0 ? snapValue(deg, EDITOR.rotateStep) : deg;
+    else patch.yaw = (deg * Math.PI) / 180;
+  }
+  if (resizes(h.kind) && h.size) {
+    // A door is 0.4 m thick, thinner than a grid step, so the floor here is
+    // a small absolute size and not the grid.
+    const size = h.size.map((n, i) => Math.max(MIN_SIZE, n * (ratio[i] || 1))) as Vec3;
+    if (size.some((n, i) => Math.abs(n - h.size![i]!) > 1e-4)) patch.size = snap > 0 ? snapVec3(size, snap) : size.map((n) => Math.round(n * 1000) / 1000);
+  }
+  return Object.keys(patch).length ? patch : null;
 }
