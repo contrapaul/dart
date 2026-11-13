@@ -125,8 +125,10 @@ export function primGeometry(prim: Prim): THREE.BufferGeometry {
 /** True when a world point is inside the prim's shape (used for hazards:
  *  is the player or a Foamer in the lake). `inverse` is the inverse of
  *  `primMatrix(prim)`, cached by the caller. */
+const _local = new THREE.Vector3();
+
 export function primContains(prim: Prim, inverse: THREE.Matrix4, point: THREE.Vector3): boolean {
-  const p = point.clone().applyMatrix4(inverse);
+  const p = _local.copy(point).applyMatrix4(inverse);
   const [hx, hy, hz] = [prim.size[0] / 2, prim.size[1] / 2, prim.size[2] / 2];
   if (Math.abs(p.x) > hx || Math.abs(p.y) > hy || Math.abs(p.z) > hz) return false;
   switch (prim.shape) {

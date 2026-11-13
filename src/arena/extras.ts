@@ -20,6 +20,8 @@ import { buildAmbushes } from "../level/ambush";
 import { applySky } from "../render/sky";
 import { PlacedFoamers } from "../level/placed";
 import { applyStart } from "../level/start";
+import { Hazards } from "../level/hazards";
+import type { Foamer } from "../foamers/foamer";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -271,6 +273,11 @@ export function arenaExtras(
     pop: () => g.ui.pop(),
   };
   const pressPlayer = new HealthPressPlayer(health, pressUi, hud, audio);
+  // ED-03: the level's hazard prims (a lake, lava). Their ticks land
+  // through the press's own path (crush: no grace, so every tick counts,
+  // the HUD flash, the hurt sound and the go-down), Foamers take theirs as
+  // a hit that is not a dart, and the slow scales the walk.
+  const hazards = new Hazards(LEVEL.prims ?? [], scene);
   const presses = new PressSystem(level.presses);
 
   // GAME-10m: the ambushes. A level's hidden F12s live here, not in the
@@ -537,6 +544,10 @@ export function arenaExtras(
       });
       for (const w of pressRes.windups) audio.play("ENV-press-windup", { position: w.pos });
       for (const s of pressRes.slams) audio.play("ENV-press-slam", { position: s.pos });
+      const hz = hazards.update(dt, at, foamers.list);
+      if (hz.playerDamage > 0) pressPlayer.crush(hz.playerDamage);
+      player.hazardMoveScale = hz.slow;
+      for (const [f, amount] of hz.foamerDamage) foamers.parryDamage(f as Foamer, amount);
       // ENV-02: a swing presses a button within its own reach and arc, and
       // a step presses a floor one. The melee counts its presses, so a held
       // key does not press a button every step: only a new swing asks.

@@ -620,6 +620,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | AUD-01b | Paul's recordings (`design/SOUNDS.md`) edited, layered and dropped into the sound bank | Claude + P | AUD-00, AUD-01 |
 | UI-01 | (card: `tasks/UI-01.md`) Player health and damage, HUD v1, pause menu, settings with difficulty presets | Done 2026-11-03 (Pi + Claude review) | GAME-09, AUD-01 |
 | QA-02 | Playtest with players aged 10+ [Paul: who?], collect notes | P | all above |
+| ED-03 | (card: `tasks/ED-03.md`) Hazard primitives for the editor: toxic lake, lava, molten metal and goo built from the level's hazard prims, as see-through meshes; damage in 0.25 s ticks at the hazard's dps, highest dps and lowest slow when overlapping, an accumulator per body that does not reset on leaving, hidden hazards off, and `hurtsFoamers: false` skipping Foamers. Tests in `tests/level/hazards.test.ts`; the arena wiring is the reviewer's step | Pi | ENV-01 |
 
 ### Phase 3 (P2): Content
 

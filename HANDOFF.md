@@ -88,6 +88,25 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-03 review, merged (Claude Opus 5.5): hazards in play
+
+- strata built the module and its tests. Review fixes: a hazard with no
+  damage now still slows (goo); Foamer tick states are keyed by the
+  Foamer object in a WeakMap, not by a string that grew all level;
+  `primContains` reuses one vector instead of allocating per call.
+- Wired into the arena page (`src/arena/extras.ts`): ticks land on the
+  player through the press's crush path (no grace, HUD flash, hurt sound,
+  go-down); Foamers take theirs as a non-dart hit (`parryDamage`), so a
+  hazard downs them but never pops them; the slow is a new
+  `hazardMoveScale` on the player controller beside the B08 firing slow.
+- `ed-01` gained a lava pool by the start. Seen in the browser: it draws
+  as glowing orange, standing in it took 60 to 35 health in about 1.25 s
+  (20 per second) and the walk slowed to 0.6; stepping out put it back to
+  1.
+- Not seen: a Foamer walking into it (Foamers do not path round hazards
+  yet; the nav grid sees a hazard as open floor), the shimmer over time,
+  a hazard hidden and then shown by a trigger.
+
 ### 2026-11-13: ED-01 review, merged (Claude Opus 5.5)
 
 - DeepSeek built the card. Seen in the browser on `arena.html?level=ed-01`:
@@ -166,6 +185,13 @@ sight" check with N in `data/ai.json`; the existing idle state made it
 unnecessary, so no AI file was touched. Hazard prims are skipped in
 `src/level/prims.ts` and the nav bounds count them as floor nothing
 stands on yet (ED-03's job).
+### 2026-11-13: ED-03 hazard primitives (Pi, branch ed-03)
+
+- Task: `tasks/ED-03.md`.
+- Built `src/level/hazard-rules.ts` and `src/level/hazards.ts`; numbers in `data/hazards.json` (`tickSeconds` 0.25); 10 tests in `tests/level/hazards.test.ts`.
+- Decisions: damage is dealt in fixed ticks (`dps * tickSeconds`) so hits land on the HUD; overlapping hazards use the highest dps and the lowest slow; exposure only grows and drains inside, so leaving and returning does not reset the tick; Foamers skip hazards with `hurtsFoamers: false`; hidden hazards are invisible and do nothing until `setShown`.
+- `npm run check` green: 1186 tests pass, 2 skipped, build and text/remote checks green.
+- Not wired into the arena yet; the reviewer does that. No browser here, so the see-through look, shimmer and depth order are not checked by eye. `primContains` clones its point internally, so that allocation remains per body per frame in `src/level/prim-geometry.ts`, which this card did not touch.
 
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 
