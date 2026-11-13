@@ -9,6 +9,7 @@ import { material, materialId } from "../voxel/materials";
 import { Crates, type CrateBox } from "../voxel/crates";
 import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
+import { buildPrims, type PrimHandle } from "./prims";
 import type { Door, DoorState, Level, PieceVolume, ShellBox } from "./format";
 
 // Turns a validated level into meshes, colliders and voxels. Shell boxes are
@@ -62,6 +63,9 @@ export interface BuiltLevel {
    *  owns their timer and the crush (src/arena/extras.ts); a level with
    *  none gives an empty list. */
   readonly presses: PressHandle[];
+  /** ED-01: a handle for every prim that starts hidden, keyed by prim id,
+   *  so a trigger can show it. */
+  readonly prims: Map<string, PrimHandle>;
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -212,7 +216,13 @@ function fillPieces(
  *  walls. The nav grid covers the whole level, corridors included. */
 function navBoundsOf(level: Level): NavBounds {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (const b of level.shell) {
+  // ED-01: a level may be built from prims alone, so the solid ones count
+  // for the bounds as well as the shell.
+  const boxes = [
+    ...level.shell,
+    ...(level.prims ?? []).filter((p) => p.behaviour === "solid" || p.behaviour === "breakable"),
+  ];
+  for (const b of boxes) {
     minX = Math.min(minX, b.pos[0] - b.size[0] / 2);
     maxX = Math.max(maxX, b.pos[0] + b.size[0] / 2);
     minZ = Math.min(minZ, b.pos[2] - b.size[2] / 2);
@@ -237,6 +247,9 @@ export function buildLevel(
     if (box.shape === "ramp") addRamp(group, rapier, world, box);
     else addShell(group, rapier, world, box.pos, box.size, colourOf(box.material));
   }
+
+  // ED-01: the editor's prims, merged per colour where they never hide.
+  const prims = buildPrims(level, rapier, world, group);
 
   // One voxel volume for every piece, snapped to a shared grid origin.
   let minX = Infinity, minY = Infinity, minZ = Infinity;
@@ -280,7 +293,7 @@ export function buildLevel(
 
   if (scene) scene.add(group);
   return {
-    group, voxels, voxelMesh, doors, buttons, presses,
+    group, voxels, voxelMesh, doors, buttons, presses, prims,
     crates: new Crates(voxels, crateBoxes),
     navBounds: navBoundsOf(level),
   };
