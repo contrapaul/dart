@@ -86,6 +86,59 @@ is 1104 tests, 2 skipped on that branch.
 
 ## Log
 
+### 2026-11-13: ED-02, the level editor page (DeepSeek V4.1 Flash 1017 via Pi)
+
+Branch `ed-02`, five commits, not reviewed, not merged, not pushed.
+`editor.html` opens a level and lets you build one. Keys: right mouse
+and WASD to fly (shift sprints, the wheel changes speed), the palette
+and a click to place, click to select (shift adds), Delete to remove,
+Ctrl+D to duplicate, Ctrl+Z and Ctrl+Shift+Z for undo and redo, W, E and
+R for move, rotate and scale with the grid, Esc to let go of the mouse.
+
+- Stage 1: `src/editor/doc.ts` holds the `Level`; every change is a
+  command on one undo list. A new level is the smallest valid one (a
+  32 by 32 m floor, the player start, the exit, the default sky) and is
+  checked by `validateLevel`. Ids come from a per-shape count
+  (`box-1`, `ramp-2`). Tests in `tests/editor/doc.test.ts`.
+- Stage 2: the page, `src/editor/view.ts` (the scene's lights, the grid
+  from `data/editor.json`, the shell and pieces read only, every prim
+  from `primGeometry` and `primMatrix`) and the fly camera. The smoke
+  check loads the page and finds a picture.
+- Stage 3: placers, selection, the three handles and the inspector.
+  A hazard draws see-through, and a breakable asks for hit points.
+- Stage 4: saving and files. Autosave fires half a second after a
+  change through `putLevel`, and the top bar says Saving then Saved.
+  Open lists saved levels newest first (each can be deleted) under the
+  ten built-in levels, which open as copies so a save makes a new one.
+  Export writes `<name>.dart.json`; Import is checked with
+  `validateLevel` and refused with every error it finds, not just the
+  first. Play saves, then goes to `arena.html?level=local:<key>`.
+  The sky inspector sets the gradient's three colours, or an image
+  scaled to `limits.skyImageWidth` by `skyImageHeight` and stored as a
+  JPEG data URL, and the view draws it.
+- Stage 5: the top bar counts prims, foamers and triggers against the
+  caps in `data/editor.json` and goes red past one; placing and
+  duplicating stop at `limits.prims` and say why in the status line.
+
+Green: `npx tsc --noEmit`, `npx vitest run` (1219 pass, 2 skip),
+`npm run build`, `npm run smoke` (all 5 pages, editor 0.6 s, 9 bands),
+`npm run check` (no em dashes, no remote fetches in 36 built files).
+
+**Not seen by eye and still open:** `src/arena/` does not read a
+`?level=local:` key yet (that is ED-01's side), so Play saves the level
+and lands on the Pit with "No level called local:...". The sky image
+upload was not exercised in the browser. What was checked in headless
+Chromium: the fly camera and placing, the inspector for a hazard (look,
+damage, slow, hurts Foamers, starts hidden), the sky panel, the Open
+dialog's two lists, a broken import refused with three errors while the
+old level stayed, a good import loaded and named, the export file name
+following the level's name, and Play's single navigation to
+`arena.html?level=local%3A...` with no console errors.
+
+Known gap worth a decision: `src/editor/store.ts` was used as it is, so
+nothing in ED-02 reads a key back by name for the arena page; the
+`?level=local:` half needs the arena page to do it.
+
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 
 - Paul played Act 1 and wants to build the levels himself, in an editor
