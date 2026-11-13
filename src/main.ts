@@ -7,6 +7,7 @@ import { carveSphere } from "./voxel/carve";
 import { VolumeMesh } from "./voxel/volume-mesh";
 import { createGame } from "./game/game";
 import { courseExtras } from "./course/extras";
+import { wireTitleMenu } from "./game/title";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -21,6 +22,11 @@ const SPAWN = new THREE.Vector3(0, 0, 12);
 const VOXEL = 0.1;
 
 let debugBlast: (() => void) | undefined;
+// LVL-05 stage 2: New game and Continue. Wired before the test course
+// loads (review: after it, the buttons did nothing for the seconds the
+// course took to boot). The test course behind them plays as it did.
+wireTitleMenu();
+
 const game = await createGame({
   build({ rapier, world, scene, mesherPool }) {
     // Static geometry: a box mesh plus a matching fixed collider.

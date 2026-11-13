@@ -237,7 +237,9 @@ describe("PickupSystem.loadLevelBoxes (LVL-02a)", () => {
     const r = rig();
     r.pickups.loadLevelBoxes(pit);
     expect(r.pickups.count("ammo")).toBe(2); // pit-ammo and pit-ammo-far
-    for (const it of r.pickups.list) {
+    // LVL-05: the Pit also places its blaster pickup (the B01).
+    expect(r.pickups.count("blaster")).toBe(1);
+    for (const it of r.pickups.list.filter((p) => p.kind === "ammo")) {
       expect(it.dartType).toBe("standard");
       expect(it.dartCount).toBe(20);
     }

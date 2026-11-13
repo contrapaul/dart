@@ -83,6 +83,154 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review.
 
 ## Log
 
+### 2026-11-13: LVL-05 review, merged (Claude Opus 5.5): the campaign
+
+- DeepSeek V4.1 Flash 1017 built both stages, one run each, first try.
+  Stage 2 also found and fixed the flaky test seen earlier today
+  (`tests/range/ttk.test.ts`, B01's random spread, about 1 in 30 runs:
+  now a fixed seed).
+- Review fixes: a mod station would fit a mod to a blaster the campaign
+  has not found (it now says the blaster is needed; test in
+  `tests/arena/stations.test.ts`); New game and Continue did nothing
+  until the test course behind the title had booted (now wired first).
+- Paul's answers on 2-1 came in during the review. One changes this
+  card: health is full again when the next level starts a new act
+  (`healthInto`, tested). The rest are in PLAN section 14.
+- Played in the browser (Chromium, the dev server): the title with no
+  save shows New game only; New game opens the Pit in campaign mode with
+  B02 alone and full health and writes the save; walking onto the B01
+  pickup takes it, switches to it (8 + 40) and flashes "The Dartman";
+  the arena cleared and the real exit pad reached with 37 health and B01
+  at 3 + 21 shows the panel (name `[Paul]`, the time, Next level, Main
+  menu); Next level opens 1-2 with 37 health, B01 at 3 + 21, and B01 and
+  B02 owned; the title then shows Continue. The Foamers were removed by
+  script, not fought.
+- `tools/lvl05-probe.mjs` (DeepSeek's headless check of the campaign) is
+  kept: it is the only scripted check of the whole flow.
+- Not verified: a real fight to an exit, levels 1-2 to 1-4 played
+  through, Firefox, Esc and Enter on the panel by hand.
+
+### 2026-11-13: LVL-05 stage 2, carry-over, the end screen and the save
+
+Built on branch `lvl-05` in its own worktree, on top of stage 1. Not
+pushed. Stage 2 is the whole card: what carries, the save, the end
+screen and the main menu.
+
+How to play the campaign: open `/` and press **New game**. It clears the
+save and starts `1-1-pit` as `/arena.html?level=1-1-pit&campaign`.
+Finish the level's exit and the panel shows the level's name, the time,
+and **Next level** / **Main menu** (Enter and Esc do the same). Continue
+appears on `/` when a save exists and starts the level the save names.
+A restart or a death inside a level puts back the state the level began
+with, not a fresh loadout.
+
+- `src/game/campaign.ts` grew the carry and the save, still pure:
+  `newGame`, `entryState`, `carryTo`, `captureState`, `applyState`,
+  `readSave`, `writeSave`, `clearSave`, `filledBlaster`, `formatTime`,
+  `campaignUrl`, `firstLevel`, plus `SAVE_KEY` `dart.save.v1` and
+  `SAVE_VERSION` 1. `applyState` needs a `LiveCarry`: blasters, health,
+  and optionally `setOwned`. Every storage call is in try/catch, and a
+  missing, broken, old-version, unknown-level or nonsense save is a new
+  game.
+- `Loadout.setOwned(ids)`: the restart's owned set, so a blaster found
+  during an attempt that ended in a death is not owned by the retry. The
+  active blaster falls back to an owned one at once (no switch).
+- `src/arena/extras.ts`: campaign mode applies the entry state at the
+  level start (and writes it), and `respawnAtEntry` restores it rather
+  than refilling. `showComplete` fills `#completeName`, `#completeTime`,
+  shows **Next level** or the act's end, hides Play again, and writes
+  the carried state. After the last level the save goes back to the
+  entry state. A level clock runs while the level plays and stops at the
+  exit.
+- `arena.html` / `arena.css`: the panel's name, time, act's end and the
+  two buttons, in a `.choices` row.
+- `index.html` / `src/style.css` / new `src/game/title.ts`: **New game**
+  and **Continue** (hidden unless a save exists) above Settings. The
+  test course below is unchanged.
+
+Two bugs the browser probe caught that the unit tests could not, both
+fixed:
+
+1. The carry mapped every blaster, so the campaign would have owned all
+   eight after its first level. It now filters to the owned set.
+2. The restore's `LiveCarry` held plain copies of mag and reserve, so
+   `applyState` wrote to throwaway objects: health came through (a real
+   object) but ammo stayed at full. They are accessors onto the real
+   blaster now, and the entry state is applied to every blaster so a
+   carried blaster's ammo is restored before the owned set trims it.
+
+`npm run check` green (1082 tests, 2 skipped) and `npm run smoke` green
+(4 pages). New tests: `tests/game/campaign-save.test.ts` (21),
+`tests/game/title-menu.test.ts` (4), three more for the campaign panel's
+ids in `tests/game/pages.test.ts`, and three for `setOwned` in
+`tests/weapons/loadout.test.ts`. Stage 1 was 1044 tests, this is 1082
+(2 skipped in both).
+
+Seen by eye, headless Chromium, `tools/lvl05-probe.mjs` (29 checks, kept
+in the repo as a throwaway probe): a fresh campaign starts 1-1-pit with
+full health and the B02 alone and writes that save; a planted save of
+37 health with B01 3/17 and B04 12/50 starts 1-3 with exactly those and
+with the B03 still not owned; Enter on the panel goes to
+`/arena.html?level=1-4&campaign`, Enter on 1-4 goes nowhere, Esc goes to
+`/`; New game from `/` reaches `1-1-pit` in campaign mode and the title
+shows Continue when a save exists.
+
+Not seen by eye: actually playing a level to its exit (the probe opens
+the panel and dispatches the keys, it does not fight through to the
+exit pad), so the panel's real appearance, the clock's reading and the
+save written by a real finish are untested in a browser; the two
+versions of the end screen's look; carrying from 1-1 into 1-2 by
+playing; and Continue after a mid-level abandon (the save is written at
+the level start, so it names that level).
+
+### 2026-11-13: LVL-05 stage 1, owned blasters and blaster pickups
+
+Built on branch `lvl-05` in its own worktree. Stage 1 only: owned
+blasters and the blaster pickups. Carry-over, the end screen, the save
+and the main menu are stage 2, not started. Not pushed.
+- `data/campaign.json`: `order` (`1-1-pit`, `1-2`, `1-3`, `1-4`),
+  `startBlasters` (`["B02"]`) and `found`, all seven of Paul's blasters
+  (B01 in 1-1, B04 in 1-2, B03 in 1-3, B05 in 1-4, B06 2-1, B07 2-3,
+  B08 3-1). Paul's rules, PLAN.md section 14.
+- `src/game/campaign.ts`, pure and headless: `campaignMode(search)`,
+  `ownedAt(levelId)`, `foundAt`, `nextLevel`, `levelIndex`.
+- `src/weapons/loadout.ts`: an owned set on top of the eight always-built
+  blasters. `own`/`owns`, `select` refuses an unowned one, `next`/`prev`
+  skip them, the first owned one is active. With nothing passed the
+  loadout owns all eight, so the range and the test pages are unchanged.
+- `arena.html?level=1-2&campaign` is campaign mode; without `&campaign`
+  the page owns all eight exactly as before.
+- A `blaster` pickup kind (`data/pickups.json`, `src/pickups/pickups.ts`):
+  the blaster's own model at world size, turning and bobbing like the
+  ammo box, taken within 1 m. Taking it owns it, switches to it, fills the
+  magazine and gives `reserveStart`, plays the ammo box's pickup sound and
+  flashes its name above the ammo counter on the HUD. In test mode it only
+  tops up ammo.
+
+Where each pickup was put (start values, Paul will move them; each one is
+on the level's centre line, dead ahead of the player at the start, on the
+floor and lit):
+
+- 1-1 Pit, the B01 Dartman: `[0, 4.0, -25.5]`, on the start room's floor
+  3.5 m straight ahead of the player (`playerStart` `[0, 4, -29]`).
+- 1-2, the B04: `[-4, 0, 57.5]`, 2.5 m ahead of the start.
+- 1-3, the B03: `[0, 0, -7]`, 4 m ahead of the start in the open bay,
+  between the two white dummies.
+- 1-4, the B05: `[0, 0, -7]`, 4 m ahead of the start in the forecourt.
+
+`npm run check` green (1044 tests, 2 skipped) and `npm run smoke` green
+(4 pages). New tests: `tests/game/campaign.test.ts`,
+`tests/game/blaster-pickup.test.ts`, `tests/game/level-pickup.test.ts`,
+and the owned-set cases in `tests/weapons/loadout.test.ts`.
+
+Seen by eye (headless Chromium, `?level=<id>&campaign`, scripted walk):
+all four pickups show the right blaster in the right spot, walking over
+one takes it, the first blaster is B02 with no B01 in hand, and after
+the Pit pickup the HUD reads "The Dartman" over `AMMO 8 / 40`. Not seen
+by eye: a real playthrough past the first arena in any level, the pickup
+coasting over uneven ground, and how the pickup reads in a fight. Stage 2
+(carry-over, the end screen, the save, the main menu) is not started.
+
 ### 2026-11-13: LVL-06, level 2-1 concept and the blaster rows (Pi, DeepSeek V4.1 Flash 1017)
 
 - Wrote `design/levels/LEVEL-2-1.md`, a full concept in the shape of

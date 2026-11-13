@@ -165,6 +165,13 @@ export function validateLevel(level: Level): ValidationResult {
   // LVL-02a: a pickups entry of a darts-* type is an ammo box for that dart
   // type, and the type must be a real one in data/darts.json.
   for (const p of level.pickups ?? []) {
+    if (p.type === "blaster") {
+      // LVL-05: a blaster pickup names a real blaster.
+      if (typeof p.blaster !== "string" || !(p.blaster in (blastersData as Record<string, unknown>))) {
+        errors.push(`pickup ${p.id}: ${p.blaster} is not a blaster in data/blasters.json`);
+      }
+      continue;
+    }
     if (!p.type.startsWith("darts-")) continue;
     if (!dartNames.has(p.type.slice("darts-".length))) {
       errors.push(`pickup ${p.id}: ${p.type} is not a dart type in data/darts.json`);

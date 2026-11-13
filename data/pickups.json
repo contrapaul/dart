@@ -12,5 +12,11 @@
     "size": 0.35, "color": "#ffd23f",
     "collectRadius": 1, "max": 16, "lifetime": 0,
     "turnRate": 0.9, "bobHeight": 0.04, "bobRate": 2
+  },
+  "blaster": {
+    "_note": "LVL-05. The blaster a level gives away (a pickups entry of type blaster with its blaster id). It shows that blaster's own model at world size, floating at its rest height, turning slowly and bobbing like the ammo box, and is taken by walking within collectRadius of it. foot: metres the model's origin rests above the floor (the ball it stands on, as the ammo box's half edge is). turnRate: radians per second.",
+    "collectRadius": 1, "max": 8,
+    "foot": 0.12, "turnRate": 0.7, "bobHeight": 0.04, "bobRate": 2,
+    "color": "#ffd23f"
   }
 }

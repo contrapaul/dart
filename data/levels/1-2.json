@@ -2707,6 +2707,16 @@
         0.4,
         -84.5
       ]
+    },
+    {
+      "id": "ring-blaster-b04",
+      "type": "blaster",
+      "blaster": "B04",
+      "pos": [
+        -4,
+        0,
+        57.5
+      ]
     }
   ],
   "playerStart": {

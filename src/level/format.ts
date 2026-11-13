@@ -157,13 +157,17 @@ export interface Arena {
 
 export type PickupType =
   | "darts-standard" | "shells-b03" | "darts-precision" | "mega"
-  | "foam-balls" | "health" | "armor" | "token" | "toy";
+  | "foam-balls" | "health" | "armor" | "token" | "toy" | "blaster";
 
 export interface Pickup {
   id: string;
   type: PickupType;
-  count: number;
+  /** A darts-* box's dart count. LVL-05: a blaster pickup has none. */
+  count?: number;
   pos: Vec3;
+  /** LVL-05: the blaster a `blaster` pickup gives (an id in
+   *  data/blasters.json). */
+  blaster?: string;
 }
 
 export interface PlayerStart {

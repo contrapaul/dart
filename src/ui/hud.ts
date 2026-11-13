@@ -35,6 +35,11 @@ export class Hud {
   private heal: HTMLElement;
   private healTimer = 0;
   private ammoTimer = 0;
+  // LVL-05: the blaster-name flash, a small line over the ammo counter
+  // while a found blaster is announced. A page without #pickupflash keeps
+  // it to the ammo pulse alone.
+  private pickupFlash: HTMLElement | null = null;
+  private pickupTimer = 0;
   // GAME-08: the vacuum's charge: one pip by the ammo counter, filled by
   // its fraction. Nullable: a page without the element stays silent
   // (the range and sandbox have no #vacpip yet).
@@ -61,6 +66,7 @@ export class Hud {
     this.heal = document.querySelector<HTMLElement>("#healflash")!;
     // The vacuum's charge pip, next to the ammo counter (a page without
     // it is a silent off, as #lockmarker is on a range page).
+    this.pickupFlash = root.querySelector<HTMLElement>("#pickupflash");
     this.vacPip = root.querySelector<HTMLElement>("#vacpip");
     if (this.vacPip) this.vacFill = this.vacPip.querySelector<HTMLElement>("i");
     this.setHealth(0, 0); // hides until the first real update
@@ -137,6 +143,23 @@ export class Hud {
     this.ammo.classList.add("topped");
     window.clearTimeout(this.ammoTimer);
     this.ammoTimer = window.setTimeout(() => this.ammo.classList.remove("topped"), 250);
+  }
+
+  /** LVL-05: a blaster was found: its name over the ammo counter, fading
+   *  out, with the counter's own pulse. Suppressed by reduce flashes (the
+   *  name still shows, only the animation goes). */
+  blasterFlash(name: string) {
+    if (this.root.hidden) return;
+    this.ammoFlash();
+    const el = this.pickupFlash;
+    if (!el) return;
+    el.textContent = name;
+    el.classList.remove("on");
+    // Restart the fade even when it was already showing.
+    void el.offsetWidth;
+    el.classList.add("on");
+    window.clearTimeout(this.pickupTimer);
+    this.pickupTimer = window.setTimeout(() => el.classList.remove("on"), 2200);
   }
 
   /** GAME-08: the vacuum's charge, one pip filled by its fraction

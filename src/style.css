@@ -170,6 +170,26 @@ body {
   opacity: 1;
   transition: opacity 140ms ease-out;
 }
+/* LVL-05: a found blaster's name, a small foam-yellow line over the ammo
+   counter. It fades in, holds and goes; a page without the element shows
+   nothing and the counter's pulse still marks the pickup. */
+#pickupflash {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 4.6rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: #ffd23f;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+#pickupflash.on {
+  opacity: 1;
+  transition: opacity 160ms ease-out;
+}
+
 /* LVL-02a: the ammo box collect: a short scale-up of the counter (the
    heal flash is a green edge glow; a box is not health, so it gets a
    small flash of its own, in the box's yellow). */
@@ -386,6 +406,37 @@ body {
 #popped button:hover,
 #popped button:focus-visible {
   background: #ff9a4d;
+}
+
+/* LVL-05 stage 2: the title's campaign buttons (New game, Continue). Same
+   chunky toy pills as the pause menu; Continue hides itself without a save. */
+#overlay p.menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  pointer-events: auto;
+}
+#overlay p.menu button {
+  pointer-events: auto;
+  margin: 0;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+  padding: 0.55rem 2rem;
+  border-radius: 999px;
+  border: 3px solid #fff6e8;
+  background: #ff7a1a;
+  color: #fff6e8;
+  cursor: pointer;
+}
+#overlay p.menu button:hover,
+#overlay p.menu button:focus-visible {
+  background: #ff9a4d;
+}
+#overlay p.menu button[hidden] {
+  display: none;
 }
 
 /* The overlay's link to the arena page (LVL-01). */

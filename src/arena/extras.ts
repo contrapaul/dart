@@ -8,6 +8,10 @@ import type { BuildInput, BuiltGame, Game, GameHooks } from "../game/game";
 import { RiftVisuals } from "./rifts";
 import { Stations, useHeldForStations } from "./stations";
 import { chosenLevel } from "./levels";
+import {
+  applyState, campaignUrl, captureState, formatTime, nextLevel, writeSave,
+  type CampaignState, type LiveCarry,
+} from "../game/campaign";
 import { ButtonSystem, type PressEvent } from "../level/buttons";
 import {
   HealthPressPlayer, PressSystem,
@@ -19,7 +23,19 @@ import { buildAmbushes } from "../level/ambush";
 // the game, the level build included, is shared in src/game/.
 
 // GAME-10b: the same `?level=` choice as the page (src/arena/levels.ts).
-const LEVEL = chosenLevel().level;
+const CHOSEN = chosenLevel();
+const LEVEL = CHOSEN.level;
+/** The level's id in the campaign order: the `?level=` name, not meta.id. */
+const LEVEL_NAME = CHOSEN.name;
+
+/** LVL-05 stage 2: campaign play on this page. `entry` is the state the
+ *  level begins with (the save's own, or a fresh one for this level); it is
+ *  what a restart inside the level goes back to. */
+export interface CampaignOptions {
+  campaign: boolean;
+  entry: CampaignState | null;
+}
+const TEST_PAGE: CampaignOptions = { campaign: false, entry: null };
 
 /** The arena's build: the shared pieces plus the built level its doors live
  *  in. */
@@ -49,7 +65,10 @@ export interface ArenaExtras {
   runner: LevelRunner;
 }
 
-export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
+export function arenaExtras(
+  g: Game<ArenaBuilt>,
+  campaign: CampaignOptions = TEST_PAGE,
+): ArenaExtras {
   const { audio, foamers, hud, health, player, loadout, built, scene, pickups, camera, melee } = g;
   // g.ui, not a destructured copy: the UI controller is built after this
   // hook returns (src/game/game.ts). ENV-03: rapier and world come here too,
@@ -63,9 +82,61 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
   pickups.blasters = loadout.blasters;
   pickups.loadLevelBoxes(LEVEL);
 
+  // LVL-05 stage 2: the carried state, read from the live game and put back
+  // on it. The campaign's own blasters and health go through it; the test
+  // page never does.
+  // Only the blasters the player owns: carrying every blaster in the
+  // loadout would hand the campaign all eight after its first level.
+  // A restore asks for every blaster (`everyBlaster`), because the state
+  // itself decides the owned set and it is applied after this list is
+  // built: filtering here would restore only the blasters owned a moment
+  // before the restore, leaving a carried blaster's ammo at its full start.
+  // The mag and the reserve are accessors onto the real blaster: a plain
+  // copy would be written by applyState and thrown away, leaving the game's
+  // ammo at its full start while the health (a real object) came back right.
+  const live = (everyBlaster = false): LiveCarry => ({
+    blasters: loadout.blasters
+      .map((b, i) => ({
+        id: loadout.ids[i]!,
+        get mag() { return b.mag; },
+        set mag(v: number) { b.mag = v; },
+        get reserve() { return b.reserve; },
+        set reserve(v: number) { b.reserve = v; },
+        loaded: b.loaded,
+      }))
+      .filter((b) => everyBlaster || loadout.owns(b.id)),
+    health,
+    setOwned: (ids) => loadout.setOwned(ids),
+  });
+  if (campaign.campaign && campaign.entry) {
+    // The level starts with what the player carried in (a Continue, or a
+    // level after one that was finished), and that is the state a restart
+    // comes back to. It is written now as well as at the exit: a player who
+    // leaves mid-level has a save that names this level, so Continue starts
+    // it over from here rather than from the level before.
+    applyState(campaign.entry, live(true));
+    writeSave(campaign.entry);
+  }
+
   const banner = document.querySelector<HTMLDivElement>("#banner")!;
   const bannerText = document.querySelector<HTMLSpanElement>("#bannerText")!;
   const complete = document.querySelector<HTMLDivElement>("#complete")!;
+  // LVL-05 stage 2: the end screen's campaign parts. On the test page they
+  // stay hidden and Play again is the panel, as before.
+  const completeName = document.querySelector<HTMLParagraphElement>("#completeName");
+  const completeTime = document.querySelector<HTMLParagraphElement>("#completeTime");
+  const completeNext = document.querySelector<HTMLButtonElement>("#nextLevel");
+  const completeMenu = document.querySelector<HTMLButtonElement>("#mainMenu");
+  const completeEnd = document.querySelector<HTMLParagraphElement>("#actEnd");
+  const completePlayAgain = document.querySelector<HTMLButtonElement>("#playAgain");
+  /** The next level in the order, or null after the last one. */
+  const nextId = campaign.campaign ? nextLevel(LEVEL_NAME) : null;
+  // Seconds on the level's clock: counts while the level is being played,
+  // stops on the end screen and on a full restart, and starts fresh with
+  // the level's own entry state.
+  let levelTime = 0;
+  let timing = campaign.campaign;
+
 
   // LVL-02b: a level's arenas play in file order. One RiftVisuals per arena
   // (so two arenas may reuse a rift id), and only the current arena's seams
@@ -269,6 +340,10 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
    *  otherwise only the current arena goes back to waiting. */
   function respawnAtEntry(all: boolean): void {
     health.reset();
+    // LVL-05 stage 2: a restart goes back to the state the level began with,
+    // not to a fresh loadout. The campaign's entry state is that answer; the
+    // test page keeps the old full refill below.
+    const entry = campaign.campaign ? campaign.entry : null;
     player.teleport(entryPos());
     player.pitch = 0;
     foamers.clear();
@@ -283,11 +358,15 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     // than wake it on the spot for a loss it took before the restart.
     ambushes.reset();
     hud.clearFlash();
-    // Back to the ammo the player had at the start: there are no pickups
-    // yet, so a retry with what was left could not win the arena.
-    for (const b of loadout.blasters) {
-      b.refill();
-      b.reserve = b.spec.reserveStart;
+    if (entry) {
+      applyState(entry, live(true));
+    } else {
+      // Back to the ammo the player had at the start: there are no pickups
+      // yet, so a retry with what was left could not win the arena.
+      for (const b of loadout.blasters) {
+        b.refill();
+        b.reserve = b.spec.reserveStart;
+      }
     }
     if (all) {
       runner.resetAll();
@@ -302,8 +381,45 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
 
   function showComplete(): void {
     complete.hidden = false;
-    g.ui.setPaused(true);
+    timing = false;
     audio.play("LV-exit");
+    if (campaign.campaign) {
+      // LVL-05 stage 2: the campaign's own panel: the level's name, the
+      // time, and Next level or the act's end instead of Play again. The
+      // carried state is written now, so a Continue reads the finish.
+      if (completeName) {
+        completeName.textContent = LEVEL.meta.name;
+        completeName.hidden = false;
+      }
+      if (completeTime) {
+        completeTime.textContent = "Time " + formatTime(levelTime);
+        completeTime.hidden = false;
+      }
+      if (completeMenu) completeMenu.hidden = false;
+      if (completeNext) completeNext.hidden = nextId === null;
+      if (completeEnd) completeEnd.hidden = nextId !== null;
+      if (completePlayAgain) completePlayAgain.hidden = true;
+      // After the last level of the order there is no next one to carry
+      // into, so the save goes back to the level's entry state: Continue
+      // replays the last level from where it began, not from a finished
+      // run at whatever health was left.
+      const state = nextId === null && campaign.entry
+        ? campaign.entry
+        : captureState(LEVEL_NAME, live());
+      writeSave(state);
+    }
+    g.ui.setPaused(true);
+  }
+
+  /** LVL-05 stage 2: the end screen's two ways on, from the buttons and the
+   *  keys. Next level starts the next one with what the player carried;
+   *  Main menu goes to the title, where Continue picks the save up. */
+  function goNext(): void {
+    if (nextId === null) return;
+    location.href = campaignUrl(nextId);
+  }
+  function goMenu(): void {
+    location.href = "/";
   }
 
   /** A full restart: every arena back to waiting and the player at the level
@@ -313,13 +429,35 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     respawnAtEntry(true);
     player.teleport(start);
     player.yaw = LEVEL.playerStart.yaw;
+    if (campaign.campaign) levelTime = 0; // a full restart restarts the clock
   }
   function levelReset(): void {
     complete.hidden = true;
     respawnAtEntry(true);
     player.teleport(start);
     player.yaw = LEVEL.playerStart.yaw;
+    timing = campaign.campaign;
+    levelTime = 0;
   }
+
+  // The end screen's buttons (only the campaign's panel shows them).
+  completeNext?.addEventListener("click", goNext);
+  completeMenu?.addEventListener("click", goMenu);
+  // Enter is Next level, Esc is Main menu, and only while the panel is up
+  // (the game's own Esc pauses). Captured before the input's own listener
+  // gets the key, so a pause does not open behind the panel.
+  window.addEventListener("keydown", (e) => {
+    if (complete.hidden || !campaign.campaign) return;
+    if (e.code === "Enter" && !e.repeat) {
+      e.preventDefault();
+      e.stopPropagation();
+      goNext();
+    } else if (e.code === "Escape" && !e.repeat) {
+      e.preventDefault();
+      e.stopPropagation();
+      goMenu();
+    }
+  }, true);
 
   // The arena issues its own spawns at the rifts, so the old spawner stays
   // off on this page: the wave runner owns the count.
@@ -327,6 +465,8 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
 
   const hooks: Partial<GameHooks<ArenaBuilt>> = {
     step(dt: number) {
+      // LVL-05 stage 2: the end screen's clock, while the level is played.
+      if (timing) levelTime += dt;
       // The arena runs after the Foamers so a cleared wave is seen the same
       // step its last Foamer goes down.
       const at = feetPos(_playerPos);
@@ -424,6 +564,18 @@ export function arenaExtras(g: Game<ArenaBuilt>): ArenaExtras {
     // The arena's own fields in dartArena.state(), next to the shared ones:
     // the arena being played, its wave, the doors and the complete panel.
     watchState: () => ({
+      // LVL-05 stage 2: the carried state the page plays with, and the
+      // end screen's clock. `owned` and `ammo` are the same reading the
+      // save is written from, so a check can see the carry arrive.
+      campaign: campaign.campaign,
+      carried: {
+        level: LEVEL_NAME, health: health.hp, seconds: levelTime,
+        owned: loadout.ids.filter((id) => loadout.owns(id)),
+        ammo: Object.fromEntries(loadout.blasters
+          .map((b, i) => [loadout.ids[i]!, { mag: b.mag, reserve: b.reserve }])
+          .filter(([id]) => loadout.owns(id as string))),
+      },
+      nextId,
       phase: runner.state.phase,
       // LVL-02b: which arena of the level is being played.
       arena: runner.state.arenaIndex,

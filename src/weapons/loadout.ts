@@ -30,6 +30,9 @@ export interface LoadoutViewmodel {
   setMods(show: string[], hide: string[]): void;
   muzzleCameraPoint(i: number, out: THREE.Vector3): THREE.Vector3;
   onShot: (muzzleIndex: number) => void;
+  /** LVL-05: the loaded model's root, when the viewmodel has one. The
+   *  blaster pickup shows a copy of it rather than loading the glb again. */
+  readonly model?: THREE.Object3D | null;
 }
 
 // One blaster and its fire-facing viewmodel, pre-built by the caller. The
@@ -62,13 +65,18 @@ export class Loadout {
   private switchTimer = -1;
   private switchFrom = 0;
   private switchTo = 0;
+  /** LVL-05: the blasters the player owns. Every blaster by default (the
+   *  test pages and the range); a campaign names the ones it starts with. */
+  private owned = new Set<string>();
 
   /** The parts go in data order. The constructor takes already-built
-   *  parts so the test can skip the GLTF load. */
+   *  parts so the test can skip the GLTF load. `owned` is the campaign's
+   *  set: all of them when it is left out. */
   constructor(
     parts: LoadoutPart[],
     darts: DartFiring,
     switchTime: number,
+    owned?: readonly string[],
   ) {
     this.darts = darts;
     this.ids = parts.map((p) => p.id);
@@ -80,8 +88,13 @@ export class Loadout {
       // Every blaster reports its shots to its own viewmodel's hook.
       p.blaster.onShot = (n) => { p.viewmodel.onShot(n); };
     }
-    // The first blaster is active; make its viewmodel visible.
-    this.viewmodels[0].setVisible(true);
+    for (const id of owned ?? this.ids) if (this.ids.includes(id)) this.owned.add(id);
+    // A loadout with nothing owned cannot run: give it the first.
+    if (this.owned.size === 0) this.owned.add(this.ids[0]);
+    // LVL-05: the first owned blaster is active at the start.
+    this.idx = this.ids.findIndex((id) => this.owned.has(id));
+    if (this.idx < 0) this.idx = 0;
+    this.viewmodels[this.idx].setVisible(true);
   }
 
   /** Load all three in data order, attach every viewmodel to the camera,
@@ -91,6 +104,7 @@ export class Loadout {
     camera: THREE.Camera,
     darts: DartFiring,
     onLoaded?: (id: string, done: number, total: number) => void,
+    owned?: readonly string[],
   ): Promise<Loadout> {
     const parts: LoadoutPart[] = [];
     for (const id of ORDER) {
@@ -103,7 +117,7 @@ export class Loadout {
       // PT-10: the boot report shows which model is being waited on.
       onLoaded?.(id, parts.length, ORDER.length);
     }
-    return new Loadout(parts, darts, SWITCH_TIME);
+    return new Loadout(parts, darts, SWITCH_TIME, owned);
   }
 
   private static _scratch = new THREE.Vector3();
@@ -143,15 +157,51 @@ export class Loadout {
     return given;
   }
 
+  /** LVL-05: the owned set. A fresh loadout owns every blaster; a campaign
+   *  owns the ones it starts with and gains the rest through pickups. */
+  owns(id: string): boolean { return this.owned.has(id); }
+  /** LVL-05 stage 2: make the owned set exactly `ids` again. A level's
+   *  restart puts the campaign's entry state back, so a blaster found and
+   *  then lost to a death is not owned by the retry until it is found
+   *  again. One blaster always stays owned, and if the active one is no
+   *  longer owned the first owned one is active at once (a respawn, not a
+   *  switch). */
+  setOwned(ids: readonly string[]): void {
+    this.owned = new Set(ids.filter((id) => this.ids.includes(id)));
+    if (this.owned.size === 0) this.owned.add(this.ids[this.idx]);
+    if (this.owned.has(this.ids[this.idx])) return;
+    const first = this.ids.findIndex((id) => this.owned.has(id));
+    this.viewmodels[this.idx].setVisible(false);
+    this.idx = first < 0 ? 0 : first;
+    this.switchTimer = -1;
+    this.viewmodels[this.idx].setVisible(true);
+  }
+  /** Take a blaster into the owned set (a pickup). Nothing else changes:
+   *  the caller selects it and fills it. */
+  own(id: string): void { if (this.ids.includes(id)) this.owned.add(id); }
+
   select(i: number): void {
     if (this.switchTimer >= 0 || i === this.idx) return;
     if (i < 0 || i >= this.blasters.length) return;
+    // LVL-05: an unowned blaster cannot be selected (the number keys still
+    // name every blaster, so a key for one the player has not found does
+    // nothing).
+    if (!this.owned.has(this.ids[i])) return;
     this.switchFrom = this.idx;
     this.switchTo = i;
     this.switchTimer = 0;
   }
-  next(): void { this.select((this.idx + 1) % this.blasters.length); }
-  prev(): void { this.select((this.idx - 1 + this.blasters.length) % this.blasters.length); }
+  /** The next or previous owned blaster, the switch order skipping the
+   *  ones the player does not own. */
+  next(): void { this.stepOwned(1); }
+  prev(): void { this.stepOwned(-1); }
+  private stepOwned(dir: number): void {
+    const n = this.ids.length;
+    for (let k = 1; k <= n; k++) {
+      const i = ((this.idx + dir * k) % n + n) % n;
+      if (this.owned.has(this.ids[i])) { this.select(i); return; }
+    }
+  }
 
   /** Turn a mod on or off on blaster i. Re-resolve the spec, rebuild that
    *  Blaster with a full magazine and the same reserve, and apply the
