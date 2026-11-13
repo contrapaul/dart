@@ -4,7 +4,8 @@ import hazardData from "../../data/hazards.json";
 import type { Level, Prim, Sky, Vec3 } from "../level/format";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { material, materialId } from "../voxel/materials";
-import { GRID, ROTATE_STEP } from "./doc";
+import { ENTRY_KINDS, GRID, ROTATE_STEP } from "./doc";
+import { EXIT_ID, START_ID, markerFor, type Marker } from "./markers";
 
 // ED-02 stage 2: everything the editor draws and the camera that flies over
 // it. The page (src/editor/main.ts) owns the document and the panels; this
@@ -145,6 +146,10 @@ export class EditorView {
   private outline: THREE.Box3Helper;
   /** id -> the mesh drawn for it, for selection and the transform handles. */
   private meshes = new Map<string, THREE.Mesh>();
+  /** ED-05: the group every placed thing's marker lives in, and what the
+   *  handles read back from one (its position, rotation and size). */
+  private markers = new THREE.Group();
+  private markerData = new Map<string, Marker>();
   /** The proxy the handles move; its position, rotation and scale are read
    *  back into the prims when the drag ends. */
   private proxy = new THREE.Object3D();
@@ -177,6 +182,7 @@ export class EditorView {
     this.scene.add(this.grid);
     this.scene.add(this.shell);
     this.scene.add(this.prims);
+    this.scene.add(this.markers);
     this.outline = new THREE.Box3Helper(this.outlineBox, 0xffd23f);
     this.outline.visible = false;
     this.scene.add(this.outline);
@@ -231,6 +237,40 @@ export class EditorView {
       this.scene.add(this.sky);
     }
     this.refreshPrims(level);
+    this.refreshMarkers(level);
+  }
+
+  /** ED-05: rebuilds the markers for every kind of placed thing, the player
+   *  start and the exit. They are cheap boxes and capsules, so they are
+   *  rebuilt with the prims on every change, which keeps the view honest
+   *  after an undo. */
+  refreshMarkers(level: Level) {
+    for (const child of [...this.markers.children]) {
+      this.markers.remove(child);
+      disposeTree(child);
+    }
+    this.markerData.clear();
+    for (const kind of ENTRY_KINDS) {
+      if (kind === "prims") continue;
+      const list = (level[kind] ?? []) as { id: string }[];
+      for (const entry of list) {
+        this.addMarker(entry.id, markerFor(kind as Marker["kind"], entry as never));
+      }
+    }
+    this.addMarker(START_ID, markerFor("start", level.playerStart));
+    this.addMarker(EXIT_ID, markerFor("exit", level.exit));
+  }
+
+  private addMarker(id: string, marker: Marker) {
+    marker.object.userData.id = id;
+    marker.object.traverse((child) => { child.userData.id = id; });
+    this.markers.add(marker.object);
+    this.markerData.set(id, marker);
+  }
+
+  /** The marker data for an id, or null when it is not one the view draws. */
+  markerOf(id: string): Marker | null {
+    return this.markerData.get(id) ?? null;
   }
 
   /** Rebuilds only the prim meshes (a change to one prim does not rebuild
@@ -260,27 +300,31 @@ export class EditorView {
   /** Draws the selection outline and puts the handles on the last prim
    *  picked, which is the one they edit. */
   select(ids: string[], mode: TransformMode) {
-    const meshes = ids.map((id) => this.meshes.get(id)).filter((m): m is THREE.Mesh => !!m);
-    if (!meshes.length) {
+    const objects = ids.map((id) => this.meshes.get(id) ?? this.markerData.get(id)?.object)
+      .filter((m): m is THREE.Object3D => !!m);
+    if (!objects.length) {
       this.outline.visible = false;
       this.controls.enabled = false;
       this.controls.detach();
       return;
     }
     this.outlineBox.makeEmpty();
-    for (const m of meshes) this.outlineBox.expandByObject(m);
+    for (const m of objects) this.outlineBox.expandByObject(m);
     this.outline.box = this.outlineBox;
     this.outline.visible = true;
-    // The proxy sits on the last selected prim: its position and rotation,
-    // and a scale equal to the prim's size, so the scale handles change
-    // `size` and the mesh is never squashed.
-    const last = meshes[meshes.length - 1]!;
-    const prim = (this.shownLevel?.prims ?? []).find((p) => p.id === last.userData.id);
+    // The proxy sits on the last selected thing: its position and rotation,
+    // and a scale equal to the thing's size, so the scale handles change
+    // `size` and the mesh is never squashed. A marker without a size (a
+    // Foamer, a pickup) keeps a unit scale, so its handles cannot resize it.
+    const last = objects[objects.length - 1]!;
+    const id = last.userData.id as string;
+    const marker = this.markerData.get(id) ?? null;
+    const prim = (this.shownLevel?.prims ?? []).find((p) => p.id === id);
     this.proxy.position.copy(last.position);
     this.proxy.quaternion.copy(last.quaternion);
-    const size: Vec3 = prim ? prim.size : [1, 1, 1];
+    const size: Vec3 = marker ? marker.size ?? [1, 1, 1] : prim ? prim.size : [1, 1, 1];
     this.proxy.scale.set(size[0], size[1], size[2]);
-    this.controls.setMode(mode);
+    this.controls.setMode(marker && !marker.size ? "translate" : mode);
     this.controls.attach(this.proxy);
     this.controls.enabled = true;
   }
@@ -302,7 +346,7 @@ export class EditorView {
   }
 
   /** The proxy's position, rotation in degrees and scale, for the page to
-   *  turn into a prim change when a drag ends. */
+   *  turn into a change when a drag ends. */
   proxyState(): { pos: Vec3; rot: Vec3; scale: Vec3 } {
     const e = new THREE.Euler().setFromQuaternion(this.proxy.quaternion, "XYZ");
     return {
@@ -317,8 +361,8 @@ export class EditorView {
   frame(ids: string[]) {
     const box = new THREE.Box3();
     for (const id of ids) {
-      const mesh = this.meshes.get(id);
-      if (mesh) box.expandByObject(mesh);
+      const object = this.meshes.get(id) ?? this.markerData.get(id)?.object;
+      if (object) box.expandByObject(object);
     }
     if (box.isEmpty()) return;
     const centre = box.getCenter(new THREE.Vector3());
@@ -335,6 +379,22 @@ export class EditorView {
     const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
     const hits = this.raycaster.intersectObjects(targets, false);
     const hit = hits.find((h) => this.meshes.get(h.object.userData.id as string)?.visible !== false);
+    // ED-05: a marker is picked in front of the level behind it. A marker is
+    // a group or a mesh, so the walk is recursive; its root carries the id.
+    const markerHit = this.raycaster.intersectObjects([...this.markers.children], true).find((h) => {
+      for (let node: THREE.Object3D | null = h.object; node; node = node.parent) {
+        if (node.parent === this.markers) return true;
+      }
+      return false;
+    });
+    if (markerHit) {
+      let node: THREE.Object3D | null = markerHit.object;
+      while (node && node.parent !== this.markers) node = node.parent;
+      const normal = markerHit.face
+        ? markerHit.face.normal.clone().transformDirection(markerHit.object.matrixWorld)
+        : new THREE.Vector3(0, 1, 0);
+      return { point: markerHit.point.clone(), normal, id: (node?.userData.id as string) ?? null };
+    }
     if (hit) {
       const normal = hit.face
         ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld)
