@@ -424,6 +424,21 @@ export class EditorView {
     this.camera.lookAt(centre);
   }
 
+  /** ED-09: where the camera is, dropped to the floor under it, for Shift+P.
+   *  The floor is the first prim or shell straight down from the camera, or
+   *  the grid plane at y = 0 when there is nothing under it. The yaw is the
+   *  camera's own, so the run begins facing the way the editor was looking. */
+  cameraSpot(): { pos: Vec3; yaw: number } {
+    const from = this.camera.position.clone();
+    this.raycaster.set(from, new THREE.Vector3(0, -1, 0));
+    const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
+    const hits = this.raycaster.intersectObjects(targets, false);
+    const hit = hits.find((h) => this.meshes.get(h.object.userData.id as string)?.visible !== false);
+    const y = hit ? hit.point.y : 0;
+    const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion, "YXZ");
+    return { pos: [from.x, y, from.z], yaw: euler.y };
+  }
+
   /** Where a click on the canvas lands on the world: the first prim or the
    *  shell under the cursor, else the grid plane at y = 0. */
   pick(ndcX: number, ndcY: number): { point: THREE.Vector3; normal: THREE.Vector3; id: string | null } | null {

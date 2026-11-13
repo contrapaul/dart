@@ -17,7 +17,8 @@ import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./aren
 import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
-import { deleteLevel, listLevels, putLevel, LOCAL_PREFIX } from "./store";
+import { deleteLevel, listLevels, putLevel } from "./store";
+import { playUrl } from "./play";
 import { EditorView, type TransformMode } from "./view";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -817,6 +818,11 @@ window.addEventListener("keydown", (e) => {
   const codes = ["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight"];
   if (codes.includes(e.code)) view.keyDown(e.code);
   if (e.code === "KeyF") view.frame([...selected]);
+  // ED-09 stage 1: P plays from the level's start, Shift+P from the camera.
+  if (e.code === "KeyP" && !view.isLooking) {
+    e.preventDefault();
+    playFrom(e.shiftKey ? view.cameraSpot() : null);
+  }
   if (e.code === "KeyG") {
     snapOn = !snapOn;
     view.setSnap(snapOn);
@@ -1258,11 +1264,16 @@ $<HTMLInputElement>("importFile").addEventListener("change", () => {
   });
 });
 
-$("playBtn").addEventListener("click", () => {
+$("playBtn").addEventListener("click", () => playFrom(null));
+
+/** ED-09 stage 1: saves, then opens the arena on this level. `start` is the
+ *  camera's spot for Shift+P, or null to begin at the level's player start.
+ *  A save that fails says why and does not leave the editor. */
+function playFrom(start: { pos: Vec3; yaw: number } | null) {
   void saveNow().then((key) => {
-    if (key) location.href = `arena.html?level=${encodeURIComponent(LOCAL_PREFIX + key)}`;
+    if (key) location.href = playUrl(key, start);
   });
-});
+}
 
 // The sky's picture: read it, scale it on a canvas, put it in the level.
 function uploadSky(file: File) {

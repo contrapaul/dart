@@ -13,6 +13,7 @@ import { chosenLevel, loadLocalLevel } from "./levels";
 import { campaignMode, entryState, readSave, type CampaignState } from "../game/campaign";
 import { wireTitleMenu } from "../game/title";
 import { wireMyLevels } from "../game/my-levels";
+import { parseStart } from "../editor/play";
 
 const status = document.querySelector<HTMLParagraphElement>("#status")!;
 wireTitleMenu();
@@ -27,7 +28,10 @@ const loadError = await loadLocalLevel(location.search);
 // extras.ts picks its level when it is evaluated, so it is imported only
 // now that the stored level is in place (a static import ran first and
 // played the Pit; found in the ED-02 review).
-const { arenaExtras, buildArena } = await import("./extras");
+const { arenaExtras, buildArena, setStartOverride } = await import("./extras");
+// ED-09: a run started from the editor may name where it begins (Shift+P).
+// It is set before the level is built, and it changes nothing in the file.
+setStartOverride(parseStart(location.search));
 
 // GAME-10b: `?level=1-4-ring` plays the Ring; the Pit stays the default.
 const chosen = chosenLevel();
