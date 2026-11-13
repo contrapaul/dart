@@ -86,6 +86,26 @@ is 1104 tests, 2 skipped on that branch.
 
 ## Log
 
+### 2026-11-13: ED-07a trigger runner and key rules (Qwen 3.8-27B via Pi, `tasks/ED-07A.md`)
+
+- `src/level/triggers.ts`: `TriggerRunner` fires a level's when/do
+  triggers (start, enter zone, `killed`, pressed, taken, `after`) through
+  a `TriggerHost` the page provides. Spawn dos count their calls, round
+  robin over their `at` list, `holdSeconds` apart, the first one at once;
+  kill counting covers named spawns (each Foamer one makes); a trigger
+  fires once unless it says `repeat`, and a kill or a press before it can
+  fire still counts. Reset puts it back to the start state.
+- `src/level/keys.ts`: `KeyRing` holds red, blue, yellow in that order
+  and `doorOpensFor` decides a door (none always, trigger never, colour
+  when held).
+- 18 tests in `tests/level/`, including the usual arena end to end and
+  reset. The message default (3 s) lives in `data/editor.json`
+  `triggerDefaults`, not in the code.
+- No Three.js and no DOM in either file; the editor page is wired by its
+  own card.
+- Not checked by eye: no browser in this environment; the headless
+  preflight (tsc, 1195 tests, build) and the em dash check all pass.
+
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 
 - Paul played Act 1 and wants to build the levels himself, in an editor
