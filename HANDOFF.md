@@ -26,7 +26,10 @@ the old text is in git history.
 **In progress:** nothing. OPS-04 (graphics presets, `?quality=low`,
 `medium`, `high`) is merged on local main, not pushed. LVL-06 (the 2-1
 concept and the blaster rows) is committed on branch `lvl-06`, not
-pushed, waiting on Paul's answers and Claude Opus 5.5's review.
+pushed, waiting on Paul's answers and Claude Opus 5.5's review. MEL-01
+(the sword, the hand weapon pickup, hand weapons in the save) is
+committed on branch `mel-01`, not pushed, waiting on review; the suite
+is 1104 tests, 2 skipped on that branch.
 
 **Waiting on Paul:**
 
@@ -82,6 +85,99 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review.
   2026-11-12 was made to fail once on purpose before it was trusted.
 
 ## Log
+
+### 2026-11-13: MEL-01 review, merged (Claude Opus 5.5): the sword
+
+- DeepSeek V4.1 Flash 1017 built the card in one run (after a restart:
+  Paul's early message had stopped the first try before it began).
+- Reviewed: the save goes to version 2 with the owned hand weapons, and a
+  version 1 save still loads (Act 1 progress kept, no hand weapon).
+  Without the sword the melee key is the bash and no charges show; a
+  parry or a recharge cannot arm a weapon that was not found.
+- Seen in the browser (`/arena?level=env-03&watch`, a swing by script):
+  the lime foam blade sweeps across the view mid-swing. The sword is
+  drawn only while it swings, as the baton was; the card's "the grip sits
+  in the lower right at rest" was read as the rest pose of the swing,
+  not a held weapon. Paul's call if he wants it held in view.
+- 1138 tests pass (2 skipped); check and smoke green.
+- Not verified: a whole Act 1 run with the bash only, Firefox, the guard
+  and grip by eye (hidden behind the blaster in the frame taken).
+
+### 2026-11-13: MEL-01, the sword (Pi, DeepSeek V4.1 Flash 1017): not reviewed
+
+Branch `mel-01`, committed, not pushed. M01 is no longer a placeholder
+baton: it is a code-built foam sword, the campaign owns hand weapons the
+way it owns blasters, and a level can give one away as a pickup.
+
+- **The look.** `buildSword()` in `src/game/meleeView.ts` builds it from
+  `data/melee.json` `look`: lime flat blade 0.7 x 0.07 x 0.025 m (a half
+  cylinder tip, so no corner has an edge), orange cross guard and pommel,
+  purple grip. Every material is roughness 0.95 and metalness 0 (foam).
+  The three strokes and the blaster dip are the old ones, re-placed: the
+  grip sits lower right at rest and the blade sweeps across the view.
+  `look.position`, `look.rest` and `look.dip` are the camera tuning.
+- **Owning it.** `data/campaign.json` gains `startMelee: []` and
+  `foundMelee: { "2-1": "M01" }`; `src/game/campaign.ts` gains
+  `ownedMeleeAt`, `foundMeleeAt`, `CAMPAIGN_START_MELEE`,
+  `CAMPAIGN_FOUND_MELEE`, `MELEE_IDS_KNOWN`, `CampaignState.melee` and
+  `LiveCarry.melee`/`setOwnedMelee`. The save is version 2. A version 1
+  save loads with `melee: []` and keeps its level, blasters and health.
+  `Melee.armed` (with `setArmed`) makes the key the bash while nothing is
+  owned: no charge is spent and no parry or timer arms it.
+- **The pickup.** A level entry `{ "id": ..., "type": "melee",
+  "melee": "M01", "pos": [x, y, z] }` shows the same `buildSword()` at
+  world size, turning and bobbing like the blaster pickup, taken within
+  1 m. Taking it arms the melee (full charges) and flashes its `[Paul]`
+  name through the existing `hud.blasterFlash`. The validator wants the
+  id to exist in `data/melee.json`; a pickup of a weapon the melee does
+  not hold is left on the floor.
+
+How to see it:
+
+- Sword at rest and in the swing: `arena.html?level=env-03` and press F.
+  The first press swings, so the whole three-stroke combo shows over
+  about a second; the blaster dips out of the way each time.
+- The pickup: `arena.html?level=env-03` again. The sword stands 2 m left
+  of the player start (the player faces +z from `[0, 0, 6]`, the sword is
+  at `[-2, 0, 4]`). Walk into it, the name flashes over the ammo counter,
+  and F now swings the combo rather than bashing.
+- The campaign rule needs a level past 2-1, which does not exist yet, so
+  the no-sword case is only covered by tests (`melee-sword.test.ts`).
+
+Seen by eye: frames from headless Chrome over the built `dist/`
+(`arena.html?level=env-03`, a throwaway probe in `/tmp`, not committed).
+The rest frame has no sword in view; mid-swing the whole lime blade, the
+orange guard and the pommel read against the grey room, with the blaster
+dipped; the pickup stands on the floor as a small sword turning, and
+walking into it flashes `[Paul]` over the ammo counter and the pickup is
+gone. No page errors.
+
+Not verified, and questions for the reviewer or Paul:
+
+- Should the sword be held at rest, the way the blaster is? Today it
+  shows only during a swing (the baton's behaviour, kept). The card's
+  "the grip sits in the lower right at rest" is met by the hand's rest
+  placement, but it could also mean "visible in the hand between swings",
+  which would need the blaster lowered while it is up. Not changed without
+  an answer.
+- Is the blade big enough on screen? It crosses the lower half of the view
+  at the swing's start.
+- Do the colours hold against the level's grey? Lime on grey reads; orange
+  and purple are small.
+- Does the pickup read as a sword rather than a stick on the floor? It is
+  about 0.95 m tall standing on its pommel.
+- The three strokes are the baton's; a sword may want a different third
+  (the overhead chop currently runs off the bottom of the view).
+
+Tuning is all in `data/melee.json` `look` (`position`, `rest`, part sizes
+and colours, `dip`) plus `STROKES` in `src/game/meleeView.ts`.
+
+Files touched outside the card: `src/arena/extras.ts` (the page's
+`LiveCarry` needs `melee`/`setOwnedMelee`, or a restart would not put the
+entry hand weapons back), and `tests/game/campaign-save.test.ts` (the
+new state literals need `melee`, and the "older version" case now uses a
+version nobody wrote, since version 1 loads). `tasks/MEL-01.md` is
+already committed, so the commit carries only the code and the docs.
 
 ### 2026-11-13: ENV-05 review, merged (Claude Opus 5.5): the leaking barrel
 

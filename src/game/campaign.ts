@@ -1,5 +1,6 @@
 import campaignJson from "../../data/campaign.json";
 import blastersJson from "../../data/blasters.json";
+import meleeJson from "../../data/melee.json";
 import playerJson from "../../data/player.json";
 
 // LVL-05: the campaign's rules, pure and headless (no DOM, no THREE), so
@@ -15,9 +16,18 @@ interface CampaignData {
   order: string[];
   startBlasters: string[];
   found: Record<string, string>;
+  /** MEL-01: the hand weapons a new campaign owns (none) and the one each
+   *  level gives, by the same rule as the blasters. */
+  startMelee: string[];
+  foundMelee: Record<string, string>;
 }
 
 const DATA = campaignJson as CampaignData;
+
+// MEL-01: the hand weapons the melee can be set to, by id, from the same
+// data the melee itself reads (`weapons` there is one entry per weapon).
+const MELEE = meleeJson as unknown as { weapons: Record<string, unknown> };
+const MELEE_IDS = new Set(Object.keys(MELEE.weapons));
 
 // LVL-05 stage 2: the carried ammo comes from the blasters' own sizes, and
 // the health from the player's own maximum, so the numbers stay in data/.
@@ -48,6 +58,37 @@ export const CAMPAIGN_START: readonly string[] = DATA.startBlasters;
 
 /** Paul's plan: the level that gives each blaster, Act 2 and 3 included. */
 export const CAMPAIGN_FOUND: Readonly<Record<string, string>> = DATA.found;
+
+/** MEL-01: the hand weapons a new campaign starts with (none: the melee
+ *  key is the bash until the sword is found). */
+export const CAMPAIGN_START_MELEE: readonly string[] = DATA.startMelee;
+
+/** MEL-01: the level that gives each hand weapon (the M01 sword in 2-1). */
+export const CAMPAIGN_FOUND_MELEE: Readonly<Record<string, string>> = DATA.foundMelee;
+
+/** MEL-01: every hand weapon id the melee knows (`weapons` in
+ *  data/melee.json). A save or a level naming anything else is refused. */
+export const MELEE_IDS_KNOWN: ReadonlySet<string> = MELEE_IDS;
+
+/** MEL-01: the hand weapons owned when `levelId` begins in a fresh
+ *  campaign: the start set plus every one the levels before it give. The
+ *  blaster rule (`ownedAt`), for the hand weapons. */
+export function ownedMeleeAt(levelId: string): string[] {
+  const owned = [...DATA.startMelee];
+  if (levelIndex(levelId) < 0) return owned;
+  for (const id of DATA.order) {
+    if (id === levelId) break;
+    const m = DATA.foundMelee[id];
+    if (m && !owned.includes(m)) owned.push(m);
+  }
+  return owned;
+}
+
+/** MEL-01: the hand weapon a level gives, or null for a level that gives
+ *  none. */
+export function foundMeleeAt(levelId: string): string | null {
+  return DATA.foundMelee[levelId] ?? null;
+}
 
 /** True when the page's search string asks for campaign play
  *  (`arena.html?level=1-2&campaign`). Without it the page is the test
@@ -115,10 +156,17 @@ export interface CampaignState {
   level: string;
   blasters: CarriedBlaster[];
   health: number;
+  /** MEL-01: the hand weapons owned. A version 1 save has none here: it
+   *  loads with an empty list, so an Act 1 save from before the sword keeps
+   *  its level, blasters and health. */
+  melee: string[];
 }
 
 export const SAVE_KEY = "dart.save.v1";
-export const SAVE_VERSION = 1;
+/** MEL-01: 2 adds the owned hand weapons to the save. */
+export const SAVE_VERSION = 2;
+/** The version before the hand weapons: still read, with none owned. */
+export const SAVE_VERSION_LEGACY = 1;
 
 /** Just the two methods the save needs, so the tests can hand in a fake
  *  storage (and Node, which has no localStorage, still loads this module). */
@@ -143,13 +191,15 @@ export function filledBlaster(id: string): CarriedBlaster {
   return { id, mag: s.magSize, reserve: s.reserveStart };
 }
 
-/** A new game: the first level, the start set at full ammo, full health. */
+/** A new game: the first level, the start set at full ammo, full health,
+ *  and the hand weapons the campaign starts with (none). */
 export function newGame(): CampaignState {
   return {
     version: SAVE_VERSION,
     level: firstLevel(),
     blasters: DATA.startBlasters.map(filledBlaster),
     health: HEALTH_MAX,
+    melee: [...DATA.startMelee],
   };
 }
 
@@ -164,6 +214,7 @@ export function entryState(levelId: string, save: CampaignState | null): Campaig
     level: levelId,
     blasters: ownedAt(levelId).map(filledBlaster),
     health: HEALTH_MAX,
+    melee: ownedMeleeAt(levelId),
   };
 }
 
@@ -174,6 +225,7 @@ export function carryTo(
   levelId: string,
   blasters: readonly CarriedBlaster[],
   health: number,
+  melee: readonly string[] = ownedMeleeAt(nextLevel(levelId) ?? levelId),
 ): CampaignState {
   const next = nextLevel(levelId);
   return {
@@ -181,6 +233,9 @@ export function carryTo(
     level: next ?? levelId,
     blasters: blasters.map((b) => ({ id: b.id, mag: b.mag, reserve: b.reserve })),
     health: next ? healthInto(levelId, next, health) : health,
+    // MEL-01: a hand weapon found stays found; one the level ended with is
+    // owned by the next level (the player carried it out).
+    melee: [...melee],
   };
 }
 
@@ -216,7 +271,10 @@ export function readSave(): CampaignState | null {
 function validState(v: unknown): CampaignState | null {
   if (typeof v !== "object" || v === null) return null;
   const o = v as Record<string, unknown>;
-  if (o.version !== SAVE_VERSION) return null;
+  // MEL-01: a version 1 save is read as it is, with no hand weapon owned,
+  // so a player's Act 1 progress is not thrown away by the sword's arrival.
+  const legacy = o.version === SAVE_VERSION_LEGACY;
+  if (o.version !== SAVE_VERSION && !legacy) return null;
   if (typeof o.level !== "string" || levelIndex(o.level) < 0) return null;
   if (typeof o.health !== "number" || !Number.isFinite(o.health) || o.health <= 0) return null;
   if (!Array.isArray(o.blasters)) return null;
@@ -229,7 +287,25 @@ function validState(v: unknown): CampaignState | null {
     blasters.push({ id: b.id, mag: Number(b.mag), reserve: Number(b.reserve) });
   }
   if (blasters.length === 0) return null;
-  return { version: SAVE_VERSION, level: o.level, blasters, health: o.health };
+  return {
+    version: SAVE_VERSION,
+    level: o.level,
+    blasters,
+    health: o.health,
+    melee: legacy ? [] : meleeIds(o.melee),
+  };
+}
+
+/** MEL-01: the save's hand weapons: only ids the melee knows, once each.
+ *  A save without the list (a damaged one) owns none, which is what a
+ *  campaign that has not found the sword owns anyway. */
+function meleeIds(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  const ids: string[] = [];
+  for (const id of v) {
+    if (typeof id === "string" && MELEE_IDS.has(id) && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
 }
 
 /** Write the campaign state. Returns false when storage refused (blocked or
@@ -274,6 +350,12 @@ export interface LiveCarry {
   /** The owned blasters, in the loadout's order. */
   blasters: LiveBlaster[];
   health: { hp: number };
+  /** MEL-01: the hand weapons owned now, and the way to put a state's own
+   *  set back (the melee's owned set, exactly as `setOwned` is the
+   *  loadout's). Left out (the blaster-only tests), hand weapons are not
+   *  carried or restored. */
+  melee?: readonly string[];
+  setOwnedMelee?(ids: readonly string[]): void;
   /** The loadout's owned set, when the caller has one: a restart makes it
    *  exactly the state's blasters again, so a blaster found during a level
    *  the player then died in is not owned by the retry until it is found
@@ -289,6 +371,7 @@ export function captureState(levelId: string, live: LiveCarry): CampaignState {
     levelId,
     live.blasters.map((b) => ({ id: b.id, mag: b.mag, reserve: b.reserve })),
     live.health.hp,
+    live.melee ?? ownedMeleeAt(nextLevel(levelId) ?? levelId),
   );
 }
 
@@ -299,6 +382,10 @@ export function captureState(levelId: string, live: LiveCarry): CampaignState {
  *  and the health never comes back at 0 or above its own maximum. */
 export function applyState(state: CampaignState, live: LiveCarry): void {
   live.setOwned?.(state.blasters.map((b) => b.id));
+  // MEL-01: a restart goes back to the hand weapons the level began with,
+  // so a sword found during an attempt that ended in a death is found
+  // again, the same rule the blasters follow.
+  live.setOwnedMelee?.(state.melee);
   const byId = new Map(state.blasters.map((b) => [b.id, b]));
   for (const b of live.blasters) {
     const saved = byId.get(b.id);

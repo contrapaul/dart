@@ -8,6 +8,19 @@ import type { PlayerHealth } from "../player/health";
 import type { DartTypeName } from "../weapons/dart-model";
 import type { Level } from "../level/format";
 import type { Blaster } from "../weapons/blaster";
+import { buildSword } from "../game/meleeView";
+
+/** MEL-01: what a melee pickup needs of the melee (the class itself fits;
+ *  a test passes a small stand-in), the same shape the blaster pickup
+ *  keeps to for the loadout. */
+export interface PickupMelee {
+  /** The hand weapon in use ("M01"): a pickup of another id cannot be
+   *  taken, because there is nothing to switch to. */
+  readonly weaponId: string;
+  readonly armed: boolean;
+  /** Take it up (fills its charges) or put it away. */
+  setArmed(on: boolean): void;
+}
 
 /** LVL-05: what a blaster pickup needs of the Loadout (the class itself
  *  fits; the test passes a small stand-in). Keeping it to this shape is
@@ -42,6 +55,7 @@ type Kind = PickupKind;
 const HEALTH = pickupData.health;
 const AMMO = pickupData.ammo;
 const BLASTER = pickupData.blaster;
+const MELEE = pickupData.melee;
 interface Item {
   kind: Kind;
   mesh: THREE.Object3D;
@@ -60,6 +74,8 @@ interface Item {
   blasterId?: string;
   /** LVL-05, blaster only: its own little turn, so two pedestals differ. */
   turn: number;
+  /** MEL-01, melee only: the hand weapon id the level gives here. */
+  meleeId?: string;
 }
 
 const _t = new THREE.Vector3();
@@ -95,6 +111,12 @@ export class PickupSystem {
    *  blaster's own model and nothing is fetched for it. A blaster without
    *  one shows nothing (a level test catches the empty spot). */
   readonly blasterModels = new Map<string, THREE.Object3D>();
+  /** MEL-01: the melee a melee pickup arms. Set by the page the same way
+   *  the loadout is; without one the pickup cannot be taken, so a test may
+   *  leave it out. */
+  melee: PickupMelee | null = null;
+  /** MEL-01: a melee pickup was taken this step, with its id. */
+  onMelee: (id: string, pos: THREE.Vector3) => void = () => {};
 
   constructor(
     private rapier: Rapier,
@@ -107,14 +129,15 @@ export class PickupSystem {
       // A plain soft material, in the kind's colour: no shared foam patch,
       // no shader touches. Pores would be too fine at blob size anyway.
       // A blaster pickup draws the blaster's own model, so it has none.
-      if (kind !== "blaster") {
+      if (kind !== "blaster" && kind !== "melee") {
         const kk = kind === "ammo" ? AMMO : HEALTH;
         this.mats[kind] = new THREE.MeshStandardMaterial({
           color: kk.color, roughness: 1,
         });
       }
       this.radius[kind] = kind === "ammo" ? AMMO.size
-        : kind === "blaster" ? BLASTER.foot : HEALTH.radius;
+        : kind === "blaster" ? BLASTER.foot
+          : kind === "melee" ? MELEE.foot : HEALTH.radius;
     }
     scene.add(this.group);
   }
@@ -132,8 +155,11 @@ export class PickupSystem {
   spawn(
     kind: Kind, pos: THREE.Vector3, vel: THREE.Vector3,
     dartType?: DartTypeName, dartCount?: number, blasterId?: string,
+    meleeId?: string,
   ): Item {
-    const k = kind === "ammo" ? AMMO : kind === "blaster" ? BLASTER : HEALTH;
+    const k = kind === "ammo" ? AMMO
+      : kind === "blaster" ? BLASTER
+        : kind === "melee" ? MELEE : HEALTH;
     // The collider bridges a bit of the space below the box, and below the
     // blob its full radius: the foot is where the collider hangs. The box
     // is a ball of half edge, the blob a ball of its radius.
@@ -147,13 +173,17 @@ export class PickupSystem {
     }
     const scale = this.radius[kind];
     // A blaster pickup is a holder for the blaster's own model (its parts
-    // cast their own shadows); the other kinds are one scaled mesh.
+    // cast their own shadows); a melee pickup is the same sword the view
+    // holds, built by the view's own code; the other kinds are one scaled
+    // mesh.
     const mesh = kind === "blaster"
       ? this.makeModel(blasterId)
-      : new THREE.Mesh(kind === "ammo" ? this.boxGeo : this.geo, this.mats[kind]);
+      : kind === "melee"
+        ? buildSword()
+        : new THREE.Mesh(kind === "ammo" ? this.boxGeo : this.geo, this.mats[kind]);
     if (kind !== "blaster") {
       mesh.castShadow = true;
-      mesh.scale.setScalar(scale);
+      if (kind !== "melee") mesh.scale.setScalar(scale);
     }
     this.group.add(mesh);
     const body = this.world.createRigidBody(
@@ -169,7 +199,9 @@ export class PickupSystem {
     // sensor: sensors do not support a resting body and the blob would fall
     // through the floor. The ammo box and the blaster pickup start without
     // angular velocity, so neither tumbles when it settles.
-    if (kind === "ammo" || kind === "blaster") body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    if (kind === "ammo" || kind === "blaster" || kind === "melee") {
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    }
     this.world.createCollider(
       this.rapier.ColliderDesc.ball(foot).setTranslation(0, foot, 0)
         .setCollisionGroups(PICKUP_GROUPS),
@@ -177,9 +209,12 @@ export class PickupSystem {
     );
     const item: Item = {
       kind, mesh, body, prevT: pos.clone(), age: 0, gone: false,
-      dartType, dartCount, blasterId,
+      dartType, dartCount, blasterId, meleeId,
       spin: kind === "ammo" ? Math.random() * Math.PI * 2 : 0,
-      turn: kind === "blaster" ? Math.random() * Math.PI * 2 : 0,
+      // A placed pickup's own turn, so two pedestals differ. Not random: the
+      // pickups are placed in file order, so their phases spread with it.
+      turn: kind === "blaster" || kind === "melee"
+        ? (this.list.length * 0.7) % (Math.PI * 2) : 0,
     };
     this.list.push(item);
     return item;
@@ -222,6 +257,13 @@ export class PickupSystem {
         this.spawn("blaster", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), undefined, undefined, id);
         continue;
       }
+      // MEL-01: a hand weapon place the same way.
+      if (t === "melee") {
+        const id = p.melee;
+        if (!id) continue; // the validator rejects such a file
+        this.spawn("melee", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), undefined, undefined, undefined, id);
+        continue;
+      }
       if (!t.startsWith("darts-")) continue;
       const dartType = t.slice("darts-".length) as DartTypeName;
       if (!(dartType in (dartsData as { types: Record<string, unknown> }).types)) continue;
@@ -249,6 +291,19 @@ export class PickupSystem {
     b.refill();
     b.reserve = had ? Math.max(b.reserve, b.spec.reserveStart) : b.spec.reserveStart;
     this.onBlaster(it.blasterId, _t.set(it.body.translation().x, it.body.translation().y, it.body.translation().z));
+    return true;
+  }
+
+  /** MEL-01: a melee pickup's take. It arms the melee (which fills its
+   *  charges) and reports the id for the HUD's name flash, the blaster
+   *  pickup's rule. Returns false for a weapon the melee does not hold (the
+   *  pickup stays put), so a level naming a hand weapon 2 or 3 is not
+   *  swallowed before those exist. */
+  private takeMelee(it: Item): boolean {
+    const m = this.melee;
+    if (!m || !it.meleeId || it.meleeId !== m.weaponId) return false;
+    m.setArmed(true);
+    this.onMelee(it.meleeId, _t.set(it.body.translation().x, it.body.translation().y, it.body.translation().z));
     return true;
   }
 
@@ -295,6 +350,16 @@ export class PickupSystem {
         // LVL-05: taken by the ammo box's rule, walking within 1 m of it.
         if (d2 <= BLASTER.collectRadius * BLASTER.collectRadius && !this.health.dead) {
           if (this.takeBlaster(it)) {
+            this.onCollected(it.kind, _t.set(t.x, t.y, t.z));
+            this.remove(i);
+          }
+        }
+        continue;
+      }
+      // MEL-01: a hand weapon, the blaster pickup's rule exactly.
+      if (it.kind === "melee") {
+        if (d2 <= MELEE.collectRadius * MELEE.collectRadius && !this.health.dead) {
+          if (this.takeMelee(it)) {
             this.onCollected(it.kind, _t.set(t.x, t.y, t.z));
             this.remove(i);
           }
@@ -354,13 +419,15 @@ export class PickupSystem {
   syncRender(alpha: number) {
     for (const it of this.list) {
       if (it.gone) continue;
-      const k = it.kind === "ammo" ? AMMO : it.kind === "blaster" ? BLASTER : HEALTH;
+      const k = it.kind === "ammo" ? AMMO
+        : it.kind === "blaster" ? BLASTER
+          : it.kind === "melee" ? MELEE : HEALTH;
       const t = it.body.translation();
       it.prevT.x += (t.x - it.prevT.x) * alpha;
       it.prevT.y += (t.y - it.prevT.y) * alpha;
       it.prevT.z += (t.z - it.prevT.z) * alpha;
       const v = it.body.linvel();
-      const settled = it.kind === "ammo" || it.kind === "blaster"
+      const settled = it.kind === "ammo" || it.kind === "blaster" || it.kind === "melee"
         || Math.hypot(v.x, v.z) < HEALTH.settleSpeed;
       const bob = settled ? (Math.sin(it.age * k.bobRate) * 0.5 + 0.5) * k.bobHeight : 0;
       it.mesh.position.set(
@@ -370,6 +437,11 @@ export class PickupSystem {
       );
       if (it.kind === "ammo") it.mesh.rotation.y = it.spin + it.age * AMMO.turnRate;
       if (it.kind === "blaster") it.mesh.rotation.y = it.turn + it.age * BLASTER.turnRate;
+      if (it.kind === "melee") {
+        // The sword stands blade up (its own +Y) and turns about the world's
+        // Y, so the flat of the blade comes round to the player.
+        it.mesh.rotation.y = it.turn + it.age * MELEE.turnRate;
+      }
     }
   }
 

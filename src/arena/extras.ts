@@ -107,6 +107,12 @@ export function arenaExtras(
       .filter((b) => everyBlaster || loadout.owns(b.id)),
     health,
     setOwned: (ids) => loadout.setOwned(ids),
+    // MEL-01: the hand weapons a campaign owns. A state naming none means
+    // the sword was not found yet, so the key is the bash and the view stays
+    // away. The test page never reaches here (it never applies a state) and
+    // keeps its melee armed.
+    melee: melee.armed ? [melee.weaponId] : [],
+    setOwnedMelee: (ids) => melee.setArmed(ids.includes(melee.weaponId)),
   });
   if (campaign.campaign && campaign.entry) {
     // The level starts with what the player carried in (a Continue, or a
