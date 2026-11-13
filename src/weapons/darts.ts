@@ -26,6 +26,8 @@ export interface ShotChunk {
 export interface ImpactRange {
   fullMetres: number;
   zeroMetres: number;
+  /** Paul, 2026-11-13 (B05): the least impact a kill by this blaster has. */
+  floor?: number;
 }
 
 /** GAME-09b: what a shot's darts carry so a hit can judge the chunk rule.
@@ -302,6 +304,9 @@ export class DartSystem {
       s.shotBuf.id = shot.id;
       s.shotBuf.muzzle.copy(shot.muzzle);
       s.shotBuf.chunk = shot.chunk;
+      // The blaster's own impact block (B03's point blank, B05's): left
+      // out of this copy, every kill read the shared defaults instead.
+      s.shotBuf.impact = shot.impact ?? null;
       // GAME-09d: the explosive flag comes from the blaster's shot; the
       // fired flag is the slot's own, reset here so a recycled slot never
       // inherits a blast that already ran.

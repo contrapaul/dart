@@ -51,6 +51,10 @@
     "_note": "GAME-09e: Shrike (design/blasters/B05.md). Precision bolt action on precision darts: one dart, no spread, the bolt (primeTime) is the limit on the rate. pierce is on the dart type in data/darts.json. The approved model's moving part is bolt (the pump node of B01 is its own); the bolt's animation belongs to the viewmodel work (ART-05). Start values for Paul to tune on the range. zoom: the share of the player's own field of view while the zoom action is held, with the look sensitivity scaled the same way (src/game/zoom.ts).",
     "name": "Shrike", "model": "/models/blasters/B05.glb",
     "mode": "pump", "dartType": "precision", "dartsPerShot": 1, "spreadDeg": 0,
+    "impact": {
+      "_note": "Paul, 2026-11-13: B05's impact was extremely weak; it should blow the head off a weaker Foamer easily. The Shrike is a sniping blaster, so its shots lose nothing with distance out to fullMetres. floor is the least impact a Shrike kill has: 0.8 is past chunkAt (0.5), so every Shrike kill at least chunks, carving its hole where the dart hit (a head shot takes the head); a big overkill (a head shot on an F01) still pops. Found on the way: each dart's copy of its shot dropped the impact block, so no blaster's own impact range (B03's included) was ever used in play. Start values for Paul to tune on the range.",
+      "fullMetres": 60, "zeroMetres": 120, "floor": 0.8
+    },
     "magSize": 5, "reserveMax": 30, "reserveStart": 15,
     "primeTime": 0.9, "reloadTime": 1.8, "autoReload": true,
     "zoom": { "fovShare": 0.4, "easeTime": 0.12 },
