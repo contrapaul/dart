@@ -4,7 +4,7 @@
     "prims": 2000,
     "foamers": 150,
     "triggers": 200,
-    "levelSize": 256,
+    "levelSize": 512,
     "skyImageWidth": 2048,
     "skyImageHeight": 1024,
     "stairsMaxSteps": 64

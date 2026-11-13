@@ -102,8 +102,13 @@ is 1104 tests, 2 skipped on that branch.
   sky, start loadout, the `key` pickup), `src/level/prim-geometry.ts` (the
   five shapes' meshes, collider parts and an inside test, tested),
   `src/editor/store.ts` (IndexedDB, not yet tried in a browser),
-  `data/hazards.json`, `data/editor.json`. The validator rules for the
-  new parts are next (Claude).
+  `data/hazards.json`, `data/editor.json`. The validator checks every new
+  part (`editorParts` in `src/level/validate.ts`, tests in
+  `tests/level/editor-validate.test.ts`): one id space for what triggers
+  name, every name a trigger uses exists, a key door has its key, an image
+  sky is a data: URL, the caps in `data/editor.json`. A level may now be
+  prims alone, with an empty shell. The size cap is 512 m, since 1-4 is
+  already 304 m long.
 - Cards started in parallel: ED-01 game plays them and ED-02 the editor
   page (DeepSeek, two runs), ED-03 hazards (strata), ED-07a the trigger
   runner and keys (qwen-machine).

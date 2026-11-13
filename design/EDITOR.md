@@ -151,7 +151,7 @@ near a level is to each one.
 | Placed Foamers | 150 | Total in a level |
 | Foamers up at once | 40 | Frame rate (PLAN.md 7.1) |
 | Triggers | 200 | Easy to read |
-| Level size | 256 m a side | Nav grid and float precision |
+| Level size | 512 m a side (1-4 is already 304 m long) | Nav grid and float precision |
 | Sky image | 2048 by 1024 | File size |
 
 At play time solid and decor primitives that share a colour are merged

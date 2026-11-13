@@ -4,9 +4,11 @@ import foamerData from "../../data/foamers.json";
 import dartsData from "../../data/darts.json";
 import blastersData from "../../data/blasters.json";
 import meleeData from "../../data/melee.json";
-import type { Arena, Level, Piece, PieceVolume, ShellBox } from "./format";
+import type { Arena, Level, Piece, PieceVolume, Prim, ShellBox, TriggerDo } from "./format";
 import buttonData from "../../data/buttons.json";
 import pressTuning from "../../data/press.json";
+import hazardData from "../../data/hazards.json";
+import editorData from "../../data/editor.json";
 
 // Checks a level file against design/levels/BLOCKOUT.md section 5. Rule 7
 // (secrets) is for a thing LVL-01 does not load yet; the dart type names of
@@ -157,7 +159,11 @@ export function validateLevel(level: Level): ValidationResult {
 
   // Structure that every rule below assumes.
   if (!level.meta || typeof level.meta.id !== "string") errors.push("meta.id is missing");
-  if (!Array.isArray(level.shell) || level.shell.length === 0) errors.push("shell must be a non-empty array");
+  // ED-00: an editor level may be built from prims alone, with no shell.
+  if (!Array.isArray(level.shell)) errors.push("shell must be an array");
+  else if (level.shell.length === 0 && !(level.prims ?? []).length) {
+    errors.push("the level needs shell boxes or prims");
+  }
   if (!level.playerStart || !isVec3(level.playerStart.pos)) errors.push("playerStart.pos must be three numbers");
   if (!level.exit || !isVec3(level.exit.pos)) errors.push("exit.pos must be three numbers");
   if (errors.length) return { errors, warnings };
@@ -283,7 +289,7 @@ export function validateLevel(level: Level): ValidationResult {
   // solid geometry. The shell bounds are the union of its boxes. A door is
   // allowed to overlap a shell box: it sits in that wall's opening, which
   // the format cannot express separately. Pieces are always solid.
-  const shellBounds = shellUnion(level.shell);
+  const shellBounds = shellUnion(level.shell, level.prims ?? []);
   const outsideShell = (p: Vec3) =>
     p[0] < shellBounds.min[0] - TOUCH || p[0] > shellBounds.max[0] + TOUCH
     || p[1] < shellBounds.min[1] - TOUCH || p[1] > shellBounds.max[1] + TOUCH
@@ -332,7 +338,10 @@ export function validateLevel(level: Level): ValidationResult {
   // ENV-02 (E08): a button sits in the shell, names a door that exists, and
   // faces out along one axis. Its cap is what a dart or a melee meets, so it
   // is a spot like a door's: it may sit against a wall, not inside one.
-  const doorIds = new Set(arenas.flatMap((a) => a.doors.map((d) => d.id)));
+  const doorIds = new Set([
+    ...arenas.flatMap((a) => a.doors.map((d) => d.id)),
+    ...(level.doors ?? []).map((d) => d.id),
+  ]);
   const seenButtons = new Set<string>();
   for (const b of level.buttons ?? []) {
     const what = `button ${b.id}`;
@@ -435,18 +444,230 @@ export function validateLevel(level: Level): ValidationResult {
     }
   }
 
+  editorParts(level, errors, warnings, shellBounds, doorIds);
   return { errors, warnings };
 }
 
-function shellUnion(shell: ShellBox[]): Bounds {
+/** ED-00: a prim's box after its rotation, made bigger to its half
+ *  diagonal on every axis: rough, but it never leaves out a corner. */
+function primBounds(p: Prim): Bounds {
+  const r = Math.hypot(p.size[0], p.size[1], p.size[2]) / 2;
+  const turned = (p.rot ?? [0, 0, 0]).some((d) => d % 360 !== 0);
+  return turned ? boxBounds(p.pos, [2 * r, 2 * r, 2 * r]) : boxBounds(p.pos, p.size);
+}
+
+function shellUnion(shell: ShellBox[], prims: Prim[]): Bounds {
   const min: Vec3 = [Infinity, Infinity, Infinity];
   const max: Vec3 = [-Infinity, -Infinity, -Infinity];
-  for (const box of shell) {
-    const b = boxBounds(box.pos, box.size);
+  const all = [
+    ...shell.map((box) => boxBounds(box.pos, box.size)),
+    ...prims.filter((p) => isVec3(p.pos) && isVec3(p.size) && p.behaviour !== "hazard" && p.behaviour !== "decor")
+      .map(primBounds),
+  ];
+  for (const b of all) {
     for (let i = 0; i < 3; i++) {
       min[i] = Math.min(min[i], b.min[i]);
       max[i] = Math.max(max[i], b.max[i]);
     }
   }
   return { min, max };
+}
+
+const SHAPES = new Set(["box", "ramp", "wedge", "cylinder", "stairs"]);
+const BEHAVIOURS = new Set(["solid", "breakable", "hazard", "decor"]);
+const KEYS = new Set(["red", "blue", "yellow"]);
+const LOCKS = new Set(["none", "trigger", ...KEYS]);
+const WAKES = new Set(["sight", "trigger"]);
+const hazardLooks = hazardData.looks as Record<string, unknown>;
+const LIMITS = editorData.limits;
+const isColour = (c: unknown) => typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c);
+
+/** ED-00: a breakable box that turns only in 90 degree steps is voxel foam;
+ *  every other breakable prim breaks by hit points. */
+export function isVoxelBreakable(p: Prim): boolean {
+  return p.behaviour === "breakable" && p.shape === "box" && (p.rot ?? [0, 0, 0]).every((d) => d % 90 === 0);
+}
+
+/** ED-00 (design/EDITOR.md): the editor's parts of a level file. */
+function editorParts(level: Level, errors: string[], warnings: string[], shell: Bounds, arenaAndLevelDoors: Set<string>) {
+  const prims = level.prims ?? [];
+  const foamers = level.foamers ?? [];
+  const spawnPoints = level.spawnPoints ?? [];
+  const zones = level.zones ?? [];
+  const doors = level.doors ?? [];
+  const triggers = level.triggers ?? [];
+
+  // One id space for everything a trigger can name.
+  const seen = new Set<string>();
+  const claim = (id: unknown, what: string) => {
+    if (typeof id !== "string" || id === "") errors.push(`${what}: id is missing`);
+    else if (seen.has(id)) errors.push(`${what}: id ${id} is used twice`);
+    else seen.add(id);
+  };
+
+  if (prims.length > LIMITS.prims) errors.push(`${prims.length} prims, over the limit of ${LIMITS.prims}`);
+  if (foamers.length > LIMITS.foamers) errors.push(`${foamers.length} placed Foamers, over the limit of ${LIMITS.foamers}`);
+  if (triggers.length > LIMITS.triggers) errors.push(`${triggers.length} triggers, over the limit of ${LIMITS.triggers}`);
+  for (let k = 0; k < 3; k++) {
+    if (shell.max[k] - shell.min[k] > LIMITS.levelSize) {
+      errors.push(`the level is ${(shell.max[k] - shell.min[k]).toFixed(1)} m along ${"xyz"[k]}, over the limit of ${LIMITS.levelSize}`);
+      break;
+    }
+  }
+
+  const primIds = new Set<string>();
+  for (const p of prims) {
+    const what = `prim ${p.id}`;
+    claim(p.id, what);
+    primIds.add(p.id);
+    if (!SHAPES.has(p.shape)) errors.push(`${what}: unknown shape ${p.shape}`);
+    if (!BEHAVIOURS.has(p.behaviour)) errors.push(`${what}: unknown behaviour ${p.behaviour}`);
+    boxValid(p, what, errors);
+    if (isVec3(p.size) && p.size.some((n) => n <= 0)) errors.push(`${what}: size must be positive`);
+    if (p.rot !== undefined && !isVec3(p.rot)) errors.push(`${what}: rot must be three numbers`);
+    if (!isColour(p.colour)) errors.push(`${what}: colour must be #rrggbb`);
+    if (p.shape === "stairs" && !(Number.isInteger(p.steps) && p.steps! >= 2 && p.steps! <= LIMITS.stairsMaxSteps)) {
+      errors.push(`${what}: stairs need 2 to ${LIMITS.stairsMaxSteps} steps`);
+    }
+    if (p.behaviour === "hazard") {
+      const h = p.hazard;
+      if (!h) errors.push(`${what}: a hazard needs a hazard block`);
+      else {
+        if (!(h.look in hazardLooks)) errors.push(`${what}: unknown hazard look ${h.look}`);
+        if (!(typeof h.dps === "number" && h.dps >= 0)) errors.push(`${what}: hazard dps must be 0 or more`);
+        if (h.slow !== undefined && !(h.slow >= 0 && h.slow <= 1)) errors.push(`${what}: hazard slow must be 0 to 1`);
+      }
+    }
+    if (p.behaviour === "breakable" && !isVoxelBreakable(p) && !(typeof p.hitPoints === "number" && p.hitPoints > 0)) {
+      errors.push(`${what}: a breakable ${p.shape} that is not an upright box needs hitPoints`);
+    }
+  }
+
+  const foamerIds = new Set<string>();
+  for (const f of foamers) {
+    const what = `foamer ${f.id}`;
+    claim(f.id, what);
+    foamerIds.add(f.id);
+    if (!rigIds.has(f.foamer)) errors.push(`${what}: unknown foamer ${f.foamer}`);
+    if (!isVec3(f.pos)) errors.push(`${what}: pos must be three numbers`);
+    if (!Number.isFinite(f.yaw)) errors.push(`${what}: yaw must be a number`);
+    if (f.wake !== undefined && !WAKES.has(f.wake)) errors.push(`${what}: wake must be sight or trigger`);
+  }
+
+  const spawnIds = new Set<string>();
+  for (const r of spawnPoints) {
+    claim(r.id, `spawn point ${r.id}`);
+    spawnIds.add(r.id);
+    if (!isVec3(r.pos)) errors.push(`spawn point ${r.id}: pos must be three numbers`);
+  }
+  const zoneIds = new Set<string>();
+  for (const z of zones) {
+    claim(z.id, `zone ${z.id}`);
+    zoneIds.add(z.id);
+    boxValid(z, `zone ${z.id}`, errors);
+  }
+
+  const keysPlaced = new Set((level.pickups ?? []).filter((p) => p.type === "key").map((p) => p.key));
+  for (const p of level.pickups ?? []) {
+    if (p.type === "key" && !KEYS.has(p.key as string)) errors.push(`pickup ${p.id}: key must be red, blue or yellow`);
+  }
+  for (const d of doors) {
+    const what = `door ${d.id}`;
+    claim(d.id, what);
+    boxValid(d, what, errors);
+    if (!LOCKS.has(d.lock)) errors.push(`${what}: lock must be none, trigger, red, blue or yellow`);
+    else if (KEYS.has(d.lock) && !keysPlaced.has(d.lock as "red")) errors.push(`${what}: no ${d.lock} key in the level opens it`);
+    if (d.colour !== undefined && !isColour(d.colour)) errors.push(`${what}: colour must be #rrggbb`);
+  }
+  const allDoors = new Set([...arenaAndLevelDoors]);
+
+  if (level.sky) {
+    const sky = level.sky;
+    if (sky.kind === "gradient") {
+      if (![sky.top, sky.horizon, sky.bottom].every(isColour)) errors.push("sky: gradient colours must be #rrggbb");
+    } else if (sky.kind === "image") {
+      if (typeof sky.image !== "string" || !sky.image.startsWith("data:image/")) {
+        errors.push("sky: an image sky must be a data:image URL (nothing is fetched)");
+      }
+    } else errors.push("sky: kind must be gradient or image");
+  }
+
+  if (level.start) {
+    const st = level.start;
+    if (!Array.isArray(st.blasters) || st.blasters.length === 0) errors.push("start: blasters must name at least one");
+    for (const b of st.blasters ?? []) {
+      if (!(b in (blastersData as Record<string, unknown>))) errors.push(`start: ${b} is not a blaster`);
+    }
+    for (const m of st.melee ?? []) if (!(m in meleeWeapons)) errors.push(`start: ${m} is not a hand weapon`);
+    if (st.health !== undefined && !(st.health > 0)) errors.push("start: health must be positive");
+  }
+
+  // Triggers name what they act on; a name that is not there is an error.
+  const triggerIds = new Set(triggers.map((t) => t.id));
+  const buttonIds = new Set((level.buttons ?? []).map((b) => b.id));
+  const pickupIds = new Set((level.pickups ?? []).map((p) => p.id));
+  const spawnActions = new Set<string>();
+  for (const t of triggers) for (const d of t.do ?? []) if (d.kind === "spawn") spawnActions.add(d.id);
+  const showable = new Set([...primIds, ...foamerIds]);
+  for (const t of triggers) {
+    const what = `trigger ${t.id}`;
+    claim(t.id, what);
+    const w = t.when;
+    const need = (ok: boolean, msg: string) => { if (!ok) errors.push(`${what}: ${msg}`); };
+    switch (w?.kind) {
+      case "start": break;
+      case "enter": need(zoneIds.has(w.zone), `unknown zone ${w.zone}`); break;
+      case "killed":
+        need(Array.isArray(w.ids) && w.ids.length > 0, "killed needs ids");
+        for (const id of w.ids ?? []) need(foamerIds.has(id) || spawnActions.has(id), `killed names ${id}, not a placed Foamer or a spawn`);
+        if (w.count !== undefined) need(Number.isInteger(w.count) && w.count >= 1, "killed count must be 1 or more");
+        break;
+      case "pressed": need(buttonIds.has(w.button), `unknown button ${w.button}`); break;
+      case "taken": need(pickupIds.has(w.pickup), `unknown pickup ${w.pickup}`); break;
+      case "after":
+        need(triggerIds.has(w.trigger) && w.trigger !== t.id, `after names unknown trigger ${w.trigger}`);
+        need(typeof w.seconds === "number" && w.seconds >= 0, "after seconds must be 0 or more");
+        break;
+      default: errors.push(`${what}: unknown when ${(w as { kind?: string })?.kind}`);
+    }
+    if (!Array.isArray(t.do) || t.do.length === 0) {
+      errors.push(`${what}: do is empty`);
+      continue;
+    }
+    for (const d of t.do as TriggerDo[]) {
+      switch (d.kind) {
+        case "spawn":
+          claim(d.id, `${what} spawn ${d.id}`);
+          need(rigIds.has(d.foamer), `spawn ${d.id}: unknown foamer ${d.foamer}`);
+          need(Number.isInteger(d.count) && d.count >= 1, `spawn ${d.id}: count must be 1 or more`);
+          need(Array.isArray(d.at) && d.at.length > 0, `spawn ${d.id}: at names no spawn point`);
+          for (const a of d.at ?? []) need(spawnIds.has(a), `spawn ${d.id}: unknown spawn point ${a}`);
+          break;
+        case "wake":
+          for (const id of d.ids ?? []) need(foamerIds.has(id), `wake names unknown Foamer ${id}`);
+          break;
+        case "show":
+        case "hide":
+          for (const id of d.ids ?? []) need(showable.has(id), `${d.kind} names unknown prim or Foamer ${id}`);
+          break;
+        case "open":
+        case "close":
+          need(allDoors.has(d.door), `${d.kind} names unknown door ${d.door}`);
+          break;
+        case "message":
+          need(typeof d.text === "string" && d.text.length > 0, "message needs text");
+          break;
+        case "checkpoint":
+          need(isVec3(d.pos) && Number.isFinite(d.yaw), "checkpoint needs pos and yaw");
+          break;
+        default: errors.push(`${what}: unknown do ${(d as { kind?: string }).kind}`);
+      }
+    }
+  }
+  for (const f of foamers) {
+    if (f.wake === "trigger" || f.hidden) {
+      const woken = triggers.some((t) => t.do?.some((d) => d.kind === "wake" && d.ids?.includes(f.id)));
+      if (!woken) warnings.push(`foamer ${f.id}: waits for a trigger, but no trigger wakes it`);
+    }
+  }
 }
