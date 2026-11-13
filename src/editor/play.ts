@@ -36,6 +36,13 @@ export function playUrl(key: string, start: PlayStart | null = null): string {
   return `arena.html?${params.toString()}`;
 }
 
+/** Where a run begins: the `start` parameter overrides the level's own player
+ *  start for this run only, and the level file is not touched. Resolved once
+ *  when the page starts, so a restart comes back to the same spot. */
+export function spawnFor(levelStart: PlayStart, start: PlayStart | null): PlayStart {
+  return start ? { pos: [...start.pos] as Vec3, yaw: start.yaw } : { pos: [...levelStart.pos] as Vec3, yaw: levelStart.yaw };
+}
+
 /** The `start` a page was opened with, or null when it has none or it is not
  *  four numbers. */
 export function parseStart(search: string): PlayStart | null {

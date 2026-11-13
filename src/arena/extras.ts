@@ -25,7 +25,7 @@ import { TriggerRunner } from "../level/triggers";
 import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
 import { dartDamageOf } from "../level/breakables";
-import { editorBackUrl, type PlayStart } from "../editor/play";
+import { editorBackUrl, spawnFor, type PlayStart } from "../editor/play";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -41,20 +41,30 @@ const LEVEL_NAME = CHOSEN.name;
  *  overrides the level's player start for this run only: the level file is
  *  not changed, and a restart comes back here too. */
 let startOverride: PlayStart | null = null;
+/** The spot worked out from the override and the level, once. */
+let runStart: PlayStart | null = null;
 
 /** ED-09: the page calls this before the level is built, with the `start`
  *  parameter it read (or null). */
 export function setStartOverride(start: PlayStart | null): void {
   startOverride = start;
+  runStart = null;
 }
 
-/** The feet position and yaw this run begins at. */
+/** Where this run begins: the override when there is one, else the level's
+ *  own player start. Worked out once, so every restart lands on the same
+ *  spot and the level file is read no more than it has to be. */
+function startSpot(): PlayStart {
+  runStart ??= spawnFor(LEVEL.playerStart, startOverride);
+  return runStart;
+}
+
 function startPos(): THREE.Vector3 {
-  return new THREE.Vector3(...(startOverride?.pos ?? LEVEL.playerStart.pos));
+  return new THREE.Vector3(...startSpot().pos);
 }
 
 function startYaw(): number {
-  return startOverride?.yaw ?? LEVEL.playerStart.yaw;
+  return startSpot().yaw;
 }
 
 /** LVL-05 stage 2: campaign play on this page. `entry` is the state the

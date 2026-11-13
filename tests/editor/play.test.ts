@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editorBackUrl, parseStart, playUrl, startParam } from "../../src/editor/play";
+import { editorBackUrl, parseStart, playUrl, spawnFor, startParam } from "../../src/editor/play";
 
 // ED-09 stage 1: the URLs between the editor and the arena page.
 
@@ -46,5 +46,20 @@ describe("ED-09 the way back to the editor", () => {
     expect(editorBackUrl("?level=local%3Alvl-abc")).toBeNull();
     expect(editorBackUrl("?level=1-1-pit&from=editor")).toBeNull();
     expect(editorBackUrl("?from=editor")).toBeNull();
+  });
+});
+
+describe("ED-09 the spawn the level starts from", () => {
+  const levelStart = { pos: [0, 0, 5] as [number, number, number], yaw: 1.5 };
+
+  it("uses the level's own start when nothing was asked for", () => {
+    expect(spawnFor(levelStart, null)).toEqual({ pos: [0, 0, 5], yaw: 1.5 });
+  });
+
+  it("uses the ?level= run's start instead, once", () => {
+    const from = { pos: [3, 1, 4] as [number, number, number], yaw: 0 };
+    expect(spawnFor(levelStart, from)).toEqual({ pos: [3, 1, 4], yaw: 0 });
+    expect(levelStart.pos).toEqual([0, 0, 5]);
+    expect(from.pos).toEqual([3, 1, 4]);
   });
 });
