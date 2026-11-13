@@ -31,7 +31,10 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review. MEL-01
 committed on branch `mel-01`, not pushed, waiting on review; the suite
 is 1104 tests, 2 skipped on that branch. ED-01 (the game plays the
 editor's level parts) is committed on branch `ed-01`, not pushed, waiting
-on review.
+on review. ED-05 (placing Foamers, pickups, doors, spawn points, zones, the
+start and the exit, the start loadout and a Problems count) is committed on
+branch `ed-05`, not pushed, waiting on review; the suite there is 1297
+tests, 2 skipped.
 
 **Waiting on Paul:**
 
@@ -87,6 +90,44 @@ on review.
   2026-11-12 was made to fail once on purpose before it was trusted.
 
 ## Log
+
+### 2026-11-13: ED-05 built (Pi, DeepSeek V4.1 Flash 1017): placing things
+
+- The editor now places and edits everything but the primitives. One
+  command list (`src/editor/doc.ts`) holds every kind: a Foamer, a
+  pickup, a door, a spawn point or a zone is added, changed, removed,
+  copied, undone and redone the same way a box is. Ids are unique across
+  all of them, so `key-2` can never also be a door, and the start and the
+  exit change as whole objects, so a drag of either is one undo step.
+- Each kind draws a marker built in code (no model is loaded, as the card
+  says): a Foamer a capsule its rig's height with a nose along its yaw, a
+  pickup a small box in its kind's colour with the blaster or hand
+  weapon's name over it, a spawn point a ring, a zone, a door and the exit
+  see-through boxes, the start an arrow. Markers are clicked, framed and
+  dragged with the same handles as a prim. A Foamer or the start turns
+  `yaw`, a door `rotY`, and only a zone, a door and the exit take a size;
+  the other handles do nothing on those kinds, which is the card's rule.
+- The palette places each kind (with a rig list for a Foamer and a type
+  list for a pickup), the inspector edits each kind's own fields, the
+  outliner groups them and then lists the start and the exit, and nothing
+  selected shows the level's start loadout beside the sky.
+- A Problems button in the top bar runs `validateLevel` on every change
+  and lists the errors and warnings; a row that names an id selects that
+  thing.
+- Decisions: a door's `rotY`, a Foamer's `yaw` and the start's `yaw` all
+  mean "0 faces -z" (format.ts), so a turn of the handles maps to degrees
+  for a door and radians for the other two with no sign flip. A drag may
+  shrink a size to 0.1 m and not to the grid, because a door is 0.4 m
+  thick. Marker colours, the pickup box size and the ring radius are in
+  `data/editor.json` under `markers`.
+- Not seen by eye: any marker, handle, palette button or inspector field.
+  This machine cannot open a browser, so the drawing, the picking and the
+  drags are only checked by their unit tests and by the smoke check
+  (editor.html still says "Ready" and draws). Also still open: the card's
+  wish for the game's own Foamer models in the editor, which needs ED-06's
+  drawing work; the markers are placeholders until then.
+- Suite: 1297 pass, 2 skipped. `npm run check` and `npm run smoke` green.
+
 
 ### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
 
