@@ -7,6 +7,7 @@ import { carveSphere } from "./voxel/carve";
 import { VolumeMesh } from "./voxel/volume-mesh";
 import { createGame } from "./game/game";
 import { courseExtras } from "./course/extras";
+import { wireTitleMenu } from "./game/title";
 
 // Test course: proves rendering, physics, input and the player controller
 // together. Steps, ledges to mantle, a wall too tall to mantle, a walkable
@@ -101,6 +102,10 @@ const game = await createGame({
     return extras.hooks;
   },
 });
+
+// LVL-05 stage 2: New game and Continue, before the first click. The test
+// course behind them plays exactly as it did.
+wireTitleMenu();
 
 // Dev-only hook for automated checks in the browser pane.
 if (import.meta.env.DEV) Object.assign(window, {

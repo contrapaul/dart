@@ -408,6 +408,37 @@ body {
   background: #ff9a4d;
 }
 
+/* LVL-05 stage 2: the title's campaign buttons (New game, Continue). Same
+   chunky toy pills as the pause menu; Continue hides itself without a save. */
+#overlay p.menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  pointer-events: auto;
+}
+#overlay p.menu button {
+  pointer-events: auto;
+  margin: 0;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+  padding: 0.55rem 2rem;
+  border-radius: 999px;
+  border: 3px solid #fff6e8;
+  background: #ff7a1a;
+  color: #fff6e8;
+  cursor: pointer;
+}
+#overlay p.menu button:hover,
+#overlay p.menu button:focus-visible {
+  background: #ff9a4d;
+}
+#overlay p.menu button[hidden] {
+  display: none;
+}
+
 /* The overlay's link to the arena page (LVL-01). */
 #overlay p.links a {
   color: #ffd23f;

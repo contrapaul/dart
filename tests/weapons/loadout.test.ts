@@ -218,3 +218,49 @@ describe("LVL-05: owned blasters", () => {
     expect(lo.owns("B08")).toBe(false);
   });
 });
+
+// LVL-05 stage 2: a level's restart puts the entry state's owned set back.
+// The blaster found during the attempt that was lost is not owned by the
+// retry, and the active blaster comes back to an owned one at once.
+describe("LVL-05: setOwned, the restart's owned set", () => {
+  const owned = (ids?: string[]) => {
+    const darts = new FakeDarts();
+    const vms = ["B01", "B04", "B03"].map(() => new FakeVM([[0, 0, -1]]));
+    const out = new THREE.Vector3();
+    const parts = ["B01", "B04", "B03"].map((id, i) => ({
+      id,
+      blaster: new Blaster(resolveSpec(id), darts, () => vms[i]!.muzzleCameraPoint(0, out)),
+      viewmodel: vms[i]!,
+    }));
+    return { lo: new Loadout(parts, darts, 0.35, ids), darts, vms };
+  };
+
+  it("makes the owned set exactly the ids, dropping one found this attempt", () => {
+    const { lo } = owned(["B01"]);
+    lo.own("B04");
+    expect(lo.owns("B04")).toBe(true);
+    lo.setOwned(["B01"]);
+    expect(lo.owns("B04")).toBe(false);
+    expect(lo.owns("B01")).toBe(true);
+    expect(lo.activeId()).toBe("B01");
+  });
+
+  it("brings the active blaster back to an owned one, with no switch", () => {
+    const { lo, vms } = owned(["B01", "B04"]);
+    lo.select(1);
+    let guard = 0;
+    while (lo.switching && guard++ < 200) lo.update(DT, NO, AIM);
+    expect(lo.activeId()).toBe("B04");
+    lo.setOwned(["B01"]);
+    expect(lo.activeId()).toBe("B01");
+    expect(lo.switching).toBe(false);
+    expect(vms[1]!.visible).toBe(false);
+    expect(vms[0]!.visible).toBe(true);
+  });
+
+  it("keeps one blaster owned when the ids name nothing built", () => {
+    const { lo } = owned(["B01", "B04"]);
+    lo.setOwned(["B99"]);
+    expect(lo.owns("B01") || lo.owns("B04") || lo.owns("B03")).toBe(true);
+  });
+});

@@ -10,7 +10,7 @@ import { validateLevel } from "../level/validate";
 import { createGame } from "../game/game";
 import { arenaExtras, buildArena, type ArenaBuilt } from "./extras";
 import { chosenLevel } from "./levels";
-import { campaignMode, ownedAt } from "../game/campaign";
+import { campaignMode, entryState, readSave, type CampaignState } from "../game/campaign";
 
 // GAME-10b: `?level=1-4-ring` plays the Ring; the Pit stays the default.
 const chosen = chosenLevel();
@@ -20,7 +20,13 @@ const status = document.querySelector<HTMLParagraphElement>("#status")!;
 // only what the campaign gives by the level's start. Without it the page is
 // the test page it has always been: every blaster owned.
 const campaign = campaignMode(location.search);
-const startBlasters = campaign ? ownedAt(chosen.name) : undefined;
+// LVL-05 stage 2: the state the level begins with. A save that names this
+// level is what the player carried in; anything else (no save, someone
+// jumping straight to a level, a broken or old save) begins the level from
+// the order's own start set. The loadout is told the owned ids from it, and
+// the arena writes it to the save as the level starts.
+const entry: CampaignState | null = campaign ? entryState(chosen.name, readSave()) : null;
+const startBlasters = entry ? entry.blasters.map((b) => b.id) : undefined;
 
 // A level with errors does not load: the page shows the list (BLOCKOUT 5).
 const report = validateLevel(LEVEL);
@@ -46,7 +52,7 @@ async function run() {
     startBlasters,
 
     configure(g) {
-      const extras = arenaExtras(g);
+      const extras = arenaExtras(g, { campaign, entry });
       runner = extras.runner;
       return extras.hooks;
     },

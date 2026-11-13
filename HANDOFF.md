@@ -81,6 +81,79 @@ the old text is in git history.
 
 ## Log
 
+### 2026-11-13: LVL-05 stage 2, carry-over, the end screen and the save
+
+Built on branch `lvl-05` in its own worktree, on top of stage 1. Not
+pushed. Stage 2 is the whole card: what carries, the save, the end
+screen and the main menu.
+
+How to play the campaign: open `/` and press **New game**. It clears the
+save and starts `1-1-pit` as `/arena.html?level=1-1-pit&campaign`.
+Finish the level's exit and the panel shows the level's name, the time,
+and **Next level** / **Main menu** (Enter and Esc do the same). Continue
+appears on `/` when a save exists and starts the level the save names.
+A restart or a death inside a level puts back the state the level began
+with, not a fresh loadout.
+
+- `src/game/campaign.ts` grew the carry and the save, still pure:
+  `newGame`, `entryState`, `carryTo`, `captureState`, `applyState`,
+  `readSave`, `writeSave`, `clearSave`, `filledBlaster`, `formatTime`,
+  `campaignUrl`, `firstLevel`, plus `SAVE_KEY` `dart.save.v1` and
+  `SAVE_VERSION` 1. `applyState` needs a `LiveCarry`: blasters, health,
+  and optionally `setOwned`. Every storage call is in try/catch, and a
+  missing, broken, old-version, unknown-level or nonsense save is a new
+  game.
+- `Loadout.setOwned(ids)`: the restart's owned set, so a blaster found
+  during an attempt that ended in a death is not owned by the retry. The
+  active blaster falls back to an owned one at once (no switch).
+- `src/arena/extras.ts`: campaign mode applies the entry state at the
+  level start (and writes it), and `respawnAtEntry` restores it rather
+  than refilling. `showComplete` fills `#completeName`, `#completeTime`,
+  shows **Next level** or the act's end, hides Play again, and writes
+  the carried state. After the last level the save goes back to the
+  entry state. A level clock runs while the level plays and stops at the
+  exit.
+- `arena.html` / `arena.css`: the panel's name, time, act's end and the
+  two buttons, in a `.choices` row.
+- `index.html` / `src/style.css` / new `src/game/title.ts`: **New game**
+  and **Continue** (hidden unless a save exists) above Settings. The
+  test course below is unchanged.
+
+Two bugs the browser probe caught that the unit tests could not, both
+fixed:
+
+1. The carry mapped every blaster, so the campaign would have owned all
+   eight after its first level. It now filters to the owned set.
+2. The restore's `LiveCarry` held plain copies of mag and reserve, so
+   `applyState` wrote to throwaway objects: health came through (a real
+   object) but ammo stayed at full. They are accessors onto the real
+   blaster now, and the entry state is applied to every blaster so a
+   carried blaster's ammo is restored before the owned set trims it.
+
+`npm run check` green (1082 tests, 2 skipped) and `npm run smoke` green
+(4 pages). New tests: `tests/game/campaign-save.test.ts` (21),
+`tests/game/title-menu.test.ts` (4), three more for the campaign panel's
+ids in `tests/game/pages.test.ts`, and three for `setOwned` in
+`tests/weapons/loadout.test.ts`. Stage 1 was 1044 tests, this is 1082
+(2 skipped in both).
+
+Seen by eye, headless Chromium, `tools/lvl05-probe.mjs` (29 checks, kept
+in the repo as a throwaway probe): a fresh campaign starts 1-1-pit with
+full health and the B02 alone and writes that save; a planted save of
+37 health with B01 3/17 and B04 12/50 starts 1-3 with exactly those and
+with the B03 still not owned; Enter on the panel goes to
+`/arena.html?level=1-4&campaign`, Enter on 1-4 goes nowhere, Esc goes to
+`/`; New game from `/` reaches `1-1-pit` in campaign mode and the title
+shows Continue when a save exists.
+
+Not seen by eye: actually playing a level to its exit (the probe opens
+the panel and dispatches the keys, it does not fight through to the
+exit pad), so the panel's real appearance, the clock's reading and the
+save written by a real finish are untested in a browser; the two
+versions of the end screen's look; carrying from 1-1 into 1-2 by
+playing; and Continue after a mid-level abandon (the save is written at
+the level start, so it names that level).
+
 ### 2026-11-13: LVL-05 stage 1, owned blasters and blaster pickups
 
 Built on branch `lvl-05` in its own worktree. Stage 1 only: owned

@@ -32,7 +32,17 @@
     <div id="complete" hidden>
       <div class="panel">
         <h2>Level complete</h2>
-        <button id="playAgain" type="button">Play again</button>
+        <!-- LVL-05 stage 2: the campaign's panel names the level and the
+             time, and offers Next level and Main menu. The test page keeps
+             Play again and these stay hidden. -->
+        <p id="completeName" class="level" hidden></p>
+        <p id="completeTime" class="time" hidden></p>
+        <p id="actEnd" hidden>This act ends here for now.</p>
+        <div class="choices">
+          <button id="nextLevel" type="button" hidden>Next level</button>
+          <button id="mainMenu" type="button" hidden>Main menu</button>
+          <button id="playAgain" type="button">Play again</button>
+        </div>
       </div>
     </div>
     <div id="popped" hidden>

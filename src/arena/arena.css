@@ -63,3 +63,28 @@
 #complete button:focus-visible {
   background: #fff3d6;
 }
+#complete button[hidden],
+#complete p[hidden] {
+  display: none;
+}
+/* LVL-05 stage 2: the campaign's panel. The level's name and the time sit
+   above the two ways on; the choices share a row so Next level and Main
+   menu read as a pair. */
+#complete .level {
+  margin: 0 0 0.2em;
+  font-size: clamp(16px, 2.2vw, 22px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffd23f;
+}
+#complete .time {
+  margin: 0 0 0.9em;
+  font-variant-numeric: tabular-nums;
+  color: #cfc4ee;
+}
+#complete .choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em;
+  justify-content: center;
+}

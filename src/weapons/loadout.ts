@@ -160,6 +160,22 @@ export class Loadout {
   /** LVL-05: the owned set. A fresh loadout owns every blaster; a campaign
    *  owns the ones it starts with and gains the rest through pickups. */
   owns(id: string): boolean { return this.owned.has(id); }
+  /** LVL-05 stage 2: make the owned set exactly `ids` again. A level's
+   *  restart puts the campaign's entry state back, so a blaster found and
+   *  then lost to a death is not owned by the retry until it is found
+   *  again. One blaster always stays owned, and if the active one is no
+   *  longer owned the first owned one is active at once (a respawn, not a
+   *  switch). */
+  setOwned(ids: readonly string[]): void {
+    this.owned = new Set(ids.filter((id) => this.ids.includes(id)));
+    if (this.owned.size === 0) this.owned.add(this.ids[this.idx]);
+    if (this.owned.has(this.ids[this.idx])) return;
+    const first = this.ids.findIndex((id) => this.owned.has(id));
+    this.viewmodels[this.idx].setVisible(false);
+    this.idx = first < 0 ? 0 : first;
+    this.switchTimer = -1;
+    this.viewmodels[this.idx].setVisible(true);
+  }
   /** Take a blaster into the owned set (a pickup). Nothing else changes:
    *  the caller selects it and fills it. */
   own(id: string): void { if (this.ids.includes(id)) this.owned.add(id); }
