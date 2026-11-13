@@ -83,6 +83,28 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review.
 
 ## Log
 
+### 2026-11-13: ENV-05 review, merged (Claude Opus 5.5): the leaking barrel
+
+- DeepSeek V4.1 Flash 1017 built the card in one run, first try. The
+  fuse rules match Paul's ask exactly (`src/level/barrel-fuse.ts`, 10
+  tests). One file outside the card, with its reason: `DebrisSystem`
+  gained `sprayCube` so the spray can use a seeded PRNG.
+- Seen in the browser (range, Chromium, shots fired by script): one B04
+  standard dart punctured a barrel, it leaked and went off 10 s later;
+  from 4 m the leak jets small orange foam cubes out of the hole and they
+  pool on the floor beside the barrel. The barrel reads as a toy (orange
+  with a yellow band and a white lid).
+- The dev-only `window.__range` handle now has `barrels`.
+- 1116 tests pass (2 skipped); check and smoke green.
+- For Paul: the jet is gentle (2 m/s, rising to 4.5 m/s near the end); if
+  it should spurt harder or read from further away, raise
+  `data/barrel.json` `spray` `speedStart`, `speedEnd` or `cubeSizeMetres`.
+  The barrel's orange and yellow are the colours ENV-01's review kept for
+  weak points and darts; a barrel being a "shoot this" target fits that,
+  but it is Paul's call.
+- Not verified: Firefox, the chain of two barrels, and the blast at the
+  end of the fuse seen by eye.
+
 ### 2026-11-13: ENV-05 (E15) the leaking foam barrel, on the range
 
 Built on branch `env-05`, not reviewed, not pushed. Card `tasks/ENV-05.md`.
