@@ -5,7 +5,7 @@ Status: **proposal, LVL-00**. Works in any setting; place names are
 
 | | |
 |---|---|
-| New blaster | B01 starter (CONTENT-PLAN 2) |
+| New blaster | B01 The Dartman, found here (level 1, the Pit); the player starts with B02 |
 | New Foamer | F01 Slowmer, 6 health, bonk only |
 | New mechanic | Move, shoot, carve cover |
 | Arenas | 3, plus a bridge set piece and a gauntlet |

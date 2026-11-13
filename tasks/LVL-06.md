@@ -26,18 +26,18 @@ changing those).
 
 - The player starts with B02 only. Blasters are found in levels: B01 in
   level 1 (1-1, the Pit), B04 in 2 (1-2), B03 in 3 (1-3), B05 in 4 (1-4),
-  **B06 in 5 (2-1)**, B07 in 7 (2-3), B08 in 9 (3-1). Two levels without
-  a new blaster sit between the later ones on purpose.
+  **B06 in 5 (2-1)**, B07 in 7 (2-3), B08 in 9 (3-1). From level 5 on, a
+  new blaster comes every second level (none in 6 and 8) on purpose.
 - Health and ammo carry between levels; hand weapons are found in levels
   too (which and where is decided later, with melee).
 - Level 1 is the Pit as it is; the longer 1-1 in LEVEL-1-1.md is not built
   for now.
-- Direction: semi-open linear (PLAN.md section 6): one clear critical path,
+- Direction: semi-open linear (PLAN.md section 9): one clear critical path,
   wide multi-level spaces off it, arenas lock until cleared.
 
 ## What to write
 
-1. **Read first:** `PLAN.md` sections 2 and 6, `design/CONTENT-PLAN.md`,
+1. **Read first:** `PLAN.md` sections 2 and 9, `design/CONTENT-PLAN.md`,
    `design/levels/README.md`, `KIT.md`, `BLOCKOUT.md`, `ENVIRONMENT.md`,
    all four `LEVEL-1-x.md`, `ACTS-2-3.md`, `data/blasters.json` (B06 The
    Standard: what it does and its mods) and `data/foamers.json` (which
