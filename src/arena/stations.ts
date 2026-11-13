@@ -24,6 +24,9 @@ const CAB = stationData.cabinet;
 export interface StationLoadout {
   readonly ids: string[];
   setMod(i: number, mod: string, on: boolean): void;
+  /** LVL-05: whether the player has found the blaster (a campaign builds
+   *  every blaster but owns only some). Left out, every built one counts. */
+  owns?(id: string): boolean;
 }
 
 /** One placed station: its file entry, its spent flag and its look. */
@@ -215,7 +218,7 @@ export class Stations {
         continue;
       }
       const idx = loadout.ids.indexOf(it.blaster);
-      if (idx < 0) {
+      if (idx < 0 || (loadout.owns && !loadout.owns(it.blaster))) {
         if (!this.nudged.get(it.id)) {
           this.nudged.set(it.id, true);
           this.onNeedBlaster(it);

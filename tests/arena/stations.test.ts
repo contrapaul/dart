@@ -117,6 +117,17 @@ describe("the mod station", () => {
     expect(t.stations.items[0].spent).toBe(false);
   });
 
+  it("LVL-05: a station for a blaster built but not yet found grants nothing", () => {
+    const t = makeStation(); // B01 is in the loadout...
+    const owned = new Set(["B04", "B03"]); // ...but the campaign has not found it
+    const loadout: StationLoadout = { ...t.loadout, owns: (id) => owned.has(id) };
+    const g = atStation(7);
+    for (let i = 0; i < 7; i++) t.stations.update(DT, g.eye, g.fwd, true, loadout);
+    expect(t.calls).toHaveLength(0);
+    expect(t.needBlaster).toEqual(["s1"]);
+    expect(t.stations.items[0].spent).toBe(false);
+  });
+
   it("restarts reset the station, and it can grant again", () => {
     const t = makeStation();
     const g = atStation(7);
