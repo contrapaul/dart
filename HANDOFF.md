@@ -91,6 +91,57 @@ tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
+
+- strata added `Hazards.blocksAt` (a shown hazard that damages Foamers),
+  the extra solid test in `makeLevelAI`, and `onChanged` with the
+  hazard's world rectangle for a rebake. 5 tests.
+- Wired by the reviewer: hazards are now built in the arena's build hook
+  (`buildArena`), before the game bakes the nav grid, and handed over as
+  `BuiltGame.blockedAt`; a trigger showing or hiding a hazard rebakes its
+  rectangle through `levelAI.carveChanged`.
+- Seen in the browser on `ed-01`: the grid's cells over the lava pool are
+  not walkable, the floor beside it is.
+- Not seen: a Foamer actually walking round the pool in a fight.
+
+### 2026-11-13: ED-07b, triggers and keys in play (Claude Opus 5.5)
+
+- The arena page runs the editor's triggers (`src/arena/extras.ts`):
+  spawns at spawn points, refused ones retried every step; every Foamer a
+  trigger can count is tagged (placed id or spawn id) and reported once
+  when down or gone; show and hide reach hidden prims, hazards and
+  placed Foamers; open and close use the page's door verb (sound
+  included); message is the banner; checkpoint sets where a restart puts
+  the player.
+- Keys: `src/level/key-pickups.ts`, a code-built key in its colour that
+  turns, taken within 1 m; a door locked to a colour opens within 2.5 m
+  when the key is held, and says "Needs the red key" otherwise; a small
+  HUD line lists the keys held. Numbers in `data/editor.json` `keys`.
+  Placed pickups now report "taken" with their file id
+  (`Pickups.onTaken`).
+- A restart puts all editor logic back to the level's start (triggers,
+  hidden prims, hazards, the level's doors, keys), keeping the trigger
+  checkpoint. Decided so: the Foamers a half run fight spawned are
+  cleared by the restart, so a fight left half done could never finish.
+- Test level `ed-07` (`arena.html?level=ed-07`). Seen in the browser:
+  entering the arena raised the pink blocker behind the player and
+  spawned 3 Slowmers; downing them spawned wave 2; downing those dropped
+  the blocker and opened the side door; the exit door said it needs the
+  red key, the key showed "Red key" on the HUD and the door then opened.
+- Not seen: a death and restart in a trigger level, a refused spawn being
+  retried, a "pressed" trigger from a button.
+
+### 2026-11-13: ED-07a review, merged (Claude Opus 5.5): the trigger runner
+
+- qwen-machine (Qwen 3.8 27B) wrote `src/level/triggers.ts` and
+  `src/level/keys.ts` with 17 tests. Reviewed line by line: zones fire on
+  entering, spawns run round robin with their hold, "killed all" counts
+  every Foamer a named spawn makes, `after` re-arms when its trigger
+  fires again, reset clears everything.
+- Noted for the wiring (ED-07b): a spawn the game refuses (the live
+  Foamer cap) must be retried by the page, or a "killed all" over that
+  spawn can never fire and the blockers never drop.
+- Not in the game yet: nothing calls the runner until ED-07b.
 ### 2026-11-13: ED-05 built (Pi, DeepSeek V4.1 Flash 1017): placing things
 
 - The editor now places and edits everything but the primitives. One
@@ -144,6 +195,27 @@ tests, 2 skipped.
 - Not seen by eye: rotate and scale handles, undo and redo by key, export
   and import of a file, the sky image upload, opening an Act 1 level as a
   copy. The floor grid is 128 m and dense at 0.5 m: fine near, busy far.
+### 2026-11-13: ED-03b Foamers walk round hazards (Pi, strata-dsv41)
+
+- Built `Hazards.blocksAt(x, y, z)`: true inside a shown hazard with
+  `dps > 0` and `hurtsFoamers` not false. It reuses a module point vector
+  and allocates nothing. `setShown` now calls the optional
+  `onChanged(minX, minZ, maxX, maxZ)` callback with the hazard's world
+  rectangle after rotation, when it becomes shown or hidden, so the page
+  can rebake that area.
+- `makeLevelAI` takes an optional seventh `blockedAt` test and combines it
+  with the voxel solid test. With no extra test the bake is unchanged.
+  Passing `hazards.blocksAt` directly works because it is a bound arrow.
+- New tests in `tests/ai/ed-03b.test.ts` (5): a lava box blocks its cells
+  and leaves cells round it walkable; a goo with dps 0 blocks nothing; a
+  hidden hazard blocks nothing until shown, then `onChanged` reports the
+  rectangle and a rebake blocks the cell; the rectangle follows a 45
+  degree rotation; no extra test leaves the bake as before.
+- Decision: the hook lives in `src/ai/level.ts`, not `src/ai/nav-grid.ts`,
+  because the grid's existing `setSolidAt` already accepts a combined
+  test. The page is not wired by this card; the reviewer wires the arena.
+- Not checked by eye: no browser here, so Foamers walking round lava, the
+  page's rebake and the look of hidden/showed hazards are unverified.
 
 ### 2026-11-13: ED-03 review, merged (Claude Opus 5.5): hazards in play
 
@@ -301,6 +373,25 @@ following the level's name, and Play's single navigation to
 Known gap worth a decision: `src/editor/store.ts` was used as it is, so
 nothing in ED-02 reads a key back by name for the arena page; the
 `?level=local:` half needs the arena page to do it.
+### 2026-11-13: ED-07a trigger runner and key rules (Qwen 3.8-27B via Pi, `tasks/ED-07A.md`)
+
+- `src/level/triggers.ts`: `TriggerRunner` fires a level's when/do
+  triggers (start, enter zone, `killed`, pressed, taken, `after`) through
+  a `TriggerHost` the page provides. Spawn dos count their calls, round
+  robin over their `at` list, `holdSeconds` apart, the first one at once;
+  kill counting covers named spawns (each Foamer one makes); a trigger
+  fires once unless it says `repeat`, and a kill or a press before it can
+  fire still counts. Reset puts it back to the start state.
+- `src/level/keys.ts`: `KeyRing` holds red, blue, yellow in that order
+  and `doorOpensFor` decides a door (none always, trigger never, colour
+  when held).
+- 18 tests in `tests/level/`, including the usual arena end to end and
+  reset. The message default (3 s) lives in `data/editor.json`
+  `triggerDefaults`, not in the code.
+- No Three.js and no DOM in either file; the editor page is wired by its
+  own card.
+- Not checked by eye: no browser in this environment; the headless
+  preflight (tsc, 1195 tests, build) and the em dash check all pass.
 
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 
