@@ -153,6 +153,9 @@ export class EditorView {
   private looking = false;
   private clock = new THREE.Clock();
   private shownLevel: Level | null = null;
+  private shownShell: unknown = null;
+  private shownSky: unknown = null;
+  private shownPieces: unknown = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -204,23 +207,29 @@ export class EditorView {
     this.camera.updateProjectionMatrix();
   }
 
-  /** Draws the level as it is now: shell, sky, every prim. Called on every
-   *  document change, so it rebuilds rather than patches. */
+  /** Draws the level as it is now. The shell and the sky are rebuilt only
+   *  when they changed (the editor does not edit them yet, and a typed
+   *  number should not rebuild the level), the prims on every change. */
   show(level: Level) {
     this.shownLevel = level;
-    for (const child of [...this.shell.children]) {
-      this.shell.remove(child);
-      disposeTree(child);
+    if (level.shell !== this.shownShell || (level.pieces ?? null) !== this.shownPieces) {
+      this.shownShell = level.shell;
+      this.shownPieces = level.pieces ?? null;
+      for (const child of [...this.shell.children]) {
+        this.shell.remove(child);
+        disposeTree(child);
+      }
+      this.shell.add(shellMesh(level));
     }
-    this.shell.add(shellMesh(level));
-
-    if (this.sky) {
-      this.scene.remove(this.sky);
-      disposeTree(this.sky);
+    if (level.sky !== this.shownSky) {
+      this.shownSky = level.sky;
+      if (this.sky) {
+        this.scene.remove(this.sky);
+        disposeTree(this.sky);
+      }
+      this.sky = skyMesh(level.sky);
+      this.scene.add(this.sky);
     }
-    this.sky = skyMesh(level.sky);
-    this.scene.add(this.sky);
-
     this.refreshPrims(level);
   }
 

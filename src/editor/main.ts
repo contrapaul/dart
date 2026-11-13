@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Prim, PrimShape, Vec3 } from "../level/format";
-import { LevelDoc, makePrim, newLevel, snapPrim } from "./doc";
+import { LevelDoc, GRID, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP } from "./doc";
+import { buildPrimFields } from "./inspector";
 import { EditorView, type TransformMode } from "./view";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -26,6 +27,16 @@ let placeColour = "#ff7a1a";
 const selected = new Set<string>();
 const status = $("status");
 const counts = $("counts");
+
+/** The last colours used in the inspector, newest first (six, the card). */
+const recent: string[] = [];
+function remember(colour: string) {
+  const i = recent.indexOf(colour);
+  if (i >= 0) recent.splice(i, 1);
+  recent.unshift(colour);
+  recent.length = Math.min(recent.length, 6);
+  placeColour = colour;
+}
 
 /** Grid snap on or off (G): the handles' snap, and the placing snap. */
 let snapOn = true;
@@ -164,8 +175,19 @@ function buildSkyInspector(_host: HTMLElement) {
   /* Stage 4: the sky editor lands here. */
 }
 
-function buildPrimInspector(_host: HTMLElement) {
-  /* Stage 3: the prim fields land here. */
+function buildPrimInspector(host: HTMLElement) {
+  const prims = [...selected].map((id) => doc.prim(id)).filter((p): p is Prim => !!p);
+  if (!prims.length) return;
+  buildPrimFields(host, prims, {
+    change: (patch, text) => doc.change([...selected].map((id) => ({ id, patch })), text),
+    changeOne: (id, patch, text) => doc.change([{ id, patch }], text),
+    redraw: () => {
+      buildInspector();
+      buildPalette();
+    },
+    recent,
+    remember,
+  });
 }
 
 // The view: right mouse looks, a left click places or selects.
@@ -220,10 +242,13 @@ function place(shape: PrimShape, point: THREE.Vector3, normal: THREE.Vector3) {
     point.y + normal.y * base.size[1] / 2,
     point.z + normal.z * base.size[2] / 2,
   ];
-  const prim: Prim = snapPrim({ ...base, id: doc.nextId(shape), pos });
-  doc.add(prim);
+  const made: Prim = { ...base, id: doc.nextId(shape), pos };
+  const prim: Prim = snapOn ? snapPrim(made) : made;
   selected.clear();
-  selected.add(prim.id);
+  doc.add(prim);
+  // Select what was just placed, after the document's own redraw: the
+  // inspector then has the new prim, one Ctrl+D from a copy.
+  pick(prim.id);
 }
 
 window.addEventListener("keydown", (e) => {
@@ -238,6 +263,15 @@ window.addEventListener("keydown", (e) => {
   if (meta && e.code === "KeyY") {
     e.preventDefault();
     doc.redo();
+    return;
+  }
+  if (meta && e.code === "KeyD") {
+    e.preventDefault();
+    if (selected.size) {
+      const made = doc.duplicate([...selected]);
+      selected.clear();
+      for (const id of made) selected.add(id);
+    }
     return;
   }
   if (meta) return;
@@ -269,6 +303,65 @@ function setMode(mode: TransformMode) {
   view.select([...selected], view.mode);
   buildPalette();
 }
+
+/** One drag of the handles, written into the document when it ends: the
+ *  proxy's position and rotation, or its scale as the prims' size. */
+let dragStart: {
+  mode: TransformMode; ids: string[]; pos: Vec3; rot: Vec3;
+  scale: Vec3; size: Record<string, Vec3>;
+} | null = null;
+view.controls.addEventListener("mouseDown", () => {
+  const ids = [...selected];
+  const state = view.proxyState();
+  dragStart = {
+    mode: view.mode,
+    ids,
+    pos: state.pos,
+    rot: state.rot,
+    scale: state.scale,
+    size: Object.fromEntries(ids.map((id) => [id, doc.prim(id)?.size ?? [1, 1, 1]])),
+  };
+});
+view.controls.addEventListener("mouseUp", () => {
+  const start = dragStart;
+  dragStart = null;
+  if (!start || !start.ids.length) return;
+  const state = view.proxyState();
+  const move: Vec3 = [
+    state.pos[0] - start.pos[0], state.pos[1] - start.pos[1], state.pos[2] - start.pos[2],
+  ];
+  const turn: Vec3 = [
+    state.rot[0] - start.rot[0], state.rot[1] - start.rot[1], state.rot[2] - start.rot[2],
+  ];
+  const scale: Vec3 = state.scale;
+  const moved = move.some((n) => Math.abs(n) > 1e-4);
+  const turned = turn.some((n) => Math.abs(n) > 1e-4);
+  const scaled = start.mode === "scale";
+  if (!moved && !turned && !scaled) return;
+  const edits = start.ids.map((id) => {
+    const before = doc.prim(id);
+    const patch: Partial<Prim> = {};
+    if (!before) return { id, patch };
+    if (start.mode === "scale") {
+      // The handles start at the last prim's size, so the change is the
+      // ratio: every selected prim keeps its own size, scaled the same way.
+      const from = start.size[id] ?? [1, 1, 1];
+      patch.size = from.map((n, i) => {
+        const ratio = scale[i]! / (start.scale[i] || 1);
+        return Math.max(GRID, Math.round(n * ratio * 1000) / 1000);
+      }) as Vec3;
+    } else {
+      const pos: Vec3 = [before.pos[0] + move[0], before.pos[1] + move[1], before.pos[2] + move[2]];
+      const rot: Vec3 = [
+        (before.rot?.[0] ?? 0) + turn[0], (before.rot?.[1] ?? 0) + turn[1], (before.rot?.[2] ?? 0) + turn[2],
+      ];
+      patch.pos = snapOn ? snapVec3(pos, GRID) : pos;
+      patch.rot = snapOn ? snapVec3(rot, ROTATE_STEP) : rot;
+    }
+    return { id, patch };
+  }).filter((e) => Object.keys(e.patch).length);
+  if (edits.length) doc.change(edits, start.mode === "scale" ? "resize" : start.mode === "rotate" ? "rotate" : "move");
+});
 
 $("undoBtn").addEventListener("click", () => doc.undo());
 $("redoBtn").addEventListener("click", () => doc.redo());
