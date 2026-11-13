@@ -175,6 +175,13 @@ export function validateLevel(level: Level): ValidationResult {
       }
       continue;
     }
+    if (p.type === "health") {
+      // HP-01: a placed health pack heals its own amount.
+      if (!(typeof p.amount === "number" && p.amount > 0)) {
+        errors.push(`pickup ${p.id}: a health pickup needs a positive amount`);
+      }
+      continue;
+    }
     if (p.type === "melee") {
       // MEL-01: a melee pickup names a real hand weapon (data/melee.json).
       if (typeof p.melee !== "string" || !(p.melee in meleeWeapons)) {

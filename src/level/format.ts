@@ -169,6 +169,9 @@ export interface Pickup {
   /** LVL-05: the blaster a `blaster` pickup gives (an id in
    *  data/blasters.json). */
   blaster?: string;
+  /** HP-01: health a `health` pickup heals, capped at the player's
+   *  maximum. Must be positive (the validator says so). */
+  amount?: number;
   /** MEL-01: the hand weapon a `melee` pickup gives (an id in
    *  data/melee.json `weapons`, the M01 sword). */
   melee?: string;

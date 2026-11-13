@@ -7,6 +7,12 @@
     "radius": 0.12, "hopSpeed": 3, "shift": 0.8, "settleSpeed": 0.5,
     "bobHeight": 0.04, "bobRate": 4, "color": "#fff4e0"
   },
+  "healthPack": {
+    "_note": "HP-01. The health pack a level file places (a pickups entry of type health, with its own amount). A cream box, bigger than a finisher blob, that sits on the floor (no hop), turns slowly and bobs like the ammo box, never expires and never drifts to the player. Walked within collectRadius of it, it heals the entry's amount (capped at the player's maximum) and is gone; at full health it stays. size: the box edge in metres. turnRate: radians per second.",
+    "size": 0.4, "color": "#fff4e0",
+    "collectRadius": 1, "max": 8,
+    "turnRate": 0.6, "bobHeight": 0.04, "bobRate": 2
+  },
   "ammo": {
     "_note": "LVL-02a. The foam ammo box the level files place (a pickups entry of a darts-* type). It sits on the floor (no hop), turns slowly and bobs, size is the box edge in metres, and a player within collectRadius of it collects it. The dart count comes from the level file's count field. lifetime 0: level boxes never expire. turnRate: radians per second.",
     "size": 0.35, "color": "#ffd23f",

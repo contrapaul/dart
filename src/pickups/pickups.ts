@@ -55,6 +55,7 @@ type Kind = PickupKind;
 const HEALTH = pickupData.health;
 const AMMO = pickupData.ammo;
 const BLASTER = pickupData.blaster;
+const PACK = pickupData.healthPack;
 const MELEE = pickupData.melee;
 interface Item {
   kind: Kind;
@@ -68,8 +69,12 @@ interface Item {
   /** Ammo only: the dart type it refills and how many darts it holds. */
   dartType?: DartTypeName;
   dartCount?: number;
-  /** Ammo only: starting facing, radians about Y (boxes do not turn in unison). */
+  /** Ammo and health pack only: starting facing, radians about Y. */
   spin: number;
+  /** HP-01: the health one blob or pack gives. A finisher blob and a melee
+   *  kill's blob carry their own amounts; a placed pack carries the level
+   *  file's. Absent means the kind's own data amount. */
+  amount?: number;
   /** LVL-05, blaster only: the blaster id the level gives here. */
   blasterId?: string;
   /** LVL-05, blaster only: its own little turn, so two pedestals differ. */
@@ -130,14 +135,15 @@ export class PickupSystem {
       // no shader touches. Pores would be too fine at blob size anyway.
       // A blaster pickup draws the blaster's own model, so it has none.
       if (kind !== "blaster" && kind !== "melee") {
-        const kk = kind === "ammo" ? AMMO : HEALTH;
+        const kk = kind === "ammo" ? AMMO : kind === "healthPack" ? PACK : HEALTH;
         this.mats[kind] = new THREE.MeshStandardMaterial({
           color: kk.color, roughness: 1,
         });
       }
       this.radius[kind] = kind === "ammo" ? AMMO.size
         : kind === "blaster" ? BLASTER.foot
-          : kind === "melee" ? MELEE.foot : HEALTH.radius;
+        : kind === "healthPack" ? PACK.size
+        : kind === "melee" ? MELEE.foot : HEALTH.radius;
     }
     scene.add(this.group);
   }
@@ -147,7 +153,9 @@ export class PickupSystem {
    *  the kind's scale (the box's edge, the blob's radius). LVL-05: a blaster
    *  pickup's foot is its own `blaster.foot`, the height its model rests at. */
   private baseOf(kind: Kind): number {
-    return kind === "ammo" ? this.radius[kind] / 2 : this.radius[kind];
+    return kind === "ammo" || kind === "healthPack"
+      ? this.radius[kind] / 2
+      : this.radius[kind];
   }
 
   /** One pickup of a kind at a world position with a launch velocity. At
@@ -159,7 +167,8 @@ export class PickupSystem {
   ): Item {
     const k = kind === "ammo" ? AMMO
       : kind === "blaster" ? BLASTER
-        : kind === "melee" ? MELEE : HEALTH;
+      : kind === "healthPack" ? PACK
+      : kind === "melee" ? MELEE : HEALTH;
     // The collider bridges a bit of the space below the box, and below the
     // blob its full radius: the foot is where the collider hangs. The box
     // is a ball of half edge, the blob a ball of its radius.
@@ -180,7 +189,10 @@ export class PickupSystem {
       ? this.makeModel(blasterId)
       : kind === "melee"
         ? buildSword()
-        : new THREE.Mesh(kind === "ammo" ? this.boxGeo : this.geo, this.mats[kind]);
+        : new THREE.Mesh(
+          kind === "ammo" || kind === "healthPack" ? this.boxGeo : this.geo,
+          this.mats[kind],
+        );
     if (kind !== "blaster") {
       mesh.castShadow = true;
       if (kind !== "melee") mesh.scale.setScalar(scale);
@@ -199,7 +211,7 @@ export class PickupSystem {
     // sensor: sensors do not support a resting body and the blob would fall
     // through the floor. The ammo box and the blaster pickup start without
     // angular velocity, so neither tumbles when it settles.
-    if (kind === "ammo" || kind === "blaster" || kind === "melee") {
+    if (kind === "ammo" || kind === "blaster" || kind === "healthPack" || kind === "melee") {
       body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     }
     this.world.createCollider(
@@ -210,6 +222,8 @@ export class PickupSystem {
     const item: Item = {
       kind, mesh, body, prevT: pos.clone(), age: 0, gone: false,
       dartType, dartCount, blasterId, meleeId,
+      // The ammo box starts at a random facing (LVL-02a); a placed pack
+      // starts square to the room.
       spin: kind === "ammo" ? Math.random() * Math.PI * 2 : 0,
       // A placed pickup's own turn, so two pedestals differ. Not random: the
       // pickups are placed in file order, so their phases spread with it.
@@ -255,6 +269,14 @@ export class PickupSystem {
         const id = p.blaster;
         if (!id) continue; // the validator rejects such a file
         this.spawn("blaster", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0), undefined, undefined, id);
+        continue;
+      }
+      if (t === "health") {
+        // HP-01: a placed health pack. The amount is the file's; the
+        // validator rejects a file without a positive one.
+        if (!(typeof p.amount === "number" && p.amount > 0)) continue;
+        const it = this.spawn("healthPack", new THREE.Vector3(...p.pos), new THREE.Vector3(0, 0, 0));
+        it.amount = p.amount;
         continue;
       }
       // MEL-01: a hand weapon place the same way.
@@ -307,18 +329,21 @@ export class PickupSystem {
     return true;
   }
 
-  /** GAME-07: the finisher's health spray, a ring of count blobs. */
-  sprayHealth(pos: THREE.Vector3) {
-    const k = pickupData.health;
-    for (let i = 0; i < k.count; i++) {
-      const a = (i / k.count) * Math.PI * 2 + Math.random() * 0.8;
+  /** GAME-07: the finisher's health spray, a ring of count blobs. HP-01: a
+   *  melee kill sprays its own count of its own amount (data/melee.json
+   *  killDrop) through this, so each blob carries the health it gives. */
+  sprayHealth(pos: THREE.Vector3, count = HEALTH.count, amount = HEALTH.amount) {
+    const k = HEALTH;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + Math.random() * 0.8;
       const r = k.shift * (0.5 + 0.5 * Math.random());
       const sp = k.hopSpeed * (r / k.shift);
-      this.spawn(
+      const it = this.spawn(
         "health",
         pos.clone().setY(pos.y + k.radius),
         new THREE.Vector3(Math.sin(a) * sp, k.hopSpeed, Math.cos(a) * sp),
       );
+      it.amount = amount;
     }
   }
 
@@ -356,6 +381,18 @@ export class PickupSystem {
         }
         continue;
       }
+      if (it.kind === "healthPack") {
+        // HP-01: a placed pack. It never expires and never drifts to the
+        // player; walked within its radius it heals its own amount and is
+        // gone, and at full health it stays on the floor.
+        if (d2 <= PACK.collectRadius * PACK.collectRadius && !this.health.dead) {
+          if (this.health.heal(it.amount ?? 0) > 0) {
+            this.onCollected(it.kind, _t.set(t.x, t.y, t.z));
+            this.remove(i);
+          }
+        }
+        continue;
+      }
       // MEL-01: a hand weapon, the blaster pickup's rule exactly.
       if (it.kind === "melee") {
         if (d2 <= MELEE.collectRadius * MELEE.collectRadius && !this.health.dead) {
@@ -375,7 +412,7 @@ export class PickupSystem {
         // Walking over it: collect when there is health to give, otherwise
         // the blob stays on the floor (at full health the game has nothing
         // to spend, and the card says they stay).
-        if (!this.health.dead && this.health.heal(HEALTH.amount) > 0) {
+        if (!this.health.dead && this.health.heal(it.amount ?? HEALTH.amount) > 0) {
           this.onCollected(it.kind, _t.set(t.x, t.y, t.z));
           this.remove(i);
         }
@@ -421,14 +458,15 @@ export class PickupSystem {
       if (it.gone) continue;
       const k = it.kind === "ammo" ? AMMO
         : it.kind === "blaster" ? BLASTER
-          : it.kind === "melee" ? MELEE : HEALTH;
+        : it.kind === "healthPack" ? PACK
+        : it.kind === "melee" ? MELEE : HEALTH;
       const t = it.body.translation();
       it.prevT.x += (t.x - it.prevT.x) * alpha;
       it.prevT.y += (t.y - it.prevT.y) * alpha;
       it.prevT.z += (t.z - it.prevT.z) * alpha;
       const v = it.body.linvel();
       const settled = it.kind === "ammo" || it.kind === "blaster" || it.kind === "melee"
-        || Math.hypot(v.x, v.z) < HEALTH.settleSpeed;
+        || it.kind === "healthPack" || Math.hypot(v.x, v.z) < HEALTH.settleSpeed;
       const bob = settled ? (Math.sin(it.age * k.bobRate) * 0.5 + 0.5) * k.bobHeight : 0;
       it.mesh.position.set(
         it.prevT.x,
@@ -437,6 +475,7 @@ export class PickupSystem {
       );
       if (it.kind === "ammo") it.mesh.rotation.y = it.spin + it.age * AMMO.turnRate;
       if (it.kind === "blaster") it.mesh.rotation.y = it.turn + it.age * BLASTER.turnRate;
+      if (it.kind === "healthPack") it.mesh.rotation.y = it.spin + it.age * PACK.turnRate;
       if (it.kind === "melee") {
         // The sword stands blade up (its own +Y) and turns about the world's
         // Y, so the flat of the blade comes round to the player.

@@ -86,6 +86,89 @@ is 1104 tests, 2 skipped on that branch.
 
 ## Log
 
+### 2026-11-13: HP-01 review, merged (Claude Opus 5.5): health on the map
+
+- DeepSeek V4.1 Flash 1017 built the card (after two restarts: Paul's
+  early message stopped the first, and the second hit "database is
+  locked" because two Pi runs opened their session store at the same
+  instant; start parallel Pi runs a few seconds apart).
+- Merged together with MEL-01, which touched the same pickup code: both
+  new kinds (the health pack and the sword) now sit side by side in
+  `src/pickups/pickups.ts`, the level format and the validator.
+- Seen in the browser (`?watch`, by script): in 1-2 a player hurt to 40
+  walked onto the store's pack and went to 65, the pack gone (3 packs to
+  2); in `env-03&campaign` the melee key bashed before the sword pickup
+  and swung the combo after it, with the `[Paul]` name flash.
+- 1164 tests pass (2 skipped); check and smoke green.
+- Not verified: a melee kill dropping health in play (tested headless),
+  the packs' look and where they sit by eye, Firefox.
+
+### 2026-11-13: HP-01 health on the map and from melee kills (Pi, DeepSeek V4.1 Flash 1017)
+
+Paul's decision (PLAN section 14, 2026-11-13): "Health should be found in
+drops on the map and melee kills". LVL-06 found that a level file could
+list a `health` pickup and pass the validator while `loadLevelBoxes` never
+built it.
+
+- **Placed health.** `PickupSystem` has a `healthPack` kind with its own
+  `data/pickups.json` block (size 0.4, the blob's cream, collectRadius 1,
+  turnRate 0.6, bob 0.04 at 2, max 8). A `health` entry in a level file
+  builds one: a cream box on the floor, no hop, no lifetime, no drift to
+  the player, turning and bobbing like the ammo box. Walked within 1 m it
+  heals the entry's own `amount`, capped at the maximum, and is gone; at
+  full health (or dead) it stays. A restart's `clear` plus
+  `loadLevelBoxes` brings it back. `Pickup.amount` is new in
+  `src/level/format.ts`; `src/level/validate.ts` rejects a `health` entry
+  without a positive amount.
+- **Melee kills.** `Melee` gained `onKill(f, at)`, called from `strike`
+  when a hit leaves the Foamer `state === "down"`, and a `killDrop`
+  getter. `src/game/game.ts` wires it to
+  `pickups.sprayHealth(at, killDrop.count, killDrop.amount)`, so the
+  melee never imports the pickups (the blaster pickup's loadout hook
+  shape). `sprayHealth` now takes count and amount, and every blob carries
+  its own `amount`; the finisher's call passes neither, so its spray is
+  unchanged (3 blobs of 10). `data/melee.json` `killDrop` is 2 of 5. A
+  dart or a blast kill never reaches `parryDamage`'s down path from
+  `strike`, and `strike` skips Foamers already down, so one kill sprays
+  once.
+- **Placements** (start values, Paul will move them; each is on the floor,
+  outside every arena, on the path or a step off it):
+  - 1-2: `store-health` at `[4, 0.2, -16.5]` in the breather store by its
+    ammo box; `crossroads-health` at `[-6, 0.2, -47]` on the Crossroads
+    checkpoint; `breather2-health` at `[-3, 0.2, -80]` in breather 2 by
+    its ammo box.
+  - 1-3: `breather-health` at `[-2, -3.8, -71]` in the catwalk breather
+    after the Pit; `breather2-health` at `[-2.5, -9.8, -152]` in breather
+    2 after the hall drop. None in the Pit or the arenas (LEVEL-1-3.md's
+    note said no health at all; the card overrides it, and these two are
+    the two breathers it named).
+  - 1-4: `alcove-health` at `[5, 0.2, -113]` in the mid-hall alcove;
+    `lift-health` at `[0, -8.8, -292]` in the corridor before the lift
+    exit; `corr6-health` at `[0, -8.8, -248]` in the corridor from the
+    Ring to the Yard. Breather 2 stays pickup-free (its own test).
+- **Watch.** `dartArena.state().pickups` gained `packs` (the placed packs
+  still on the floor), and the watch has a `hurt(amount)` helper so a
+  check can walk a hurt player over a pack.
+- Tests: 8 in `tests/pickups/pickups.test.ts` (heal and gone, cap at the
+  maximum, stays at full and dead, no expiry and no drift, floor and bob
+  and turn, restart, no positive amount builds nothing, the cap trims its
+  own), 5 in `tests/game/melee.test.ts` (combo kill sprays, once only,
+  charged swing, bash, dart kill sprays none and the finisher's numbers
+  are unchanged), 4 in `tests/level/validate.test.ts` (amount rules and
+  the three files), 9 in the new
+  `tests/level/health-pack-placement.test.ts` (the Pit has none, two or
+  three per level, floor under each, none in an arena, 1-4's breather 2
+  still empty, all three validate). `npm run check` green (1109 tests, 2
+  skipped), `npm run smoke` green (4 pages).
+- Seen in the real page with a throwaway DevTools probe (not committed):
+  each level's packs on the floor (1-2 three, 1-3 two, 1-4 three, the Pit
+  none, no page errors), a player hurt to 40 healed to 65 then 90 by the
+  store and crossroads packs with each pack gone, and a pack kept at full
+  health. **Not seen by eye:** the box's look and its turn and bob in a
+  real frame (the probe reads state, not pixels), where each pack sits
+  relative to the room's furniture at eye level, and a melee kill in play
+  (the spray is tested headless).
+
 ### 2026-11-13: MEL-01 review, merged (Claude Opus 5.5): the sword
 
 - DeepSeek V4.1 Flash 1017 built the card in one run (after a restart:

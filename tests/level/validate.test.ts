@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import pitJson from "../../data/levels/1-1-pit.json";
+import level12 from "../../data/levels/1-2.json";
+import level13 from "../../data/levels/1-3.json";
+import level14 from "../../data/levels/1-4.json";
 import { validateLevel } from "../../src/level/validate";
 import type { Arena, Level, Pickup } from "../../src/level/format";
 
@@ -270,3 +273,42 @@ describe("structural errors", () => {
   });
 });
 
+
+// HP-01: a health pickup heals its own amount, so a file must give one.
+describe("HP-01: a health pickup needs a positive amount", () => {
+  const at = { pos: [0, 0.2, -10] as [number, number, number] };
+
+  it("accepts a health pickup with a positive amount", () => {
+    const level = broken((l) => {
+      l.pickups!.push({ id: "hp", type: "health", amount: 25, ...at });
+    });
+    expect(errorsOf(level)).toEqual([]);
+  });
+
+  it("rejects a health pickup with no amount", () => {
+    const level = broken((l) => {
+      l.pickups!.push({ id: "hp", type: "health", ...at } as Pickup);
+    });
+    expect(errorsOf(level).join(" ")).toMatch(/hp: a health pickup needs a positive amount/);
+  });
+
+  it("rejects zero and negative amounts", () => {
+    for (const amount of [0, -5]) {
+      const level = broken((l) => {
+        l.pickups!.push({ id: "hp", type: "health", amount, ...at });
+      });
+      expect(errorsOf(level).join(" ")).toMatch(/positive amount/);
+    }
+  });
+
+  it("the campaign's three levels with packs validate with no errors", () => {
+    for (const json of [level12, level13, level14]) {
+      const level = json as unknown as Level;
+      expect(validateLevel(level).errors, level.meta.id).toEqual([]);
+      const packs = (level.pickups ?? []).filter((p) => p.type === "health");
+      expect(packs.length, level.meta.id).toBeGreaterThanOrEqual(2);
+      expect(packs.length, level.meta.id).toBeLessThanOrEqual(3);
+      for (const p of packs) expect(p.amount).toBe(25);
+    }
+  });
+});
