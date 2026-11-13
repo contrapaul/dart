@@ -119,3 +119,24 @@ describe("PT-03: the impact grows the kill, to a hard cap", () => {
     expect(impactOf(18, 0, 1)).toBe(0); // no health, no impact
   });
 });
+
+// Paul, 2026-11-13: "B05's impact is extremely weak. It should blow the head
+// off of a weaker Foamer easily." A Shrike kill at sniping range must chunk
+// (the chunk finish carves its hole at the hit, which takes a head), on the
+// weak Foamers too, where its 8 damage leaves little or no overkill.
+describe("B05: a Shrike kill always makes a dent", () => {
+  const b05 = (blastersData as unknown as {
+    B05: { impact: { fullMetres: number; zeroMetres: number; floor?: number } };
+  }).B05.impact;
+  it("chunks an F01 (6 health) and an F02 (8 health) at 25 m", () => {
+    expect(judgeImpact(spec, b05, 8, 6, 6, 25).outcome).toBe("chunk");
+    expect(judgeImpact(spec, b05, 8, 8, 8, 25).outcome).toBe("chunk");
+  });
+  it("still chunks at 60 m, where the shared range gives nothing", () => {
+    expect(judgeImpact(spec, b05, 8, 6, 6, 60).outcome).toBe("chunk");
+    expect(judgeImpact(spec, shared, 8, 6, 6, 60).outcome).toBe("down");
+  });
+  it("a block without a floor behaves as before", () => {
+    expect(judgeImpact(spec, shared, 8, 6, 6, 1).impact).toBeCloseTo(2 / 6);
+  });
+});
