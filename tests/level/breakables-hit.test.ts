@@ -12,8 +12,10 @@ import destruction from "../../data/destruction.json";
 import foamerData from "../../data/foamers.json";
 import meleeData from "../../data/melee.json";
 import type { Level, Prim } from "../../src/level/format";
+import edOne from "../../data/levels/ed-01.json";
 
 // Node has no Web Workers; the greedy mesher runs inline.
+const edOneLevel = edOne as unknown as Level;
 const FAKE = {
   mesh(padded: Uint8Array): Promise<MeshData> {
     return Promise.resolve(greedyMesh(padded, linearColorTable()));
@@ -209,6 +211,21 @@ describe("a hit point breakable", () => {
     const table = (foamerData as { test: { damage: Record<string, number> } }).test.damage;
     for (const type of Object.keys(table)) expect(dartDamageOf(type)).toBe(table[type]);
     expect(dartDamageOf("no-such-dart")).toBe(0);
+  });
+
+  it("builds the three ED-06 breakables of the test level", async () => {
+    const physics = await createPhysics();
+    const built = buildLevel(edOneLevel, physics.rapier, physics.world, FAKE);
+    // The upright wall is voxel foam, so it is not here; the turned box and
+    // the column are, with the file's own hit points.
+    expect(built.breakables.list.map((b) => b.prim.id)).toEqual(["turned-block", "foam-column"]);
+    expect(built.breakables.hpOf("turned-block")).toBe(60);
+    expect(built.breakables.hpOf("foam-column")).toBe(40);
+    // The voxel wall filled the volume: its 3 x 3 x 0.4 m is there.
+    let count = 0;
+    for (const chunk of built.voxels.chunks.values()) count += chunk.count;
+    const VOXEL = built.voxels.voxelSize;
+    expect(count).toBeGreaterThanOrEqual(Math.round((3 * 3 * 0.4) / VOXEL ** 3));
   });
 
   it("leaves an upright box to the voxel volume, and no mesh here", async () => {
