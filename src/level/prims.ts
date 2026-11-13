@@ -3,6 +3,8 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { primColliderParts, primGeometry, primMatrix } from "./prim-geometry";
+import { isVoxelBreakable } from "./validate";
+import { material } from "../voxel/materials";
 import type { Level, Prim } from "./format";
 
 // ED-01: the editor's primitives out of the level file and into the scene
@@ -11,11 +13,12 @@ import type { Level, Prim } from "./format";
 // draw call. Everything else draws on its own: a hidden prim has its own
 // mesh and its own colliders (off) so a trigger can show it later.
 //
-// Solid and breakable prims collide. A breakable box is foam voxels in the
-// level file, not a mesh; until ED-02 breaks them, a breakable prim here
-// collides like a solid one (see the card). Decor draws and does not
-// collide. Hazard prims are drawn and collided by ED-03, so they are
-// skipped here.
+// Solid prims collide. A breakable prim that is voxel foam (an upright box,
+// see isVoxelBreakable) is not built here at all: ED-06 empties it into the
+// level's voxel volume in build.ts. Every other breakable prim is built
+// here (or by a hidden one's own mesh) and breaks by hit points in
+// breakables.ts. Decor draws and does not collide. Hazard prims are drawn
+// and collided by ED-03, so they are skipped here.
 
 /** What a level page can do to a prim that a trigger names. */
 export interface PrimHandle {
@@ -24,6 +27,29 @@ export interface PrimHandle {
 
 function materialFor(colour: string) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(colour), roughness: 0.9 });
+}
+
+/** ED-06: the foam material (a name in data/materials.json) nearest a prim's
+ *  colour. The voxel palette is fixed when the module loads
+ *  (src/voxel/materials.ts) because the mesher workers each keep their own
+ *  copy of its colour table, so a prim colour registers nothing new: it
+ *  becomes the closest foam instead. Say so in HANDOFF.md. */
+export function foamMaterialFor(colour: string): string {
+  const hex = /^#[0-9a-fA-F]{6}$/.test(colour) ? parseInt(colour.slice(1), 16) : 0xffffff;
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  let best = "foam-white";
+  let bestD = Infinity;
+  for (let id = 1; id < 256; id++) {
+    const m = material(id);
+    if (!m || m.indestructible || !m.name.startsWith("foam")) continue;
+    const d = (m.color >> 16 & 255) - r, e = (m.color >> 8 & 255) - g, f = (m.color & 255) - b;
+    const d2 = d * d + e * e + f * f;
+    if (d2 < bestD) {
+      bestD = d2;
+      best = m.name;
+    }
+  }
+  return best;
 }
 
 /** The prim's colliders, placed where its mesh is. A cuboid part keeps its
@@ -75,6 +101,8 @@ export function buildPrims(
   for (const prim of level.prims ?? []) {
     // ED-03 draws hazards; a hazard is see-through and has no collision.
     if (prim.behaviour === "hazard") continue;
+    // ED-06: the voxel kind is filled into the volume by build.ts.
+    if (!prim.hidden && isVoxelBreakable(prim)) continue;
     const collides = prim.behaviour === "solid" || prim.behaviour === "breakable";
     // Box, cylinder and stairs geometry is indexed and the ramp and wedge
     // are not; mergeGeometries refuses a mix, so every part goes in as
