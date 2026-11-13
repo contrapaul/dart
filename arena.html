@@ -14,6 +14,10 @@
     <div id="overlay">
       <h1>DART</h1>
       <p id="status">Loading</p>
+      <p class="menu">
+        <button id="makeLevel" type="button">Make a level</button>
+        <button id="playLevel" type="button">Play a level</button>
+      </p>
       <button id="titleSettings" type="button">Settings</button>
       <p class="links"><a href="/index.html">Test course</a></p>
     </div>
@@ -62,6 +66,18 @@
         <h2>Settings</h2>
         <div id="settingsRows"></div>
         <button id="settingsBack" type="button">Back</button>
+      </div>
+    </div>
+    <div id="myLevels" hidden>
+      <div class="panel">
+        <h2>My levels</h2>
+        <p id="myLevelsEmpty" class="empty" hidden>No levels yet. Make a level first.</p>
+        <p id="myLevelsError" class="error" hidden></p>
+        <div id="myLevelsList"></div>
+        <div id="myLevelsProblems" class="problems" hidden></div>
+        <button id="openLevelFile" type="button">Open a level file</button>
+        <input id="myLevelFile" type="file" accept=".json,application/json" hidden />
+        <button id="myLevelsBack" type="button">Back</button>
       </div>
     </div>
     <script type="module" src="/src/arena/main.ts"></script>

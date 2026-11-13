@@ -21,4 +21,11 @@ export function wireTitleMenu(root: ParentNode = document): void {
     const now = readSave();
     location.href = campaignUrl(now ? now.level : firstLevel());
   });
+
+  // ED-10a: the editor is the only way to make a level, and its own live
+  // play starts in ED-10. Play a level is wired by src/game/my-levels.ts.
+  const make = root.querySelector<HTMLButtonElement>("#makeLevel");
+  make?.addEventListener("click", () => {
+    location.href = "editor.html";
+  });
 }

@@ -11,8 +11,12 @@ import { createGame } from "../game/game";
 import type { ArenaBuilt } from "./extras";
 import { chosenLevel, loadLocalLevel } from "./levels";
 import { campaignMode, entryState, readSave, type CampaignState } from "../game/campaign";
+import { wireTitleMenu } from "../game/title";
+import { wireMyLevels } from "../game/my-levels";
 
 const status = document.querySelector<HTMLParagraphElement>("#status")!;
+wireTitleMenu();
+wireMyLevels();
 
 // ED-01: `?level=local:<key>` reads the level the player saved in this
 // browser before anything else looks at it, so the campaign's own entry

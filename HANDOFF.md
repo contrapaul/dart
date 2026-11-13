@@ -88,6 +88,19 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-10a, Make a level and Play a level (Pi, strata-dsv41)
+
+- `index.html` and `arena.html` gain Make a level and Play a level buttons. Make a level goes to `editor.html`; Play opens the My levels panel with the same look as Settings.
+- `src/game/my-levels.ts` is split into plain functions and the DOM wiring:
+  - `playLevelUrl(key)` builds `arena.html?level=local:<key>`, `editLevelUrl(key)` builds `editor.html?open=<key>`.
+  - `sortNewestFirst`, `levelRows` and `levelsView` return rows newest first, the name from `meta.name` or `[Paul]`, the saved time, and the two URLs; an empty store returns the empty message.
+  - `parseLevelFile` parses JSON, checks it with `validateLevel` and returns the validator's errors.
+  - `storeLevelFile` refuses a bad file with the first three errors and stores nothing; a good file is saved with `putLevel`, returns the key and its play URL; a store that refuses returns the save error.
+  - `wireMyLevels` renders the rows, wires Play, Edit, Open a level file, Back and Esc. Every control is a real button.
+- Decided: the list, file and URL logic stay DOM-free so `tests/game/my-levels.test.ts` (6 tests) can stub the store and run without jsdom. This follows the card's rewritten "no DOM library" line, and no dependency was added.
+- `npm run check` and `npm run smoke` pass (1293 tests, 2 skipped; 5 pages boot).
+- Not checked by eye: no browser here, so the panel's look, Esc closing it, and the actual file import flow are unverified. Edit's `?open=<key>` is wired by another editor card, so Edit is not yet known to open the level.
+
 ### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
 
 - strata added `Hazards.blocksAt` (a shown hazard that damages Foamers),
