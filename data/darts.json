@@ -87,7 +87,7 @@
       "restitution": 0.25,
       "impulse": 0.8,
       "fireInterval": 0.2,
-      "carveRadius": 0.07,
+      "carveRadius": 0.14,
       "pierce": 1
     },
     "slug": {

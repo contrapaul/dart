@@ -32,6 +32,10 @@
 
   "arenas": [],
 
+  "pickups": [
+    { "id": "room-sword-m01", "type": "melee", "melee": "M01", "pos": [-2, 0, 4] }
+  ],
+
   "playerStart": { "pos": [0, 0, 6], "yaw": 0 },
   "exit": { "pos": [3, 1, -6], "size": [2, 2, 2] }
 }

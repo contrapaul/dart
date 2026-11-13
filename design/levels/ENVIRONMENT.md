@@ -573,6 +573,53 @@ Swarmer and F05 Darter (fast walkers that chase the player through it).
 physics contact), damage through the player's health. Numbers in data.
 Built in ENV-04.
 
+### E15 Leaking barrel (explosive, S)
+
+**Paul, 2026-11-13.** He asked for a barrel on the range that sprays
+cubes from punctures before it explodes, "as if it's leaking fuel": one
+standard dart sets a 10 s fuse, a second halves what is left, a third
+sets it off, so B01 Dartman's three dart cluster is the answer. Every
+other round sets it off at once. Built in ENV-05. He also wants
+explosive terrain later (FX-01), so this one was built to be reused.
+
+**What it is.** A short toy foam barrel (0.6 m across, 0.9 m tall), a
+solid cylinder darts hit and the player cannot walk through. A puncture
+opens a leak at the hit point and the leak jets small foam cubes out
+along the hit's normal in a narrow cone, faster as the fuse runs down,
+until the barrel goes off in one blast bigger than a launcher round.
+Look: a bright foam cylinder with a band [Paul: the colours and any
+print; the card starts orange body, yellow band, white lid]. No hazard
+symbols or real product's design.
+
+**What it teaches.** That the room can be shot, and that shooting it
+right is a plan: a barrel is cover that turns into a trap, so a player
+learns to spend the third dart on it, or to read its leak and leave. A
+row of barrels ripples, which rewards a shot that starts a chain. Pairs
+with B01's cluster (three punctures at once, the card's own example),
+with B07's launcher round (a blast that sets off whatever it reaches),
+and with F03 Swarmer (a barrel's blast is the cheap answer to a swarm
+coming down a lane).
+
+**Pillar.** 6 (the room answers) and 5 (the floor is a tool: the barrel
+is cover until it is not).
+
+**Code.** `src/level/barrel-fuse.ts` holds the rules with no world in
+them (fuse, puncture count, chain delay, blast reach), so explosive
+terrain reuses it. `src/level/barrels.ts` is the thin system: one mesh
+group and one solid collider per barrel, the spray through the shared
+`DebrisSystem` (its ring is the hard cap) with a seeded PRNG, and the
+blast through the shared `ExplosionSystem` with a `barrel` profile.
+Numbers in `data/barrel.json` and `data/explosion.json`. On the range:
+two barrels from `data/range.json`; `T` puts them back with the line.
+
+**Risks.** A barrel next to the Foamer line changes a time-to-kill
+reading if it goes off, so the range keeps the barrels clear of the
+line's arc (they are to the sides). A chain of barrels is recursion in
+disguise: the chain delay and the barrel leaving its own list before it
+blasts are what keeps it bounded. A spray of cubes is a lot of rigid
+bodies, so it never exceeds the debris cap and the spray stops the step
+the barrel goes.
+
 ---
 
 ## 3. Recommended first set

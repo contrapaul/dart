@@ -24,5 +24,10 @@
     "collectRadius": 1, "max": 8,
     "foot": 0.12, "turnRate": 0.7, "bobHeight": 0.04, "bobRate": 2,
     "color": "#ffd23f"
+  },
+  "melee": {
+    "_note": "MEL-01. The hand weapon a level gives away (a pickups entry of type melee with its melee id). It shows the same code-built sword the view holds (src/game/meleeView.ts buildSword), at world size, floating at its rest height, turning slowly and bobbing like the blaster pickup, and is taken by walking within collectRadius of it. foot: metres the sword's grip centre rests above the floor, so the pommel clears it.",
+    "collectRadius": 1, "max": 4,
+    "foot": 0.22, "turnRate": 0.7, "bobHeight": 0.04, "bobRate": 2
   }
 }

@@ -1,7 +1,11 @@
 {
-  "_note": "LVL-05, 2026-11-13. Paul's campaign rules (PLAN.md section 14): the player starts with the B02 Musketeer only, and the other blasters are found in levels. order lists the levels that can be played in order: Act 1 only for now, and 1-1 is just the Pit until the rest of it is built. found is Paul's whole plan, Act 2 and 3 included, so the later blasters are named here before their levels exist. A level id is the arena page's `?level=` name.",
+  "_note": "LVL-05, 2026-11-13. Paul's campaign rules (PLAN.md section 14): the player starts with the B02 Musketeer only, and the other blasters are found in levels. order lists the levels that can be played in order: Act 1 only for now, and 1-1 is just the Pit until the rest of it is built. found is Paul's whole plan, Act 2 and 3 included, so the later blasters are named here before their levels exist. A level id is the arena page's `?level=` name. MEL-01: the hand weapons follow the same rule: startMelee is what a new campaign owns (nothing: the fists' bash only), foundMelee is the hand weapon each level gives, and the first is the M01 sword in 2-1 just before Arena 1.",
   "order": ["1-1-pit", "1-2", "1-3", "1-4"],
   "startBlasters": ["B02"],
+  "startMelee": [],
+  "foundMelee": {
+    "2-1": "M01"
+  },
   "found": {
     "1-1-pit": "B01",
     "1-2": "B04",

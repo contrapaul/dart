@@ -76,6 +76,11 @@ const _drop = new THREE.Vector3();
 export class Melee {
   /** Charges left (full at level start and on retry). */
   charges = T.charges;
+  /** MEL-01: whether the player owns a hand weapon. A campaign that has not
+   *  found the sword owns none, and the key is the bash only (its charges
+   *  are never spent, and the sword view never shows). The test pages and
+   *  the range own it, as they always did. */
+  armed = true;
   /** The combo hit the next press swings (0 to hits-1). */
   comboStep = 0;
   /** Seconds left of the running swing (0 when none is). */
@@ -113,6 +118,25 @@ export class Melee {
 
   get maxCharges(): number { return T.charges; }
   get swinging(): boolean { return this.swingLeft > 0; }
+  /** The hand weapon in use (its id in data/melee.json `weapons`). */
+  get weaponId(): string { return T.active; }
+  /** MEL-01: take the hand weapon up (a pickup) or put it away (a restart
+   *  that goes back to a level's entry state, where it had not been found).
+   *  Bringing it up fills its charges; putting it away drops the swing, so
+   *  no stroke outlives the weapon. */
+  setArmed(on: boolean): void {
+    if (this.armed === on) return;
+    this.armed = on;
+    if (on) {
+      this.charges = T.charges;
+      this.rechargeLeft = T.rechargeSeconds;
+    } else {
+      this.swingLeft = 0;
+      this.comboStep = 0;
+      // No charges to show on the HUD while the fists are all there is.
+      this.charges = 0;
+    }
+  }
   /** ENV-02: the charged swing's own numbers, so a page can ask what else
    *  the swing reached (a button) with the reach the card gave melee. */
   get reach(): number { return T.reach; }
@@ -128,7 +152,9 @@ export class Melee {
 
   /** Full at level start and on retry (the page's restart hooks). */
   reset(): void {
-    this.charges = T.charges;
+    // MEL-01: a restart fills the charges of a weapon the player owns; none
+    // are shown for fists.
+    this.charges = this.armed ? T.charges : 0;
     this.comboStep = 0;
     this.swingLeft = 0;
     this.bashLeft = 0;
@@ -151,7 +177,7 @@ export class Melee {
       this.lastParries = shield.parries;
       while (gained-- > 0 && this.give()) e.refills++;
     }
-    if (this.charges < T.charges) {
+    if (this.armed && this.charges < T.charges) {
       this.rechargeLeft -= dt;
       if (this.rechargeLeft <= 0) {
         this.rechargeLeft = T.rechargeSeconds;
@@ -164,7 +190,8 @@ export class Melee {
   }
 
   private give(): boolean {
-    if (this.charges >= T.charges) return false;
+    // MEL-01: a parry or a recharge cannot arm a weapon that was not found.
+    if (!this.armed || this.charges >= T.charges) return false;
     this.charges++;
     return true;
   }
@@ -182,7 +209,9 @@ export class Melee {
     if (this.swinging) return e;
     if (shield.state === "raised" || shield.charging) return e;
     this.debrisThisSwing = 0;
-    if (this.charges <= 0) return this.bash(eye, forward, e);
+    // MEL-01: with no hand weapon there is nothing to swing: the key is the
+    // bash, which spends no charge.
+    if (!this.armed || this.charges <= 0) return this.bash(eye, forward, e);
     const hits = this.spec.hits;
     const within = this.time - this.lastPress <= T.comboWindow;
     const idx = within ? this.comboStep % hits.length : 0;
@@ -252,7 +281,7 @@ export class Melee {
     picked.sort((a, b) => a.d2 - b.d2);
     for (const p of picked.slice(0, maxTargets)) {
       // The non-dart hit: health and the finishable band, no part break
-      // and no pop (a foam baton is a bounce, not a dart).
+      // and no pop (a foam blade is a bounce, not a dart).
       this.foamers.parryDamage(p.f, damage);
       // HP-01: this hit took it down, so the page sprays the kill's health
       // blobs. The strike skips Foamers already down, so this is the hit

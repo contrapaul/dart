@@ -157,12 +157,13 @@ export interface Arena {
 
 export type PickupType =
   | "darts-standard" | "shells-b03" | "darts-precision" | "mega"
-  | "foam-balls" | "health" | "armor" | "token" | "toy" | "blaster";
+  | "foam-balls" | "health" | "armor" | "token" | "toy" | "blaster" | "melee";
 
 export interface Pickup {
   id: string;
   type: PickupType;
-  /** A darts-* box's dart count. LVL-05: a blaster pickup has none. */
+  /** A darts-* box's dart count. LVL-05: a blaster pickup has none; MEL-01:
+   *  a melee pickup has none either. */
   count?: number;
   pos: Vec3;
   /** LVL-05: the blaster a `blaster` pickup gives (an id in
@@ -171,6 +172,9 @@ export interface Pickup {
   /** HP-01: health a `health` pickup heals, capped at the player's
    *  maximum. Must be positive (the validator says so). */
   amount?: number;
+  /** MEL-01: the hand weapon a `melee` pickup gives (an id in
+   *  data/melee.json `weapons`, the M01 sword). */
+  melee?: string;
 }
 
 export interface PlayerStart {

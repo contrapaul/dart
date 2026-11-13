@@ -1,43 +1,113 @@
 import * as THREE from "three";
 import meleeJson from "../../data/melee.json";
 
-// GAME-06: the placeholder look for melee weapon 1 (M01): a code-built
-// foam baton (toy colours, no art files) that sweeps across the view for
-// each combo hit: left to right, right to left, then overhead. The shield
-// bash has no baton; its shove is the camera kick in game.ts. The name
-// and look are [Paul]'s; this is a stand-in until he draws it.
+// GAME-06 / MEL-01: the placeholder look for melee weapon 1 (M01): a
+// code-built foam sword (toy colours, no art files, no metal: every part is
+// matte foam) that sweeps across the view for each combo hit: a low sweep
+// right to left, one back across, then an overhead chop. The shield bash has
+// no weapon; its shove is the camera kick in game.ts. The name and the look
+// are [Paul]'s; this is a stand-in until he draws the sword.
+//
+// Every size, colour and the camera placement are in data/melee.json `look`.
+// `buildSword` is exported because the melee pickup (a level's `melee`
+// entry) shows the same model at world size, so the two can never drift.
 
 const T = meleeJson as unknown as {
   swingTime: number;
   look: {
     position: [number, number, number];
-    handle: { length: number; radius: number; color: string };
-    ball: { radius: number; color: string };
+    rest: { pitch: number; yaw: number; roll: number };
+    pommel: { length: number; radius: number; color: string };
+    grip: { length: number; radius: number; color: string };
+    guard: { width: number; height: number; depth: number; color: string };
+    blade: { length: number; width: number; thickness: number; tipRadius: number; color: string };
     dip: number;
   };
 };
 
 const DEG = Math.PI / 180;
 
-/** The swing's path for one hit kind. Angles in degrees, in camera space. */
-interface Stroke {
-  /** Which axis the baton rotates about, X or Y. */
-  axis: "x" | "y";
-  from: number;
-  to: number;
-  roll: number; // spin about the baton's own length, degrees
+/** The foam sword at world size: the grip's middle is the origin (where a
+ *  hand holds it), the pommel below it, the blade up +Y, the flat of the
+ *  blade facing +Z. Every part is data `look`: the pommel an ellipsoid of
+ *  its length and radius, the grip a cylinder, the guard a bar across the
+ *  top of the grip, the blade a flat box and the tip a half disc of the
+ *  blade's own width and thickness, so no corner of it has an edge. */
+export function buildSword(): THREE.Group {
+  const L = T.look;
+  const sword = new THREE.Group();
+  // One matte material per colour: foam, so no shine (metalness stays 0).
+  const foam = (color: string) => new THREE.MeshStandardMaterial({ color, roughness: 0.95 });
+  const orange = foam(L.guard.color);
+  const bladeMat = foam(L.blade.color);
+
+  // Stacked up from the hand: the guard's centre is at the origin.
+  const guard = new THREE.Mesh(
+    new THREE.BoxGeometry(L.guard.width, L.guard.height, L.guard.depth), orange,
+  );
+  sword.add(guard);
+
+  const grip = new THREE.Mesh(
+    new THREE.CylinderGeometry(L.grip.radius, L.grip.radius, L.grip.length, 12),
+    foam(L.grip.color),
+  );
+  grip.position.y = -L.guard.height / 2 - L.grip.length / 2;
+  sword.add(grip);
+
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(L.pommel.radius, 12, 8), orange);
+  pommel.scale.y = L.pommel.length / (2 * L.pommel.radius);
+  pommel.position.y = -L.guard.height / 2 - L.grip.length - L.pommel.length / 2;
+  sword.add(pommel);
+
+  const base = L.guard.height / 2;
+  const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(L.blade.width, L.blade.length, L.blade.thickness), bladeMat,
+  );
+  blade.position.y = base + L.blade.length / 2;
+  sword.add(blade);
+
+  // A half cylinder: its flat face sits on the blade's end, its round side
+  // carries the tip. Rotated so the curve runs across the blade's width and
+  // the thickness is the blade's own.
+  const tip = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      L.blade.tipRadius, L.blade.tipRadius, L.blade.thickness, 12, 1, false, Math.PI / 2, Math.PI,
+    ),
+    bladeMat,
+  );
+  tip.rotation.x = Math.PI / 2;
+  tip.position.y = base + L.blade.length;
+  sword.add(tip);
+
+  sword.traverse((o) => { o.castShadow = true; });
+  return sword;
 }
 
-// The three strokes: wrist right, wrist left, overhead.
+/** The swing's path for one hit kind. Angles in degrees, about the camera's
+ *  axes (the hand is the pivot): Z sweeps the blade across the view, X
+ *  carries the tip away and back, and Y turns the flat of the blade for the
+ *  whole stroke (a sword's silhouette barely moves when it spins about its
+ *  own length). */
+interface Stroke {
+  axis: "x" | "z";
+  from: number;
+  to: number;
+  yaw: number;
+}
+
+// The three strokes: low right to high left, back across, then overhead.
 const STROKES: Stroke[] = [
-  { axis: "y", from: 55, to: -55, roll: 25 },
-  { axis: "y", from: -55, to: 55, roll: -25 },
-  { axis: "x", from: -75, to: 60, roll: 40 },
+  { axis: "z", from: -45, to: 65, yaw: 10 },
+  { axis: "z", from: 65, to: -40, yaw: -10 },
+  { axis: "x", from: 35, to: -75, yaw: -18 },
 ];
 
 export class MeleeView {
-  private group = new THREE.Group();
-  private baton = new THREE.Group();
+  /** The hand: the rest placement and the sword's held attitude. Public so
+   *  a test can watch it come and go. */
+  readonly group = new THREE.Group();
+  /** The stroke, about the hand, in the camera's axes. */
+  private swingGroup = new THREE.Group();
   private stroke: Stroke | null = null;
   private t = 0;
   private swingTime: number;
@@ -47,24 +117,11 @@ export class MeleeView {
     this.swingTime = T.swingTime;
     this.group.position.set(L.position[0], L.position[1], L.position[2]);
     this.group.visible = false;
-    const handleMat = new THREE.MeshStandardMaterial({
-      color: L.handle.color, roughness: 0.7,
-    });
-    const ballMat = new THREE.MeshStandardMaterial({
-      color: L.ball.color, roughness: 0.9,
-    });
-    const handle = new THREE.Mesh(
-      new THREE.CylinderGeometry(L.handle.radius, L.handle.radius * 1.15, L.handle.length, 10),
-      handleMat,
-    );
-    handle.position.y = L.handle.length / 2;
-    const ball = new THREE.Mesh(
-      new THREE.SphereGeometry(L.ball.radius, 12, 10),
-      ballMat,
-    );
-    ball.position.y = L.handle.length + L.ball.radius * 0.6;
-    this.baton.add(handle, ball);
-    this.group.add(this.baton);
+    const rest = new THREE.Group();
+    rest.rotation.set(L.rest.pitch * DEG, L.rest.yaw * DEG, L.rest.roll * DEG);
+    rest.add(buildSword());
+    this.swingGroup.add(rest);
+    this.group.add(this.swingGroup);
     camera.add(this.group);
   }
 
@@ -73,7 +130,6 @@ export class MeleeView {
   swing(hit: number): void {
     this.stroke = STROKES[hit % STROKES.length];
     this.t = 0;
-    this.baton.visible = true;
     this.group.visible = true;
   }
 
@@ -91,17 +147,14 @@ export class MeleeView {
     if (!s) return;
     this.t += dt;
     const p = Math.min(1, this.t / this.swingTime);
-    // Ease out: the baton leaves fast and lands slow.
+    // Ease out: the sword leaves fast and lands slow.
     const u = 1 - (1 - p) * (1 - p);
     const a = (s.from + (s.to - s.from) * u) * DEG;
-    // A slight bank to start with, plus the roll along the stroke, so the
-    // baton turns over through the swing instead of staying flat.
-    const bank = -0.5 - 0.25 * u + s.roll * u * DEG;
-    if (s.axis === "y") {
-      this.baton.rotation.set(0, a, bank);
-    } else {
-      this.baton.rotation.set(a, 0.2, bank);
-    }
+    this.swingGroup.rotation.set(
+      s.axis === "x" ? a : 0,
+      s.yaw * DEG,
+      s.axis === "z" ? a : 0,
+    );
     if (p >= 1) {
       this.stroke = null;
       this.group.visible = false;

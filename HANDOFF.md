@@ -26,7 +26,10 @@ the old text is in git history.
 **In progress:** nothing. OPS-04 (graphics presets, `?quality=low`,
 `medium`, `high`) is merged on local main, not pushed. LVL-06 (the 2-1
 concept and the blaster rows) is committed on branch `lvl-06`, not
-pushed, waiting on Paul's answers and Claude Opus 5.5's review.
+pushed, waiting on Paul's answers and Claude Opus 5.5's review. MEL-01
+(the sword, the hand weapon pickup, hand weapons in the save) is
+committed on branch `mel-01`, not pushed, waiting on review; the suite
+is 1104 tests, 2 skipped on that branch.
 
 **Waiting on Paul:**
 
@@ -82,6 +85,23 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review.
   2026-11-12 was made to fail once on purpose before it was trusted.
 
 ## Log
+
+### 2026-11-13: HP-01 review, merged (Claude Opus 5.5): health on the map
+
+- DeepSeek V4.1 Flash 1017 built the card (after two restarts: Paul's
+  early message stopped the first, and the second hit "database is
+  locked" because two Pi runs opened their session store at the same
+  instant; start parallel Pi runs a few seconds apart).
+- Merged together with MEL-01, which touched the same pickup code: both
+  new kinds (the health pack and the sword) now sit side by side in
+  `src/pickups/pickups.ts`, the level format and the validator.
+- Seen in the browser (`?watch`, by script): in 1-2 a player hurt to 40
+  walked onto the store's pack and went to 65, the pack gone (3 packs to
+  2); in `env-03&campaign` the melee key bashed before the sword pickup
+  and swung the combo after it, with the `[Paul]` name flash.
+- 1164 tests pass (2 skipped); check and smoke green.
+- Not verified: a melee kill dropping health in play (tested headless),
+  the packs' look and where they sit by eye, Firefox.
 
 ### 2026-11-13: HP-01 health on the map and from melee kills (Pi, DeepSeek V4.1 Flash 1017)
 
@@ -148,6 +168,225 @@ built it.
   real frame (the probe reads state, not pixels), where each pack sits
   relative to the room's furniture at eye level, and a melee kill in play
   (the spray is tested headless).
+
+### 2026-11-13: MEL-01 review, merged (Claude Opus 5.5): the sword
+
+- DeepSeek V4.1 Flash 1017 built the card in one run (after a restart:
+  Paul's early message had stopped the first try before it began).
+- Reviewed: the save goes to version 2 with the owned hand weapons, and a
+  version 1 save still loads (Act 1 progress kept, no hand weapon).
+  Without the sword the melee key is the bash and no charges show; a
+  parry or a recharge cannot arm a weapon that was not found.
+- Seen in the browser (`/arena?level=env-03&watch`, a swing by script):
+  the lime foam blade sweeps across the view mid-swing. The sword is
+  drawn only while it swings, as the baton was; the card's "the grip sits
+  in the lower right at rest" was read as the rest pose of the swing,
+  not a held weapon. Paul's call if he wants it held in view.
+- 1138 tests pass (2 skipped); check and smoke green.
+- Not verified: a whole Act 1 run with the bash only, Firefox, the guard
+  and grip by eye (hidden behind the blaster in the frame taken).
+
+### 2026-11-13: MEL-01, the sword (Pi, DeepSeek V4.1 Flash 1017): not reviewed
+
+Branch `mel-01`, committed, not pushed. M01 is no longer a placeholder
+baton: it is a code-built foam sword, the campaign owns hand weapons the
+way it owns blasters, and a level can give one away as a pickup.
+
+- **The look.** `buildSword()` in `src/game/meleeView.ts` builds it from
+  `data/melee.json` `look`: lime flat blade 0.7 x 0.07 x 0.025 m (a half
+  cylinder tip, so no corner has an edge), orange cross guard and pommel,
+  purple grip. Every material is roughness 0.95 and metalness 0 (foam).
+  The three strokes and the blaster dip are the old ones, re-placed: the
+  grip sits lower right at rest and the blade sweeps across the view.
+  `look.position`, `look.rest` and `look.dip` are the camera tuning.
+- **Owning it.** `data/campaign.json` gains `startMelee: []` and
+  `foundMelee: { "2-1": "M01" }`; `src/game/campaign.ts` gains
+  `ownedMeleeAt`, `foundMeleeAt`, `CAMPAIGN_START_MELEE`,
+  `CAMPAIGN_FOUND_MELEE`, `MELEE_IDS_KNOWN`, `CampaignState.melee` and
+  `LiveCarry.melee`/`setOwnedMelee`. The save is version 2. A version 1
+  save loads with `melee: []` and keeps its level, blasters and health.
+  `Melee.armed` (with `setArmed`) makes the key the bash while nothing is
+  owned: no charge is spent and no parry or timer arms it.
+- **The pickup.** A level entry `{ "id": ..., "type": "melee",
+  "melee": "M01", "pos": [x, y, z] }` shows the same `buildSword()` at
+  world size, turning and bobbing like the blaster pickup, taken within
+  1 m. Taking it arms the melee (full charges) and flashes its `[Paul]`
+  name through the existing `hud.blasterFlash`. The validator wants the
+  id to exist in `data/melee.json`; a pickup of a weapon the melee does
+  not hold is left on the floor.
+
+How to see it:
+
+- Sword at rest and in the swing: `arena.html?level=env-03` and press F.
+  The first press swings, so the whole three-stroke combo shows over
+  about a second; the blaster dips out of the way each time.
+- The pickup: `arena.html?level=env-03` again. The sword stands 2 m left
+  of the player start (the player faces +z from `[0, 0, 6]`, the sword is
+  at `[-2, 0, 4]`). Walk into it, the name flashes over the ammo counter,
+  and F now swings the combo rather than bashing.
+- The campaign rule needs a level past 2-1, which does not exist yet, so
+  the no-sword case is only covered by tests (`melee-sword.test.ts`).
+
+Seen by eye: frames from headless Chrome over the built `dist/`
+(`arena.html?level=env-03`, a throwaway probe in `/tmp`, not committed).
+The rest frame has no sword in view; mid-swing the whole lime blade, the
+orange guard and the pommel read against the grey room, with the blaster
+dipped; the pickup stands on the floor as a small sword turning, and
+walking into it flashes `[Paul]` over the ammo counter and the pickup is
+gone. No page errors.
+
+Not verified, and questions for the reviewer or Paul:
+
+- Should the sword be held at rest, the way the blaster is? Today it
+  shows only during a swing (the baton's behaviour, kept). The card's
+  "the grip sits in the lower right at rest" is met by the hand's rest
+  placement, but it could also mean "visible in the hand between swings",
+  which would need the blaster lowered while it is up. Not changed without
+  an answer.
+- Is the blade big enough on screen? It crosses the lower half of the view
+  at the swing's start.
+- Do the colours hold against the level's grey? Lime on grey reads; orange
+  and purple are small.
+- Does the pickup read as a sword rather than a stick on the floor? It is
+  about 0.95 m tall standing on its pommel.
+- The three strokes are the baton's; a sword may want a different third
+  (the overhead chop currently runs off the bottom of the view).
+
+Tuning is all in `data/melee.json` `look` (`position`, `rest`, part sizes
+and colours, `dip`) plus `STROKES` in `src/game/meleeView.ts`.
+
+Files touched outside the card: `src/arena/extras.ts` (the page's
+`LiveCarry` needs `melee`/`setOwnedMelee`, or a restart would not put the
+entry hand weapons back), and `tests/game/campaign-save.test.ts` (the
+new state literals need `melee`, and the "older version" case now uses a
+version nobody wrote, since version 1 loads). `tasks/MEL-01.md` is
+already committed, so the commit carries only the code and the docs.
+
+### 2026-11-13: ENV-05 review, merged (Claude Opus 5.5): the leaking barrel
+
+- DeepSeek V4.1 Flash 1017 built the card in one run, first try. The
+  fuse rules match Paul's ask exactly (`src/level/barrel-fuse.ts`, 10
+  tests). One file outside the card, with its reason: `DebrisSystem`
+  gained `sprayCube` so the spray can use a seeded PRNG.
+- Seen in the browser (range, Chromium, shots fired by script): one B04
+  standard dart punctured a barrel, it leaked and went off 10 s later;
+  from 4 m the leak jets small orange foam cubes out of the hole and they
+  pool on the floor beside the barrel. The barrel reads as a toy (orange
+  with a yellow band and a white lid).
+- The dev-only `window.__range` handle now has `barrels`.
+- 1116 tests pass (2 skipped); check and smoke green.
+- For Paul: the jet is gentle (2 m/s, rising to 4.5 m/s near the end); if
+  it should spurt harder or read from further away, raise
+  `data/barrel.json` `spray` `speedStart`, `speedEnd` or `cubeSizeMetres`.
+  The barrel's orange and yellow are the colours ENV-01's review kept for
+  weak points and darts; a barrel being a "shoot this" target fits that,
+  but it is Paul's call.
+- Not verified: Firefox, the chain of two barrels, and the blast at the
+  end of the fuse seen by eye.
+
+### 2026-11-13: ENV-05 (E15) the leaking foam barrel, on the range
+
+Built on branch `env-05`, not reviewed, not pushed. Card `tasks/ENV-05.md`.
+
+**What was asked.** Paul: a barrel on the range that sprays cubes out of
+punctures "as if it's leaking fuel", a standard dart sets a 10 s fuse, a
+second cuts it in half, a third sets it off (so B01 Dartman's three dart
+cluster does it), all other ammo sets it off at once. Built as a reusable
+element for explosive terrain (FX-01) later.
+
+**What was built.**
+
+- `src/level/barrel-fuse.ts`: the rules with no world in them. `startFuse`,
+  `puncture` (1st gives `fuseSeconds`, 2nd halves what is left, 3rd sets
+  off), `advance` (never fires twice), `classifyHit` (the data's
+  `punctureType` is the only round that punctures), `blastReaches`, and the
+  constants `FUSE_SECONDS` and `CHAIN_DELAY`.
+- `src/level/barrels.ts`: the system. One `THREE.Group` and one fixed
+  cylinder collider per barrel, a leak per puncture (its own seeded
+  `makeRng` stream, a narrow cone around the hit normal, faster as the
+  fuse runs down), the spray through `DebrisSystem` so its ring is the
+  hard cap, one `explosion.explode(centre, "barrel")` when it goes, then
+  the barrel leaves the world. A blast that reaches a barrel sets it off
+  a `chainDelay` later, so a row ripples.
+- `data/barrel.json` (fuse, chain delay, the look, the spray numbers),
+  a `barrel` profile in `data/explosion.json` (carveRadius 1.2,
+  damageCentre 30, rangeMetres 4.5, fxRadius 3.6, the rest like
+  `launcher`), two barrels in `data/range.json`.
+- `src/range/main.ts`: builds the barrels, chains `barrels.hit` after the
+  existing `darts.onHit` (so the impacts and the Foamers see the hit
+  first), calls `barrels.onBlast` from the page's `explosion.onExplode`,
+  steps `barrels.update` with the other systems, and `T` (or the menu's
+  Respawn) puts the barrels back with the line.
+- `design/levels/ENVIRONMENT.md`: an E15 entry. `PLAN.md`: an ENV-05 row
+  after ENV-04.
+
+**Checks.** `npm run check` green and `npm run smoke` green (4 pages,
+`/range` drawn). New tests, 29 in three files: `tests/level/barrel-fuse.test.ts`
+(10), `tests/level/barrels.test.ts` (15), `tests/level/range-barrels.test.ts`
+(4).
+
+**How to try it.** `npm run dev`, open `/range.html`. Two barrels: one to
+your right in the open, one to the left and nearer than the Foamer line.
+Hit one with a standard dart (B04 and B01's default round are standard):
+the fuse starts and a jet of cubes comes out of the puncture, quickening
+as the time runs out, and it goes off after 10 s. Hit it again to halve
+it, a third time (or B01's three dart cluster in one shot) to set it off.
+A mega, ball or precision dart, or a launcher round's blast, sets it off
+at once. Shoot the left barrel from near the line to watch a chain.
+
+**Decisions and why.**
+
+- One file outside the card's list: `src/voxel/debris.ts` gained a public
+  `sprayCube(at, vel, size, mat)` that calls the existing private `add`.
+  The card asks for seeded spray through `DebrisSystem`, and its only
+  entry points used `Math.random`, so there was no way to do it without
+  touching that file.
+- `makeRng` stays in `src/audio/synth.ts` and is imported, as
+  `src/foamers/foamers.ts` already does. Moving it would have touched
+  unrelated files for no gain.
+- The chain is aged from the state at the start of the step, so a blast
+  that lands in a step waits its own delay instead of going off at once
+  inside the same walk. That is what makes a row ripple rather than pop
+  together (a test covers it).
+- The blast is the shared `ExplosionSystem`, so the range's existing rules
+  hold: Foamers take it, the player does not, the per-second cap applies.
+
+**Not verified.** No browser here, so nothing was seen by eye: the look of
+the barrel, the read of the spray (the part Paul said he would judge), or
+whether the barrel's collider is solid under a walked-into player. The
+smoke check loaded `/range` and found the page drawn, and the unit tests
+build the real system in Rapier, but nobody has watched a barrel leak.
+
+**Question for the reviewer.** The card asks for an orange body with a
+yellow band. ENV-01's review reserved orange (weak point) and yellow (the
+player's darts) for those meanings. Followed the card, but say if the
+barrel should move to another pair of palette colours.
+
+
+### 2026-11-13: B05 makes a dent; every blaster's own impact range now works (Claude Opus 5.5)
+
+- Paul: B05's impact is extremely weak; it kills but hardly makes a dent,
+  and it should blow the head off a weaker Foamer easily.
+- Cause, found in the browser: each dart keeps its own copy of its shot
+  (GAME-09b), and that copy dropped the shot's `impact` block. So no
+  blaster's own impact range was ever used in play: every kill read the
+  shared one (full within 2 m, nothing past 10 m). B05 kills at range
+  scored near 0 and just went down. This also hit B03's point blank block
+  from PT-03, which only the pure tests ever used. Fixed in
+  `src/weapons/darts.ts`; test in `tests/weapons/darts.test.ts`.
+- B05 now has its own block: no fall off to 60 m, and a `floor` 0.8 (a new
+  optional field of an impact block): every Shrike kill is at least a
+  chunk, the hole carved where the dart hit. A big overkill still pops.
+  The precision dart's own dent (`carveRadius`) went from 0.07 to 0.14.
+  Tests in `tests/foamers/impact.test.ts`.
+- Seen in the browser (range, Chromium, shots fired by script at 15 m):
+  a B05 head shot on an F02 chunked it and took the whole head (0 of 560
+  voxels left); a body shot on an F01 carved a hole out of the body.
+- Paul should know: B03's close-range kills now use its own point blank
+  range as PT-03 meant, so they chunk and pop more than he has seen.
+- 1087 tests pass (2 skipped); check green.
+- Also running, each in its own worktree: HP-01 (health pickups), MEL-01
+  (the sword), ENV-05 (the leaking barrel).
 
 ### 2026-11-13: LVL-05 review, merged (Claude Opus 5.5): the campaign
 
