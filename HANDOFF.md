@@ -88,6 +88,51 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-07c: the arena to triggers converter (Qwen 3.8 27B via Pi)
+
+- `arenaToTriggers` in `src/level/arena-to-triggers.ts` turns every
+  arena into editor parts: a `<arena>-zone` with the trigger box, a
+  `LevelDoor` per door (state open becomes lock none, locked and sealed
+  become lock trigger), a spawn point per rift, then the triggers: the
+  lock (entering the zone: the checkpoint, then close the doors that
+  started open unless noLock), each wave as one spawn action per spawns
+  entry with the wave's rifts, wave 1 in the lock or an `after` on it
+  when its delay is above 0, each next wave started by a `killed` all of
+  the previous wave (with an `after` for its delay, skipped when 0), and
+  the clear that opens `unlockOnClear`. The input is not changed; the
+  card asked to say which of the two shapes was returned, so it is
+  `{ level, warnings }`.
+- The arm-only wave start (a `killed` trigger with a delay above 0 has
+  nothing to run but arm its `after`): the validator rejects an empty do
+  and the card bans invented text, so it carries a `message` of
+  "[Paul]", the level's placeholder. Paul sees it in the editor and can
+  change or delete it. Noted for the editor wiring (or review): a real
+  fix would let the editor keep an unused `killed` trigger, or give it a
+  do; decided against touching `validate.ts` in this task (the card says
+  do not touch anything else) and against making it an error, since a
+  Paul level can have one on purpose: the others are left to the
+  validator's empty-do check.
+- Warnings, not errors: a wave's `startsWithHealthShare` (the wave
+  still starts on cleared), an arena's `escape`, and a `noLock` arena's
+  wave 1 delay (dropped, because the lock trigger would have no other
+  do to run). Same-names: a level whose zones, doors, spawn
+  points or triggers already use an `<arena>` or `<wave>` id will
+  duplicate; the Act 1 levels do not. Nothing calls it yet.
+- Tests: `tests/level/arena-to-triggers.test.ts`, 6 tests. The Ring
+  converts with no warnings and passes `validateLevel`; the Pit runs
+  end to end through the real `TriggerRunner` with a fake host (enter,
+  the lock's checkpoint and close, wave 1 staggered, kill all, wave 2
+  on its delay, kill all, the unlock doors open); the hall (noLock with
+  an escape, from 1-3) closes nothing and gives the two warnings; the input
+  is unchanged. `npx tsc --noEmit`, `npx vitest run` (1285 tests) and
+  `npm run build` pass; the perl em and en dash check is clean on both
+  files.
+- Not checked by eye: there is no browser here, so the converted levels
+  are only run through the pure runner and the validator, not seen
+  playing. The `message` and spawn actions are only data until the
+  editor or a page wires them.
+- Branch `ed-07c` (own worktree), two commits, not pushed, not merged.
+
 ### 2026-11-13: ED-07a review, merged (Claude Opus 5.5): the trigger runner
 
 - qwen-machine (Qwen 3.8 27B) wrote `src/level/triggers.ts` and
