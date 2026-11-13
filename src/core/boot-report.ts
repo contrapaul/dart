@@ -9,6 +9,8 @@
 // The per-frame part is a counter: a page polls its Foamers' mesh state and
 // only calls progress() when the count changed, so no frame allocates.
 
+import { QUALITY } from "../render/quality";
+
 export interface BootStep {
   name: string;
   /** Milliseconds since the previous step finished (the step's own wait). */
@@ -134,9 +136,11 @@ export function mesherMode(pool: unknown): string {
  *  the first frame (a late Foamer mesh shows when it lands). */
 export function diagText(boot: BootReport, pool: unknown, fallbackCount: number, extra?: () => string): string {
   const browser = typeof navigator === "undefined" ? "unknown" : navigator.userAgent;
+  const q = QUALITY;
   const lines = [
     `Browser: ${browser}`,
     `Mesher: ${mesherMode(pool)}, ${fallbackCount} on the main thread`,
+    `Quality: ${q.name} (pixelRatio ${q.preset.pixelRatioMax}, antialias ${q.preset.antialias ? "on" : "off"}, shadows ${q.preset.shadows ? "on" : "off"}, shadowMap ${q.preset.shadowMapMax}, debris ${q.preset.debrisMax}, breakoff ${q.preset.breakoffMaxPieces})`,
   ];
   for (const s of boot.steps) lines.push(`${s.name}: ${Math.round(s.ms)} ms (at ${Math.round(s.at)} ms)`);
   const waiting = boot.stillWaiting;

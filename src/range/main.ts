@@ -8,6 +8,7 @@
 import "../core/boot-errors";
 import * as THREE from "three";
 import { createRenderer } from "../render/scene";
+import { QUALITY } from "../render/quality";
 import { createPhysics } from "../physics/world";
 import { startLoop, STEP, type FrameStats, loopDiagLine } from "../core/loop";
 import { Input } from "../core/input";
@@ -72,7 +73,7 @@ const graph = new FrameGraph(
   log,
 );
 
-const { renderer, scene, camera } = createRenderer(canvas);
+const { renderer, scene, camera } = createRenderer(canvas, {}, QUALITY.preset);
 camera.rotation.order = "YXZ";
 scene.add(camera); // the blaster viewmodel is a child of the camera
 const input = new Input(canvas);
@@ -359,7 +360,7 @@ if (!new URLSearchParams(location.search).has("bench") && graph.shown) graph.tog
 
 // Switches, each listed in the report.
 const switches = {
-  foamers: true, shadows: true, pixelRatio: true, snap: true,
+  foamers: true, shadows: QUALITY.preset.shadows, pixelRatio: true, snap: true,
   strafe: false, infiniteAmmo: false, godMode: false, nav: false,
 };
 // Infinite ammo refills the active blaster's magazine after every shot.
@@ -410,7 +411,7 @@ function setSwitch(name: keyof typeof switches, on: boolean) {
       });
       break;
     case "pixelRatio":
-      renderer.setPixelRatio(on ? Math.min(window.devicePixelRatio, 2) : 1);
+      renderer.setPixelRatio(on ? Math.min(window.devicePixelRatio, QUALITY.preset.pixelRatioMax) : 1);
       renderer.setSize(window.innerWidth, window.innerHeight, false);
       break;
     case "snap":

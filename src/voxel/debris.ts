@@ -34,17 +34,17 @@ export class DebrisSystem {
   private p = new THREE.Vector3();
   private s = new THREE.Vector3();
 
-  constructor(private rapier: Rapier, private world: RAPIER.World) {
-    this.slots = Array.from({ length: T.max }, () => ({ body: null, age: 0, size: 0, prevT: new THREE.Vector3(), prevQ: new THREE.Quaternion() }));
+  constructor(private rapier: Rapier, private world: RAPIER.World, cap = T.max) {
+    this.slots = Array.from({ length: cap }, () => ({ body: null, age: 0, size: 0, prevT: new THREE.Vector3(), prevQ: new THREE.Quaternion() }));
     this.mesh = new THREE.InstancedMesh(
       new THREE.BoxGeometry(1, 1, 1),
       createFoamMaterial({ cellsPerUnit: renderJson.foam.poreCellsPerVoxel, wrapCells: 0 }),
-      T.max,
+      cap,
     );
     this.mesh.castShadow = true;
     this.mesh.frustumCulled = false;
     this.m4.makeScale(0, 0, 0);
-    for (let i = 0; i < T.max; i++) {
+    for (let i = 0; i < cap; i++) {
       this.mesh.setMatrixAt(i, this.m4);
       this.mesh.setColorAt(i, this.color.setRGB(1, 1, 1));
     }

@@ -6,6 +6,7 @@ should know. Newest log entry at the top. The plan is `PLAN.md`; the rules are
 
 ## Status
 
+OPS-04 code done 2026-11-13 by Pi on `ops-04`, not reviewed, not pushed.
 CI gate and smoke check done 2026-11-12 by Claude via pi, on `main` with
 the B08 rename and the boot errors; reviewed and pushed 2026-11-12. `.github/workflows/
 check.yml` gates the build and `tools/smoke.mjs` boots all four pages and
@@ -778,6 +779,30 @@ github.com/contrapaul/dart (public), MIT licence.
   2026-11-12 was made to fail once on purpose before it was trusted.
 
 ## Log
+
+### 2026-11-13: three quality presets (Pi, ops-04)
+
+- Task OPS-04: older machines need a cheaper picture. `data/render.json`
+  now has `quality` with `default` high and presets low, medium, high.
+  `high` keeps today's values (pixel ratio 2, antialias on, shadows on,
+  shadow map 2048, debris 150, break-off pieces 16). Suggested low is 1,
+  no antialias, no shadows, 512, 60, 8; medium is 1.5, antialias and
+  shadows on, 1024, 100, 12.
+- `src/render/quality.ts` has the pure `pickQuality(search, data)` and one
+  `QUALITY` resolved from `location.search`. `createRenderer` takes the
+  preset, caps the pixel ratio, turns antialias and shadows off when the
+  preset says so, and caps a level's own shadow map. `DebrisSystem` and
+  `FallingPieces` take their caps from the preset; tests built without one
+  keep the high values.
+- The range starts its shadows switch in the preset's state, and its pixel
+  ratio switch uses the preset's cap. `?diag` now adds `Quality: <name>`
+  with the values. The range's Foamer count is unchanged; fewer Foamers is
+  Paul's call.
+- Paul compares presets with `/range?quality=low&diag` and
+  `/range?quality=low&bench`; the same query works on the game pages.
+- Tests: 1012 passed, 2 skipped. `npm run check` and `npm run smoke` green.
+- Not verified: the low and medium pictures were not opened and looked at
+  on older hardware; smoke boots the default high pages only.
 
 ### 2026-11-12: keys 1 to 8 are B01 to B08 (Claude Opus 5.5)
 

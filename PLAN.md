@@ -642,7 +642,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | OPS-01 | Hosting at dart.contrapaul.com on Paul's Cloudflare setup (set up early, at PRE-09, so every push is playable) | A + P |
 | OPS-02 | (card: `tasks/OPS-02.md`) Asset loading/streaming and caching: the physics WebAssembly as its own hashed .wasm file instead of 4.1 MB of base64 in a chunk | Done 2026-11-06, reviewed by Claude (three fixes), merged locally, not pushed (Qwen 3.8-27B via Pi, qwen-machine) |
 | OPS-03 | A gate in front of the deploy: build, test, the two CLAUDE.md text rules, and a smoke check that boots all four pages in Chromium and proves there is a picture | Done 2026-11-12 (Claude via pi), not pushed |
-| OPS-04 | Graphics options for older machines: a quality preset (pixel ratio, shadows, Foamer count, foam chunk cap) and a `?quality` switch to measure one | Todo 2026-11-12 (Paul: needed, not yet) |
+| OPS-04 | Graphics options for older machines: three presets in `data/render.json` picked by `?quality=low`, `?quality=medium` or `?quality=high` (pixel ratio, antialias, shadows, shadow map, foam debris cap, break-off piece cap); Foamer count is not touched | Done 2026-11-13 (Pi, ops-04), not reviewed or pushed |
 | QA-06 | Final playtest round | P |
 
 ---

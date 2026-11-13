@@ -42,6 +42,7 @@ import { FallingPieces } from "../voxel/pieces";
 import { Crates, burstCrate } from "../voxel/crates";
 import type { RemovedVoxel } from "../voxel/carve";
 import renderJson from "../../data/render.json";
+import { QUALITY } from "../render/quality";
 import { carveBounds } from "./shared";
 import { damageOf } from "./attack";
 import { decideMeleeParry } from "../foamers/combo";
@@ -194,7 +195,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const overlay = document.querySelector<HTMLDivElement>("#overlay")!;
   const status = document.querySelector<HTMLParagraphElement>("#status")!;
 
-  const { renderer, scene, camera } = createRenderer(canvas, hooks.scene);
+  const { renderer, scene, camera } = createRenderer(canvas, hooks.scene, QUALITY.preset);
   camera.rotation.order = "YXZ";
   scene.add(camera); // needed so children (the blaster viewmodel) render
   const input = new Input(canvas);
@@ -210,10 +211,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   boot.step("Level built");
   const { voxels, voxelMesh, crates } = built;
   const voxelSize = voxels.voxelSize;
-  const debris = new DebrisSystem(rapier, world);
+  const debris = new DebrisSystem(rapier, world, QUALITY.preset.debrisMax);
   scene.add(debris.mesh);
   // Loose islands cut by a carve break off and fall as their own bodies.
-  const pieces = new FallingPieces(rapier, world, mesherPool, debris);
+  const pieces = new FallingPieces(rapier, world, mesherPool, debris, QUALITY.preset.breakoffMaxPieces);
   scene.add(pieces.group);
 
   const player = new PlayerController(rapier, world, built.spawn);
