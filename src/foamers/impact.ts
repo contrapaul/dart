@@ -89,7 +89,10 @@ export function judgeImpact(
 ): { overkill: number; near: number; impact: number; outcome: ImpactOutcome } {
   const overkill = overkillOf(shotDamage, healthBefore);
   const near = range === null ? 1 : nearOf(distanceMetres, range);
-  const impact = impactOf(overkill, maxHealth, near);
+  // A blaster's own block may give its kills a floor (B05: a Shrike kill
+  // always at least chunks). It does not apply to a blast.
+  const raw = impactOf(overkill, maxHealth, near);
+  const impact = range === null ? raw : Math.max(raw, range.floor ?? 0);
   const outcome = impact >= spec.popAt ? "pop" : impact >= spec.chunkAt ? "chunk" : "down";
   return { overkill, near, impact, outcome };
 }

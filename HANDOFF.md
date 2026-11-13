@@ -162,6 +162,31 @@ player's darts) for those meanings. Followed the card, but say if the
 barrel should move to another pair of palette colours.
 
 
+### 2026-11-13: B05 makes a dent; every blaster's own impact range now works (Claude Opus 5.5)
+
+- Paul: B05's impact is extremely weak; it kills but hardly makes a dent,
+  and it should blow the head off a weaker Foamer easily.
+- Cause, found in the browser: each dart keeps its own copy of its shot
+  (GAME-09b), and that copy dropped the shot's `impact` block. So no
+  blaster's own impact range was ever used in play: every kill read the
+  shared one (full within 2 m, nothing past 10 m). B05 kills at range
+  scored near 0 and just went down. This also hit B03's point blank block
+  from PT-03, which only the pure tests ever used. Fixed in
+  `src/weapons/darts.ts`; test in `tests/weapons/darts.test.ts`.
+- B05 now has its own block: no fall off to 60 m, and a `floor` 0.8 (a new
+  optional field of an impact block): every Shrike kill is at least a
+  chunk, the hole carved where the dart hit. A big overkill still pops.
+  The precision dart's own dent (`carveRadius`) went from 0.07 to 0.14.
+  Tests in `tests/foamers/impact.test.ts`.
+- Seen in the browser (range, Chromium, shots fired by script at 15 m):
+  a B05 head shot on an F02 chunked it and took the whole head (0 of 560
+  voxels left); a body shot on an F01 carved a hole out of the body.
+- Paul should know: B03's close-range kills now use its own point blank
+  range as PT-03 meant, so they chunk and pop more than he has seen.
+- 1087 tests pass (2 skipped); check green.
+- Also running, each in its own worktree: HP-01 (health pickups), MEL-01
+  (the sword), ENV-05 (the leaking barrel).
+
 ### 2026-11-13: LVL-05 review, merged (Claude Opus 5.5): the campaign
 
 - DeepSeek V4.1 Flash 1017 built both stages, one run each, first try.

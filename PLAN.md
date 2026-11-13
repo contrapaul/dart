@@ -694,6 +694,7 @@ All twelve answered 2026-10-29.
 
 | Date | Decision | Section |
 |---|---|---|
+| 2026-11-13 | B05 (Paul: its impact was far too weak): its own impact block with no fall off to 60 m and a floor of 0.8, so every Shrike kill at least chunks where it hit. An impact block may carry an optional `floor`. Found with it: each dart's copy of its shot dropped the impact block, so B03's point blank range had never applied in play; fixed. | 5 |
 | 2026-11-13 | Paul's answers on level 2-1 (`design/levels/LEVEL-2-1.md` section 8): the setting is the workshop, rooms called workshop room 1, 2 and so on for now; the conveyor stays scenery for now (revisit later); a sword, the first melee weapon, is found in 2-1 just before Arena 1; Arena 3 closes on a promoted Blocker wall. | 9 |
 | 2026-11-13 | Paul: mods are bought with tokens. For testing the mod stations stay free; they lock to purchases later. | 5 |
 | 2026-11-13 | Paul: health is found in drops on the map and from melee kills, carries from level to level within an act, and is full again when the next level starts a new act (1-x to 2-x, 2-x to 3-x). Built in LVL-05 (`healthInto` in `src/game/campaign.ts`). Placed health pickups in level files are not spawned yet (LVL-06 found it): a follow-up. | 6, 12 |

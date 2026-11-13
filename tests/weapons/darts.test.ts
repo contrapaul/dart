@@ -263,3 +263,22 @@ describe("DartSystem", () => {
     expect(speed(block)).toBeCloseTo(tuning.types.standard.impulse / block.mass(), 2);
   });
 });
+
+// Paul, 2026-11-13 (B05 "hardly makes a dent"): each dart copies its shot,
+// and the copy dropped the blaster's impact block, so every blaster's own
+// impact range (B03's point blank, B05's) was ignored and the kill read the
+// shared defaults. A hit's shot must carry the impact block it was fired with.
+describe("a dart's shot keeps the blaster's impact block", () => {
+  it("the hit's shot has the impact it was fired with", () => {
+    const { world, system } = make(RAPIER);
+    addWall(world);
+    world.step();
+    const impact = { fullMetres: 60, zeroMetres: 120, floor: 0.8 };
+    let seen: unknown = undefined;
+    system.onHit = (h) => { seen = h.shot?.impact; };
+    system.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), "standard",
+      { id: 7, muzzle: new THREE.Vector3(0, 2, 0), chunk: null, impact });
+    for (let i = 0; i < 120 && seen === undefined; i++) { system.update(DT); world.step(); }
+    expect(seen).toEqual(impact);
+  });
+});
