@@ -88,6 +88,40 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-06 breakable prims (Pi, DeepSeek V4.1 Flash 1017)
+
+- What was asked: a breakable prim in a level file should break. A box
+  on 90 degree turns fills the level's voxel volume in blocks of 3.2 m or
+  less (darts carve it, the existing path). Every other breakable is its
+  own mesh and colliders, and darts, blasts and melee swings take hit
+  points off it; at zero it goes and bursts foam chunks, and a restart
+  brings it back.
+- Stage 1 (`3f6bf0d`): `src/level/prims.ts` skips a breakable prim, and
+  `src/level/build.ts` cuts it into volumes (`voxelPrimVolumes`, counts
+  `ceil(size / 3.2)`, a 90/270 degree Y turn swapping x and z) and fills
+  them, with `breakableAnchor` deciding `floor` or `none`.
+- Stage 2 (`52fff04`): `src/level/breakables.ts` builds one mesh and its
+  colliders per hit point breakable, and `Breakables` takes damage from
+  `dartHit`, `blast(point, profile)` and `swing(...)`, bursts through
+  `DebrisSystem` and resets. The arena page chains the dart's `onHit`,
+  the explosion's new `onBlast` hook and the melee's `presses` change.
+- Stage 3 (`2487ad9`): `data/levels/ed-01.json` gains `foam-wall`
+  (voxel), `turned-block` (45 degrees, 60 hit points) and `foam-column`
+  (cylinder, 40).
+- Decisions: a breakable is voxel foam only when it can fill the grid (a
+  box on the 90 degree steps); a voxel breakable takes its nearest foam
+  palette colour, because the palette is fixed at module load and the
+  mesher workers each keep their own copy; a hidden breakable is always a
+  hit point one, so `setShown` still works; the explosion gained
+  `onBlast(point, profile)` so the page never guesses a profile from the
+  FX radius. Numbers live in `data/destruction.json` `breakables` (9
+  chunks per m3, 6 to 24, 30 default hit points).
+- Unverified: no browser here, so nothing about how a break looks (the
+  chunk burst, the frame the mesh vanishes), and whether the three
+  breakables in ed-01 stand where the player can reach them without
+  blocking the walk to the doors. `npm run check` and `npm run smoke`
+  green, 1230 tests, 2 skipped.
+
 ### 2026-11-13: ED-01 review, merged (Claude Opus 5.5)
 
 - DeepSeek built the card. Seen in the browser on `arena.html?level=ed-01`:
