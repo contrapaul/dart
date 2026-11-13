@@ -3,6 +3,7 @@ import rigData from "../../data/foamer-rigs.json";
 import foamerData from "../../data/foamers.json";
 import dartsData from "../../data/darts.json";
 import blastersData from "../../data/blasters.json";
+import meleeData from "../../data/melee.json";
 import type { Arena, Level, Piece, PieceVolume, ShellBox } from "./format";
 import buttonData from "../../data/buttons.json";
 import pressTuning from "../../data/press.json";
@@ -33,6 +34,8 @@ const TOUCH = 0.01;
 const materialNames = new Set(materialsData.materials.map((m) => m.name));
 /** A $darts-$ type pickup is a real dart type in data/darts.json (LVL-02a). */
 const dartNames = new Set(Object.keys(dartsData.types));
+/** MEL-01: a melee pickup is a real hand weapon in data/melee.json. */
+const meleeWeapons = meleeData.weapons as Record<string, unknown>;
 /** Rule 12 asks for health, so a rig without one does not count. */
 const rigIds = new Set(rigData.rigs.filter((r) => typeof r.health === "number" && r.health > 0).map((r) => r.id));
 
@@ -169,6 +172,13 @@ export function validateLevel(level: Level): ValidationResult {
       // LVL-05: a blaster pickup names a real blaster.
       if (typeof p.blaster !== "string" || !(p.blaster in (blastersData as Record<string, unknown>))) {
         errors.push(`pickup ${p.id}: ${p.blaster} is not a blaster in data/blasters.json`);
+      }
+      continue;
+    }
+    if (p.type === "melee") {
+      // MEL-01: a melee pickup names a real hand weapon (data/melee.json).
+      if (typeof p.melee !== "string" || !(p.melee in meleeWeapons)) {
+        errors.push(`pickup ${p.id}: ${p.melee} is not a hand weapon in data/melee.json`);
       }
       continue;
     }

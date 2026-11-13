@@ -11,10 +11,13 @@
   "carveRadius": 0.09,
   "debrisMax": 4,
   "look": {
-    "_note": "the placeholder baton (code-built, toy colours, [Paul]'s look to come): camera-space placement, the handle in metres, the foam ball on top, and how far the blaster dips out of the way at the swing's middle.",
-    "position": [0.34, -0.3, -0.7],
-    "handle": { "length": 0.5, "radius": 0.03, "color": "#ff8a3d" },
-    "ball": { "radius": 0.075, "color": "#fff6e8" },
+    "_note": "MEL-01: the placeholder foam sword (code-built, toy colours, [Paul]'s look to come). position is where the hand sits in camera space, and rest is how the sword is held there in degrees (pitch about X leans the tip away, roll about Z leans it across the view, yaw about Y turns it). Parts in metres, measured up from the hand: the pommel at the bottom, the grip above it, the guard across the top of the grip, then the blade, whose tip is a rounded cap of tipRadius, so nothing on it has an edge. Every part is the same matte foam: no shine, no metal. dip is how far the blaster dips out of the way at the swing's middle.",
+    "position": [0.3, -0.44, -0.62],
+    "rest": { "pitch": -14, "yaw": -6, "roll": 26 },
+    "pommel": { "length": 0.05, "radius": 0.042, "color": "#ff8a3d" },
+    "grip": { "length": 0.16, "radius": 0.028, "color": "#9b5de5" },
+    "guard": { "width": 0.2, "height": 0.035, "depth": 0.05, "color": "#ff8a3d" },
+    "blade": { "length": 0.7, "width": 0.07, "thickness": 0.025, "tipRadius": 0.035, "color": "#b6ff3b" },
     "dip": 0.28
   },
   "bash": {

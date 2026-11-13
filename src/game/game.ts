@@ -33,6 +33,7 @@ import { Melee } from "./melee";
 import { MeleeView } from "./meleeView";
 import inputJson from "../../data/input.json";
 import blastersData from "../../data/blasters.json";
+import meleeData from "../../data/melee.json";
 import { makeLevelAI, type LevelAI } from "../ai/level";
 import type { NavBounds } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
@@ -371,7 +372,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // GAME-06: melee weapon 1 and its charges. It reads the shield's public
   // state only (raised, charging, parries): GAME-04c owns that module.
   const melee = new Melee(rapier, world, foamers, debris, voxelTargets, player.collider);
-  // The placeholder baton's sweep, and the blaster dip that goes with it.
+  // MEL-01: the foam sword's sweep, and the blaster dip that goes with it.
+  // It is shown by a charged swing, which only an owned hand weapon has.
   const meleeView = new MeleeView(camera);
   /** What the last watch swing() press did (null: nothing swung). */
   let lastSwing: number | null = null;
@@ -379,6 +381,9 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
    *  read it, for the pickup's HUD flash. */
   const nameOf = (id: string): string =>
     (blastersData as Record<string, { name?: string }>)[id]?.name ?? id;
+  /** MEL-01: a hand weapon's name, read the same way. */
+  const meleeNameOf = (id: string): string =>
+    (meleeData.weapons as Record<string, { name?: string }>)[id]?.name ?? id;
   // LVL-05: a blaster pickup shows the blaster's own model. The loadout
   // has just loaded every one, so the page clones from here: nothing is
   // fetched for a pickup.
@@ -387,6 +392,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     if (model) pickups.blasterModels.set(loadout.ids[i]!, model);
   }
   pickups.loadout = loadout;
+  // MEL-01: a hand weapon pickup arms the melee and flashes its name, the
+  // blaster pickup's rule. The name is [Paul]'s, from data/melee.json.
+  pickups.melee = melee;
+  pickups.onMelee = (id) => hud.blasterFlash(meleeNameOf(id));
   pickups.onBlaster = (id) => hud.blasterFlash(nameOf(id));
   pickups.onCollected = (kind, pos) => {
     if (kind === "ammo") {
@@ -399,6 +408,12 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // the sound is the ammo box's (the card: the existing pickup sound),
       // and onBlaster below flashes the name, because the switch is still
       // running when this fires and the active blaster is the old one.
+      audio.play("PU-ammo", { position: pos });
+      return;
+    }
+    if (kind === "melee") {
+      // MEL-01: a hand weapon found. The pickup already armed and filled
+      // it; the sound is the ammo box's, and onMelee above flashes the name.
       audio.play("PU-ammo", { position: pos });
       return;
     }
@@ -699,7 +714,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
               const me = melee.press(eye, fwd, shield);
               lastSwing = me.swung;
               if (me.swung !== null) audio.play(me.swung < 0 ? "ML-bash" : "ML-swing");
-              if (me.swung !== null && me.swung >= 0) meleeView.swing(me.swung);
+              if (me.swung !== null && me.swung >= 0 && melee.armed) meleeView.swing(me.swung);
               if (me.empty) audio.play("ML-empty");
               for (const f of me.hits) audio.play("ML-hit", { position: f.centre });
               for (const p of me.carved) audio.play("DT-carve", { position: p });
@@ -853,7 +868,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
     // GAME-08: lowered while the vacuum runs (added to the switch's dip).
     loadout.lowered = vacuum.active ? VacData.vacuum.blasterDip : 0;
     loadout.render(dt, input.isDown("fire"));
-    // GAME-06: the baton's sweep, and the blaster dipped out of its way.
+    // GAME-06 / MEL-01: the sword's sweep, and the blaster dipped out of
+    // its way.
     // Applied after loadout.render, whose own dip only runs during a
     // blaster switch (a swing cannot fire, so the two rarely overlap).
     meleeView.render(dt);

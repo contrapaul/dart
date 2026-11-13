@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  CAMPAIGN_ORDER, SAVE_KEY, SAVE_VERSION, applyState, campaignUrl, captureState, carryTo, healthInto,
+  CAMPAIGN_ORDER, SAVE_KEY, SAVE_VERSION, SAVE_VERSION_LEGACY, applyState, campaignUrl,
+  captureState, carryTo, healthInto,
   clearSave, entryState, filledBlaster, firstLevel, formatTime, newGame, nextLevel, readSave,
   writeSave,
   type CampaignState, type LiveCarry,
@@ -91,6 +92,7 @@ describe("the carried state (LVL-05)", () => {
       level: "1-2",
       blasters: [{ id: "B02", mag: 2, reserve: 1 }],
       health: 44,
+      melee: [],
     };
     expect(entryState("1-2", save)).toBe(save);
     // A different level does not read it: it begins from the order.
@@ -175,16 +177,16 @@ describe("the carried state (LVL-05)", () => {
   it("a break action's barrels follow the magazine it restores", () => {
     const live: LiveCarry = { blasters: [{ id: "B03", mag: 0, reserve: 0, loaded: [true, true] }], health: { hp: 100 } };
     // Saved with one shell in the magazine, one barrel spent.
-    applyState({ version: SAVE_VERSION, level: "1-4", blasters: [{ id: "B03", mag: 1, reserve: 7 }], health: 90 }, live);
+    applyState({ version: SAVE_VERSION, level: "1-4", blasters: [{ id: "B03", mag: 1, reserve: 7 }], health: 90, melee: [] }, live);
     expect(live.blasters[0]!.loaded).toEqual([true, false]);
     expect(live.blasters[0]!.reserve).toBe(7);
   });
 
   it("the health put back is never 0 and never above its maximum", () => {
     const live: LiveCarry = { blasters: [], health: { hp: 50 } };
-    applyState({ version: SAVE_VERSION, level: "1-2", blasters: [], health: 0 }, live);
+    applyState({ version: SAVE_VERSION, level: "1-2", blasters: [], health: 0, melee: [] }, live);
     expect(live.health.hp).toBe(1);
-    applyState({ version: SAVE_VERSION, level: "1-2", blasters: [], health: 999 }, live);
+    applyState({ version: SAVE_VERSION, level: "1-2", blasters: [], health: 999, melee: [] }, live);
     expect(live.health.hp).toBe(100);
   });
 
@@ -243,11 +245,53 @@ describe("the save's failures all mean a new game (LVL-05)", () => {
     expect(readSave()).toBeNull();
   });
 
-  it("an older version reads null, so the game starts again", () => {
+  it("an unknown version reads null, so the game starts again", () => {
     const storage = new FakeStorage();
     withStorage(storage);
-    storage.setItem(SAVE_KEY, JSON.stringify({ ...newGame(), version: SAVE_VERSION - 1 }));
+    // MEL-01: version 1 (before the hand weapons) still loads, so the one
+    // that does not is a version nobody ever wrote.
+    storage.setItem(SAVE_KEY, JSON.stringify({ ...newGame(), version: SAVE_VERSION + 1 }));
     expect(readSave()).toBeNull();
+  });
+
+  // MEL-01: the hand weapons owned, and the save that predates them.
+  it("a version 1 save keeps its level, blasters and health and owns no hand weapon", () => {
+    const storage = new FakeStorage();
+    withStorage(storage);
+    storage.setItem(SAVE_KEY, JSON.stringify({
+      version: SAVE_VERSION_LEGACY,
+      level: "1-3",
+      blasters: [{ id: "B04", mag: 5, reserve: 21 }],
+      health: 72,
+    }));
+    const save = readSave();
+    expect(save).not.toBeNull();
+    expect(save!.version).toBe(SAVE_VERSION);
+    expect(save!.level).toBe("1-3");
+    expect(save!.blasters).toEqual([{ id: "B04", mag: 5, reserve: 21 }]);
+    expect(save!.health).toBe(72);
+    expect(save!.melee).toEqual([]);
+  });
+
+  it("a version 2 save round trips the owned hand weapons", () => {
+    const storage = new FakeStorage();
+    withStorage(storage);
+    const state: CampaignState = {
+      version: SAVE_VERSION,
+      level: "1-4",
+      blasters: [{ id: "B02", mag: 8, reserve: 40 }],
+      health: 80,
+      melee: ["M01"],
+    };
+    expect(writeSave(state)).toBe(true);
+    expect(readSave()).toEqual(state);
+  });
+
+  it("a save naming a hand weapon the melee does not know owns none of it", () => {
+    const storage = new FakeStorage();
+    withStorage(storage);
+    storage.setItem(SAVE_KEY, JSON.stringify({ ...newGame(), melee: ["M09", "M01", "M01"] }));
+    expect(readSave()!.melee).toEqual(["M01"]);
   });
 
   it("a save naming a level that is not in the order reads null", () => {
