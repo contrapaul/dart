@@ -170,6 +170,26 @@ body {
   opacity: 1;
   transition: opacity 140ms ease-out;
 }
+/* LVL-05: a found blaster's name, a small foam-yellow line over the ammo
+   counter. It fades in, holds and goes; a page without the element shows
+   nothing and the counter's pulse still marks the pickup. */
+#pickupflash {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 4.6rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: #ffd23f;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+#pickupflash.on {
+  opacity: 1;
+  transition: opacity 160ms ease-out;
+}
+
 /* LVL-02a: the ammo box collect: a short scale-up of the counter (the
    heal flash is a green edge glow; a box is not health, so it gets a
    small flash of its own, in the box's yellow). */

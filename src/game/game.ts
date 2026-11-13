@@ -32,6 +32,7 @@ const VacData = vacuumData;
 import { Melee } from "./melee";
 import { MeleeView } from "./meleeView";
 import inputJson from "../../data/input.json";
+import blastersData from "../../data/blasters.json";
 import { makeLevelAI, type LevelAI } from "../ai/level";
 import type { NavBounds } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
@@ -112,6 +113,10 @@ export interface GameHooks<T extends BuiltGame = BuiltGame> {
   stationPrompt?(eye: THREE.Vector3, forward: THREE.Vector3): string | null;
   /** The scene knobs: the arena needs a bigger fog and shadow box. */
   scene?: SceneOptions;
+  /** LVL-05: the blasters the loadout owns at the start (a campaign's
+   *  set). Left out, the loadout owns every blaster, as the test pages and
+   *  the range always did. */
+  startBlasters?: readonly string[];
   /** Wire the page's own spawns and return its late hooks. */
   configure?(game: Game<T>): Partial<GameHooks<T>> | void;
   /** The level-complete panel is up: only Play again unpauses (arena). */
@@ -231,8 +236,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // The loadout loads before the start overlay can resolve, so by the time
   // the player can act every viewmodel is on screen.
   boot.progress("Loading blasters");
+  // LVL-05: the campaign's start set, when the page asked for campaign
+  // play; the test pages leave it out and own every blaster, as before.
   const loadout = await Loadout.load(camera, darts, (_id, i, n) =>
-    boot.progress("Loading blasters", i, n));
+    boot.progress("Loading blasters", i, n), hooks.startBlasters);
   boot.step("Loadout ready");
 
   // GAME-09e: the zoom. It holds the player's own field of view and look
@@ -368,10 +375,31 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const meleeView = new MeleeView(camera);
   /** What the last watch swing() press did (null: nothing swung). */
   let lastSwing: number | null = null;
+  /** LVL-05: a blaster's name from data/blasters.json, as the stations
+   *  read it, for the pickup's HUD flash. */
+  const nameOf = (id: string): string =>
+    (blastersData as Record<string, { name?: string }>)[id]?.name ?? id;
+  // LVL-05: a blaster pickup shows the blaster's own model. The loadout
+  // has just loaded every one, so the page clones from here: nothing is
+  // fetched for a pickup.
+  for (let i = 0; i < loadout.ids.length; i++) {
+    const model = loadout.viewmodels[i]?.model ?? null;
+    if (model) pickups.blasterModels.set(loadout.ids[i]!, model);
+  }
+  pickups.loadout = loadout;
+  pickups.onBlaster = (id) => hud.blasterFlash(nameOf(id));
   pickups.onCollected = (kind, pos) => {
     if (kind === "ammo") {
       audio.play("PU-ammo", { position: pos });
       hud.ammoFlash();
+      return;
+    }
+    if (kind === "blaster") {
+      // LVL-05: a blaster found. The pickup already owned and filled it;
+      // the sound is the ammo box's (the card: the existing pickup sound),
+      // and onBlaster below flashes the name, because the switch is still
+      // running when this fires and the active blaster is the old one.
+      audio.play("PU-ammo", { position: pos });
       return;
     }
     audio.play("PU-health", { position: pos });

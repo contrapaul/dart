@@ -43,8 +43,9 @@ export const ARENA_LEVELS: Record<string, Level> = {
 /** The level the page should play: `?level=` when it names one, else the
  *  Pit. An unknown name falls back to the Pit and `unknownLevel` says so,
  *  so the page can tell the player rather than load something else. */
-export function chosenLevel(search = location.search): { level: Level; unknownLevel: string | null } {
+export function chosenLevel(search = location.search): { level: Level; name: string; unknownLevel: string | null } {
   const name = new URLSearchParams(search).get("level");
-  if (name && ARENA_LEVELS[name]) return { level: ARENA_LEVELS[name], unknownLevel: null };
-  return { level: ARENA_LEVELS["1-1-pit"]!, unknownLevel: name };
+  if (name && ARENA_LEVELS[name]) return { level: ARENA_LEVELS[name], name, unknownLevel: null };
+  // LVL-05: the campaign's own level ids are the page's names ("1-1-pit").
+  return { level: ARENA_LEVELS["1-1-pit"]!, name: "1-1-pit", unknownLevel: name };
 }

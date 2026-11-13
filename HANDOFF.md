@@ -81,6 +81,54 @@ the old text is in git history.
 
 ## Log
 
+### 2026-11-13: LVL-05 stage 1, owned blasters and blaster pickups
+
+Built on branch `lvl-05` in its own worktree. Stage 1 only: owned
+blasters and the blaster pickups. Carry-over, the end screen, the save
+and the main menu are stage 2, not started. Not pushed.
+- `data/campaign.json`: `order` (`1-1-pit`, `1-2`, `1-3`, `1-4`),
+  `startBlasters` (`["B02"]`) and `found`, all seven of Paul's blasters
+  (B01 in 1-1, B04 in 1-2, B03 in 1-3, B05 in 1-4, B06 2-1, B07 2-3,
+  B08 3-1). Paul's rules, PLAN.md section 14.
+- `src/game/campaign.ts`, pure and headless: `campaignMode(search)`,
+  `ownedAt(levelId)`, `foundAt`, `nextLevel`, `levelIndex`.
+- `src/weapons/loadout.ts`: an owned set on top of the eight always-built
+  blasters. `own`/`owns`, `select` refuses an unowned one, `next`/`prev`
+  skip them, the first owned one is active. With nothing passed the
+  loadout owns all eight, so the range and the test pages are unchanged.
+- `arena.html?level=1-2&campaign` is campaign mode; without `&campaign`
+  the page owns all eight exactly as before.
+- A `blaster` pickup kind (`data/pickups.json`, `src/pickups/pickups.ts`):
+  the blaster's own model at world size, turning and bobbing like the
+  ammo box, taken within 1 m. Taking it owns it, switches to it, fills the
+  magazine and gives `reserveStart`, plays the ammo box's pickup sound and
+  flashes its name above the ammo counter on the HUD. In test mode it only
+  tops up ammo.
+
+Where each pickup was put (start values, Paul will move them; each one is
+on the level's centre line, dead ahead of the player at the start, on the
+floor and lit):
+
+- 1-1 Pit, the B01 Dartman: `[0, 4.0, -25.5]`, on the start room's floor
+  3.5 m straight ahead of the player (`playerStart` `[0, 4, -29]`).
+- 1-2, the B04: `[-4, 0, 57.5]`, 2.5 m ahead of the start.
+- 1-3, the B03: `[0, 0, -7]`, 4 m ahead of the start in the open bay,
+  between the two white dummies.
+- 1-4, the B05: `[0, 0, -7]`, 4 m ahead of the start in the forecourt.
+
+`npm run check` green (1044 tests, 2 skipped) and `npm run smoke` green
+(4 pages). New tests: `tests/game/campaign.test.ts`,
+`tests/game/blaster-pickup.test.ts`, `tests/game/level-pickup.test.ts`,
+and the owned-set cases in `tests/weapons/loadout.test.ts`.
+
+Seen by eye (headless Chromium, `?level=<id>&campaign`, scripted walk):
+all four pickups show the right blaster in the right spot, walking over
+one takes it, the first blaster is B02 with no B01 in hand, and after
+the Pit pickup the HUD reads "The Dartman" over `AMMO 8 / 40`. Not seen
+by eye: a real playthrough past the first arena in any level, the pickup
+coasting over uneven ground, and how the pickup reads in a fight. Stage 2
+(carry-over, the end screen, the save, the main menu) is not started.
+
 ### 2026-11-13: FX-01 review, merged (Claude Opus 5.5): the blast
 
 - strata-dsv41 built the card in one run, first try. The code was right:

@@ -140,3 +140,81 @@ describe("GAME-09 test 14: switching", () => {
     expect(lo.activeIndex).toBe(1);
   });
 });
+
+// LVL-05 stage 1: the owned set. The loadout still builds every blaster
+// (nothing loads mid-level), but a campaign names the ones the player has
+// found; the rest cannot be selected and next and prev skip them.
+describe("LVL-05: owned blasters", () => {
+  const owned = (ids?: string[]) => {
+    const darts = new FakeDarts();
+    const vms = ["B01", "B04", "B03"].map(() => new FakeVM([[0, 0, -1]]));
+    const out = new THREE.Vector3();
+    const parts = ["B01", "B04", "B03"].map((id, i) => ({
+      id,
+      blaster: new Blaster(resolveSpec(id), darts, () => vms[i]!.muzzleCameraPoint(0, out)),
+      viewmodel: vms[i]!,
+    }));
+    return { lo: new Loadout(parts, darts, 0.35, ids), darts, vms };
+  };
+
+  it("owns every blaster by default, the first one active", () => {
+    const { lo } = owned();
+    for (const id of ["B01", "B04", "B03"]) expect(lo.owns(id), id).toBe(true);
+    expect(lo.activeIndex).toBe(0);
+  });
+
+  it("the first owned blaster is active, not the first built", () => {
+    const { lo, vms } = owned(["B04"]);
+    expect(lo.owns("B01")).toBe(false);
+    expect(lo.owns("B04")).toBe(true);
+    expect(lo.activeIndex).toBe(1);
+    expect(lo.activeId()).toBe("B04");
+    expect(vms[0]!.visible).toBe(false);
+    expect(vms[1]!.visible).toBe(true);
+  });
+
+  it("select does nothing for an unowned blaster, next and prev skip them", () => {
+    const { lo } = owned(["B01", "B03"]);
+    lo.select(1); // B04 is not owned
+    expect(lo.switching).toBe(false);
+    expect(lo.activeIndex).toBe(0);
+    lo.next(); // B04 skipped, B03 next
+    let guard = 0;
+    while (lo.switching && guard++ < 200) lo.update(DT, NO, AIM);
+    expect(lo.activeIndex).toBe(2);
+    lo.next(); // wraps to B01
+    guard = 0;
+    while (lo.switching && guard++ < 200) lo.update(DT, NO, AIM);
+    expect(lo.activeIndex).toBe(0);
+    lo.prev(); // the other way: B03, then B01
+    guard = 0;
+    while (lo.switching && guard++ < 200) lo.update(DT, NO, AIM);
+    expect(lo.activeIndex).toBe(2);
+    lo.prev();
+    guard = 0;
+    while (lo.switching && guard++ < 200) lo.update(DT, NO, AIM);
+    expect(lo.activeIndex).toBe(0);
+  });
+
+  it("own() lets a found blaster be selected, and with one owned nothing switches", () => {
+    const { lo } = owned(["B01"]);
+    lo.own("B04");
+    expect(lo.owns("B04")).toBe(true);
+    lo.select(1);
+    let guard = 0;
+    while (lo.switching && guard++ < 200) lo.update(DT, NO, AIM);
+    expect(lo.activeIndex).toBe(1);
+    // A one-blaster loadout's next and prev stay put.
+    const one = owned(["B03"]).lo;
+    one.next();
+    one.prev();
+    expect(one.switching).toBe(false);
+    expect(one.activeId()).toBe("B03");
+  });
+
+  it("an owned set that names no built blaster falls back to the first", () => {
+    const { lo } = owned(["B08"]);
+    expect(lo.activeIndex).toBe(0);
+    expect(lo.owns("B08")).toBe(false);
+  });
+});

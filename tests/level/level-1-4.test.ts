@@ -150,10 +150,15 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     // Beat 1: one ammo box; beat 3: A2 at the third column; beat 6: A3;
     // LVL-04b stage 2: A4 in the Ring and A5 on its block; stage 3: A6 and
     // A7 at the Yard's two long ends.
-    expect(level.pickups!.map((p) => [p.id, p.count])).toEqual([
+    // LVL-05: the ammo boxes are the same, and the level's one blaster
+    // pickup (the B05) comes after them in the file.
+    const boxes = level.pickups!.filter((p) => p.type.startsWith("darts-"));
+    expect(boxes.map((p) => [p.id, p.count])).toEqual([
       ["a1-ammo", 24], ["a2-ammo", 8], ["a3-ammo", 8], ["a4-ammo", 10],
       ["a5-ammo", 6], ["a6-ammo", 12], ["a7-ammo", 12],
     ]);
+    const given = level.pickups!.filter((p) => p.type === "blaster");
+    expect(given.map((p) => [p.id, p.blaster])).toEqual([["fc-blaster-b05", "B05"]]);
     // The exit is the lit lift past the Yard's north door, not the
     // temporary pad that used to stand on the ring (PLAN.md section 14).
     expect(level.exit.pos[1]).toBeLessThan(-5);

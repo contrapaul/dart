@@ -148,6 +148,13 @@ export class Viewmodel {
     }
   }
 
+  /** LVL-05: the loaded model's own root (the glb scene), for a pickup
+   *  to clone. The root carries the view placement (position, rotation
+   *  and scale from data/blasters.json), so a clone is put back to the
+   *  identity transform to stand at world size. Null before load.
+   */
+  get model(): THREE.Object3D | null { return this.root; }
+
   /** A named node, or null. */
   node(name: string): THREE.Object3D | null {
     return this.nodeByName.get(name) ?? null;

@@ -2741,6 +2741,16 @@
         -6.1,
         -172
       ]
+    },
+    {
+      "id": "bay-blaster-b03",
+      "type": "blaster",
+      "blaster": "B03",
+      "pos": [
+        0,
+        0,
+        -7
+      ]
     }
   ],
   "playerStart": {

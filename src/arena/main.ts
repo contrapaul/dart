@@ -10,11 +10,17 @@ import { validateLevel } from "../level/validate";
 import { createGame } from "../game/game";
 import { arenaExtras, buildArena, type ArenaBuilt } from "./extras";
 import { chosenLevel } from "./levels";
+import { campaignMode, ownedAt } from "../game/campaign";
 
 // GAME-10b: `?level=1-4-ring` plays the Ring; the Pit stays the default.
 const chosen = chosenLevel();
 const LEVEL = chosen.level;
 const status = document.querySelector<HTMLParagraphElement>("#status")!;
+// LVL-05: `&campaign` plays the level in the campaign, so the loadout owns
+// only what the campaign gives by the level's start. Without it the page is
+// the test page it has always been: every blaster owned.
+const campaign = campaignMode(location.search);
+const startBlasters = campaign ? ownedAt(chosen.name) : undefined;
 
 // A level with errors does not load: the page shows the list (BLOCKOUT 5).
 const report = validateLevel(LEVEL);
@@ -35,6 +41,9 @@ async function run() {
     scene: { fog: [40, 130], shadowRadius: 40, shadowMap: 2048 },
 
     build: buildArena,
+
+    // LVL-05: the campaign's start set (undefined on the test page).
+    startBlasters,
 
     configure(g) {
       const extras = arenaExtras(g);
