@@ -88,6 +88,33 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-07b, triggers and keys in play (Claude Opus 5.5)
+
+- The arena page runs the editor's triggers (`src/arena/extras.ts`):
+  spawns at spawn points, refused ones retried every step; every Foamer a
+  trigger can count is tagged (placed id or spawn id) and reported once
+  when down or gone; show and hide reach hidden prims, hazards and
+  placed Foamers; open and close use the page's door verb (sound
+  included); message is the banner; checkpoint sets where a restart puts
+  the player.
+- Keys: `src/level/key-pickups.ts`, a code-built key in its colour that
+  turns, taken within 1 m; a door locked to a colour opens within 2.5 m
+  when the key is held, and says "Needs the red key" otherwise; a small
+  HUD line lists the keys held. Numbers in `data/editor.json` `keys`.
+  Placed pickups now report "taken" with their file id
+  (`Pickups.onTaken`).
+- A restart puts all editor logic back to the level's start (triggers,
+  hidden prims, hazards, the level's doors, keys), keeping the trigger
+  checkpoint. Decided so: the Foamers a half run fight spawned are
+  cleared by the restart, so a fight left half done could never finish.
+- Test level `ed-07` (`arena.html?level=ed-07`). Seen in the browser:
+  entering the arena raised the pink blocker behind the player and
+  spawned 3 Slowmers; downing them spawned wave 2; downing those dropped
+  the blocker and opened the side door; the exit door said it needs the
+  red key, the key showed "Red key" on the HUD and the door then opened.
+- Not seen: a death and restart in a trigger level, a refused spawn being
+  retried, a "pressed" trigger from a button.
+
 ### 2026-11-13: ED-07a review, merged (Claude Opus 5.5): the trigger runner
 
 - qwen-machine (Qwen 3.8 27B) wrote `src/level/triggers.ts` and
