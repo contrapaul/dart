@@ -17,6 +17,7 @@ import {
   HealthPressPlayer, PressSystem,
 } from "../level/presses";
 import { buildAmbushes } from "../level/ambush";
+import { applySky } from "../render/sky";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -45,6 +46,8 @@ export interface ArenaBuilt extends BuiltGame {
 
 /** Builds the level file's geometry in the shared game's build hook. */
 export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): ArenaBuilt {
+  // ED-01: the level's sky, before its geometry goes in.
+  applySky(scene, LEVEL.sky);
   const level = buildLevel(LEVEL, rapier, world, mesherPool, scene);
   return {
     voxels: level.voxels,
