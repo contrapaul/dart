@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { LevelDoc, newLevel } from "../../src/editor/doc";
 import { triggerSummary } from "../../src/editor/trigger-text";
-import type { Trigger } from "../../src/level/format";
+import {
+  DO_KINDS, WHEN_KINDS, emptyDo, emptyWhen, fieldIds, newTrigger, spawnActionIds,
+} from "../../src/editor/trigger-parts";
+import levelJson from "../../data/levels/ed-07.json";
+import type { Level, Trigger } from "../../src/level/format";
 
 // ED-08 stage 1: a trigger is one of the document's kinds, so every command
 // the editor has works on it. It is the one kind with no position, which is
@@ -113,5 +117,34 @@ describe("ED-08 the summary line", () => {
     })).toBe("pressed button-1: checkpoint (repeats)");
     expect(triggerSummary({ id: "d", when: { kind: "after", trigger: "lock", seconds: 3 }, do: [{ kind: "wake", ids: ["foamer-1"] }] }))
       .toBe("after lock 3s: wake foamer-1");
+  });
+});
+
+describe("ED-08 what a new trigger starts as", () => {
+  it("has a when the validator accepts and an empty do", () => {
+    const made = newTrigger("trigger-1");
+    expect(made.when).toEqual({ kind: "start" });
+    expect(made.id).toBe("trigger-1");
+    expect(made.repeat).toBeUndefined();
+    // No message text: that is Paul's to write.
+    expect(JSON.stringify(made)).not.toContain("message");
+  });
+
+  it("makes an empty when and do of each kind with the fields the validator reads", () => {
+    for (const { kind } of WHEN_KINDS) expect(emptyWhen(kind).kind).toBe(kind);
+    expect(emptyWhen("after")).toEqual({ kind: "after", trigger: "", seconds: 1 });
+    for (const { kind } of DO_KINDS) expect(emptyDo(kind).kind).toBe(kind);
+    expect(emptyDo("spawn")).toEqual({ kind: "spawn", id: "", foamer: "F01", count: 1, at: [] });
+    expect(emptyDo("checkpoint")).toEqual({ kind: "checkpoint", pos: [0, 0, 0], yaw: 0 });
+  });
+
+  it("offers the ids of the right kind for each field", () => {
+    const level = levelJson as unknown as Level;
+    expect(fieldIds(level, { kind: "enter" })).toEqual(["arena-zone"]);
+    expect(fieldIds(level, { kind: "killed" })).toEqual(["wave-1", "wave-2-spawn"]);
+    expect(fieldIds(level, { kind: "show" })).toContain("blocker");
+    expect(fieldIds(level, { kind: "open" })).toEqual(["side-door", "exit-door"]);
+    expect(fieldIds(level, { kind: "message" })).toBeNull();
+    expect(spawnActionIds(level)).toEqual(["wave-1", "wave-2-spawn"]);
   });
 });

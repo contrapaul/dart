@@ -149,6 +149,15 @@
   opacity: 0.5;
 }
 
+/* ED-08: a Logic row shows the trigger's id and what it says in one line. */
+#outliner .row .hint {
+  padding: 0;
+  font-size: 11px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 #inspector {
   position: absolute;
   right: 0;
@@ -207,6 +216,22 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.2rem;
+}
+
+/* ED-08: one do row of a trigger, set apart from the next. */
+#inspector .do-row {
+  border-left: 2px solid #2ec4ff;
+  margin: 0.3rem 0.6rem 0.5rem;
+  padding-left: 0.4rem;
+}
+
+#inspector .do-row label {
+  grid-template-columns: 4rem 1fr;
+}
+
+#inspector .hint {
+  opacity: 0.6;
+  font-size: 11px;
 }
 
 #palette {

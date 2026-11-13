@@ -24,14 +24,14 @@ export interface PartContext {
   redraw(): void;
 }
 
-function label(text: string, input: HTMLElement): HTMLElement {
+export function label(text: string, input: HTMLElement): HTMLElement {
   const el = document.createElement("label");
   el.textContent = text;
   el.append(input);
   return el;
 }
 
-function numberInput(value: number, step: number, commit: (n: number) => void): HTMLInputElement {
+export function numberInput(value: number, step: number, commit: (n: number) => void): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "number";
   input.step = String(step);
@@ -43,7 +43,7 @@ function numberInput(value: number, step: number, commit: (n: number) => void): 
   return input;
 }
 
-function vecField(current: Vec3, step: number, snap: number, commit: (v: Vec3) => void): HTMLElement {
+export function vecField(current: Vec3, step: number, snap: number, commit: (v: Vec3) => void): HTMLElement {
   const host = document.createElement("div");
   host.className = "vec";
   const value: Vec3 = [...current] as Vec3;
@@ -58,7 +58,7 @@ function vecField(current: Vec3, step: number, snap: number, commit: (v: Vec3) =
   return host;
 }
 
-function selectField(options: { value: string; label: string }[], current: string, commit: (v: string) => void): HTMLSelectElement {
+export function selectField(options: { value: string; label: string }[], current: string, commit: (v: string) => void): HTMLSelectElement {
   const select = document.createElement("select");
   for (const option of options) {
     const el = document.createElement("option");
@@ -71,7 +71,7 @@ function selectField(options: { value: string; label: string }[], current: strin
   return select;
 }
 
-function checkField(text: string, checked: boolean, commit: (on: boolean) => void): HTMLElement {
+export function checkField(text: string, checked: boolean, commit: (on: boolean) => void): HTMLElement {
   const el = document.createElement("label");
   const input = document.createElement("input");
   input.type = "checkbox";
@@ -81,7 +81,7 @@ function checkField(text: string, checked: boolean, commit: (on: boolean) => voi
   return el;
 }
 
-function textField(value: string, commit: (v: string) => void): HTMLInputElement {
+export function textField(value: string, commit: (v: string) => void): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "text";
   input.value = value;

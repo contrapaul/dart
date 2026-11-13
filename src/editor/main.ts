@@ -1,6 +1,8 @@
 import * as THREE from "three";
-import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Vec3 } from "../level/format";
-import { LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind } from "./doc";
+import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Trigger, Vec3 } from "../level/format";
+import {
+  ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
+} from "./doc";
 import { exportFileName, readLevelFile, skyImageDataUrl } from "./files";
 import { buildPrimFields } from "./inspector";
 import {
@@ -10,6 +12,9 @@ import {
 import { EXIT_ID, START_ID } from "./markers";
 import { AMMO_TYPES, RIGS, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
+import { buildTriggerFields } from "./inspector-trigger";
+import { newTrigger } from "./trigger-parts";
+import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, putLevel, LOCAL_PREFIX } from "./store";
 import { EditorView, type TransformMode } from "./view";
@@ -35,6 +40,11 @@ const PART_BUTTONS: { kind: PartKind; name: string }[] = [
   { kind: "zones", name: "Zone" },
 ];
 
+/** ED-08: a trigger is not a thing in the world, so it is not placed by a
+ *  click: the palette's Trigger button adds one with nothing chosen yet and
+ *  selects it for the inspector. */
+const TRIGGER_BUTTON = "Add a trigger";
+
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const doc = new LevelDoc(newLevel());
 const view = new EditorView($<HTMLCanvasElement>("view"));
@@ -51,6 +61,8 @@ let armedRig = RIGS[0]?.id ?? "F01";
 /** The colour new prims take: the last one picked in the inspector. */
 let placeColour = "#ff7a1a";
 const selected = new Set<string>();
+/** ED-08 stage 3: the do row whose id field Link fills, or null. */
+let linkRow: number | null = null;
 const status = $("status");
 const counts = $("counts");
 
@@ -125,7 +137,7 @@ function overCaps(level: Level): string[] {
 /** Every id the document holds, in any kind. */
 function allIds(): string[] {
   const ids: string[] = [];
-  for (const kind of ["prims", "foamers", "pickups", "doors", "spawnPoints", "zones"] as const) {
+  for (const kind of ENTRY_KINDS) {
     for (const entry of doc.entries(kind)) ids.push(entry.id);
   }
   return ids;
@@ -200,7 +212,8 @@ function buildOutliner() {
     list.push(prim);
     groups.set(prim.behaviour, list);
   }
-  const empty = !groups.size && PART_GROUPS.every((g) => !doc.entries(g.kind).length);
+  const empty = !groups.size && PART_GROUPS.every((g) => !doc.entries(g.kind).length)
+    && !doc.entries("triggers").length;
   if (empty) {
     const hint = document.createElement("div");
     hint.className = "hint";
@@ -252,6 +265,30 @@ function buildOutliner() {
       name.textContent = partName(entry.id);
       name.addEventListener("click", (e) => pick(entry.id, e.shiftKey));
       row.append(name);
+      group.append(row);
+    }
+    host.append(group);
+  }
+  // ED-08: the Logic group, one row per trigger with what it says in a line.
+  const triggers = doc.level.triggers ?? [];
+  if (triggers.length) {
+    const group = document.createElement("div");
+    group.className = "group";
+    const title = document.createElement("h2");
+    title.textContent = "Logic";
+    group.append(title);
+    for (const trigger of triggers) {
+      const row = document.createElement("div");
+      row.className = "row" + (selected.has(trigger.id) ? " selected" : "");
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = trigger.id;
+      name.title = triggerSummary(trigger);
+      name.addEventListener("click", (e) => pick(trigger.id, e.shiftKey));
+      const summary = document.createElement("span");
+      summary.className = "hint";
+      summary.textContent = triggerSummary(trigger);
+      row.append(name, summary);
       group.append(row);
     }
     host.append(group);
@@ -318,6 +355,18 @@ function buildPalette() {
     });
     host.append(button);
   }
+  // ED-08: a trigger is not placed by a click, so its button adds one at
+  // once and selects it, ready for the inspector.
+  const addTrigger = document.createElement("button");
+  addTrigger.type = "button";
+  addTrigger.textContent = TRIGGER_BUTTON;
+  addTrigger.addEventListener("click", () => {
+    if (!roomForTriggers(1)) return;
+    const made = newTrigger(doc.nextId("trigger"));
+    doc.add("triggers", made);
+    pick(made.id);
+  });
+  host.append(addTrigger);
   if (armedPart === "pickups") {
     const select = document.createElement("select");
     select.title = "Pickup type";
@@ -420,7 +469,31 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
   else if (kind === "pickups") buildPickupFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "doors") buildDoorFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "spawnPoints") buildSpawnFields(host, doc.find(kind, id)!, ctx);
+  else if (kind === "triggers") buildTriggerInspector(host, id);
   else buildZoneFields(host, doc.find(kind, id)!, ctx);
+}
+
+/** ED-08 stage 2: the inspector for one trigger. `change` is one undo step on
+ *  that trigger's fields; a new when or do kind rebuilds the panel, since it
+ *  brings its own fields. */
+function buildTriggerInspector(host: HTMLElement, id: string) {
+  const trigger = doc.find<Trigger>("triggers", id);
+  if (!trigger) return;
+  buildTriggerFields(host, trigger, {
+    level: doc.level,
+    change: (patch, text) => doc.change("triggers", [{ id, patch: patch as Record<string, unknown> }], text),
+    redraw: buildInspector,
+    linkRow,
+    setLink: (row) => {
+      linkRow = row;
+      buildInspector();
+    },
+    cameraSpot: () => {
+      const cam = view.camera;
+      const euler = new THREE.Euler().setFromQuaternion(cam.quaternion, "YXZ");
+      return { pos: [cam.position.x, cam.position.y, cam.position.z], yaw: euler.y };
+    },
+  });
 }
 
 function buildSkyInspector(host: HTMLElement) {
@@ -569,6 +642,15 @@ function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) 
 /** The id prefix a pickup takes: a key is `key`, everything else `pickup`. */
 function pickupPrefix(): string {
   return pickupType === "key" ? "key" : "pickup";
+}
+
+/** ED-08: true when the level has room for more triggers against the cap in
+ *  data/editor.json, otherwise it says so in the status line. */
+function roomForTriggers(count: number): boolean {
+  const have = doc.level.triggers?.length ?? 0;
+  if (have + count <= LIMITS.triggers) return true;
+  status.textContent = `Trigger cap: ${LIMITS.triggers}. ${have} already there.`;
+  return false;
 }
 
 /** True when a kind has room for one more against its cap in data/editor.json.
