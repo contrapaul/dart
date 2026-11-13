@@ -88,6 +88,22 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
+
+- DeepSeek built `editor.html`. Seen in the browser: a new level opens on
+  a 32 m floor under the gradient sky; Box then a click on the floor
+  places a box with the move handles; the inspector set it to a toxic
+  hazard (drawn see-through) and changed its size; the top bar showed
+  Saving then Saved; Play opened `arena.html?level=local:<key>` and the
+  game played that level, the toxic box standing on the floor.
+- Review fix (on main, ED-01's bug): `src/arena/extras.ts` picked its
+  level when it was imported, before `main.ts` had read the store, so a
+  stored level always played the Pit. `main.ts` now imports `extras`
+  after the store read.
+- Not seen by eye: rotate and scale handles, undo and redo by key, export
+  and import of a file, the sky image upload, opening an Act 1 level as a
+  copy. The floor grid is 128 m and dense at 0.5 m: fine near, busy far.
+
 ### 2026-11-13: ED-03 review, merged (Claude Opus 5.5): hazards in play
 
 - strata built the module and its tests. Review fixes: a hazard with no
