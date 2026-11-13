@@ -251,7 +251,9 @@ export class EditorView {
     }
     this.markerData.clear();
     for (const kind of ENTRY_KINDS) {
-      if (kind === "prims") continue;
+      // A prim has its own mesh, and a trigger (ED-08) is logic with nothing
+      // in the world to draw: neither gets a marker.
+      if (kind === "prims" || kind === "triggers") continue;
       const list = (level[kind] ?? []) as { id: string }[];
       for (const entry of list) {
         this.addMarker(entry.id, markerFor(kind as Marker["kind"], entry as never));
