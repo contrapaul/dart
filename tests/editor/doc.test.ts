@@ -23,7 +23,7 @@ describe("ED-02 the level document", () => {
 
   it("adds and undoes and redoes an add", () => {
     const d = doc();
-    d.add(box);
+    d.add("prims", box);
     expect(d.prim("box-9")).toEqual(box);
     expect(d.canUndo).toBe(true);
     d.undo();
@@ -35,8 +35,8 @@ describe("ED-02 the level document", () => {
 
   it("changes fields and undoes and redoes the change", () => {
     const d = doc();
-    d.add(box);
-    d.change([{ id: "box-9", patch: { pos: [4, 0, 4], colour: "#2ec4ff" } }]);
+    d.add("prims", box);
+    d.change("prims", [{ id: "box-9", patch: { pos: [4, 0, 4], colour: "#2ec4ff" } }]);
     expect(d.prim("box-9")?.pos).toEqual([4, 0, 4]);
     expect(d.prim("box-9")?.colour).toBe("#2ec4ff");
     d.undo();
@@ -47,9 +47,9 @@ describe("ED-02 the level document", () => {
 
   it("changes several prims as one step", () => {
     const d = doc();
-    d.add(box);
-    d.add({ ...box, id: "box-10", pos: [5, 1, 5] });
-    d.change([
+    d.add("prims", box);
+    d.add("prims", { ...box, id: "box-10", pos: [5, 1, 5] });
+    d.change("prims", [
       { id: "box-9", patch: { colour: "#b6ff3b" } },
       { id: "box-10", patch: { colour: "#b6ff3b" } },
     ]);
@@ -61,7 +61,7 @@ describe("ED-02 the level document", () => {
 
   it("removes and undoes and redoes a remove", () => {
     const d = doc();
-    d.add(box);
+    d.add("prims", box);
     d.remove("box-9");
     expect(d.prim("box-9")).toBeUndefined();
     d.undo();
@@ -72,8 +72,8 @@ describe("ED-02 the level document", () => {
 
   it("undoes a rename by the old id", () => {
     const d = doc();
-    d.add(box);
-    d.change([{ id: "box-9", patch: { id: "wall-1" } }]);
+    d.add("prims", box);
+    d.change("prims", [{ id: "box-9", patch: { id: "wall-1" } }]);
     expect(d.prim("wall-1")).toBeDefined();
     d.undo();
     expect(d.prim("box-9")).toBeDefined();
@@ -82,10 +82,10 @@ describe("ED-02 the level document", () => {
 
   it("clears the redo list when a new change is made", () => {
     const d = doc();
-    d.add(box);
+    d.add("prims", box);
     d.undo();
     expect(d.canRedo).toBe(true);
-    d.add({ ...box, id: "box-11" });
+    d.add("prims", { ...box, id: "box-11" });
     expect(d.canRedo).toBe(false);
     d.undo();
     expect(d.prim("box-9")).toBeUndefined();
@@ -101,14 +101,14 @@ describe("ED-02 the level document", () => {
 
   it("duplicates with fresh ids", () => {
     const d = doc();
-    d.add(box);
-    const ids = d.duplicate(["box-9"]);
+    d.add("prims", box);
+    const ids = d.duplicate("prims", ["box-9"]);
     expect(ids.length).toBe(1);
     expect(ids[0]).not.toBe("box-9");
     expect(d.prim(ids[0]!)).toBeDefined();
     expect(d.prim(ids[0]!)?.size).toEqual(box.size);
     expect(d.prim("box-9")).toBeDefined();
-    const again = d.duplicate(["box-9", "box-9"]);
+    const again = d.duplicate("prims", ["box-9", "box-9"]);
     expect(new Set([...again, "box-9"]).size).toBe(3);
     d.undo();
     expect(d.prim(again[0]!)).toBeUndefined();
@@ -118,7 +118,7 @@ describe("ED-02 the level document", () => {
     const d = doc();
     let calls = 0;
     const off = d.onChange(() => calls++);
-    d.add(box);
+    d.add("prims", box);
     d.undo();
     d.redo();
     expect(calls).toBe(3);
@@ -129,7 +129,7 @@ describe("ED-02 the level document", () => {
 
   it("loads a level and clears the history", () => {
     const d = doc();
-    d.add(box);
+    d.add("prims", box);
     d.load(newLevel());
     expect(d.canUndo).toBe(false);
     expect(d.canRedo).toBe(false);
@@ -139,7 +139,7 @@ describe("ED-02 the level document", () => {
   it("makes an id nothing is using", () => {
     const d = doc();
     const a = d.nextId("box");
-    d.add({ ...box, id: a });
+    d.add("prims", { ...box, id: a });
     expect(d.nextId("box")).not.toBe(a);
     expect(d.nextId("ramp")).toMatch(/^ramp-\d+$/);
   });

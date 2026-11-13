@@ -223,8 +223,8 @@ function buildPrimInspector(host: HTMLElement) {
   const prims = [...selected].map((id) => doc.prim(id)).filter((p): p is Prim => !!p);
   if (!prims.length) return;
   buildPrimFields(host, prims, {
-    change: (patch, text) => doc.change([...selected].map((id) => ({ id, patch })), text),
-    changeOne: (id, patch, text) => doc.change([{ id, patch }], text),
+    change: (patch, text) => doc.change("prims", [...selected].map((id) => ({ id, patch })), text),
+    changeOne: (id, patch, text) => doc.change("prims", [{ id, patch }], text),
     redraw: () => {
       buildInspector();
       buildPalette();
@@ -290,7 +290,7 @@ function place(shape: PrimShape, point: THREE.Vector3, normal: THREE.Vector3) {
   const made: Prim = { ...base, id: doc.nextId(shape), pos };
   const prim: Prim = snapOn ? snapPrim(made) : made;
   selected.clear();
-  doc.add(prim);
+  doc.add("prims", prim);
   // Select what was just placed, after the document's own redraw: the
   // inspector then has the new prim, one Ctrl+D from a copy.
   pick(prim.id);
@@ -323,7 +323,7 @@ window.addEventListener("keydown", (e) => {
   if (meta && e.code === "KeyD") {
     e.preventDefault();
     if (selected.size && roomFor(selected.size)) {
-      const made = doc.duplicate([...selected]);
+      const made = doc.duplicate("prims", [...selected]);
       selected.clear();
       for (const id of made) selected.add(id);
     }
@@ -415,7 +415,7 @@ view.controls.addEventListener("mouseUp", () => {
     }
     return { id, patch };
   }).filter((e) => Object.keys(e.patch).length);
-  if (edits.length) doc.change(edits, start.mode === "scale" ? "resize" : start.mode === "rotate" ? "rotate" : "move");
+  if (edits.length) doc.change("prims", edits, start.mode === "scale" ? "resize" : start.mode === "rotate" ? "rotate" : "move");
 });
 
 $("undoBtn").addEventListener("click", () => doc.undo());
