@@ -5,10 +5,10 @@
   "obliterateAt": 3,
   "cluster": { "count": 4, "distanceMetres": 1.5, "delaySeconds": 0.25, "profile": "cluster" },
   "fx": {
-    "_note": "FX-01: the visible blast. One pooled effect per page; spawn(point, radius) draws a core flash and a foam puff sized by the profile's fxRadius. flash and puff give the layer's life, scale as a fraction of radius at birth and at its duration, and opacity at birth, falling to 0 at the duration. maxLive is the pool size; when full the oldest blast is reused. Start values for Paul to tune.",
+    "_note": "FX-01: the visible blast. One pooled effect per page; spawn(point, radius) draws a core flash and a foam puff sized by the profile's fxRadius. flash and puff give the layer's life, scale as a fraction of radius at birth and at its duration, and opacity at birth, falling to 0 at the duration. maxLive is the pool size; when full the oldest blast is reused. softEdge fades a layer towards its outline (higher is softer, 0 is a hard edge). Start values for Paul to tune.",
     "maxLive": 12,
-    "flash": { "durationSeconds": 0.12, "scaleStart": 0.25, "scaleEnd": 1, "opacityStart": 0.9, "color": "#ffc85a" },
-    "puff": { "durationSeconds": 0.4, "scaleStart": 0.7, "scaleEnd": 1.35, "opacityStart": 0.55, "color": "#fff6e6" }
+    "flash": { "durationSeconds": 0.12, "scaleStart": 0.25, "scaleEnd": 1, "opacityStart": 0.9, "softEdge": 1.5, "color": "#ffc85a" },
+    "puff": { "durationSeconds": 0.4, "scaleStart": 0.7, "scaleEnd": 1.35, "opacityStart": 0.55, "softEdge": 2, "color": "#fff6e6" }
   },
   "profiles": {
     "dart": {

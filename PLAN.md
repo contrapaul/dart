@@ -643,7 +643,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | OPS-02 | (card: `tasks/OPS-02.md`) Asset loading/streaming and caching: the physics WebAssembly as its own hashed .wasm file instead of 4.1 MB of base64 in a chunk | Done 2026-11-06, reviewed by Claude (three fixes), merged locally, not pushed (Qwen 3.8-27B via Pi, qwen-machine) |
 | OPS-03 | A gate in front of the deploy: build, test, the two CLAUDE.md text rules, and a smoke check that boots all four pages in Chromium and proves there is a picture | Done 2026-11-12 (Claude via pi), not pushed |
 | OPS-04 | Graphics options for older machines: three presets in `data/render.json` picked by `?quality=low`, `?quality=medium` or `?quality=high` (pixel ratio, antialias, shadows, shadow map, foam debris cap, break-off piece cap); Foamer count is not touched | Done 2026-11-13 (strata-dsv41 via Pi, `tasks/OPS-04.md`), reviewed and merged by Claude Opus 5.5 |
-| FX-01 | The visible blast for every explosion: one pooled `BlastFx` per page with a core flash and foam puff sized by each profile's `fxRadius` in `data/explosion.json`, wired to `ExplosionSystem.onExplode` on the game and range pages | Done 2026-11-13 (Pi, `tasks/FX-01.md`), not reviewed, not pushed |
+| FX-01 | The visible blast for every explosion: one pooled `BlastFx` per page with a core flash and foam puff sized by each profile's `fxRadius` in `data/explosion.json`, wired to `ExplosionSystem.onExplode` on the game and range pages | Done 2026-11-13 (strata-dsv41 via Pi, `tasks/FX-01.md`), reviewed and merged by Claude Opus 5.5 (soft edge added) |
 | QA-06 | Final playtest round | P |
 
 ---

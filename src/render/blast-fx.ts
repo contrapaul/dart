@@ -8,6 +8,28 @@ import { sampleCurve, type CurveSample } from "./blast-curve";
 
 const FX = fxJson.fx;
 
+// Review fix: a plain sphere reads as a hard-edged glass ball. This fades a
+// layer towards its outline (alpha times |normal . view| to the power
+// softEdge), so the blast looks like a soft burst. Same draw calls; the
+// cache key lets every slot of a layer share one compiled program.
+function softEdge(m: THREE.MeshBasicMaterial, power: number): void {
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace("void main() {", "varying float vFacing;\nvoid main() {")
+      .replace(
+        "#include <project_vertex>",
+        "#include <project_vertex>\n  vFacing = abs(dot(normalize(normalMatrix * normal), normalize(-mvPosition.xyz)));",
+      );
+    sh.fragmentShader = sh.fragmentShader
+      .replace("void main() {", "varying float vFacing;\nvoid main() {")
+      .replace(
+        "#include <dithering_fragment>",
+        `#include <dithering_fragment>\n  gl_FragColor.a *= pow(vFacing, ${power.toFixed(3)});`,
+      );
+  };
+  m.customProgramCacheKey = () => `blast-soft-${power}`;
+}
+
 interface Slot {
   flash: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   puff: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
@@ -36,6 +58,7 @@ export class BlastFx {
           blending: THREE.AdditiveBlending,
         }),
       );
+      softEdge(flash.material, FX.flash.softEdge);
       const puff = new THREE.Mesh(
         geometry,
         new THREE.MeshBasicMaterial({
@@ -45,6 +68,7 @@ export class BlastFx {
           depthWrite: false,
         }),
       );
+      softEdge(puff.material, FX.puff.softEdge);
       for (const mesh of [flash, puff]) {
         mesh.castShadow = false;
         mesh.receiveShadow = false;

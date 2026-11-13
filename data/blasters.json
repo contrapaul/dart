@@ -34,11 +34,11 @@
   "B06": {
     "_note": "GAME-09d: The Standard (design/blasters/B06.md). Heavy full-auto on mega darts: slower than B04, each shot much harder. The approved model has no flywheels: its moving part is bolt, so wheelSpin drives nothing and is left at 0. Start values for Paul to tune on the range.",
     "name": "The Standard", "model": "/models/blasters/B06.glb",
-    "mode": "auto", "dartType": "mega", "dartsPerShot": 1, "spreadDeg": 1.5,
+    "mode": "auto", "dartType": "mega", "dartsPerShot": 1, "spreadDeg": 0.75,
     "magSize": 60, "reserveMax": 120, "reserveStart": 60,
     "fireInterval": 0.17, "spinUp": 0, "spinDown": 1.2,
     "reloadTime": 2.4, "autoReload": true,
-    "recoil": { "spreadPerShot": 0.5, "spreadMax": 7, "climbDegPerShot": 0.35, "climbDegMax": 5, "recover": 0.5 },
+    "recoil": { "spreadPerShot": 0.25, "spreadMax": 3.5, "climbDegPerShot": 0.35, "climbDegMax": 5, "recover": 0.5 },
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.03, "tiltDeg": 3, "return": 12, "triggerDeg": 15, "wheelSpin": 0, "magDrop": 0.2, "boltTravel": 0.04 },
@@ -113,16 +113,16 @@
   "B08": {
     "_note": "GAME-09g: Firehose (CONTENT-PLAN section 4, Paul: gatling, room-clearing 'final word', spins up to fire at an incredible rate, foam balls, 120 / 240, massive power, recoil, chaotic, ricochets, slows movement when firing). B08's own gatling model since 2026-11-10 (Paul: the B04 placeholder build was awful; a from-scratch rebuild to his new brief: six barrels that spin, no top hopper, side magazine feed, the handle over the body, the Twin mod adding a whole second six-barrel assembly that spins on its own axis). Script `art/blasters/B08/build.py`, Blender 5.2.3 (Steam); renders in `art/blasters/B08/renders/`. fireMoveShare: while the trigger is held and the wheels are up to speed, the player walks and sprints at this share of their speed (src/game/game.ts feeds it to the controller's fireMoveScale, which multiplies in beside the shield's own slow, it does not replace it). Mod Twin shows the model's `mod_twin` node and draws from `muzzle_1` and `muzzle_2`, one per cluster. Start values for Paul to tune on the range.",
     "name": "Firehose", "model": "/models/blasters/B08.glb",
-    "mode": "auto", "dartType": "ball", "dartsPerShot": 1, "spreadDeg": 2.5,
+    "mode": "auto", "dartType": "ball", "dartsPerShot": 1, "spreadDeg": 1.25,
     "magSize": 120, "reserveMax": 240, "reserveStart": 120,
     "fireInterval": 0.035, "spinUp": 0.8, "spinDown": 1.2, "reloadTime": 3.0, "autoReload": true,
     "fireMoveShare": 0.6,
-    "recoil": { "spreadPerShot": 0.9, "spreadMax": 14, "climbDegPerShot": 0.6, "climbDegMax": 10, "recover": 0.5 },
+    "recoil": { "spreadPerShot": 0.45, "spreadMax": 7, "climbDegPerShot": 0.6, "climbDegMax": 10, "recover": 0.5 },
     "muzzles": ["muzzle_1"],
     "viewmodel": { "position": [0.18, -0.22, -0.32], "rotationDeg": [2, 5, 0], "scale": 0.85 },
     "motion": { "kick": 0.05, "tiltDeg": 4, "return": 12, "triggerDeg": 15, "wheelSpin": 60, "magDrop": 0.2, "reloadRollDeg": -8 },
     "mods": {
-      "control": { "_note": "GAME-09g mod 1 (Paul): recoil control and reduced movement penalty: much less spread and climb, and the firing slow eased to 0.85.", "recoil": { "spreadPerShot": 0.2, "spreadMax": 6, "climbDegPerShot": 0.15, "climbDegMax": 4 }, "fireMoveShare": 0.85 },
+      "control": { "_note": "GAME-09g mod 1 (Paul): recoil control and reduced movement penalty: much less spread and climb, and the firing slow eased to 0.85.", "recoil": { "spreadPerShot": 0.1, "spreadMax": 3, "climbDegPerShot": 0.15, "climbDegMax": 4 }, "fireMoveShare": 0.85 },
       "twin": { "_note": "GAME-09g mod 2 (Paul), restated 2026-11-10: the mod adds the ENTIRE second six-barrel assembly, not one extra barrel, and both clusters spin on their own axes while firing. Half the fireInterval, the auto shot alternating the two clusters' muzzles. The model keeps `mod_twin` hidden unless this mod is on; the viewmodel spins its `barrels_2` node beside `barrels`.", "fireInterval": 0.0175, "muzzles": ["muzzle_1", "muzzle_2"], "show": ["mod_twin"] }
     }
   }

@@ -1005,7 +1005,7 @@ loopCtl = startLoop({
 });
 
 // Dev-only hook for automated checks in the browser.
-if (import.meta.env.DEV) Object.assign(window, { __range: { log, foamers, darts, loadout, player, camera, loop: loopCtl } });
+if (import.meta.env.DEV) Object.assign(window, { __range: { log, foamers, darts, loadout, player, camera, explosion, blastFx, loop: loopCtl } });
 
 // In watch mode only: window.dartRange, plain functions the reviewer calls
 // from the console. They reuse the panel's own handlers (spawnAhead,
