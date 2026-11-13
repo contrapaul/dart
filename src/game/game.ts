@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import { createRenderer, type SceneOptions } from "../render/scene";
 import { createFoamMaterial } from "../render/foam-material";
+import { BlastFx } from "../render/blast-fx";
 import { createPhysics, type Rapier } from "../physics/world";
 import { startLoop, STEP, loopDiagLine } from "../core/loop";
 import { firstFrame, pageBoot } from "../core/boot-report";
@@ -253,6 +254,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // the dart path only). The Foamer system is set below, where it exists.
   const explosion = new ExplosionSystem(world, debris, [voxelMesh]);
   explosion.ignore(player.collider); // never pushed, never hurt
+  const blastFx = new BlastFx(scene);
   // Dart hits on a voxel wall carve a crater and throw foam debris.
   const impacts = new DartImpacts(darts, debris, voxelTargets, explosion);
   // ENG-08 stage 3b: one director and one nav grid for the level, baked
@@ -306,7 +308,10 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // GAME-09d: a blast damages Foamers through the non-dart path (see
   // Foamers.blastDamage), and plays FX-explode at the point.
   explosion.foamers = foamers;
-  explosion.onExplode = (p) => audio.play("FX-explode", { position: p });
+  explosion.onExplode = (p, radius) => {
+    audio.play("FX-explode", { position: p });
+    blastFx.spawn(p, radius);
+  };
   // GAME-10a: the F02's foam balls. They have no physics bodies (kinematic
   // raycasts), so they need no place of their own in the physics order.
   const projectiles = new ProjectileSystem(rapier, world, debris, player.collider, foamers);
@@ -801,6 +806,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       if (pausedClock < renderJson.pausedFrame) return;
       pausedClock = 0;
     } else pausedClock = renderJson.pausedFrame;
+    if (!ui.paused) blastFx.update(dt);
     // Everything that moves on the fixed step is drawn alpha of the way
     // between its last two steps, so it moves smoothly at any refresh rate.
     debris.syncRender(alpha);

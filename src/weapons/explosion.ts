@@ -81,9 +81,10 @@ export class ExplosionSystem {
   /** Called after each carve that removed voxels, with the removed ones,
    *  exactly like DartImpacts.onCarve (the pages drop the islands there). */
   onCarve: (target: ExplosionTarget, removed: RemovedVoxel[]) => void = () => {};
-  /** Called once per blast that ran, with the world point. The page plays
-   *  FX-explode here (game.ts). */
-  onExplode: (point: THREE.Vector3) => void = () => {};
+  /** Called once per blast that ran, with the world point and the
+   *  profile's visual radius. The page plays FX-explode and spawns the
+   *  blast here. */
+  onExplode: (point: THREE.Vector3, fxRadius: number) => void = () => {};
   /** The Foamer system, set by the page once it exists (DartImpacts is
    *  built first). Null: a blast still carves, pushes and bursts. */
   foamers: BlastDamageTargets | null = null;
@@ -237,6 +238,6 @@ export class ExplosionSystem {
       }
     }
 
-    this.onExplode(point);
+    this.onExplode(point, T.fxRadius);
   }
 }
