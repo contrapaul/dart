@@ -652,6 +652,7 @@ Owners use the roles in 11.1: **A** = Architect (Opus), **F** = Feature (Sonnet)
 | OPS-03 | A gate in front of the deploy: build, test, the two CLAUDE.md text rules, and a smoke check that boots all four pages in Chromium and proves there is a picture | Done 2026-11-12 (Claude via pi), not pushed |
 | OPS-04 | Graphics options for older machines: three presets in `data/render.json` picked by `?quality=low`, `?quality=medium` or `?quality=high` (pixel ratio, antialias, shadows, shadow map, foam debris cap, break-off piece cap); Foamer count is not touched | Done 2026-11-13 (strata-dsv41 via Pi, `tasks/OPS-04.md`), reviewed and merged by Claude Opus 5.5 |
 | FX-01 | The visible blast for every explosion: one pooled `BlastFx` per page with a core flash and foam puff sized by each profile's `fxRadius` in `data/explosion.json`, wired to `ExplosionSystem.onExplode` on the game and range pages | Done 2026-11-13 (strata-dsv41 via Pi, `tasks/FX-01.md`), reviewed and merged by Claude Opus 5.5 (soft edge added) |
+| ED-07a | (card: `tasks/ED-07a.md`) The trigger runner and keys for the editor's when/do triggers: `TriggerRunner` in `src/level/triggers.ts` fires the level's triggers (start, enter zone, killed, pressed, taken, after) through a `TriggerHost`, and `KeyRing` plus `doorOpensFor` in `src/level/keys.ts` hold the key rules. No Three.js, no DOM; the page is wired by its reviewer | Committed 2026-11-13 on `ed-07a` (qwen3.8-27b via Pi), awaiting Claude Opus 5.5's review, not pushed |
 | QA-06 | Final playtest round | P |
 
 ---

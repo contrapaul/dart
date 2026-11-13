@@ -88,6 +88,18 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-07a review, merged (Claude Opus 5.5): the trigger runner
+
+- qwen-machine (Qwen 3.8 27B) wrote `src/level/triggers.ts` and
+  `src/level/keys.ts` with 17 tests. Reviewed line by line: zones fire on
+  entering, spawns run round robin with their hold, "killed all" counts
+  every Foamer a named spawn makes, `after` re-arms when its trigger
+  fires again, reset clears everything.
+- Noted for the wiring (ED-07b): a spawn the game refuses (the live
+  Foamer cap) must be retried by the page, or a "killed all" over that
+  spawn can never fire and the blockers never drop.
+- Not in the game yet: nothing calls the runner until ED-07b.
+
 ### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
 
 - DeepSeek built `editor.html`. Seen in the browser: a new level opens on
@@ -260,6 +272,25 @@ following the level's name, and Play's single navigation to
 Known gap worth a decision: `src/editor/store.ts` was used as it is, so
 nothing in ED-02 reads a key back by name for the arena page; the
 `?level=local:` half needs the arena page to do it.
+### 2026-11-13: ED-07a trigger runner and key rules (Qwen 3.8-27B via Pi, `tasks/ED-07A.md`)
+
+- `src/level/triggers.ts`: `TriggerRunner` fires a level's when/do
+  triggers (start, enter zone, `killed`, pressed, taken, `after`) through
+  a `TriggerHost` the page provides. Spawn dos count their calls, round
+  robin over their `at` list, `holdSeconds` apart, the first one at once;
+  kill counting covers named spawns (each Foamer one makes); a trigger
+  fires once unless it says `repeat`, and a kill or a press before it can
+  fire still counts. Reset puts it back to the start state.
+- `src/level/keys.ts`: `KeyRing` holds red, blue, yellow in that order
+  and `doorOpensFor` decides a door (none always, trigger never, colour
+  when held).
+- 18 tests in `tests/level/`, including the usual arena end to end and
+  reset. The message default (3 s) lives in `data/editor.json`
+  `triggerDefaults`, not in the code.
+- No Three.js and no DOM in either file; the editor page is wired by its
+  own card.
+- Not checked by eye: no browser in this environment; the headless
+  preflight (tsc, 1195 tests, build) and the em dash check all pass.
 
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 
