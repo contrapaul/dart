@@ -86,6 +86,23 @@ is 1104 tests, 2 skipped on that branch.
 
 ## Log
 
+### 2026-11-13: MEL-01 review, merged (Claude Opus 5.5): the sword
+
+- DeepSeek V4.1 Flash 1017 built the card in one run (after a restart:
+  Paul's early message had stopped the first try before it began).
+- Reviewed: the save goes to version 2 with the owned hand weapons, and a
+  version 1 save still loads (Act 1 progress kept, no hand weapon).
+  Without the sword the melee key is the bash and no charges show; a
+  parry or a recharge cannot arm a weapon that was not found.
+- Seen in the browser (`/arena?level=env-03&watch`, a swing by script):
+  the lime foam blade sweeps across the view mid-swing. The sword is
+  drawn only while it swings, as the baton was; the card's "the grip sits
+  in the lower right at rest" was read as the rest pose of the swing,
+  not a held weapon. Paul's call if he wants it held in view.
+- 1138 tests pass (2 skipped); check and smoke green.
+- Not verified: a whole Act 1 run with the bash only, Firefox, the guard
+  and grip by eye (hidden behind the blaster in the frame taken).
+
 ### 2026-11-13: MEL-01, the sword (Pi, DeepSeek V4.1 Flash 1017): not reviewed
 
 Branch `mel-01`, committed, not pushed. M01 is no longer a placeholder
