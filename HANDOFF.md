@@ -34,7 +34,9 @@ editor's level parts) is committed on branch `ed-01`, not pushed, waiting
 on review. ED-05 (placing Foamers, pickups, doors, spawn points, zones, the
 start and the exit, the start loadout and a Problems count) is committed on
 branch `ed-05`, not pushed, waiting on review; the suite there is 1297
-tests, 2 skipped.
+tests, 2 skipped. ED-08 (triggers: the when/do inspector, Link, the Arena
+button, hidden prims see-through) is committed on branch `ed-08`, not
+pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 **Waiting on Paul:**
 
@@ -91,6 +93,26 @@ tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-08 review, merged (Claude Opus 5.5): triggers in the editor
+
+- DeepSeek built it (resumed after the power cut). Seen in the browser: a
+  spawn point, a box ticked "starts hidden" (drawn see-through) and a zone
+  placed; Build an arena on the zone opened the dialog with the hidden
+  box ticked as the blocker and the spawn point ticked; with a second
+  wave added it built three triggers, listed under Logic with their
+  summaries ("enter zone-3: show 1, spawn 3 F01" and so on). Played
+  (stepped by hand, the pane was hidden): entering the zone spawned 3
+  Slowmers, clearing them spawned wave 2, clearing those ended the fight.
+- Review fixes, both from ED-02: editor prims were placed by a fixed
+  matrix, so a mesh's own position stayed at the origin and the move
+  handles and the link outline appeared in the middle of the floor (a
+  drag started from there); they are now placed by position and rotation.
+  The click that ends a handle drag no longer selects what is under the
+  cursor.
+- Not seen: Link mode clicked through, a trigger written by hand in the
+  inspector, the blocker shown and hidden in play (the runner's show and
+  hide were seen in ED-07b).
+
 ### 2026-11-13: ED-10a review, merged (Claude Opus 5.5): Make a level, Play a level
 
 - strata built it (resumed after the power cut). Review: the run had
@@ -137,6 +159,58 @@ tests, 2 skipped.
   editor logic resets on a restart.
 - Not seen by eye: a dart or a swing breaking one (the blast path was
   driven by script), the turned block, the chunk burst's cap.
+### 2026-11-13: ED-08 (DeepSeek V4.1 Flash 1017 via Pi): triggers in the editor
+
+**Asked:** Paul scripts fights with when/do triggers. The game already runs
+them (ED-07a, ED-07b, `data/levels/ed-07.json` is the example) but the
+editor could not make one. Add trigger editing, Link, and an Arena button
+that builds the usual fight.
+
+**Built, in five stages, each committed on branch `ed-08`:**
+
+- Stage 1: `triggers` is a document kind, so add, change, remove,
+duplicate and undo work on a trigger through the same code as a prim.
+- Stage 2: the trigger inspector (id, the when with its fields, each do row
+with Up, Down and Out, Add a step, repeat) and one line per trigger in the
+outliner's new Logic group (`enter zone-1: show 2, spawn 3 F01`).
+- Stage 3: Link. Every field that names another thing has a Link button,
+and L links the first one of the selected trigger. While linking, a click in
+the view puts that thing into the field and Esc stops. A click on the wrong
+kind of thing says so and changes nothing. A selected trigger has no box of
+its own, so the view outlines what it names, with no handles on them.
+- Stage 4: Build an arena. With a zone selected, one dialog asks for the
+blockers (the prims that start hidden are ticked already), the spawn points,
+the waves (Foamer and count, add, remove, reorder) and the doors to open,
+then writes ordinary triggers in the shape of `ed-07.json`. The triggers are
+editable afterwards like any other, and no message text is written: the
+words are Paul's.
+- Stage 5: a prim that starts hidden is drawn see-through so a blocker can
+be seen and clicked while its fight is built. The top bar's Hidden things
+button stops drawing them, which is how the level looks when it starts.
+
+**Decided:**
+
+- Nothing new in `src/level/`: the builder writes the same triggers a person
+would by hand, so the runner, the validator and the game need no change.
+- The builder never writes a message, and it refuses a spec the validator
+would reject (no zone, no wave, no spawn point, a count under one) before
+it writes anything. With no blockers and no doors there is nothing to do
+when the fight is won, so the clear trigger is left out instead of being
+written with an empty do, which is an error.
+- Link writes only into the field it was started from, and only a thing of
+the right kind, so a stray click cannot change the wrong trigger.
+- The eye per prim in the outliner is unchanged; the new top bar button is
+about what a level contains, not about one prim.
+
+**Checks:** `npx tsc --noEmit`, `npx vitest run` (1344 pass, 2 skipped),
+`npm run build`, `npm run check` and `npm run smoke` all pass on each stage's
+commit; `check-no-em-dash.mjs` and `check-no-remote.mjs` pass.
+
+**Not checked by eye:** no browser here. Nobody has made a trigger, clicked
+Link, or pressed Build an arena and looked at the result. The Arena dialog's
+layout (a tick list per group and a row per wave) and the Hidden things
+button have never been seen. The fight it builds is only proved through the
+`TriggerRunner` with a fake host, not by playing it in `arena.html`.
 
 ### 2026-11-13: ED-05 review, merged (Claude Opus 5.5): placing things in the editor
 

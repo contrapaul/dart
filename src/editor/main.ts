@@ -1,15 +1,21 @@
 import * as THREE from "three";
-import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Vec3 } from "../level/format";
-import { LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind } from "./doc";
+import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Trigger, Vec3 } from "../level/format";
+import {
+  EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
+} from "./doc";
 import { exportFileName, readLevelFile, skyImageDataUrl } from "./files";
 import { buildPrimFields } from "./inspector";
 import {
   buildDoorFields, buildExitFields, buildFoamerFields, buildPickupFields, buildSpawnFields,
-  buildStartFields, buildZoneFields, selectKind,
+  buildStartFields, buildZoneFields, numberInput, selectField, selectKind,
 } from "./inspector-parts";
 import { EXIT_ID, START_ID } from "./markers";
 import { AMMO_TYPES, RIGS, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
+import { buildTriggerFields } from "./inspector-trigger";
+import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
+import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
+import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, putLevel, LOCAL_PREFIX } from "./store";
 import { EditorView, type TransformMode } from "./view";
@@ -35,6 +41,15 @@ const PART_BUTTONS: { kind: PartKind; name: string }[] = [
   { kind: "zones", name: "Zone" },
 ];
 
+/** ED-08: a trigger is not a thing in the world, so it is not placed by a
+ *  click: the palette's Trigger button adds one with nothing chosen yet and
+ *  selects it for the inspector. */
+const TRIGGER_BUTTON = "Add a trigger";
+
+/** ED-08 stage 4: one click builds the usual fight (lock, waves, clear) out
+ *  of ordinary triggers, which Paul can then edit like any other. */
+const ARENA_BUTTON = "Build an arena";
+
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const doc = new LevelDoc(newLevel());
 const view = new EditorView($<HTMLCanvasElement>("view"));
@@ -51,6 +66,9 @@ let armedRig = RIGS[0]?.id ?? "F01";
 /** The colour new prims take: the last one picked in the inspector. */
 let placeColour = "#ff7a1a";
 const selected = new Set<string>();
+/** ED-08 stage 3: the trigger field Link fills ("enter", "killed", "do:2"),
+ *  or null when nothing is linking. Cleared when the selection changes. */
+let linkKey: string | null = null;
 const status = $("status");
 const counts = $("counts");
 
@@ -78,7 +96,7 @@ function typing(target: EventTarget | null): boolean {
 // The panels that read the document.
 function redraw() {
   view.show(doc.level);
-  view.select([...selected], view.mode);
+  selectInView();
   buildOutliner();
   buildInspector();
   buildPalette();
@@ -125,7 +143,7 @@ function overCaps(level: Level): string[] {
 /** Every id the document holds, in any kind. */
 function allIds(): string[] {
   const ids: string[] = [];
-  for (const kind of ["prims", "foamers", "pickups", "doors", "spawnPoints", "zones"] as const) {
+  for (const kind of ENTRY_KINDS) {
     for (const entry of doc.entries(kind)) ids.push(entry.id);
   }
   return ids;
@@ -133,6 +151,20 @@ function allIds(): string[] {
 
 /** The problems the last change left, and the panel that lists them. */
 let problems: Problem[] = [];
+
+// ED-08 stage 5: a blocker starts hidden so it is out of the way until the
+// fight brings it in. In the editor it is drawn see-through so it can be seen
+// and clicked; this button stops drawing those prims at all, for a look at the
+// level exactly as it begins. It changes nothing in the level.
+$("hiddenBtn").addEventListener("click", () => {
+  view.setSkipHidden(!view.skipHidden);
+  $("hiddenBtn").classList.toggle("on", view.skipHidden);
+  const count = (doc.level.prims ?? []).filter((p) => p.hidden).length;
+  status.textContent = view.skipHidden
+    ? `Not drawing ${count} prim${count === 1 ? "" : "s"} that start hidden.`
+    : `Drawing the prims that start hidden see-through again (${count}).`;
+  selectInView();
+});
 
 $("problemsBtn").addEventListener("click", () => {
   void dialog("Problems", (body) => {
@@ -200,7 +232,8 @@ function buildOutliner() {
     list.push(prim);
     groups.set(prim.behaviour, list);
   }
-  const empty = !groups.size && PART_GROUPS.every((g) => !doc.entries(g.kind).length);
+  const empty = !groups.size && PART_GROUPS.every((g) => !doc.entries(g.kind).length)
+    && !doc.entries("triggers").length;
   if (empty) {
     const hint = document.createElement("div");
     hint.className = "hint";
@@ -256,6 +289,30 @@ function buildOutliner() {
     }
     host.append(group);
   }
+  // ED-08: the Logic group, one row per trigger with what it says in a line.
+  const triggers = doc.level.triggers ?? [];
+  if (triggers.length) {
+    const group = document.createElement("div");
+    group.className = "group";
+    const title = document.createElement("h2");
+    title.textContent = "Logic";
+    group.append(title);
+    for (const trigger of triggers) {
+      const row = document.createElement("div");
+      row.className = "row" + (selected.has(trigger.id) ? " selected" : "");
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = trigger.id;
+      name.title = triggerSummary(trigger);
+      name.addEventListener("click", (e) => pick(trigger.id, e.shiftKey));
+      const summary = document.createElement("span");
+      summary.className = "hint";
+      summary.textContent = triggerSummary(trigger);
+      row.append(name, summary);
+      group.append(row);
+    }
+    host.append(group);
+  }
   const level = document.createElement("div");
   level.className = "group";
   const levelTitle = document.createElement("h2");
@@ -278,10 +335,11 @@ function buildOutliner() {
  *  section 4: click, Shift+click). The id names an entry of any kind, or the
  *  view's pseudo ids for the player start and the exit. */
 function pick(id: string, add = false) {
+  endLink();
   if (!add) selected.clear();
   if (add && selected.has(id)) selected.delete(id);
   else selected.add(id);
-  view.select([...selected], view.mode);
+  selectInView();
   buildOutliner();
   buildInspector();
 }
@@ -318,6 +376,34 @@ function buildPalette() {
     });
     host.append(button);
   }
+  // ED-08: a trigger is not placed by a click, so its button adds one at
+  // once and selects it, ready for the inspector.
+  const addTrigger = document.createElement("button");
+  addTrigger.type = "button";
+  addTrigger.textContent = TRIGGER_BUTTON;
+  addTrigger.addEventListener("click", () => {
+    if (!roomForTriggers(1)) return;
+    const made = newTrigger(doc.nextId("trigger"));
+    doc.add("triggers", made);
+    pick(made.id);
+  });
+  host.append(addTrigger);
+
+  // ED-08 stage 4: the Arena button asks a few questions once and writes the
+  // three or more triggers the usual fight takes. It needs a zone to start
+  // from, so with none selected it says so rather than guessing one.
+  const arenaBtn = document.createElement("button");
+  arenaBtn.type = "button";
+  arenaBtn.textContent = ARENA_BUTTON;
+  arenaBtn.addEventListener("click", () => {
+    const zone = [...selected].find((id) => doc.kindOf(id) === "zones");
+    if (!zone) {
+      status.textContent = "Select a zone first, then build an arena in it.";
+      return;
+    }
+    arenaDialog(zone);
+  });
+  host.append(arenaBtn);
   if (armedPart === "pickups") {
     const select = document.createElement("select");
     select.title = "Pickup type";
@@ -364,7 +450,7 @@ function buildPalette() {
     button.textContent = name;
     button.addEventListener("click", () => {
       view.setMode(key);
-      view.select([...selected], view.mode);
+      selectInView();
       buildPalette();
     });
     host.append(button);
@@ -395,6 +481,26 @@ function buildInspector() {
   buildPrimInspector(host);
 }
 
+/** ED-08 stage 3: what the view outlines. A selected trigger is not in the
+ *  world, so instead of a box round it the view outlines everything it names,
+ *  which is how Paul sees what the trigger acts on. */
+function selectInView() {
+  const picked: string[] = [];
+  const named: string[] = [];
+  for (const id of selected) {
+    if (doc.kindOf(id) !== "triggers") {
+      picked.push(id);
+      continue;
+    }
+    const trigger = doc.find<Trigger>("triggers", id);
+    if (trigger) named.push(...triggerIds(trigger));
+  }
+  // A trigger gets no box and no handles (there is nothing to drag), so the
+  // handles only follow what is really selected.
+  view.select(picked, view.mode);
+  view.showLinked(named);
+}
+
 /** The name the inspector's heading uses for one selected id. */
 function selectionName(id: string): string {
   const kind = selectKind(id);
@@ -420,7 +526,32 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
   else if (kind === "pickups") buildPickupFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "doors") buildDoorFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "spawnPoints") buildSpawnFields(host, doc.find(kind, id)!, ctx);
+  else if (kind === "triggers") buildTriggerInspector(host, id);
   else buildZoneFields(host, doc.find(kind, id)!, ctx);
+}
+
+/** ED-08 stage 2: the inspector for one trigger. `change` is one undo step on
+ *  that trigger's fields; a new when or do kind rebuilds the panel, since it
+ *  brings its own fields. */
+function buildTriggerInspector(host: HTMLElement, id: string) {
+  const trigger = doc.find<Trigger>("triggers", id);
+  if (!trigger) return;
+  buildTriggerFields(host, trigger, {
+    level: doc.level,
+    change: (patch, text) => doc.change("triggers", [{ id, patch: patch as Record<string, unknown> }], text),
+    redraw: buildInspector,
+    linkKey,
+    setLink: (key) => {
+      linkKey = key;
+      status.textContent = key ? "Linking: click the thing in the view, Esc to stop." : "";
+      buildInspector();
+    },
+    cameraSpot: () => {
+      const cam = view.camera;
+      const euler = new THREE.Euler().setFromQuaternion(cam.quaternion, "YXZ");
+      return { pos: [cam.position.x, cam.position.y, cam.position.z], yaw: euler.y };
+    },
+  });
 }
 
 function buildSkyInspector(host: HTMLElement) {
@@ -487,6 +618,12 @@ canvas.addEventListener("click", (e) => {
   const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   const hit = view.pick(ndcX, ndcY);
+  // ED-08 stage 3: while linking, the click adds the thing to the trigger's
+  // field and does not select anything else.
+  if (linkKey) {
+    if (hit?.id) link(hit.id);
+    return;
+  }
   if (armed) {
     if (!hit) return;
     place(armed, hit.point, hit.normal);
@@ -500,11 +637,44 @@ canvas.addEventListener("click", (e) => {
   if (hit?.id) pick(hit.id, e.shiftKey);
   else if (!e.shiftKey) {
     selected.clear();
-    view.select([], view.mode);
+    selectInView();
     buildOutliner();
     buildInspector();
   }
 });
+
+/** The trigger being linked into: the one selected trigger whose inspector
+ *  started the link. */
+function linkedTrigger(): Trigger | null {
+  if (!linkKey) return null;
+  for (const id of selected) {
+    const trigger = doc.find<Trigger>("triggers", id);
+    if (trigger) return trigger;
+  }
+  return null;
+}
+
+/** ED-08 stage 3: adds the clicked thing to the field the link names. A thing
+ *  of a kind the field does not take is refused with a word in the status
+ *  line, so a click on the wrong wall does not quietly change anything. */
+function link(id: string) {
+  const trigger = linkedTrigger();
+  const kind = doc.kindOf(id);
+  if (!trigger || !kind || !linkKey) return;
+  const next = applyLink(trigger, linkKey, id, kind);
+  if (!next) {
+    status.textContent = `${id} is not something this field takes.`;
+    return;
+  }
+  doc.change("triggers", [{ id: trigger.id, patch: next as unknown as Record<string, unknown> }], `link ${id}`);
+  status.textContent = `Linked ${id}. Esc when done.`;
+  buildInspector();
+}
+
+/** Ends a link (Esc, or a change of selection). */
+function endLink() {
+  linkKey = null;
+}
 
 /** Places a prim of a shape on the surface under the cursor, standing on
  *  that surface: the click point plus half the prim's height along the
@@ -569,6 +739,15 @@ function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) 
 /** The id prefix a pickup takes: a key is `key`, everything else `pickup`. */
 function pickupPrefix(): string {
   return pickupType === "key" ? "key" : "pickup";
+}
+
+/** ED-08: true when the level has room for more triggers against the cap in
+ *  data/editor.json, otherwise it says so in the status line. */
+function roomForTriggers(count: number): boolean {
+  const have = doc.level.triggers?.length ?? 0;
+  if (have + count <= LIMITS.triggers) return true;
+  status.textContent = `Trigger cap: ${LIMITS.triggers}. ${have} already there.`;
+  return false;
 }
 
 /** True when a kind has room for one more against its cap in data/editor.json.
@@ -645,6 +824,23 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyW" && !view.isLooking) setMode("translate");
   if (e.code === "KeyE" && !view.isLooking) setMode("rotate");
   if (e.code === "KeyR" && !view.isLooking) setMode("scale");
+  // ED-08 stage 3: L links the selected trigger's first field, Esc stops.
+  if (e.code === "KeyL" && !view.isLooking) {
+    const trigger = [...selected].map((id) => doc.find<Trigger>("triggers", id)).find((t): t is Trigger => !!t);
+    const key = trigger ? firstLinkKey(trigger) : null;
+    if (!trigger) status.textContent = "Select a trigger first, then L links what it acts on.";
+    else if (!key) status.textContent = `${trigger.id} has no field for a click yet: give it a when or a do row.`;
+    else {
+      linkKey = key;
+      status.textContent = "Linking: click the thing in the view, Esc to stop.";
+      buildInspector();
+    }
+  }
+  if (e.code === "Escape" && linkKey) {
+    endLink();
+    status.textContent = "";
+    buildInspector();
+  }
   if (e.code === "Delete" || e.code === "Backspace") {
     e.preventDefault();
     if (selected.size) {
@@ -660,7 +856,7 @@ window.addEventListener("keyup", (e) => {
 
 function setMode(mode: TransformMode) {
   view.setMode(mode);
-  view.select([...selected], view.mode);
+  selectInView();
   buildPalette();
 }
 
@@ -808,6 +1004,133 @@ $("levelName").addEventListener("change", () => {
   doc.setFields({ meta: { ...doc.level.meta, name } }, "level name");
   syncNameField();
 });
+
+/** ED-08 stage 4: the Arena dialog. It asks what the fight is made of and
+ *  writes the triggers in one undo step. Every field is a tick or a number,
+ *  so nothing is typed: the message lines are Paul's and are added later in
+ *  the inspector. */
+function arenaDialog(zone: string) {
+  const level = doc.level;
+  const blockers = new Set<string>();
+  const points = new Set<string>((level.spawnPoints ?? []).map((s) => s.id));
+  const doors = new Set<string>();
+  const waves: ArenaSpec["waves"] = [{ foamer: RIGS[0]?.id ?? "F01", count: EDITOR.arena.defaultCount }];
+
+  void dialog(`Arena in ${zone}`, (body) => {
+    const state = document.createElement("p");
+    state.className = "hint";
+    body.append(state);
+
+    const ticks = (title: string, options: { id: string; label: string }[], on: Set<string>) => {
+      const box = document.createElement("label");
+      box.textContent = title;
+      const list = document.createElement("div");
+      list.className = "ticks";
+      for (const option of options) {
+        const tick = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = on.has(option.id);
+        input.addEventListener("change", () => {
+          if (input.checked) on.add(option.id);
+          else on.delete(option.id);
+          say();
+        });
+        tick.append(input, document.createTextNode(option.label));
+        list.append(tick);
+      }
+      box.append(list);
+      body.append(box);
+    };
+
+    // Blockers: the prims that start hidden are the ones a fight brings in,
+    // so they are ticked to begin with. Any other prim can be picked too.
+    const choices = blockerChoices(level);
+    for (const prim of level.prims ?? []) if (prim.hidden) blockers.add(prim.id);
+    ticks("blockers", choices, blockers);
+
+    ticks("spawn points", (level.spawnPoints ?? []).map((s) => ({ id: s.id, label: s.id })), points);
+
+    const waveBox = document.createElement("div");
+    body.append(waveBox);
+    const waves_ = () => {
+      waveBox.replaceChildren();
+      const heading = document.createElement("h3");
+      heading.textContent = "waves";
+      waveBox.append(heading);
+      waves.forEach((wave, i) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const type = selectField(
+          RIGS.map((r) => ({ value: r.id, label: `${r.id} ${r.label}` })),
+          wave.foamer,
+          (v) => { wave.foamer = v; say(); },
+        );
+        const count = numberInput(wave.count, 1, (n) => { wave.count = Math.max(1, Math.round(n)); say(); });
+        const up = document.createElement("button");
+        up.type = "button";
+        up.textContent = "Up";
+        up.addEventListener("click", () => {
+          if (i === 0) return;
+          [waves[i - 1], waves[i]] = [waves[i]!, waves[i - 1]!];
+          waves_();
+        });
+        const cut = document.createElement("button");
+        cut.type = "button";
+        cut.textContent = "Remove";
+        cut.addEventListener("click", () => {
+          if (waves.length < 2) return;
+          waves.splice(i, 1);
+          waves_();
+        });
+        row.append(type, count, up, cut);
+        waveBox.append(row);
+      });
+      const add = document.createElement("button");
+      add.type = "button";
+      add.textContent = "Add a wave";
+      add.addEventListener("click", () => {
+        waves.push({ ...waves[waves.length - 1]! });
+        waves_();
+      });
+      waveBox.append(add);
+    };
+    waves_();
+
+    ticks("doors to open when the fight is won", (level.doors ?? []).map((d) => ({ id: d.id, label: d.id })), doors);
+
+    const build = document.createElement("button");
+    build.type = "button";
+    build.className = "name";
+    build.textContent = "Build the triggers";
+    build.addEventListener("click", () => {
+      const spec: ArenaSpec = {
+        zone, blockers: [...blockers], spawnPoints: [...points], waves: waves.map((w) => ({ ...w })), doors: [...doors],
+      };
+      const problem = arenaProblem(spec);
+      if (problem) return;
+      const made = buildArena(spec, (prefix) => doc.nextId(prefix));
+      if (!roomForTriggers(made.length)) return;
+      doc.addMany("triggers", made, `arena in ${zone}`);
+      $("dialogs").hidden = true;
+      selected.clear();
+      for (const trigger of made) selected.add(trigger.id);
+      selectInView();
+      buildOutliner();
+      buildInspector();
+      status.textContent = `Arena in ${zone}: ${made.length} triggers. Give them a message in the inspector if you want words.`;
+    });
+    body.append(build);
+
+    function say() {
+      const spec: ArenaSpec = {
+        zone, blockers: [...blockers], spawnPoints: [...points], waves: waves.map((w) => ({ ...w })), doors: [...doors],
+      };
+      state.textContent = arenaProblem(spec) ?? `Lock, ${waves.length} wave${waves.length === 1 ? "" : "s"}, clear. Nothing is written to the level until Build.`;
+    }
+    say();
+  });
+}
 
 // A dialog over the view: a title, then whatever the caller builds.
 function dialog(title: string, build: (body: HTMLElement) => void) {

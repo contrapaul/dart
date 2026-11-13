@@ -149,6 +149,15 @@
   opacity: 0.5;
 }
 
+/* ED-08: a Logic row shows the trigger's id and what it says in one line. */
+#outliner .row .hint {
+  padding: 0;
+  font-size: 11px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 #inspector {
   position: absolute;
   right: 0;
@@ -207,6 +216,22 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.2rem;
+}
+
+/* ED-08: one do row of a trigger, set apart from the next. */
+#inspector .do-row {
+  border-left: 2px solid #2ec4ff;
+  margin: 0.3rem 0.6rem 0.5rem;
+  padding-left: 0.4rem;
+}
+
+#inspector .do-row label {
+  grid-template-columns: 4rem 1fr;
+}
+
+#inspector .hint {
+  opacity: 0.6;
+  font-size: 11px;
 }
 
 #palette {
@@ -281,6 +306,36 @@ button.on {
   gap: 0.4rem;
   align-items: center;
   padding: 0.2rem 0;
+}
+
+/* ED-08 stage 4: the Arena dialog asks for ticks and a row per wave, the same
+   shapes the inspector uses, so they get the same look here. */
+#dialogs .ticks {
+  display: grid;
+  gap: 0.15rem;
+  margin-bottom: 0.6rem;
+}
+
+#dialogs .ticks label {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+#dialogs .ticks input {
+  width: auto;
+}
+
+#dialogs .row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.2rem 0;
+}
+
+#dialogs h3 {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 13px;
 }
 
 #dialogs .list .row .name {

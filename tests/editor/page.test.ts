@@ -9,7 +9,7 @@ describe("ED-02 the editor page", () => {
     "view", "editor-ui", "topbar", "levelName", "counts", "status",
     "outliner", "outlinerList", "inspector", "palette", "dialogs",
     "newBtn", "openBtn", "undoBtn", "redoBtn", "exportBtn", "importBtn",
-    "importFile", "playBtn", "problemsBtn",
+    "importFile", "playBtn", "problemsBtn", "hiddenBtn",
   ])("has #%s", (id) => {
     expect(EDITOR_HTML).toContain(`id="${id}"`);
   });

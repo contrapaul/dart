@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import hazardData from "../../data/hazards.json";
+import editorData from "../../data/editor.json";
 import type { Level, Prim, Sky, Vec3 } from "../level/format";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { material, materialId } from "../voxel/materials";
@@ -144,6 +145,8 @@ export class EditorView {
   private grid: THREE.LineSegments;
   private outlineBox = new THREE.Box3();
   private outline: THREE.Box3Helper;
+  /** ED-08: one box round each thing a selected trigger names. */
+  private linked = new THREE.Group();
   /** id -> the mesh drawn for it, for selection and the transform handles. */
   private meshes = new Map<string, THREE.Mesh>();
   /** ED-05: the group every placed thing's marker lives in, and what the
@@ -158,6 +161,10 @@ export class EditorView {
   private looking = false;
   private clock = new THREE.Clock();
   private shownLevel: Level | null = null;
+  /** ED-08 stage 5: when on, prims that start hidden are not drawn at all, so
+   *  the level can be looked at the way it begins. They stay in the level and
+   *  reappear when it is turned off. */
+  private skippingHidden = false;
   private shownShell: unknown = null;
   private shownSky: unknown = null;
   private shownPieces: unknown = null;
@@ -186,6 +193,7 @@ export class EditorView {
     this.outline = new THREE.Box3Helper(this.outlineBox, 0xffd23f);
     this.outline.visible = false;
     this.scene.add(this.outline);
+    this.scene.add(this.linked);
 
     this.proxy.add(new THREE.Mesh(
       new THREE.BoxGeometry(1, 1, 1),
@@ -199,6 +207,12 @@ export class EditorView {
     this.controls.setScaleSnap(GRID);
     this.controls.enabled = false;
     this.scene.add(this.controls.getHelper());
+    // Review fix: the click that ends a handle drag must not reselect what
+    // is under the cursor, and the browser's click comes after the drag
+    // has already ended.
+    this.controls.addEventListener("dragging-changed", (e) => {
+      if (!e.value) this.dragEndedAt = performance.now();
+    });
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -251,7 +265,9 @@ export class EditorView {
     }
     this.markerData.clear();
     for (const kind of ENTRY_KINDS) {
-      if (kind === "prims") continue;
+      // A prim has its own mesh, and a trigger (ED-08) is logic with nothing
+      // in the world to draw: neither gets a marker.
+      if (kind === "prims" || kind === "triggers") continue;
       const list = (level[kind] ?? []) as { id: string }[];
       for (const entry of list) {
         this.addMarker(entry.id, markerFor(kind as Marker["kind"], entry as never));
@@ -290,11 +306,30 @@ export class EditorView {
   private addPrim(prim: Prim) {
     const geo = primGeometry(prim);
     const mesh = new THREE.Mesh(geo, primMaterial(prim));
-    mesh.matrixAutoUpdate = false;
-    mesh.matrix.copy(primMatrix(prim));
+    // Review fix: position and rotation, not a fixed matrix. The handles
+    // and the link outline read the mesh's own position, which a fixed
+    // matrix left at the origin (the handles sat in the middle of the
+    // floor and a drag started from there).
+    primMatrix(prim).decompose(mesh.position, mesh.quaternion, mesh.scale);
     mesh.userData.id = prim.id;
+    mesh.visible = !(this.skippingHidden && prim.hidden === true);
     this.prims.add(mesh);
     this.meshes.set(prim.id, mesh);
+  }
+
+  /** ED-08 stage 5: draws, or stops drawing, the prims that start hidden. Off
+   *  is the default, when they are drawn see-through so a blocker can be seen
+   *  and clicked while the fight it belongs to is being built. */
+  setSkipHidden(on: boolean) {
+    this.skippingHidden = on;
+    for (const prim of this.shownLevel?.prims ?? []) {
+      const mesh = this.meshes.get(prim.id);
+      if (mesh && prim.hidden === true) mesh.visible = !on;
+    }
+  }
+
+  get skipHidden(): boolean {
+    return this.skippingHidden;
   }
 
   /** Draws the selection outline and puts the handles on the last prim
@@ -327,6 +362,23 @@ export class EditorView {
     this.controls.setMode(marker && !marker.size ? "translate" : mode);
     this.controls.attach(this.proxy);
     this.controls.enabled = true;
+  }
+
+  /** ED-08 stage 3: a box round each thing a selected trigger names, so what
+   *  it acts on can be seen. A trigger is not in the world and has no box of
+   *  its own, and these boxes carry no handles: they are for looking, not for
+   *  dragging. Ids the view does not draw (a spawn action's tag) are skipped. */
+  showLinked(ids: string[]) {
+    for (const child of [...this.linked.children]) {
+      this.linked.remove(child);
+      disposeTree(child);
+    }
+    for (const id of new Set(ids)) {
+      const object = this.meshes.get(id) ?? this.markerData.get(id)?.object;
+      if (!object || object.visible === false) continue;
+      const box = new THREE.Box3().expandByObject(object);
+      this.linked.add(new THREE.Box3Helper(box, new THREE.Color(editorData.markers.linkedColour)));
+    }
   }
 
   /** Sets the transform mode and moves the handles if something is selected. */
@@ -420,8 +472,9 @@ export class EditorView {
 
   /** True while the handles are being dragged, so clicks do not reselect. */
   get dragging(): boolean {
-    return this.controls.dragging;
+    return this.controls.dragging || performance.now() - this.dragEndedAt < 250;
   }
+  private dragEndedAt = -Infinity;
 
   get isLooking(): boolean {
     return this.looking;

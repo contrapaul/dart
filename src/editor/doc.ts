@@ -28,9 +28,9 @@ const HISTORY_CAP = 200;
 /** The level's arrays of things with an id, one per kind the editor places
  *  (ED-05). The player start and the exit are single objects changed
  *  through the level fields, like the sky and the name. */
-export type EntryKind = "prims" | "foamers" | "pickups" | "doors" | "spawnPoints" | "zones";
+export type EntryKind = "prims" | "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "triggers";
 
-export const ENTRY_KINDS: readonly EntryKind[] = ["prims", "foamers", "pickups", "doors", "spawnPoints", "zones"];
+export const ENTRY_KINDS: readonly EntryKind[] = ["prims", "foamers", "pickups", "doors", "spawnPoints", "zones", "triggers"];
 
 /** The id prefix a kind's new ids take, and the name the outliner and the
  *  status line use for it. */
@@ -41,13 +41,16 @@ export const KIND_PREFIX: Record<EntryKind, string> = {
   doors: "door",
   spawnPoints: "spawn",
   zones: "zone",
+  triggers: "trigger",
 };
 
-/** Anything the editor places: it has an id, and that is all the commands
- *  need. The kind's own type (Prim, Pickup, ...) is checked at the call. */
+/** Anything the editor's arrays hold: it has an id, and that is all the
+ *  commands need. The kind's own type (Prim, Pickup, ...) is checked at the
+ *  call. A trigger (ED-08) has no position: it is logic, not a thing in the
+ *  world, so it is the one kind without one. */
 export interface IdEntry {
   id: string;
-  pos: Vec3;
+  pos?: Vec3;
 }
 
 /** One kind's entry either side of a change. `key` is the id it had before
@@ -255,6 +258,17 @@ export class LevelDoc {
     return entry;
   }
 
+  /** Adds several entries of a kind as one undo step (ED-08: the Arena
+   *  button builds three or more triggers at once, and one Ctrl+Z should take
+   *  the whole set back out). */
+  addMany<T extends IdEntry>(kind: EntryKind, entries: T[], text: string) {
+    if (!entries.length) return;
+    this.run({
+      text,
+      entries: entries.map((entry) => ({ kind, key: entry.id, after: entry })),
+    });
+  }
+
   remove(ids: string | string[]) {
     const list = typeof ids === "string" ? [ids] : ids;
     const entries: EntryEdit[] = [];
@@ -295,14 +309,13 @@ export class LevelDoc {
     for (const id of ids) {
       const from = this.find(kind, id);
       if (!from) continue;
-      // Every kind carries a position and nothing else a copy must change:
-      // a prim keeps its size and rotation, a door its size and lock. So the
-      // copy is snapped on the grid at its new place.
-      const copy = {
-        ...from,
-        id: this.nextId(idPrefix(kind, from)),
-        pos: snapVec3([from.pos[0] + offset[0], from.pos[1] + offset[1], from.pos[2] + offset[2]], GRID),
-      };
+      // Every kind but a trigger carries a position and nothing else a copy
+      // must change: a prim keeps its size and rotation, a door its size and
+      // lock. So the copy is snapped on the grid at its new place.
+      const copy: IdEntry = { ...from, id: this.nextId(idPrefix(kind, from)) };
+      if (from.pos) {
+        copy.pos = snapVec3([from.pos[0] + offset[0], from.pos[1] + offset[1], from.pos[2] + offset[2]], GRID);
+      }
       entries.push({ kind, key: copy.id, after: copy as unknown as IdEntry });
       made.push(copy.id);
     }
