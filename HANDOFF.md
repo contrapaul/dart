@@ -88,6 +88,18 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-07a review, merged (Claude Opus 5.5): the trigger runner
+
+- qwen-machine (Qwen 3.8 27B) wrote `src/level/triggers.ts` and
+  `src/level/keys.ts` with 17 tests. Reviewed line by line: zones fire on
+  entering, spawns run round robin with their hold, "killed all" counts
+  every Foamer a named spawn makes, `after` re-arms when its trigger
+  fires again, reset clears everything.
+- Noted for the wiring (ED-07b): a spawn the game refuses (the live
+  Foamer cap) must be retried by the page, or a "killed all" over that
+  spawn can never fire and the blockers never drop.
+- Not in the game yet: nothing calls the runner until ED-07b.
+
 ### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
 
 - DeepSeek built `editor.html`. Seen in the browser: a new level opens on
