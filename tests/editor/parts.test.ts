@@ -182,9 +182,10 @@ describe("ED-05 the document's other kinds", () => {
 describe("ED-05 the markers' data", () => {
   it("colours a key pickup by its colour and a door by its lock", () => {
     const key = makePickup("k1", "key", [0, 0, 0]);
-    expect(pickupColour(key)).toBe("#ff4f4f");
-    expect(pickupColour({ ...key, key: "yellow" })).toBe("#ffd23f");
-    expect(doorColour({ id: "d1", pos: [0, 0, 0], size: [1, 1, 1], lock: "red" })).toBe("#ff4f4f");
+    // The editor marks keys in the colours the game draws them (data/editor.json keys).
+    expect(pickupColour(key)).toBe("#ff3b3b");
+    expect(pickupColour({ ...key, key: "yellow" })).toBe("#ffd23a");
+    expect(doorColour({ id: "d1", pos: [0, 0, 0], size: [1, 1, 1], lock: "red" })).toBe("#ff3b3b");
     expect(doorColour({ id: "d2", pos: [0, 0, 0], size: [1, 1, 1], lock: "none", colour: "#123456" })).toBe("#123456");
   });
 

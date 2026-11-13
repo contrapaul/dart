@@ -91,6 +91,21 @@ tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-05 review, merged (Claude Opus 5.5): placing things in the editor
+
+- DeepSeek built it. Seen in the browser: the palette now has Foamer,
+  Pickup, Door, Spawn point and Zone; a Slowmer and an ammo box were
+  placed on the floor and listed in the outliner with their inspectors;
+  the level panel holds the start loadout (B01 ticked by default); Play
+  ran the level, and the placed Slowmer woke on sight, walked up and hit
+  the player.
+- Merge fix: `data/editor.json` had two `sky` blocks and two palettes
+  after the merge with ED-07b; one of each kept (ED-00's palette, which
+  matches the foam materials), and the editor marks keys in the colours
+  the game draws them (test updated).
+- Not seen by eye: doors, spawn points and zones placed and moved, the
+  Problems list clicked through, a marker turned with the rotate handle.
+
 ### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
 
 - strata added `Hazards.blocksAt` (a shown hazard that damages Foamers),
