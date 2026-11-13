@@ -5,7 +5,7 @@ Status: **proposal, LVL-00**. Works in any setting; place names are
 
 | | |
 |---|---|
-| New blaster | B02 sidearm (table row 1-2) |
+| New blaster | B04 Shredder, full-auto (level 2) |
 | New Foamer | F02 Roamer, 8 health, slow foam ball, parryable |
 | New mechanic | Shield block and parry (first parryable shots) |
 | Arenas | 3, plus a tower climb set piece and a gauntlet |

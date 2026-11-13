@@ -5,7 +5,7 @@ Status: **proposal, LVL-00**. Works in any setting; place names are
 
 | | |
 |---|---|
-| New blaster | Table 2 is blank here. **Proposed: none.** The 8 blasters already fill levels 1-1, 1-2, 1-4, 2-1, 2-3, 3-1, 3-2 and 3-4, so this level's new thing is the Swarmer and the finisher. Paul decides; see the note in section 7 about D04 |
+| New blaster | B03 Leviathan, break-action double barrel (level 3) |
 | New Foamer | F03 Swarmer, 2 health, packs of 4 to 6, nibble swarm |
 | New mechanic | Pop finishers: a staggered Foamer glows and wobbles, melee it for health |
 | Arenas | 3, plus a drop set piece and a gauntlet |
