@@ -55,6 +55,21 @@
       "knockSpeed": 3,
       "knockDecay": 6,
       "liftSpeed": 0.8
+    },
+    "barrel": {
+      "_note": "ENV-05 (E15): the leaking foam barrel going off. Bigger than the launcher's round in every way, because the card asks that a barrel is a blast a player reads as worth setting off from a safe distance. Same shape as every other profile: one blast, falling linearly to its edge. Start values for Paul to tune on the range.",
+      "carveRadius": 1.2,
+      "damageCentre": 30,
+      "rangeMetres": 4.5,
+      "fxRadius": 3.6,
+      "burstChunks": 16,
+      "burstSize": 0.12,
+      "burstMaterial": "foam-white",
+      "pushSpeed": 3,
+      "foamerCarveRadius": 0.45,
+      "knockSpeed": 9,
+      "knockDecay": 5,
+      "liftSpeed": 2
     }
   }
 }

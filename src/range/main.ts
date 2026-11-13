@@ -29,6 +29,7 @@ import type { PathPoints } from "../ai/nav-grid";
 import { Hud } from "../ui/hud";
 import { FrameLog, FrameGraph } from "../ui/frame-graph";
 import { createRangeSystems, createLineup, createPierceRow, respawnLineup, fillReserves } from "./setup";
+import { Barrels } from "../level/barrels";
 import { LineupLabels } from "./labels";
 import { TtkTracker, TtkPanel } from "./ttk";
 import { RangeMenu, RangeMenuPanel } from "./menu";
@@ -57,6 +58,7 @@ const R = (rangeJson as unknown as {
       spacingMetres: number;
       pierceRow: { type: string; distanceMetres: number; spacingMetres: number; count: number };
     };
+    barrels: { positions: [number, number, number][] };
   };
   bench: { seconds: number; strafePeriod: number };
 }).range;
@@ -164,7 +166,26 @@ const { debris, explosion, impacts, foamers, projectiles } = createRangeSystems(
   rapier, world, darts, mesherPool, player.collider, voxelTargets,
 );
 const blastFx = new BlastFx(scene);
-explosion.onExplode = (p, radius) => blastFx.spawn(p, radius);
+// ENV-05 (E15): the leaking foam barrels, two of them, placed from
+// data/range.json. Their blast reaches the Foamers' system through the
+// shared explosion (a blast on the range never hurts the player), and each
+// blast that reaches another barrel sets it off a chainDelay later, so the
+// page's own blast hook drives the ripple. A dart hit chains after the
+// impacts and the Foamer system, so those have seen the hit first.
+const barrels = new Barrels(rapier, world, scene, debris, explosion, R.barrels.positions.map((pos) => ({ pos })));
+const barrelsHit = darts.onHit;
+darts.onHit = (hit) => {
+  barrelsHit(hit);
+  barrels.hit(hit);
+};
+// ENV-05: a dart stuck in a barrel rides a fixed collider, so left alone it
+// would hang in the air once the barrel went. The barrels say when one has
+// gone and the darts inside it come loose, as a carve does with foam.
+barrels.onGone = (centre, radius) => darts.releaseInSphere(centre, radius);
+explosion.onExplode = (p, radius) => {
+  blastFx.spawn(p, radius);
+  barrels.onBlast(p, radius);
+};
 // PT-01 stage 3: the time-to-kill readout. It wraps the dart system's fire
 // (to know which blaster and which mods fired each shot) and subscribes to
 // hits last, after the Foamer system has said which Foamer was hit.
@@ -229,6 +250,7 @@ function respawnLineupHere(): void {
   );
   labels.retarget(lineup);
   ttk.reset(); // the line that is going is not being watched any more
+  barrels.reset(); // ENV-05: the barrels come back with the line
 }
 foamers.onBonk = (_f, attack) => {
   if (switches.godMode || paused) return;
@@ -960,6 +982,9 @@ loopCtl = startLoop({
         reloadPressed: input.wasPressed("reload"),
         sprintHeld: input.isDown("sprint"),
       });
+      // ENV-05: the barrels' chains, fuses and leaks, before the step so
+      // this step's spray is in the world for it.
+      barrels.update(dt);
       debris.update(dt);
       darts.update(dt);
       if (player.feet < -20) player.teleport(SPAWN_POSE);
