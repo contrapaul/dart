@@ -91,6 +91,27 @@ tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-07c review, merged (Claude Opus 5.5): arenas to triggers
+
+- qwen-machine wrote `arenaToTriggers` (`src/level/arena-to-triggers.ts`):
+  an old `arenas` block becomes a zone, level doors, spawn points and
+  when/do triggers, with warnings for what cannot be expressed
+  (`escape`, `startsWithHealthShare`, a `noLock` first wave delay).
+- Review: run over every built-in level, two came out invalid. A trigger
+  that only starts a timer had an empty do (the model had filled it with
+  a "[Paul]" message, which would have shown as a banner in play): the
+  validator now accepts an empty do when an `after` waits on it. env-02's
+  arena does nothing on entry (no waves, no lock: a door a button opens),
+  so it now makes no trigger. A test converts every built-in level and
+  validates the result.
+- Not used yet: the editor's Open of a built-in level should call it.
+- Open: `tests/ai/nav-grid.test.ts` "bakes a 40 by 40 m floor in under
+  150 ms" fails while the machine is loaded (load average 147 with four
+  model runs and their test suites); it passed 3 of 3 at load 54. The
+  merge went in with the check red because of a command that did not
+  stop on the exit code (fixed in how the reviewer runs merges). To
+  rerun the full check when the runs finish.
+
 ### 2026-11-13: ED-06 review, merged (Claude Opus 5.5): breakable prims
 
 - DeepSeek built it (one restart after the provider dropped the
