@@ -23,13 +23,15 @@ the old text is in git history.
   `main` whatever CI says (Paul's decision, PLAN section 14).
 - 1012 tests pass, 2 skipped.
 
-**In progress:** nothing. OPS-04 (graphics presets, `?quality=low`,
+**In progress:** OPS-04 (graphics presets, `?quality=low`,
 `medium`, `high`) is merged on local main, not pushed. LVL-06 (the 2-1
 concept and the blaster rows) is committed on branch `lvl-06`, not
 pushed, waiting on Paul's answers and Claude Opus 5.5's review. MEL-01
 (the sword, the hand weapon pickup, hand weapons in the save) is
 committed on branch `mel-01`, not pushed, waiting on review; the suite
-is 1104 tests, 2 skipped on that branch.
+is 1104 tests, 2 skipped on that branch. ED-01 (the game plays the
+editor's level parts) is committed on branch `ed-01`, not pushed, waiting
+on review.
 
 **Waiting on Paul:**
 
@@ -86,6 +88,178 @@ is 1104 tests, 2 skipped on that branch.
 
 ## Log
 
+### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
+
+- DeepSeek built `editor.html`. Seen in the browser: a new level opens on
+  a 32 m floor under the gradient sky; Box then a click on the floor
+  places a box with the move handles; the inspector set it to a toxic
+  hazard (drawn see-through) and changed its size; the top bar showed
+  Saving then Saved; Play opened `arena.html?level=local:<key>` and the
+  game played that level, the toxic box standing on the floor.
+- Review fix (on main, ED-01's bug): `src/arena/extras.ts` picked its
+  level when it was imported, before `main.ts` had read the store, so a
+  stored level always played the Pit. `main.ts` now imports `extras`
+  after the store read.
+- Not seen by eye: rotate and scale handles, undo and redo by key, export
+  and import of a file, the sky image upload, opening an Act 1 level as a
+  copy. The floor grid is 128 m and dense at 0.5 m: fine near, busy far.
+
+### 2026-11-13: ED-03 review, merged (Claude Opus 5.5): hazards in play
+
+- strata built the module and its tests. Review fixes: a hazard with no
+  damage now still slows (goo); Foamer tick states are keyed by the
+  Foamer object in a WeakMap, not by a string that grew all level;
+  `primContains` reuses one vector instead of allocating per call.
+- Wired into the arena page (`src/arena/extras.ts`): ticks land on the
+  player through the press's crush path (no grace, HUD flash, hurt sound,
+  go-down); Foamers take theirs as a non-dart hit (`parryDamage`), so a
+  hazard downs them but never pops them; the slow is a new
+  `hazardMoveScale` on the player controller beside the B08 firing slow.
+- `ed-01` gained a lava pool by the start. Seen in the browser: it draws
+  as glowing orange, standing in it took 60 to 35 health in about 1.25 s
+  (20 per second) and the walk slowed to 0.6; stepping out put it back to
+  1.
+- Not seen: a Foamer walking into it (Foamers do not path round hazards
+  yet; the nav grid sees a hazard as open floor), the shimmer over time,
+  a hazard hidden and then shown by a trigger.
+
+### 2026-11-13: ED-01 review, merged (Claude Opus 5.5)
+
+- DeepSeek built the card. Seen in the browser on `arena.html?level=ed-01`:
+  every shape draws, the start loadout gives the Dartman at 60 health,
+  the placed Foamers stand idle where the file puts them, the gradient sky
+  shows overhead.
+- Review fixes: a colour shared by an indexed shape (box, cylinder,
+  stairs) and a plain one (ramp, wedge) merged to nothing and drew
+  nothing, so every part is flattened before the merge (test added); the
+  sky sphere (150 m) sat at the origin, so it now rides with the camera
+  and a 512 m level stays inside it; its colours drew too dark (no sRGB
+  conversion in the shader); the test level lost its ceiling so the sky
+  can be seen.
+- Not checked by eye: walking up the stairs and ramp, a placed Foamer
+  waking on sight, an image sky, a `local:` level from the store (no
+  editor yet to save one).
+
+### 2026-11-13: ED-01, the game plays editor levels (Pi, DeepSeek V4.1 Flash 1017)
+
+Branch `ed-01`, not merged and not pushed. The level file's new parts now
+load in the arena page, in five commits:
+
+1. `80b9e76` prims: `src/level/prims.ts` `buildPrims` places every shown
+   prim, collides solids and breakables (a breakable is a solid until
+   ED-06), draws decor with no collider, skips hazards (ED-03), merges
+   shown prims into one mesh per colour, and gives a `hidden` prim its own
+   mesh and colliders both off. `BuiltLevel.prims` holds a `setShown` for
+   each; the nav bounds include the prims.
+2. `eb89e01` sky: `src/render/sky.ts` `applySky(scene, sky)`, a three stop
+   gradient on a 150 m inside out sphere or an image as an equirectangular
+   `scene.background`; the arena calls it first in `buildArena`.
+3. `4d2c0f8` placed Foamers: `src/level/placed.ts` `PlacedFoamers`. They
+   spawn through the arena's own `spawn`, start `idle`, and the brain's
+   existing sight test wakes a `wake: "sight"` one, so no new AI state was
+   needed. `wake(ids)` spawns the `trigger` and `hidden` ones alert; they
+   come back on a restart; an id stays waiting when the spawn cap is full.
+   `ArenaExtras.placed` is there for ED-07's trigger runner to call.
+4. `1e9d7f9` the level's own doors: one maker with the arena's, `rotY` in
+   degrees, `lock: "none"` open and anything else shut, in
+   `BuiltLevel.doors`.
+5. `0b16b09` start loadout and stored levels: `src/level/start.ts`
+   `applyStart` gives a level played outside the campaign only its
+   blasters (the first held), hand weapon and health, and again on a
+   retry; `arena.html?level=local:<key>` reads the level from the browser
+   store before anything else looks at it, and an empty or refused store
+   puts a message on the status line without starting a level.
+
+`data/levels/ed-01.json` is the card's test level, in `ARENA_LEVELS` as
+`ed-01`: every shape, an orange decor strip, a hidden blocker, two placed
+Foamers (one sight, one trigger), an open door and a locked one, a
+gradient sky and a start loadout of B01 and B04, the sword and 60 health.
+
+How to try it: `npm run dev`, then `arena.html?level=ed-01`. The room is
+env-01's 16 x 16 m with a dividing wall: the player starts at the south
+end, the prims are on the west (box, ramp, wedge) and east (pillar,
+stairs and platform, reachable) sides, the decor strip is along the north
+wall, and the two doors are in the dividing wall with the hidden blocker
+across the left doorway (nothing shows or hides it yet: ED-07 owns the
+trigger runner). `?level=local:<key>` needs a level saved in this
+browser by the editor, which ED-02 builds.
+
+Not checked by eye: there is no browser here, so none of the drawing is
+verified. Unknown: whether the merged per colour meshes read correctly
+with lighting and shadows, whether the gradient sky reads as sky at the
+level's size (the sphere is at the world origin, not on the camera), how
+the prims sit against the shell, whether the stairs and platform are
+walkable at their heights, and whether the placed Foamers face the player
+when they spawn. The smoke check boots all four pages (green) but does
+not play a level.
+
+Checks: `npm run check` and `npm run smoke` green, 1206 tests and 2
+skipped. PLAN.md has the ED-01 row and a decision row.
+
+Left for the reviewer: the card allowed a new "asleep until in line of
+sight" check with N in `data/ai.json`; the existing idle state made it
+unnecessary, so no AI file was touched. Hazard prims are skipped in
+`src/level/prims.ts` and the nav bounds count them as floor nothing
+stands on yet (ED-03's job).
+### 2026-11-13: ED-03 hazard primitives (Pi, branch ed-03)
+
+- Task: `tasks/ED-03.md`.
+- Built `src/level/hazard-rules.ts` and `src/level/hazards.ts`; numbers in `data/hazards.json` (`tickSeconds` 0.25); 10 tests in `tests/level/hazards.test.ts`.
+- Decisions: damage is dealt in fixed ticks (`dps * tickSeconds`) so hits land on the HUD; overlapping hazards use the highest dps and the lowest slow; exposure only grows and drains inside, so leaving and returning does not reset the tick; Foamers skip hazards with `hurtsFoamers: false`; hidden hazards are invisible and do nothing until `setShown`.
+- `npm run check` green: 1186 tests pass, 2 skipped, build and text/remote checks green.
+- Not wired into the arena yet; the reviewer does that. No browser here, so the see-through look, shimmer and depth order are not checked by eye. `primContains` clones its point internally, so that allocation remains per body per frame in `src/level/prim-geometry.ts`, which this card did not touch.
+### 2026-11-13: ED-02, the level editor page (DeepSeek V4.1 Flash 1017 via Pi)
+
+Branch `ed-02`, five commits, not reviewed, not merged, not pushed.
+`editor.html` opens a level and lets you build one. Keys: right mouse
+and WASD to fly (shift sprints, the wheel changes speed), the palette
+and a click to place, click to select (shift adds), Delete to remove,
+Ctrl+D to duplicate, Ctrl+Z and Ctrl+Shift+Z for undo and redo, W, E and
+R for move, rotate and scale with the grid, Esc to let go of the mouse.
+
+- Stage 1: `src/editor/doc.ts` holds the `Level`; every change is a
+  command on one undo list. A new level is the smallest valid one (a
+  32 by 32 m floor, the player start, the exit, the default sky) and is
+  checked by `validateLevel`. Ids come from a per-shape count
+  (`box-1`, `ramp-2`). Tests in `tests/editor/doc.test.ts`.
+- Stage 2: the page, `src/editor/view.ts` (the scene's lights, the grid
+  from `data/editor.json`, the shell and pieces read only, every prim
+  from `primGeometry` and `primMatrix`) and the fly camera. The smoke
+  check loads the page and finds a picture.
+- Stage 3: placers, selection, the three handles and the inspector.
+  A hazard draws see-through, and a breakable asks for hit points.
+- Stage 4: saving and files. Autosave fires half a second after a
+  change through `putLevel`, and the top bar says Saving then Saved.
+  Open lists saved levels newest first (each can be deleted) under the
+  ten built-in levels, which open as copies so a save makes a new one.
+  Export writes `<name>.dart.json`; Import is checked with
+  `validateLevel` and refused with every error it finds, not just the
+  first. Play saves, then goes to `arena.html?level=local:<key>`.
+  The sky inspector sets the gradient's three colours, or an image
+  scaled to `limits.skyImageWidth` by `skyImageHeight` and stored as a
+  JPEG data URL, and the view draws it.
+- Stage 5: the top bar counts prims, foamers and triggers against the
+  caps in `data/editor.json` and goes red past one; placing and
+  duplicating stop at `limits.prims` and say why in the status line.
+
+Green: `npx tsc --noEmit`, `npx vitest run` (1219 pass, 2 skip),
+`npm run build`, `npm run smoke` (all 5 pages, editor 0.6 s, 9 bands),
+`npm run check` (no em dashes, no remote fetches in 36 built files).
+
+**Not seen by eye and still open:** `src/arena/` does not read a
+`?level=local:` key yet (that is ED-01's side), so Play saves the level
+and lands on the Pit with "No level called local:...". The sky image
+upload was not exercised in the browser. What was checked in headless
+Chromium: the fly camera and placing, the inspector for a hazard (look,
+damage, slow, hurts Foamers, starts hidden), the sky panel, the Open
+dialog's two lists, a broken import refused with three errors while the
+old level stayed, a good import loaded and named, the export file name
+following the level's name, and Play's single navigation to
+`arena.html?level=local%3A...` with no console errors.
+
+Known gap worth a decision: `src/editor/store.ts` was used as it is, so
+nothing in ED-02 reads a key back by name for the arena page; the
+`?level=local:` half needs the arena page to do it.
 ### 2026-11-13: ED-07a trigger runner and key rules (Qwen 3.8-27B via Pi, `tasks/ED-07A.md`)
 
 - `src/level/triggers.ts`: `TriggerRunner` fires a level's when/do
