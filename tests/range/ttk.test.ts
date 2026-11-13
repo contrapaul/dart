@@ -17,6 +17,22 @@ import { createLineup, createRangeSystems } from "../../src/range/setup";
 // blaster and the real Foamer system, the way the page does.
 
 const DT = 1 / 60;
+
+/** B01's spread is random in the game; a test needs the same darts every
+ *  run, or a killing blow that lands on its own first hit makes the span one
+ *  step (0.0167 s) instead of the flight, which is what the seconds test
+ *  read as a failure now and then. A small seeded PRNG, as the game's own
+ *  rules ask of simulation code. mulberry32. */
+function seededRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 // The darts fly at an F01's middle: higher, they pass over it once it
 // staggers and sags, and the kill in a test depends on the spread's luck.
 const PLAYER = new THREE.Vector3(0, 0.7, 6);
@@ -61,7 +77,8 @@ function rig(ids: string[]): Rig {
     id,
     // The muzzle is the player's eye, where FakeVM reports it, so the darts
     // fly from the player at the lineup, as they do on the page.
-    blaster: new Blaster(resolveSpec(id), darts, () => out.copy(PLAYER)),
+    // A fixed seed per rig: the same spread every run.
+    blaster: new Blaster(resolveSpec(id), darts, () => out.copy(PLAYER), seededRng(20261113)),
     viewmodel: new FakeVM(),
   }));
   const loadout = new Loadout(parts, darts, 0.35);
