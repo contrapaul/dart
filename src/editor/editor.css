@@ -46,6 +46,11 @@
   white-space: nowrap;
 }
 
+#topbar .counts.over {
+  opacity: 1;
+  color: #ff9b7a;
+}
+
 #status {
   min-width: 5em;
   opacity: 0.75;

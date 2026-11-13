@@ -65,8 +65,32 @@ function redraw() {
 function updateTopBar() {
   $<HTMLButtonElement>("undoBtn").disabled = !doc.canUndo;
   $<HTMLButtonElement>("redoBtn").disabled = !doc.canRedo;
-  const prims = doc.level.prims?.length ?? 0;
-  counts.textContent = `${prims} prims`;
+  counts.textContent = countText(doc.level);
+  counts.title = `Caps from data/editor.json: ${LIMITS.prims} prims, ${LIMITS.foamers} foamers, ${LIMITS.triggers} triggers`;
+  counts.classList.toggle("over", overCaps(doc.level).length > 0);
+}
+
+/** "12 of 2000 prims, 3 of 150 foamers" against the caps in data/editor.json. */
+function countText(level: Level): string {
+  const parts = [
+    `${level.prims?.length ?? 0} of ${LIMITS.prims} prims`,
+    `${level.foamers?.length ?? 0} of ${LIMITS.foamers} foamers`,
+    `${level.triggers?.length ?? 0} of ${LIMITS.triggers} triggers`,
+  ];
+  return parts.join(", ");
+}
+
+/** Which caps the level is over. The validator refuses to load such a level,
+ *  so the top bar says so before a save or an export runs into it. */
+function overCaps(level: Level): string[] {
+  const over: string[] = [];
+  const prims = level.prims?.length ?? 0;
+  const foamers = level.foamers?.length ?? 0;
+  const triggers = level.triggers?.length ?? 0;
+  if (prims > LIMITS.prims) over.push(`${prims} prims, over ${LIMITS.prims}`);
+  if (foamers > LIMITS.foamers) over.push(`${foamers} foamers, over ${LIMITS.foamers}`);
+  if (triggers > LIMITS.triggers) over.push(`${triggers} triggers, over ${LIMITS.triggers}`);
+  return over;
 }
 
 function buildOutliner() {
@@ -256,6 +280,7 @@ canvas.addEventListener("click", (e) => {
  *  that surface: the click point plus half the prim's height along the
  *  surface normal, snapped to the grid. */
 function place(shape: PrimShape, point: THREE.Vector3, normal: THREE.Vector3) {
+  if (!roomFor(1)) return;
   const base = makePrim(shape, [point.x, point.y, point.z], placeColour);
   const pos: Vec3 = [
     point.x + normal.x * base.size[0] / 2,
@@ -269,6 +294,16 @@ function place(shape: PrimShape, point: THREE.Vector3, normal: THREE.Vector3) {
   // Select what was just placed, after the document's own redraw: the
   // inspector then has the new prim, one Ctrl+D from a copy.
   pick(prim.id);
+}
+
+/** True when the level has room for `count` more prims; otherwise it says
+ *  so in the status line and does not add them (stage 5: the prim cap from
+ *  data/editor.json is a hard cap, and the validator would refuse the file). */
+function roomFor(count: number): boolean {
+  const have = doc.level.prims?.length ?? 0;
+  if (have + count <= LIMITS.prims) return true;
+  status.textContent = `Prim cap: ${LIMITS.prims}. ${have} already placed.`;
+  return false;
 }
 
 window.addEventListener("keydown", (e) => {
@@ -287,7 +322,7 @@ window.addEventListener("keydown", (e) => {
   }
   if (meta && e.code === "KeyD") {
     e.preventDefault();
-    if (selected.size) {
+    if (selected.size && roomFor(selected.size)) {
       const made = doc.duplicate([...selected]);
       selected.clear();
       for (const id of made) selected.add(id);
