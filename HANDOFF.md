@@ -86,6 +86,14 @@ is 1104 tests, 2 skipped on that branch.
 
 ## Log
 
+### 2026-11-13: ED-03 hazard primitives (Pi, branch ed-03)
+
+- Task: `tasks/ED-03.md`.
+- Built `src/level/hazard-rules.ts` and `src/level/hazards.ts`; numbers in `data/hazards.json` (`tickSeconds` 0.25); 10 tests in `tests/level/hazards.test.ts`.
+- Decisions: damage is dealt in fixed ticks (`dps * tickSeconds`) so hits land on the HUD; overlapping hazards use the highest dps and the lowest slow; exposure only grows and drains inside, so leaving and returning does not reset the tick; Foamers skip hazards with `hurtsFoamers: false`; hidden hazards are invisible and do nothing until `setShown`.
+- `npm run check` green: 1186 tests pass, 2 skipped, build and text/remote checks green.
+- Not wired into the arena yet; the reviewer does that. No browser here, so the see-through look, shimmer and depth order are not checked by eye. `primContains` clones its point internally, so that allocation remains per body per frame in `src/level/prim-geometry.ts`, which this card did not touch.
+
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 
 - Paul played Act 1 and wants to build the levels himself, in an editor
