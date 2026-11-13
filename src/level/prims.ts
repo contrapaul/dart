@@ -76,7 +76,15 @@ export function buildPrims(
     // ED-03 draws hazards; a hazard is see-through and has no collision.
     if (prim.behaviour === "hazard") continue;
     const collides = prim.behaviour === "solid" || prim.behaviour === "breakable";
-    const geometry = primGeometry(prim);
+    // Box, cylinder and stairs geometry is indexed and the ramp and wedge
+    // are not; mergeGeometries refuses a mix, so every part goes in as
+    // plain triangles (review fix: a mixed colour group drew nothing).
+    let geometry = primGeometry(prim);
+    if (geometry.index) {
+      const flat = geometry.toNonIndexed();
+      geometry.dispose();
+      geometry = flat;
+    }
     geometry.applyMatrix4(primMatrix(prim));
 
     if (!prim.hidden) {

@@ -1,5 +1,5 @@
 {
-  "_note": "ED-01: a test level, not a level to ship. It exercises every new part of the format once: all five primitive shapes (a solid box, a ramp, a wedge, a cylinder and a stairs), an orange decor strip of three boxes merged into one mesh, a hidden foam-purple blocker (a prim that only a trigger shows, standing in the doorway), two placed Foamers (one that wakes on sight, one that waits for a trigger), a door with lock none that starts open and a door with lock trigger that starts shut, a gradient sky, and a start loadout that owns only B01 and B04 with the sword and 60 health. The room is env-01's: 18 x 18 m, floor at y 0, 4 m to the ceiling. The prims stand on the floor (a box's pos is its centre, so a 1 m box sits at y 0.5). The ramp is 3 m long rising 1.5 m, the wedge is a roof over the crate end of the room, the cylinder is a pillar, and the stairs rise 1.5 m to a 1.5 m platform so the shapes can be walked over as well as looked at. Decor never collides: the strip runs along the north wall where the player cannot stand on it by accident. The hidden blocker is a 2 x 2 x 0.4 m wall across the middle doorway (between the open door and the shut one), so the test can watch it appear when a trigger names it. Metres, Y up, -z is north, positions are box centres, sizes are full extents.",
+  "_note": "ED-01: a test level, not a level to ship. It exercises every new part of the format once: all five primitive shapes (a solid box, a ramp, a wedge, a cylinder and a stairs), an orange decor strip of three boxes merged into one mesh, a hidden foam-purple blocker (a prim that only a trigger shows, standing in the doorway), two placed Foamers (one that wakes on sight, one that waits for a trigger), a door with lock none that starts open and a door with lock trigger that starts shut, a gradient sky, and a start loadout that owns only B01 and B04 with the sword and 60 health. The room is env-01's: 18 x 18 m, floor at y 0, with no ceiling so the sky shows (review). The prims stand on the floor (a box's pos is its centre, so a 1 m box sits at y 0.5). The ramp is 3 m long rising 1.5 m, the wedge is a roof over the crate end of the room, the cylinder is a pillar, and the stairs rise 1.5 m to a 1.5 m platform so the shapes can be walked over as well as looked at. Decor never collides: the strip runs along the north wall where the player cannot stand on it by accident. The hidden blocker is a 2 x 2 x 0.4 m wall across the middle doorway (between the open door and the shut one), so the test can watch it appear when a trigger names it. Metres, Y up, -z is north, positions are box centres, sizes are full extents.",
   "meta": {
     "id": "ed-01",
     "name": "[Paul]",
@@ -23,21 +23,6 @@
         18
       ],
       "material": "greybox-dark"
-    },
-    {
-      "id": "room-ceiling",
-      "shape": "box",
-      "pos": [
-        0,
-        4.5,
-        0
-      ],
-      "size": [
-        16,
-        1,
-        16
-      ],
-      "material": "greybox"
     },
     {
       "id": "room-wall-w",

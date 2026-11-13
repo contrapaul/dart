@@ -88,6 +88,23 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-01 review, merged (Claude Opus 5.5)
+
+- DeepSeek built the card. Seen in the browser on `arena.html?level=ed-01`:
+  every shape draws, the start loadout gives the Dartman at 60 health,
+  the placed Foamers stand idle where the file puts them, the gradient sky
+  shows overhead.
+- Review fixes: a colour shared by an indexed shape (box, cylinder,
+  stairs) and a plain one (ramp, wedge) merged to nothing and drew
+  nothing, so every part is flattened before the merge (test added); the
+  sky sphere (150 m) sat at the origin, so it now rides with the camera
+  and a 512 m level stays inside it; its colours drew too dark (no sRGB
+  conversion in the shader); the test level lost its ceiling so the sky
+  can be seen.
+- Not checked by eye: walking up the stairs and ramp, a placed Foamer
+  waking on sight, an image sky, a `local:` level from the store (no
+  editor yet to save one).
+
 ### 2026-11-13: ED-01, the game plays editor levels (Pi, DeepSeek V4.1 Flash 1017)
 
 Branch `ed-01`, not merged and not pushed. The level file's new parts now

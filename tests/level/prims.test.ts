@@ -116,4 +116,13 @@ describe("buildPrims", () => {
     expect(built.navBounds.maxZ).toBeCloseTo(4.5);
     expect(built.prims.size).toBe(0);
   });
+  it("merges a box and a ramp of one colour into one drawn mesh (review)", async () => {
+    const { rapier, world } = await createPhysics();
+    const group = new THREE.Group();
+    buildPrims(level([box(), box({ id: "r", shape: "ramp", pos: [4, 0, 0] })]), rapier, world, group);
+    const meshes = group.children.filter((c) => c instanceof THREE.Mesh) as THREE.Mesh[];
+    expect(meshes).toHaveLength(1);
+    // A box is 12 triangles, a ramp 8: all 20 are drawn.
+    expect(meshes[0]!.geometry.getAttribute("position").count).toBe((12 + 8) * 3);
+  });
 });

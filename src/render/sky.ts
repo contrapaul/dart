@@ -8,7 +8,7 @@ type Gradient = Extract<Sky, { kind: "gradient" }>;
 // is a 2:1 panorama wrapped round the level as the scene's background. A
 // level with no sky leaves the scene exactly as createRenderer made it.
 
-/** Big enough to sit outside any level the nav grid allows. */
+/** Inside the camera's far plane (200 m); the sphere follows the camera. */
 const RADIUS = 150;
 const SKY_NAME = "level-sky";
 
@@ -33,6 +33,9 @@ void main() {
     ? mix(horizon, top, pow(h, 0.55))
     : mix(horizon, bottom, pow(-h, 0.45));
   gl_FragColor = vec4(c, 1.0);
+  // Review fix: the uniforms are linear (THREE.Color), so the output goes
+  // back to the screen's colour space, or the sky draws far too dark.
+  #include <colorspace_fragment>
 }
 `;
 
@@ -48,12 +51,21 @@ function gradientSky(sky: Gradient): THREE.Mesh {
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
+    // The level's colours as picked, not tone mapped like lit surfaces.
+    toneMapped: false,
   });
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(RADIUS, 32, 16), material);
   mesh.name = SKY_NAME;
   // Drawn first, and never part of a shadow.
   mesh.renderOrder = -1;
   mesh.frustumCulled = false;
+  // Review fix: the sphere rides with the camera, so a level far from the
+  // origin (up to 512 m, data/editor.json) is always inside it, and its
+  // radius stays inside the camera's far plane (200 m).
+  mesh.onBeforeRender = (_r, _s, camera) => {
+    mesh.position.copy(camera.position);
+    mesh.updateMatrixWorld();
+  };
   return mesh;
 }
 
