@@ -339,20 +339,37 @@ the pickups system only spawns `darts-*` types today
 1. **Setting.** `ACTS-2-3.md` offers a workshop floor, a school hall with
    a stage that the gantry becomes, or a toy store's shelving aisle. This
    doc assumes the workshop. Which one, and what are the rooms called?
+
+   Answer: Workshop, and for now we can call them workshop room 1, 2, etc. 
+
 2. **The conveyor.** The belts are scenery. Should the gantry (or the
    ring) actually move? That is E07 in `ENVIRONMENT.md`, rated a large
    piece of new work, so it is not in this concept.
+
+  Answer: Not yet, but this is something to revisit in later passes.
+
 3. **Melee weapon 1.** The short concept lists it as a 2-1 pickup;
    Paul's campaign rule says hand weapons are found in levels, decided
    later with melee. Is 2-1 where it is found? This doc places none, and
    the finishers carry the health instead.
+
+   Answer: Yes, we should add a melee weapon here. A sword, to be precise. Just before arena 1. 
+
 4. **B06's mods.** The mod station exists (ENV-03). Should `rate` or
    `explosive` be granted here (after Arena 2, say), or do mods stay a
    later upgrade-token thing?
+
+  Mods are purchased with tokens. For testing stations should offer them for free, but they will be locked to purchases later. 
+
 5. **A promoted wall for the last room.** Arena 3 could close on a
    promoted pair (1.5 health, light purple plates, the 1-4 look). Keep
    the plain wall or promote it?
+
+   Promote
+
 6. **Health between levels.** The campaign carries health and nothing
    tops it up at a level start. Does 2-1 begin on what the player
    carried, and is there a heal at each arena checkpoint? This doc
    assumes "what you carry".
+
+   Health should be found in drops on the map and melee kills, but moving from 1-X to 2-X, or 2-X to 3-X should reset health to full. 
