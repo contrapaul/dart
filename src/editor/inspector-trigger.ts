@@ -17,10 +17,10 @@ export interface TriggerHandlers {
   change(patch: Partial<Trigger>, text: string): void;
   /** Rebuilds the panel: a kind change brings its own fields. */
   redraw(): void;
-  /** The do row the Link button fills, or null when nothing is linking.
-   *  Without `setLink` there is no Link button (ED-08 stage 3 adds it). */
-  linkRow: number | null;
-  setLink?(row: number | null): void;
+  /** The field the Link button fills ("enter", "killed", "do:2"), or null
+   *  when nothing is linking. Without `setLink` there is no Link button. */
+  linkKey: string | null;
+  setLink?(key: string | null): void;
   /** Where the editor's camera is, for a checkpoint. */
   cameraSpot(): { pos: Vec3; yaw: number };
 }
@@ -43,11 +43,11 @@ function idOptions(level: Level, field: { kind: string }, current: string): { va
 }
 
 /** One id field: a list of the ids of the right kind, and a Link button that
- *  takes the next click in the view (ED-08 stage 3). `row` names the do row
- *  the field belongs to, so Link knows where to put the click. */
+ *  takes the next click in the view (ED-08 stage 3). `key` names the field,
+ *  so Link knows where the click goes. */
 function idField(
   ctx: TriggerHandlers, field: { kind: string }, current: string,
-  commit: (id: string) => void, row: number | null = null,
+  commit: (id: string) => void, key: string | null = null,
 ): HTMLElement {
   const host = document.createElement("div");
   host.className = "ticks";
@@ -55,10 +55,10 @@ function idField(
   if (!ctx.setLink) return host;
   const link = document.createElement("button");
   link.type = "button";
-  const on = row !== null && ctx.linkRow === row;
+  const on = key !== null && ctx.linkKey === key;
   link.className = on ? "on" : "";
   link.textContent = on ? "Linking: click in the view" : "Link";
-  link.addEventListener("click", () => ctx.setLink!(on ? null : row));
+  link.addEventListener("click", () => ctx.setLink!(on ? null : key));
   host.append(link);
   return host;
 }
@@ -76,7 +76,7 @@ function whenFields(host: HTMLElement, ctx: TriggerHandlers, w: TriggerWhen, set
     case "start":
       break;
     case "enter":
-      host.append(label("zone", idField(ctx, w, w.zone, (id) => set({ kind: "enter", zone: id }, `enter ${id}`))));
+      host.append(label("zone", idField(ctx, w, w.zone, (id) => set({ kind: "enter", zone: id }, `enter ${id}`), "enter")));
       break;
     case "killed": {
       for (const id of w.ids ?? []) {
@@ -85,6 +85,11 @@ function whenFields(host: HTMLElement, ctx: TriggerHandlers, w: TriggerWhen, set
           ctx.redraw();
         })));
       }
+      host.append(label("link", idField(ctx, w, "", (id) => {
+        if (!id || (w.ids ?? []).includes(id)) return;
+        set({ kind: "killed", ids: [...(w.ids ?? []), id], count: w.count }, `killed ${id}`);
+        ctx.redraw();
+      }, "killed")));
       const add = document.createElement("button");
       add.type = "button";
       add.textContent = "Add a Foamer or a wave";
@@ -196,7 +201,7 @@ function doRow(
         if (!id || d.ids.includes(id)) return;
         setRow({ ...d, ids: [...d.ids, id] }, `wake ${id}`);
         ctx.redraw();
-      }, row)));
+      }, `do:${row}`)));
       for (const id of d.ids) {
         host.append(label("", nameRow(id, () => {
           setRow({ ...d, ids: d.ids.filter((x) => x !== id) }, `wake ${id}`);
@@ -210,7 +215,7 @@ function doRow(
         if (!id || d.ids.includes(id)) return;
         setRow({ ...d, ids: [...d.ids, id] }, `${d.kind} ${id}`);
         ctx.redraw();
-      }, row)));
+      }, `do:${row}`)));
       for (const id of d.ids) {
         host.append(label("", nameRow(id, () => {
           setRow({ ...d, ids: d.ids.filter((x) => x !== id) }, `${d.kind} ${id}`);
@@ -223,7 +228,7 @@ function doRow(
       host.append(label("door", idField(ctx, d, d.door, (id) => {
         setRow({ ...d, door: id }, `${d.kind} ${id}`);
         ctx.redraw();
-      }, row)));
+      }, `do:${row}`)));
       break;
     case "message":
       host.append(label("text", textField(d.text, (v) => setRow({ ...d, text: v }, "message text"))));
@@ -273,20 +278,5 @@ export function buildTriggerFields(host: HTMLElement, trigger: Trigger, ctx: Tri
   });
   host.append(label("add", add));
   host.append(label("repeat", checkField("yes", trigger.repeat === true, (on) => ctx.change({ repeat: on || undefined }, on ? "repeat" : "once"))));
-  if (ctx.linkRow !== null) host.append(label("", hint("Linking: click the thing in the view, Esc to stop")));
-}
-
-/** The kind of thing a do row's id field takes, for Link: a Foamer to wake,
- *  a prim to show or hide, a door to open or close. Null when the row takes
- *  no click from the view. */
-export function rowTakes(d: TriggerDo | undefined): "wake" | "show" | "hide" | "open" | "close" | null {
-  if (!d) return null;
-  switch (d.kind) {
-    case "wake": return "wake";
-    case "show": return "show";
-    case "hide": return "hide";
-    case "open": return "open";
-    case "close": return "close";
-    default: return null;
-  }
+  if (ctx.linkKey !== null) host.append(label("", hint("Linking: click the thing in the view, Esc to stop")));
 }

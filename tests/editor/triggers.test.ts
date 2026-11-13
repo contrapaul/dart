@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { LevelDoc, newLevel } from "../../src/editor/doc";
 import { triggerSummary } from "../../src/editor/trigger-text";
 import {
-  DO_KINDS, WHEN_KINDS, emptyDo, emptyWhen, fieldIds, newTrigger, spawnActionIds,
+  DO_KINDS, WHEN_KINDS, applyLink, emptyDo, emptyWhen, fieldIds, firstLinkKey, newTrigger,
+  spawnActionIds, triggerIds,
 } from "../../src/editor/trigger-parts";
 import levelJson from "../../data/levels/ed-07.json";
 import type { Level, Trigger } from "../../src/level/format";
@@ -146,5 +147,55 @@ describe("ED-08 what a new trigger starts as", () => {
     expect(fieldIds(level, { kind: "open" })).toEqual(["side-door", "exit-door"]);
     expect(fieldIds(level, { kind: "message" })).toBeNull();
     expect(spawnActionIds(level)).toEqual(["wave-1", "wave-2-spawn"]);
+  });
+});
+
+describe("ED-08 stage 3: linking a click to a field", () => {
+  const base: Trigger = {
+    id: "t1",
+    when: { kind: "enter", zone: "" },
+    do: [
+      { kind: "show", ids: [] },
+      { kind: "open", door: "" },
+      { kind: "message", text: "[Paul]" },
+    ],
+  };
+
+  it("puts a clicked zone into enter and a Foamer into killed", () => {
+    expect(applyLink(base, "enter", "zone-1", "zones")?.when).toEqual({ kind: "enter", zone: "zone-1" });
+    const killed: Trigger = { id: "t2", when: { kind: "killed", ids: [] }, do: [{ kind: "show", ids: [] }] };
+    expect(applyLink(killed, "killed", "foamer-1", "foamers")?.when).toEqual({ kind: "killed", ids: ["foamer-1"] });
+  });
+
+  it("adds to a show row, and replaces the door of an open row", () => {
+    const shown = applyLink(base, "do:0", "box-1", "prims");
+    expect(shown?.do[0]).toEqual({ kind: "show", ids: ["box-1"] });
+    expect(applyLink(base, "do:1", "door-1", "doors")?.do[1]).toEqual({ kind: "open", door: "door-1" });
+  });
+
+  it("refuses the wrong kind, a name already there, and a row that takes none", () => {
+    expect(applyLink(base, "enter", "box-1", "prims")).toBeNull();
+    expect(applyLink(base, "do:0", "door-1", "doors")).toBeNull();
+    expect(applyLink(base, "do:2", "box-1", "prims")).toBeNull();
+    const twice = applyLink(base, "do:0", "box-1", "prims")!;
+    expect(applyLink(twice, "do:0", "box-1", "prims")).toBeNull();
+  });
+
+  it("names the field L links first, and every thing a trigger names", () => {
+    expect(firstLinkKey(base)).toBe("enter");
+    expect(firstLinkKey({ id: "t3", when: { kind: "start" }, do: [{ kind: "message", text: "[Paul]" }, { kind: "hide", ids: ["box-1"] }] }))
+      .toBe("do:1");
+    expect(firstLinkKey({ id: "t4", when: { kind: "start" }, do: [{ kind: "message", text: "[Paul]" }] })).toBeNull();
+    const named = triggerIds({
+      id: "t5",
+      when: { kind: "killed", ids: ["wave-1"] },
+      do: [
+        { kind: "show", ids: ["box-1", "foamer-1"] },
+        { kind: "spawn", id: "wave-2", foamer: "F01", count: 2, at: ["spawn-1"] },
+        { kind: "open", door: "door-1" },
+        { kind: "checkpoint", pos: [0, 0, 0], yaw: 0 },
+      ],
+    });
+    expect(named).toEqual(["wave-1", "box-1", "foamer-1", "spawn-1", "door-1"]);
   });
 });

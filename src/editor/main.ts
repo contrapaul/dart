@@ -13,7 +13,7 @@ import { EXIT_ID, START_ID } from "./markers";
 import { AMMO_TYPES, RIGS, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
-import { newTrigger } from "./trigger-parts";
+import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, putLevel, LOCAL_PREFIX } from "./store";
@@ -61,8 +61,9 @@ let armedRig = RIGS[0]?.id ?? "F01";
 /** The colour new prims take: the last one picked in the inspector. */
 let placeColour = "#ff7a1a";
 const selected = new Set<string>();
-/** ED-08 stage 3: the do row whose id field Link fills, or null. */
-let linkRow: number | null = null;
+/** ED-08 stage 3: the trigger field Link fills ("enter", "killed", "do:2"),
+ *  or null when nothing is linking. Cleared when the selection changes. */
+let linkKey: string | null = null;
 const status = $("status");
 const counts = $("counts");
 
@@ -90,7 +91,7 @@ function typing(target: EventTarget | null): boolean {
 // The panels that read the document.
 function redraw() {
   view.show(doc.level);
-  view.select([...selected], view.mode);
+  selectInView();
   buildOutliner();
   buildInspector();
   buildPalette();
@@ -315,10 +316,11 @@ function buildOutliner() {
  *  section 4: click, Shift+click). The id names an entry of any kind, or the
  *  view's pseudo ids for the player start and the exit. */
 function pick(id: string, add = false) {
+  endLink();
   if (!add) selected.clear();
   if (add && selected.has(id)) selected.delete(id);
   else selected.add(id);
-  view.select([...selected], view.mode);
+  selectInView();
   buildOutliner();
   buildInspector();
 }
@@ -413,7 +415,7 @@ function buildPalette() {
     button.textContent = name;
     button.addEventListener("click", () => {
       view.setMode(key);
-      view.select([...selected], view.mode);
+      selectInView();
       buildPalette();
     });
     host.append(button);
@@ -442,6 +444,26 @@ function buildInspector() {
     return;
   }
   buildPrimInspector(host);
+}
+
+/** ED-08 stage 3: what the view outlines. A selected trigger is not in the
+ *  world, so instead of a box round it the view outlines everything it names,
+ *  which is how Paul sees what the trigger acts on. */
+function selectInView() {
+  const picked: string[] = [];
+  const named: string[] = [];
+  for (const id of selected) {
+    if (doc.kindOf(id) !== "triggers") {
+      picked.push(id);
+      continue;
+    }
+    const trigger = doc.find<Trigger>("triggers", id);
+    if (trigger) named.push(...triggerIds(trigger));
+  }
+  // A trigger gets no box and no handles (there is nothing to drag), so the
+  // handles only follow what is really selected.
+  view.select(picked, view.mode);
+  view.showLinked(named);
 }
 
 /** The name the inspector's heading uses for one selected id. */
@@ -483,9 +505,10 @@ function buildTriggerInspector(host: HTMLElement, id: string) {
     level: doc.level,
     change: (patch, text) => doc.change("triggers", [{ id, patch: patch as Record<string, unknown> }], text),
     redraw: buildInspector,
-    linkRow,
-    setLink: (row) => {
-      linkRow = row;
+    linkKey,
+    setLink: (key) => {
+      linkKey = key;
+      status.textContent = key ? "Linking: click the thing in the view, Esc to stop." : "";
       buildInspector();
     },
     cameraSpot: () => {
@@ -560,6 +583,12 @@ canvas.addEventListener("click", (e) => {
   const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   const hit = view.pick(ndcX, ndcY);
+  // ED-08 stage 3: while linking, the click adds the thing to the trigger's
+  // field and does not select anything else.
+  if (linkKey) {
+    if (hit?.id) link(hit.id);
+    return;
+  }
   if (armed) {
     if (!hit) return;
     place(armed, hit.point, hit.normal);
@@ -573,11 +602,44 @@ canvas.addEventListener("click", (e) => {
   if (hit?.id) pick(hit.id, e.shiftKey);
   else if (!e.shiftKey) {
     selected.clear();
-    view.select([], view.mode);
+    selectInView();
     buildOutliner();
     buildInspector();
   }
 });
+
+/** The trigger being linked into: the one selected trigger whose inspector
+ *  started the link. */
+function linkedTrigger(): Trigger | null {
+  if (!linkKey) return null;
+  for (const id of selected) {
+    const trigger = doc.find<Trigger>("triggers", id);
+    if (trigger) return trigger;
+  }
+  return null;
+}
+
+/** ED-08 stage 3: adds the clicked thing to the field the link names. A thing
+ *  of a kind the field does not take is refused with a word in the status
+ *  line, so a click on the wrong wall does not quietly change anything. */
+function link(id: string) {
+  const trigger = linkedTrigger();
+  const kind = doc.kindOf(id);
+  if (!trigger || !kind || !linkKey) return;
+  const next = applyLink(trigger, linkKey, id, kind);
+  if (!next) {
+    status.textContent = `${id} is not something this field takes.`;
+    return;
+  }
+  doc.change("triggers", [{ id: trigger.id, patch: next as unknown as Record<string, unknown> }], `link ${id}`);
+  status.textContent = `Linked ${id}. Esc when done.`;
+  buildInspector();
+}
+
+/** Ends a link (Esc, or a change of selection). */
+function endLink() {
+  linkKey = null;
+}
 
 /** Places a prim of a shape on the surface under the cursor, standing on
  *  that surface: the click point plus half the prim's height along the
@@ -727,6 +789,23 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyW" && !view.isLooking) setMode("translate");
   if (e.code === "KeyE" && !view.isLooking) setMode("rotate");
   if (e.code === "KeyR" && !view.isLooking) setMode("scale");
+  // ED-08 stage 3: L links the selected trigger's first field, Esc stops.
+  if (e.code === "KeyL" && !view.isLooking) {
+    const trigger = [...selected].map((id) => doc.find<Trigger>("triggers", id)).find((t): t is Trigger => !!t);
+    const key = trigger ? firstLinkKey(trigger) : null;
+    if (!trigger) status.textContent = "Select a trigger first, then L links what it acts on.";
+    else if (!key) status.textContent = `${trigger.id} has no field for a click yet: give it a when or a do row.`;
+    else {
+      linkKey = key;
+      status.textContent = "Linking: click the thing in the view, Esc to stop.";
+      buildInspector();
+    }
+  }
+  if (e.code === "Escape" && linkKey) {
+    endLink();
+    status.textContent = "";
+    buildInspector();
+  }
   if (e.code === "Delete" || e.code === "Backspace") {
     e.preventDefault();
     if (selected.size) {
@@ -742,7 +821,7 @@ window.addEventListener("keyup", (e) => {
 
 function setMode(mode: TransformMode) {
   view.setMode(mode);
-  view.select([...selected], view.mode);
+  selectInView();
   buildPalette();
 }
 

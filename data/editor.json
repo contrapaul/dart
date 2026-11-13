@@ -32,6 +32,7 @@
     "startColour": "#ff7a1a",
     "spawnColour": "#9b5cff",
     "zoneColour": "#2ec4ff",
+    "linkedColour": "#ffd23f",
     "markerOpacity": 0.35,
     "pickupSize": 0.4,
     "noseLength": 0.6,

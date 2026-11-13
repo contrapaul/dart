@@ -106,3 +106,85 @@ export function fieldIds(level: Level, field: { kind: string }): string[] | null
     default: return null;
   }
 }
+
+/** Every level id a trigger names, wherever it names one. The view outlines
+ *  them while the trigger is selected, so what it acts on can be seen. Ids
+ *  that name no thing in the world (a spawn action's tag, the trigger after
+ *  this one) are left to the view to skip. */
+export function triggerIds(t: Trigger): string[] {
+  const ids: string[] = [];
+  const w = t.when;
+  if (w?.kind === "enter") ids.push(w.zone);
+  if (w?.kind === "killed") ids.push(...(w.ids ?? []));
+  if (w?.kind === "pressed") ids.push(w.button);
+  if (w?.kind === "taken") ids.push(w.pickup);
+  for (const d of t.do ?? []) {
+    if (d.kind === "spawn") ids.push(...d.at);
+    else if (d.kind === "wake" || d.kind === "show" || d.kind === "hide") ids.push(...(d.ids ?? []));
+    else if (d.kind === "open" || d.kind === "close") ids.push(d.door);
+  }
+  return [...new Set(ids.filter(Boolean))];
+}
+
+/** The kinds a click from the view can put into a field, as doc entry kinds.
+ *  A link never invents anything: the thing clicked must already be in the
+ *  level, and of the kind the field takes. */
+const LINK_KINDS: Record<string, string[]> = {
+  enter: ["zones"],
+  killed: ["foamers"],
+  wake: ["foamers"],
+  show: ["prims", "foamers"],
+  hide: ["prims", "foamers"],
+  open: ["doors"],
+  close: ["doors"],
+};
+
+/** The link key of a do row, or null when the row takes no click from the
+ *  view (a spawn, a message, a checkpoint). */
+export function doLinkKey(d: TriggerDo | undefined): string | null {
+  if (!d) return null;
+  return Object.hasOwn(LINK_KINDS, d.kind) ? d.kind : null;
+}
+
+/** The field a trigger links first, for the L key: the when's when it takes
+ *  something, else the first do row that does. Null when nothing does. */
+export function firstLinkKey(t: Trigger): string | null {
+  const w = t.when;
+  if (w?.kind === "enter") return "enter";
+  if (w?.kind === "killed") return "killed";
+  const i = (t.do ?? []).findIndex((d) => doLinkKey(d) !== null);
+  return i >= 0 ? `do:${i}` : null;
+}
+
+/** Adds a clicked thing to the field a link key names, or returns null when
+ *  the field does not take that kind of thing. Names already there are not
+ *  added twice. */
+export function applyLink(t: Trigger, key: string, id: string, kind: string): Trigger | null {
+  if (!id) return null;
+  if (key === "enter") {
+    if (kind !== "zones") return null;
+    return { ...t, when: { kind: "enter", zone: id } };
+  }
+  if (key === "killed") {
+    if (kind !== "foamers") return null;
+    const w = t.when;
+    if (w?.kind !== "killed") return null;
+    if ((w.ids ?? []).includes(id)) return null;
+    return { ...t, when: { ...w, ids: [...(w.ids ?? []), id] } };
+  }
+  const at = key.startsWith("do:") ? Number(key.slice(3)) : -1;
+  const rows = t.do ?? [];
+  const d = rows[at];
+  if (!d) return null;
+  if (!(LINK_KINDS[d.kind] ?? []).includes(kind)) return null;
+  let next: TriggerDo;
+  if (d.kind === "wake" || d.kind === "show" || d.kind === "hide") {
+    if ((d.ids ?? []).includes(id)) return null;
+    next = { ...d, ids: [...(d.ids ?? []), id] };
+  } else if (d.kind === "open" || d.kind === "close") {
+    next = { ...d, door: id };
+  } else {
+    return null;
+  }
+  return { ...t, do: rows.map((r, i) => (i === at ? next : r)) };
+}

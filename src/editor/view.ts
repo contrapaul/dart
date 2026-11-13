@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import hazardData from "../../data/hazards.json";
+import editorData from "../../data/editor.json";
 import type { Level, Prim, Sky, Vec3 } from "../level/format";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { material, materialId } from "../voxel/materials";
@@ -144,6 +145,8 @@ export class EditorView {
   private grid: THREE.LineSegments;
   private outlineBox = new THREE.Box3();
   private outline: THREE.Box3Helper;
+  /** ED-08: one box round each thing a selected trigger names. */
+  private linked = new THREE.Group();
   /** id -> the mesh drawn for it, for selection and the transform handles. */
   private meshes = new Map<string, THREE.Mesh>();
   /** ED-05: the group every placed thing's marker lives in, and what the
@@ -186,6 +189,7 @@ export class EditorView {
     this.outline = new THREE.Box3Helper(this.outlineBox, 0xffd23f);
     this.outline.visible = false;
     this.scene.add(this.outline);
+    this.scene.add(this.linked);
 
     this.proxy.add(new THREE.Mesh(
       new THREE.BoxGeometry(1, 1, 1),
@@ -329,6 +333,23 @@ export class EditorView {
     this.controls.setMode(marker && !marker.size ? "translate" : mode);
     this.controls.attach(this.proxy);
     this.controls.enabled = true;
+  }
+
+  /** ED-08 stage 3: a box round each thing a selected trigger names, so what
+   *  it acts on can be seen. A trigger is not in the world and has no box of
+   *  its own, and these boxes carry no handles: they are for looking, not for
+   *  dragging. Ids the view does not draw (a spawn action's tag) are skipped. */
+  showLinked(ids: string[]) {
+    for (const child of [...this.linked.children]) {
+      this.linked.remove(child);
+      disposeTree(child);
+    }
+    for (const id of new Set(ids)) {
+      const object = this.meshes.get(id) ?? this.markerData.get(id)?.object;
+      if (!object || object.visible === false) continue;
+      const box = new THREE.Box3().expandByObject(object);
+      this.linked.add(new THREE.Box3Helper(box, new THREE.Color(editorData.markers.linkedColour)));
+    }
   }
 
   /** Sets the transform mode and moves the handles if something is selected. */
