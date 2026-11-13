@@ -85,6 +85,10 @@ export class ExplosionSystem {
    *  profile's visual radius. The page plays FX-explode and spawns the
    *  blast here. */
   onExplode: (point: THREE.Vector3, fxRadius: number) => void = () => {};
+  /** ED-06: called at the start of every blast, with the profile it ran in,
+   *  so a page can take the same blast off its own breakables. Every blast
+   *  comes through here, a cluster's follow-ups and a barrel's included. */
+  onBlast: (point: THREE.Vector3, profile: BlastProfileName) => void = () => {};
   /** The Foamer system, set by the page once it exists (DartImpacts is
    *  built first). Null: a blast still carves, pushes and bursts. */
   foamers: BlastDamageTargets | null = null;
@@ -148,6 +152,7 @@ export class ExplosionSystem {
     this.bucketCount++;
     this.stats.blasts++;
     const T = tuning.profiles[profile];
+    this.onBlast(point, profile);
 
     // 1. Carve a sphere from every volume the point reaches. The carve is
     // the same call a dart carve makes; islands cut loose by it drop

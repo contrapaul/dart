@@ -11,6 +11,7 @@ import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
 import { buildPrims, foamMaterialFor, type PrimHandle } from "./prims";
 import { isVoxelBreakable } from "./validate";
+import { Breakables } from "./breakables";
 import type {
   Anchor, Door, DoorState, Level, LevelDoor, Piece, PieceVolume, Prim, ShellBox, Vec3,
 } from "./format";
@@ -72,6 +73,10 @@ export interface BuiltLevel {
   /** ED-01: a handle for every prim that starts hidden, keyed by prim id,
    *  so a trigger can show it. */
   readonly prims: Map<string, PrimHandle>;
+  /** ED-06: the prims that break by hit points (every breakable prim that
+   *  is not voxel foam, a hidden one included). The page wires the darts,
+   *  blasts and swings to it, gives it the debris system, and resets it. */
+  readonly breakables: Breakables;
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -325,6 +330,10 @@ export function buildLevel(
 
   // ED-01: the editor's prims, merged per colour where they never hide.
   const prims = buildPrims(level, rapier, world, group);
+  // ED-06: the ones that break by hit points get a mesh and colliders of
+  // their own, and a handle if they start hidden.
+  const breakables = new Breakables(level, rapier, world, group);
+  for (const [id, handle] of breakables.handles) prims.set(id, handle);
 
   // ED-06: the voxel breakable prims join the pieces, so one fill and one
   // volume serve both.
@@ -379,7 +388,7 @@ export function buildLevel(
 
   if (scene) scene.add(group);
   return {
-    group, voxels, voxelMesh, doors, buttons, presses, prims,
+    group, voxels, voxelMesh, doors, buttons, presses, prims, breakables,
     crates: new Crates(voxels, crateBoxes),
     navBounds: navBoundsOf(level),
   };

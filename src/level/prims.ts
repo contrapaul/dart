@@ -3,7 +3,6 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { primColliderParts, primGeometry, primMatrix } from "./prim-geometry";
-import { isVoxelBreakable } from "./validate";
 import { material } from "../voxel/materials";
 import type { Level, Prim } from "./format";
 
@@ -25,7 +24,7 @@ export interface PrimHandle {
   setShown(shown: boolean): void;
 }
 
-function materialFor(colour: string) {
+export function materialFor(colour: string) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(colour), roughness: 0.9 });
 }
 
@@ -54,7 +53,7 @@ export function foamMaterialFor(colour: string): string {
 
 /** The prim's colliders, placed where its mesh is. A cuboid part keeps its
  *  half extents; a hull part's points are moved into world space. */
-function collidersFor(rapier: Rapier, prim: Prim): RAPIER.ColliderDesc[] {
+export function collidersFor(rapier: Rapier, prim: Prim): RAPIER.ColliderDesc[] {
   const m = primMatrix(prim);
   const pos = new THREE.Vector3();
   const quat = new THREE.Quaternion();
@@ -101,9 +100,14 @@ export function buildPrims(
   for (const prim of level.prims ?? []) {
     // ED-03 draws hazards; a hazard is see-through and has no collision.
     if (prim.behaviour === "hazard") continue;
-    // ED-06: the voxel kind is filled into the volume by build.ts.
-    if (!prim.hidden && isVoxelBreakable(prim)) continue;
-    const collides = prim.behaviour === "solid" || prim.behaviour === "breakable";
+    // ED-06: a breakable prim is not built here at all. The voxel kind is
+    // filled into the level's volume by build.ts; the hit point kind is a
+    // mesh and colliders of its own, built by breakables.ts (a hidden one
+    // included, which is the hit point kind too).
+    if (prim.behaviour === "breakable") continue;
+    // ED-06: breakables never reach here (skipped above), so only solid
+    // prims collide now.
+    const collides = prim.behaviour === "solid";
     // Box, cylinder and stairs geometry is indexed and the ramp and wedge
     // are not; mergeGeometries refuses a mix, so every part goes in as
     // plain triangles (review fix: a mixed colour group drew nothing).
