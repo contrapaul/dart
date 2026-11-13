@@ -9,6 +9,7 @@ import "../core/boot-errors";
 import * as THREE from "three";
 import { createRenderer } from "../render/scene";
 import { QUALITY } from "../render/quality";
+import { BlastFx } from "../render/blast-fx";
 import { createPhysics } from "../physics/world";
 import { startLoop, STEP, type FrameStats, loopDiagLine } from "../core/loop";
 import { Input } from "../core/input";
@@ -159,9 +160,11 @@ const voxelTargets: VoxelTarget[] = [];
 // wires them: the impacts get an ExplosionSystem, so B07's rounds, B05's
 // explosive mod and B06's every fifth shot explode here as they do in the
 // game. The range has no voxel wall, so the blast has no volume to carve.
-const { debris, impacts, foamers, projectiles } = createRangeSystems(
+const { debris, explosion, impacts, foamers, projectiles } = createRangeSystems(
   rapier, world, darts, mesherPool, player.collider, voxelTargets,
 );
+const blastFx = new BlastFx(scene);
+explosion.onExplode = (p, radius) => blastFx.spawn(p, radius);
 // PT-01 stage 3: the time-to-kill readout. It wraps the dart system's fire
 // (to know which blaster and which mods fired each shot) and subscribes to
 // hits last, after the Foamer system has said which Foamer was hit.
@@ -972,6 +975,7 @@ loopCtl = startLoop({
       if (pausedClock < PAUSED_FRAME_MS) return;
       pausedClock = 0;
     } else pausedClock = PAUSED_FRAME_MS;
+    if (!paused) blastFx.update(dt);
     debris.syncRender(alpha);
     if (switches.foamers) foamers.syncRender(alpha);
     labels.update();

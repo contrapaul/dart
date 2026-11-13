@@ -81,7 +81,12 @@ the old text is in git history.
 
 ## Log
 
-### 2026-11-13: OPS-04 review, merged (Claude Opus 5.5): quality presets
+### 2026-11-13: FX-01, visible blast (Pi): pooled effect for every explosion
+
+- Built `src/render/blast-fx.ts` and `src/render/blast-curve.ts`: one pool of `fx.maxLive` (12) slots, shared sphere geometry and one material per layer per slot, no lights or shadows. `spawn(point, radius)` shows a core flash and foam puff. The flash and puff grow and fade from the `fx` block in `data/explosion.json`; when the pool is full the oldest live slot is reused. `update(dt)` advances ages from the page render hook and freezes when paused.
+- `data/explosion.json` gained `fx` and `fxRadius` per profile: dart 1.76 m, launcher 2.8 m, cluster 1.44 m. `ExplosionSystem.onExplode` now takes the radius. `game.ts` keeps `FX-explode` and spawns the blast; `range/main.ts` spawns it too.
+- Tests: `tests/render/blast-curve.test.ts` (3) and `tests/render/blast-fx.test.ts` (2) prove the curve, the pool cap and oldest reuse, and no new children or materials after many spawns. 1017 tests pass, 2 skipped; check and smoke green.
+- Paul should look at B07 on the range, B06's explosive mod and B07's cluster mod. Nothing was seen by eye: the smoke check proves the pages render but not the blast's look, so Paul and the reviewer judge the flash, puff, colours and timing.
 
 - strata-dsv41 (DeepSeek V4.1 Flash quant on dgx-spark, via Pi) built
   the card in one run, first try. The code matched the card; no bugs
