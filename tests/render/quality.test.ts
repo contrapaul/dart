@@ -57,7 +57,7 @@ describe("pickQuality", () => {
     expect(renderJson.quality.presets.high).toEqual(HIGH);
     // Today's caps live in destruction.json; high must not drift from them.
     expect(HIGH.debrisMax).toBe(destructionJson.debris.max);
-    expect(HIGH.breakoffMaxPieces).toBe(destructionJson.breakoff.maxPieces);
+    expect(HIGH.breakoffMaxPieces).toBe(destructionJson.islands.maxPieces);
     expect(renderJson.quality.default).toBe("high");
   });
 });
