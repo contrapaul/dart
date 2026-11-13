@@ -5,7 +5,7 @@ Status: **proposal, LVL-00**. Works in any setting; place names are
 
 | | |
 |---|---|
-| New blaster | B03 spread (break-action double barrel, D15) |
+| New blaster | B05 Shrike, precision, bolt (level 4) |
 | New Foamer | F05 Darter, 30 health, charges in a straight line, armoured front, orange back |
 | New mechanic | Shield charge: lock on, dash, knock back |
 | Arenas | 3, plus a bridge set piece, with a mini-boss arena as the third |

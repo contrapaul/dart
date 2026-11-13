@@ -22,6 +22,11 @@ const SPAWN = new THREE.Vector3(0, 0, 12);
 const VOXEL = 0.1;
 
 let debugBlast: (() => void) | undefined;
+// LVL-05 stage 2: New game and Continue. Wired before the test course
+// loads (review: after it, the buttons did nothing for the seconds the
+// course took to boot). The test course behind them plays as it did.
+wireTitleMenu();
+
 const game = await createGame({
   build({ rapier, world, scene, mesherPool }) {
     // Static geometry: a box mesh plus a matching fixed collider.
@@ -102,10 +107,6 @@ const game = await createGame({
     return extras.hooks;
   },
 });
-
-// LVL-05 stage 2: New game and Continue, before the first click. The test
-// course behind them plays exactly as it did.
-wireTitleMenu();
 
 // Dev-only hook for automated checks in the browser pane.
 if (import.meta.env.DEV) Object.assign(window, {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  CAMPAIGN_ORDER, SAVE_KEY, SAVE_VERSION, applyState, campaignUrl, captureState, carryTo,
+  CAMPAIGN_ORDER, SAVE_KEY, SAVE_VERSION, applyState, campaignUrl, captureState, carryTo, healthInto,
   clearSave, entryState, filledBlaster, firstLevel, formatTime, newGame, nextLevel, readSave,
   writeSave,
   type CampaignState, type LiveCarry,
@@ -198,6 +198,16 @@ describe("the carried state (LVL-05)", () => {
 
   it("campaignUrl names the level and asks for campaign play", () => {
     expect(campaignUrl("1-2")).toBe("/arena.html?level=1-2&campaign");
+  });
+});
+
+describe("health between acts (Paul, 2026-11-13)", () => {
+  it("carries within an act and is full again in a new act", () => {
+    expect(healthInto("1-2", "1-3", 37)).toBe(37);
+    expect(healthInto("1-1-pit", "1-2", 37)).toBe(37);
+    const full = healthInto("1-4", "2-1", 37);
+    expect(full).toBeGreaterThan(37);
+    expect(healthInto("2-4", "3-1", 12)).toBe(full);
   });
 });
 

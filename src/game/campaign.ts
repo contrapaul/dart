@@ -175,12 +175,21 @@ export function carryTo(
   blasters: readonly CarriedBlaster[],
   health: number,
 ): CampaignState {
+  const next = nextLevel(levelId);
   return {
     version: SAVE_VERSION,
-    level: nextLevel(levelId) ?? levelId,
+    level: next ?? levelId,
     blasters: blasters.map((b) => ({ id: b.id, mag: b.mag, reserve: b.reserve })),
-    health,
+    health: next ? healthInto(levelId, next, health) : health,
   };
+}
+
+/** Paul, 2026-11-13: health carries from level to level within an act, and
+ *  is full again when the next level starts a new act (1-x to 2-x, 2-x to
+ *  3-x). The act is the level id's first part ("2" in "2-1"). */
+export function healthInto(fromLevel: string, toLevel: string, health: number): number {
+  const act = (id: string) => id.split("-")[0];
+  return act(fromLevel) === act(toLevel) ? health : HEALTH_MAX;
 }
 
 /** The saved campaign state, or null when there is none, it is broken, or

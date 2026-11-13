@@ -14,16 +14,18 @@ A7 Crossroads, A8 Bridge.
 
 ### Level 2-1
 
-**New:** B04 flywheel auto (if 1-3 does not take it, see LEVEL-1-3.md 8),
+**New:** B06 The Standard (heavy full-auto, mega darts, 60 mag; level 5),
 F04 Blocker (10 health, shield wall, fires over it), and melee weapon 1
-(fast, light, combo hits).
+(fast, light, combo hits), found in a level, decided later with melee.
+Full concept: `LEVEL-2-1.md`.
 
 **Signature space:** a long workshop floor split by a 20 m conveyor gantry
 at 3 m, so the player can go under it or across it. The Blockers form a
 wall at the far end, and the lesson is flanking: the gantry puts the
-player above and behind the shield line, and the shield can be carved
-away by the auto blaster. The first 3 Blockers stand in a 12 m wide
-arc so there is no straight line through them.
+player above and behind the shield line, and the auto blaster makes the
+flank pay (it does not break the shield: a front mega dart is 0.05 of 3).
+The wall holds at 9 m, too far for walking or sprinting to get round it,
+so the drop behind it is the answer. See `LEVEL-2-1.md` section 7.
 
 **Archetypes:** A4 Hall (workshop), A2 Ring (the gantry loop), A3 Bowl
 (final room), A6 Yard (gauntlet).
@@ -46,9 +48,9 @@ a stage the gantry becomes, or a toy store's shelving aisle.
 
 ### Level 2-2
 
-**New:** F06 Floater (35 health, floats, bouncing blobs, weak mouth), and
-the ammo-for-kills tool (D9 vacuum: a weakened Foamer is stunned, E
-extracts darts).
+**New:** no blaster, by design (level 6). F06 Floater (35 health, floats,
+bouncing blobs, weak mouth), and the ammo-for-kills tool (D9 vacuum: a
+weakened Foamer is stunned, E extracts darts).
 
 **Signature space:** A5 Tower, but inverted: the player starts at the top
 and works down 15 m, and the Floaters rise to meet them. The tool is
@@ -79,9 +81,10 @@ in the Foam dimension.
 
 ### Level 2-3
 
-**New:** B05 precision blaster (whistler darts, 5 health mag), F09 Crawler
-(40 health, four legs, sustained pellet stream, destructible gun), and
-destructible enemy guns as a general rule.
+**New:** B07 Collateral (pump launcher, arcing round that explodes where
+it first hits; level 7), F09 Crawler (40 health, four legs, sustained
+pellet stream, destructible gun), and destructible enemy guns as a
+general rule.
 
 **Signature space:** A6 Yard with islands, but the islands are 3.5 m tall
 and the Crawlers stand on top of four of them. The player's job is to
@@ -111,8 +114,9 @@ frames, or a foam plateau.
 
 ### Level 2-4
 
-**New:** F07 Brawler (45 health, leaps and slams, shockwave ring you jump
-over), melee weapon 2 (slow, big area). Mini-boss: a brawler pair.
+**New:** no blaster, by design (level 8). F07 Brawler (45 health, leaps
+and slams, shockwave ring you jump over), melee weapon 2 (slow, big
+area). Mini-boss: a brawler pair.
 
 **Signature space:** A1 Pit with a 1.2 m raised centre platform and no
 rails, so the shockwave rings run out from the platform and the player
@@ -141,15 +145,15 @@ or a loading dock.
 
 ### Boss 2
 
-**New:** nothing. Tests Act 2: sustained fire, height, weak points on
-moving targets, and the vacuum under pressure.
+**New:** no blaster, by design. Tests Act 2: sustained fire, height, weak
+points on moving targets, and the vacuum under pressure.
 
 **Signature space:** A7 Crossroads, 32 x 32 m, where the boss moves round
 the four spokes and the player has to follow or cut it off. Health 500
 (CONTENT-PLAN 3), three phases: a shielded phase that needs the melee
-weapon to break, a phase where it flies to the spokes and needs B05, and
-a last phase where it charges the hub and the answer is the vacuum on the
-adds it spawns, to keep ammo up.
+weapon to break, a phase where it flies to the spokes and needs a
+precision blaster (B05), and a last phase where it charges the hub and
+the answer is the vacuum on the adds it spawns, to keep ammo up.
 
 **Archetypes:** A7 Crossroads, with each spoke an A4 lane.
 
@@ -177,13 +181,14 @@ Foamer (D5 colour variant) or its own rig.
 
 ### Level 3-1
 
-**New:** B06 heavy (mega darts, 60 mag), F08 Trawler (80 health, arm
-launchers as weak points, walls of foam balls with gaps).
+**New:** B08 Firehose (gatling, foam balls, spins up, slows movement;
+level 9), F08 Trawler (80 health, arm launchers as weak points, walls of
+foam balls with gaps).
 
 **Signature space:** A4 Hall, 24 m wide and 60 m long, with three 8 m
 arches. The Trawlers walk down it and fill the arches with ball walls, so
 the player reads the gaps and moves between arches. This is the widest
-hall in the game and the only place where a 60-round mag makes sense.
+hall in the game and the only place where a 120-round mag makes sense.
 Setting: [Paul] asks whether Act 3 is in the Foam dimension.
 
 **Archetypes:** A4 Hall (signature), A2 Ring, A3 Bowl, A6 Yard (gauntlet).
@@ -201,9 +206,8 @@ Setting: [Paul] asks whether Act 3 is in the Foam dimension.
 
 ### Level 3-2
 
-**New:** B07 launcher (mega darts, arcing, area blast, remote detonate),
-F10 Turbo (30 health, flying, homing shots, jets as weak point), melee
-weapon 3 (charged slam).
+**New:** no blaster, by design (level 10). F10 Turbo (30 health, flying,
+homing shots, jets as weak point), melee weapon 3 (charged slam).
 
 **Signature space:** A5 Tower, 20 x 20 m, 5 floors, 25 m tall, open in the
 middle: a shaft. The Turbos circle the shaft and the player fights
@@ -228,9 +232,9 @@ air, which is the melee's teaching moment at the top floor.
 
 ### Level 3-3
 
-**New:** F11 Seawall (60 health, shield only a parry breaks, combo then a
-parryable finisher), F12 Ambusher (25 health, hides in foam growths, leaps
-out). No new blaster.
+**New:** no blaster, by design (level 11). F11 Seawall (60 health, shield
+only a parry breaks, combo then a parryable finisher), F12 Ambusher
+(25 health, hides in foam growths, leaps out).
 
 **Signature space:** A6 Yard where **every island is a foam growth**: six
 3.2 m cubes of growth, five of which hide an Ambusher. The player has to
@@ -254,9 +258,8 @@ defence, not just route.
 
 ### Level 3-4
 
-**New:** B08 gatling (foam balls, spin-up, slows movement), F13
-Biomechanic (25 health, rebuilds other Foamers, tank weak point).
-Everything at once.
+**New:** no blaster, by design (level 12). F13 Biomechanic (25 health,
+rebuilds other Foamers, tank weak point). Everything at once.
 
 **Signature space:** A7 Crossroads with four spokes that each hold a
 different combination from the whole game: a shield wall, a Trawler, a
@@ -284,8 +287,8 @@ A3 and A2.
 
 ### Boss 3
 
-**New:** nothing. The finale. Health 800, three phases that reuse the
-whole kit, and a space that changes between phases.
+**New:** no blaster, by design. The finale. Health 800, three phases that
+reuse the whole kit, and a space that changes between phases.
 
 **Signature space:** A1 Pit inside A5 Tower: the arena is a 30 m wide pit
 at the bottom of a 40 m shaft, and the boss climbs the walls between

@@ -24,7 +24,9 @@ the old text is in git history.
 - 1012 tests pass, 2 skipped.
 
 **In progress:** nothing. OPS-04 (graphics presets, `?quality=low`,
-`medium`, `high`) is merged on local main, not pushed.
+`medium`, `high`) is merged on local main, not pushed. LVL-06 (the 2-1
+concept and the blaster rows) is committed on branch `lvl-06`, not
+pushed, waiting on Paul's answers and Claude Opus 5.5's review.
 
 **Waiting on Paul:**
 
@@ -80,6 +82,33 @@ the old text is in git history.
   2026-11-12 was made to fail once on purpose before it was trusted.
 
 ## Log
+
+### 2026-11-13: LVL-05 review, merged (Claude Opus 5.5): the campaign
+
+- DeepSeek V4.1 Flash 1017 built both stages, one run each, first try.
+  Stage 2 also found and fixed the flaky test seen earlier today
+  (`tests/range/ttk.test.ts`, B01's random spread, about 1 in 30 runs:
+  now a fixed seed).
+- Review fixes: a mod station would fit a mod to a blaster the campaign
+  has not found (it now says the blaster is needed; test in
+  `tests/arena/stations.test.ts`); New game and Continue did nothing
+  until the test course behind the title had booted (now wired first).
+- Paul's answers on 2-1 came in during the review. One changes this
+  card: health is full again when the next level starts a new act
+  (`healthInto`, tested). The rest are in PLAN section 14.
+- Played in the browser (Chromium, the dev server): the title with no
+  save shows New game only; New game opens the Pit in campaign mode with
+  B02 alone and full health and writes the save; walking onto the B01
+  pickup takes it, switches to it (8 + 40) and flashes "The Dartman";
+  the arena cleared and the real exit pad reached with 37 health and B01
+  at 3 + 21 shows the panel (name `[Paul]`, the time, Next level, Main
+  menu); Next level opens 1-2 with 37 health, B01 at 3 + 21, and B01 and
+  B02 owned; the title then shows Continue. The Foamers were removed by
+  script, not fought.
+- `tools/lvl05-probe.mjs` (DeepSeek's headless check of the campaign) is
+  kept: it is the only scripted check of the whole flow.
+- Not verified: a real fight to an exit, levels 1-2 to 1-4 played
+  through, Firefox, Esc and Enter on the panel by hand.
 
 ### 2026-11-13: LVL-05 stage 2, carry-over, the end screen and the save
 
@@ -201,6 +230,75 @@ the Pit pickup the HUD reads "The Dartman" over `AMMO 8 / 40`. Not seen
 by eye: a real playthrough past the first arena in any level, the pickup
 coasting over uneven ground, and how the pickup reads in a fight. Stage 2
 (carry-over, the end screen, the save, the main menu) is not started.
+
+### 2026-11-13: LVL-06, level 2-1 concept and the blaster rows (Pi, DeepSeek V4.1 Flash 1017)
+
+- Wrote `design/levels/LEVEL-2-1.md`, a full concept in the shape of
+  LEVEL-1-4.md: header table, what it teaches and how the space does it,
+  10 beats totalling 18 min, map, three arenas and a gantry set piece
+  with waves and a sketch each, three secrets, stations and pickups, notes
+  for review and open questions. Design only: no code, no data, no tests.
+- Built on the ACTS-2-3 short concept (workshop floor, 3 m gantry, F04
+  Blockers, flanking) and replaced its B04 line with B06 The Standard, per
+  Paul's campaign rules (PLAN section 14, 2026-11-13). B06 is found in the
+  Open beat, 30 m before Arena 1, with four dummies to try it on.
+- Decision: B06 is never the key to a door. A flanked Blocker dies to four
+  mega darts (3 damage each, 10 health), but a B04 burst into its back also
+  kills it, so the level teaches the flank and rewards it rather than
+  gating on the blaster.
+- Decision: three spaces, three ways round the wall. The hall gives the
+  over (a 6 x 18 m deck above the line), the ring gives the round (6 m
+  corridor, so the shield charge's 1.2 s stagger is the answer), the bowl
+  gives height and a drop behind. Health is in the finishers, so there are
+  no level-placed health pickups, as in 1-3.
+- Decision: the set piece is the gantry drop, one 6 m drop into a conveyor
+  well, not a second deck. One deck in the level keeps the flank lesson
+  from repeating, and the drop teaches that the level goes down as well as
+  along, which the bowl then uses.
+- Noted in the doc as a balance risk, not changed: B03 point blank can
+  out-shoot the shield. Both barrels landing at 3 m is 88 damage, and the
+  shield's 0.05 share still leaves 4.4 off a Blocker's 10. Keeping it is a
+  playtest call (walking into a wall at 1.4 m means bashes).
+- Found by checking the code, and written into the doc: height does not
+  beat a shield. `plateFaces` in `src/foamers/armour.ts` judges the arc on
+  the ground plane, so a dart fired down onto a Blocker's shield from the
+  gantry is still inside the 120 degree arc. The gantry and the bowl work
+  as position, never as angle.
+- Found by checking the data: the short concept's "12 m wide arc" of three
+  Blockers cannot happen. `slots.spacingMetres` is 1.2, so three Blockers
+  make a 3.6 m wall (body 0.6 m, gap 0.6 m, player diameter 0.7 m, so the
+  line cannot be squeezed either). The concept says 3.6 m and notes the
+  mismatch.
+- Found by checking the pickups code: a `health` pickup type is in
+  `src/level/format.ts` and passes the validator, but
+  `src/pickups/pickups.ts` only spawns `darts-*` entries, so a placed
+  health box would never appear. Noted in the doc; not fixed here (a code
+  change is outside this card).
+- Blaster rows updated to Paul's rule (player starts with B02; B01 in 1,
+  B04 in 2, B03 in 3, B05 in 4, B06 in 5, B07 in 7, B08 in 9; none in 6
+  and 8 by design): `LEVEL-1-1.md` to `LEVEL-1-4.md` row only, and every
+  level in `ACTS-2-3.md` including Boss 2 and Boss 3. "none, by design"
+  is used for levels 6, 8, 10, 11, 12 and the bosses.
+- Also fixed in ACTS-2-3.md, because the row change made them wrong: the
+  2-1 paragraph's "carved away by the auto blaster" (a front mega dart is
+  0.05 of 3, so it does not carve through), its 12 m arc (now 3.6 m), and
+  3-1's "60-round mag" (the 60 mag is B06's, in 2-1; B08 is 120).
+- Not touched, and left for Paul: `design/levels/LEVEL-1-2.md:15-18` still
+  says "swap the B02 row to B04 if Paul wants D04's order", which is now
+  simply the rule; `LEVEL-1-3.md` section 8 still argues for no blaster
+  there while its header now says B03; the beat tables in LEVEL-1-2 and
+  LEVEL-1-4 still pick up B02 and B03 in the Open beat. The card says keep
+  the rest of those docs as they are.
+- Checks: `npm run check` (build, tests, both text checks) green, 1017
+  tests pass and 2 skipped; `npm run smoke` green. Not seen in a browser:
+  nothing to see, this is a doc.
+
+**Open questions for Paul (also in LEVEL-2-1.md section 8):** the setting
+(workshop, school hall with a stage, or toy store aisle), whether the
+conveyor or gantry actually moves (E07, a large piece of work), whether
+melee weapon 1 is found in 2-1, whether B06's `rate` or `explosive` mod is
+granted here at a station, whether the last arena closes on a promoted
+pair, and whether 2-1 starts on the health the player carried.
 
 ### 2026-11-13: FX-01 review, merged (Claude Opus 5.5): the blast
 
