@@ -77,26 +77,23 @@ function selectField(options: string[], current: string, onChange: (v: string) =
   return select;
 }
 
-function colourField(value: string, ctx: InspectorContext, onChange: (c: string) => void): HTMLElement {
+/** A colour input over a row of swatches. Used for a prim's colour (the
+ *  last six used, then the palette) and for the sky's three colours (the
+ *  palette alone, so a sky does not fill the prim history). */
+export function colourField(value: string, swatches: string[], onChange: (c: string) => void): HTMLElement {
   const host = document.createElement("div");
   host.className = "swatches";
   const input = document.createElement("input");
   input.type = "color";
   input.value = value;
-  input.addEventListener("input", () => {
-    onChange(input.value);
-    ctx.remember(input.value);
-  });
+  input.addEventListener("input", () => onChange(input.value));
   host.append(input);
-  for (const colour of [...new Set([...ctx.recent, ...PALETTE])]) {
+  for (const colour of [...new Set(swatches)]) {
     const swatch = document.createElement("button");
     swatch.type = "button";
     swatch.style.background = colour;
     swatch.title = colour;
-    swatch.addEventListener("click", () => {
-      onChange(colour);
-      ctx.remember(colour);
-    });
+    swatch.addEventListener("click", () => onChange(colour));
     host.append(swatch);
   }
   return host;
@@ -144,7 +141,10 @@ export function buildPrimFields(host: HTMLElement, prims: Prim[], ctx: Inspector
   host.append(rotLabel);
 
   const colourLabel = label("colour");
-  colourLabel.append(colourField(first.colour, ctx, (c) => ctx.change({ colour: c }, "colour")));
+  colourLabel.append(colourField(first.colour, [...ctx.recent, ...PALETTE], (c) => {
+    ctx.remember(c);
+    ctx.change({ colour: c }, "colour");
+  }));
   host.append(colourLabel);
 
   const behaviourLabel = label("behaviour");

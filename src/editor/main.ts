@@ -1,7 +1,10 @@
 import * as THREE from "three";
-import type { Prim, PrimShape, Vec3 } from "../level/format";
-import { LevelDoc, GRID, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP } from "./doc";
+import type { Level, Prim, PrimShape, Vec3 } from "../level/format";
+import { LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP } from "./doc";
+import { exportFileName, readLevelFile, skyImageDataUrl } from "./files";
 import { buildPrimFields } from "./inspector";
+import { buildLevelFields } from "./sky";
+import { deleteLevel, listLevels, putLevel, LOCAL_PREFIX } from "./store";
 import { EditorView, type TransformMode } from "./view";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -171,8 +174,25 @@ function buildInspector() {
   buildPrimInspector(host);
 }
 
-function buildSkyInspector(_host: HTMLElement) {
-  /* Stage 4: the sky editor lands here. */
+function buildSkyInspector(host: HTMLElement) {
+  const sub = document.createElement("h2");
+  sub.textContent = "Level";
+  host.append(sub);
+  buildLevelFields(host, doc.level, {
+    change: (patch, text) => {
+      doc.setFields(patch, text);
+      syncNameField();
+    },
+    uploadSky,
+    redraw: buildInspector,
+  });
+}
+
+/** The top bar's name field follows the document's name, so an undo of a
+ *  rename shows there too. */
+function syncNameField() {
+  const input = $<HTMLInputElement>("levelName");
+  if (input.value !== doc.level.meta.name) input.value = doc.level.meta.name;
 }
 
 function buildPrimInspector(host: HTMLElement) {
@@ -365,19 +385,222 @@ view.controls.addEventListener("mouseUp", () => {
 
 $("undoBtn").addEventListener("click", () => doc.undo());
 $("redoBtn").addEventListener("click", () => doc.redo());
-$("newBtn").addEventListener("click", () => {
+
+// Stage 4: the level's own store key, made by the first save.
+let savedKey: string | null = null;
+let saveTimer = 0;
+
+/** Saves half a second after the last change, so typing a number or a name
+ *  is one save, not one per keystroke. */
+function scheduleSave() {
+  window.clearTimeout(saveTimer);
+  status.textContent = "Saving";
+  saveTimer = window.setTimeout(() => void saveNow(), 500);
+}
+
+async function saveNow(): Promise<string | null> {
+  window.clearTimeout(saveTimer);
+  try {
+    savedKey = await putLevel(doc.level, savedKey ?? undefined);
+    status.textContent = "Saved";
+    return savedKey;
+  } catch (e) {
+    status.textContent = `Not saved: ${(e as Error).message}`;
+    return null;
+  }
+}
+
+function load(level: Level, key: string | null) {
   selected.clear();
-  doc.load(newLevel());
+  savedKey = key;
+  doc.load(level);
+  syncNameField();
+  scheduleSave();
+}
+
+$("newBtn").addEventListener("click", () => load(newLevel(), null));
+
+$("levelName").addEventListener("change", () => {
+  const name = $<HTMLInputElement>("levelName").value.trim() || "[Paul]";
+  doc.setFields({ meta: { ...doc.level.meta, name } }, "level name");
+  syncNameField();
 });
+
+// A dialog over the view: a title, then whatever the caller builds.
+function dialog(title: string, build: (body: HTMLElement) => void) {
+  const host = $("dialogs");
+  const body = $("dialogBody");
+  body.replaceChildren();
+  const heading = document.createElement("h2");
+  heading.textContent = title;
+  body.append(heading);
+  build(body);
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "Close";
+  close.addEventListener("click", () => {
+    host.hidden = true;
+  });
+  body.append(close);
+  host.hidden = false;
+  return body;
+}
+
+/** The built in levels the editor can open as a copy (design/EDITOR.md 5:
+ *  they arrive by import in the end, but a copy of one is the quickest way
+ *  to a room to build in). Bundled, never fetched. */
+const BUILT_IN = import.meta.glob<{ default: unknown }>("../../data/levels/*.json", { eager: true });
+
+function nameOf(path: string): string {
+  return path.split("/").pop()?.replace(/\.json$/, "") ?? path;
+}
+
+$("openBtn").addEventListener("click", () => {
+  void dialog("Open a level", (body) => {
+    const list = document.createElement("div");
+    list.className = "list";
+    body.append(list);
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = "Saved levels open as they are. A built in level opens as a copy: saving makes a new one.";
+    body.append(note);
+
+    const row = (name: string, open: () => void, remove?: () => void) => {
+      const el = document.createElement("div");
+      el.className = "row";
+      const openButton = document.createElement("button");
+      openButton.type = "button";
+      openButton.className = "name";
+      openButton.textContent = name;
+      openButton.addEventListener("click", open);
+      el.append(openButton);
+      if (remove) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.textContent = "Delete";
+        del.addEventListener("click", remove);
+        el.append(del);
+      }
+      list.append(el);
+    };
+
+    void listLevels().then((stored) => {
+      if (stored.length) {
+        const heading = document.createElement("h2");
+        heading.textContent = "Saved here";
+        list.append(heading);
+      }
+      for (const { key, level, saved } of stored) {
+        row(`${level.meta.name || "[Paul]"}  ${new Date(saved).toLocaleString()}`, () => {
+          load(structuredClone(level), key);
+          $("dialogs").hidden = true;
+        }, () => {
+          void deleteLevel(key).then(() => {
+            if (savedKey === key) savedKey = null;
+            $("dialogs").hidden = true;
+            $("openBtn").click();
+          });
+        });
+      }
+      const heading = document.createElement("h2");
+      heading.textContent = "Built in, as a copy";
+      list.append(heading);
+      for (const [path, module] of Object.entries(BUILT_IN)) {
+        row(nameOf(path), () => {
+          load(structuredClone(module.default as Level), null);
+          $("dialogs").hidden = true;
+        });
+      }
+    });
+  });
+});
+
+$("exportBtn").addEventListener("click", () => {
+  const text = JSON.stringify(doc.level, null, 2);
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = exportFileName(doc.level);
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
+$("importBtn").addEventListener("click", () => $<HTMLInputElement>("importFile").click());
+$<HTMLInputElement>("importFile").addEventListener("change", () => {
+  const input = $<HTMLInputElement>("importFile");
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  void file.text().then((text) => {
+    const result = readLevelFile(text);
+    if (result.errors.length) {
+      void dialog("That file will not load", (body) => {
+        const list = document.createElement("div");
+        list.className = "errors";
+        for (const error of result.errors) {
+          const line = document.createElement("div");
+          line.textContent = error;
+          list.append(line);
+        }
+        body.append(list);
+      });
+      return;
+    }
+    load(structuredClone(result.level!), null);
+    status.textContent = "Imported";
+  });
+});
+
+$("playBtn").addEventListener("click", () => {
+  void saveNow().then((key) => {
+    if (key) location.href = `arena.html?level=${encodeURIComponent(LOCAL_PREFIX + key)}`;
+  });
+});
+
+// The sky's picture: read it, scale it on a canvas, put it in the level.
+function uploadSky(file: File) {
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    try {
+      const data = skyImageDataUrl(image, LIMITS.skyImageWidth, LIMITS.skyImageHeight);
+      doc.setFields({ sky: { kind: "image", image: data } }, "sky picture");
+      buildInspector();
+    } catch (e) {
+      status.textContent = `Picture not used: ${(e as Error).message}`;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    status.textContent = "Picture not read";
+  };
+  image.src = url;
+}
 
 doc.onChange(() => {
   // The selection drops prims that are gone (an undo of an add, a delete).
   for (const id of [...selected]) if (!doc.prim(id)) selected.delete(id);
   redraw();
+  scheduleSave();
 });
-redraw();
-// The status line flips only once a frame is on screen, so the smoke check
-// (which waits for it) has a picture by the time it reads "Ready".
-requestAnimationFrame(() => {
-  status.textContent = "Ready";
-});
+
+// The level the page opens with: the newest one saved in this browser, or a
+// new one. "Ready" waits for a frame, so the smoke check (which waits for
+// the word) has a picture before it reads it.
+void listLevels()
+  .then((stored) => {
+    const newest = stored[0];
+    if (newest) load(structuredClone(newest.level), newest.key);
+    else doc.load(newLevel());
+  })
+  .catch(() => doc.load(newLevel()))
+  .finally(() => {
+    syncNameField();
+    redraw();
+    requestAnimationFrame(() => {
+      status.textContent = "Ready";
+    });
+  });
