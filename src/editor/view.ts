@@ -161,6 +161,10 @@ export class EditorView {
   private looking = false;
   private clock = new THREE.Clock();
   private shownLevel: Level | null = null;
+  /** ED-08 stage 5: when on, prims that start hidden are not drawn at all, so
+   *  the level can be looked at the way it begins. They stay in the level and
+   *  reappear when it is turned off. */
+  private skippingHidden = false;
   private shownShell: unknown = null;
   private shownSky: unknown = null;
   private shownPieces: unknown = null;
@@ -299,8 +303,24 @@ export class EditorView {
     mesh.matrixAutoUpdate = false;
     mesh.matrix.copy(primMatrix(prim));
     mesh.userData.id = prim.id;
+    mesh.visible = !(this.skippingHidden && prim.hidden === true);
     this.prims.add(mesh);
     this.meshes.set(prim.id, mesh);
+  }
+
+  /** ED-08 stage 5: draws, or stops drawing, the prims that start hidden. Off
+   *  is the default, when they are drawn see-through so a blocker can be seen
+   *  and clicked while the fight it belongs to is being built. */
+  setSkipHidden(on: boolean) {
+    this.skippingHidden = on;
+    for (const prim of this.shownLevel?.prims ?? []) {
+      const mesh = this.meshes.get(prim.id);
+      if (mesh && prim.hidden === true) mesh.visible = !on;
+    }
+  }
+
+  get skipHidden(): boolean {
+    return this.skippingHidden;
   }
 
   /** Draws the selection outline and puts the handles on the last prim

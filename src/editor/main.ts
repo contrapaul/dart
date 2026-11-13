@@ -152,6 +152,20 @@ function allIds(): string[] {
 /** The problems the last change left, and the panel that lists them. */
 let problems: Problem[] = [];
 
+// ED-08 stage 5: a blocker starts hidden so it is out of the way until the
+// fight brings it in. In the editor it is drawn see-through so it can be seen
+// and clicked; this button stops drawing those prims at all, for a look at the
+// level exactly as it begins. It changes nothing in the level.
+$("hiddenBtn").addEventListener("click", () => {
+  view.setSkipHidden(!view.skipHidden);
+  $("hiddenBtn").classList.toggle("on", view.skipHidden);
+  const count = (doc.level.prims ?? []).filter((p) => p.hidden).length;
+  status.textContent = view.skipHidden
+    ? `Not drawing ${count} prim${count === 1 ? "" : "s"} that start hidden.`
+    : `Drawing the prims that start hidden see-through again (${count}).`;
+  selectInView();
+});
+
 $("problemsBtn").addEventListener("click", () => {
   void dialog("Problems", (body) => {
     const list = document.createElement("div");
