@@ -93,6 +93,21 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-09 review, merged (Claude Opus 5.5): play from the editor
+
+- DeepSeek built it. Seen in the browser: Open lists the built-in levels;
+  1-2 opened as a copy with its pickups, doors, spawn points and its
+  fights as triggers (`arenaToTriggers`); Play went to
+  `arena.html?level=local:<key>&from=editor`, the converted 1-2 loaded
+  with no validator errors, and "Back to the editor" returned to
+  `editor.html?open=<key>` with the level open. The Help panel's text is
+  plain and accurate (read, not seen laid out).
+- Open: a built-in level's shell boxes (its floors and walls) are drawn
+  but not editable in the editor; reworking Act 1's geometry needs shell
+  boxes turned into prims on the copy. The editor's camera also starts
+  inside a wall on 1-2: it should frame the player start.
+- Not seen: Shift+P starting at the camera, the Help panel's layout.
+
 ### 2026-11-13: ED-09, play from the editor and back, built in levels, Help (DeepSeek V4.1 Flash 1017 via Pi, branch `ed-09`)
 
 - Built: `src/editor/play.ts` (the play URL, `start` parsing, the way
