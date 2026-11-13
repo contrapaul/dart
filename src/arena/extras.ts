@@ -48,6 +48,9 @@ const TEST_PAGE: CampaignOptions = { campaign: false, entry: null };
  *  in. */
 export interface ArenaBuilt extends BuiltGame {
   level: BuiltLevel;
+  /** ED-03: the level's hazard prims. Built here, before the nav grid is
+   *  baked, so Foamers path round them (ED-03b). */
+  hazards: Hazards;
 }
 
 /** Builds the level file's geometry in the shared game's build hook. */
@@ -55,7 +58,10 @@ export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): Ar
   // ED-01: the level's sky, before its geometry goes in.
   applySky(scene, LEVEL.sky);
   const level = buildLevel(LEVEL, rapier, world, mesherPool, scene);
+  const hazards = new Hazards(LEVEL.prims ?? [], scene);
   return {
+    hazards,
+    blockedAt: hazards.blocksAt,
     voxels: level.voxels,
     voxelMesh: level.voxelMesh,
     // ENV-01 review: the game counts carves against the level's crates
@@ -279,7 +285,9 @@ export function arenaExtras(
   // through the press's own path (crush: no grace, so every tick counts,
   // the HUD flash, the hurt sound and the go-down), Foamers take theirs as
   // a hit that is not a dart, and the slow scales the walk.
-  const hazards = new Hazards(LEVEL.prims ?? [], scene);
+  const { hazards } = built;
+  // ED-03b: a hazard a trigger shows or hides changes where Foamers walk.
+  hazards.onChanged = (minX, minZ, maxX, maxZ) => g.levelAI.carveChanged(minX, minZ, maxX, maxZ);
   const presses = new PressSystem(level.presses);
 
   // GAME-10m: the ambushes. A level's hidden F12s live here, not in the

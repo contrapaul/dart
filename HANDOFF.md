@@ -88,6 +88,19 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
+
+- strata added `Hazards.blocksAt` (a shown hazard that damages Foamers),
+  the extra solid test in `makeLevelAI`, and `onChanged` with the
+  hazard's world rectangle for a rebake. 5 tests.
+- Wired by the reviewer: hazards are now built in the arena's build hook
+  (`buildArena`), before the game bakes the nav grid, and handed over as
+  `BuiltGame.blockedAt`; a trigger showing or hiding a hazard rebakes its
+  rectangle through `levelAI.carveChanged`.
+- Seen in the browser on `ed-01`: the grid's cells over the lava pool are
+  not walkable, the floor beside it is.
+- Not seen: a Foamer actually walking round the pool in a fight.
+
 ### 2026-11-13: ED-07b, triggers and keys in play (Claude Opus 5.5)
 
 - The arena page runs the editor's triggers (`src/arena/extras.ts`):
@@ -142,6 +155,27 @@ on review.
 - Not seen by eye: rotate and scale handles, undo and redo by key, export
   and import of a file, the sky image upload, opening an Act 1 level as a
   copy. The floor grid is 128 m and dense at 0.5 m: fine near, busy far.
+### 2026-11-13: ED-03b Foamers walk round hazards (Pi, strata-dsv41)
+
+- Built `Hazards.blocksAt(x, y, z)`: true inside a shown hazard with
+  `dps > 0` and `hurtsFoamers` not false. It reuses a module point vector
+  and allocates nothing. `setShown` now calls the optional
+  `onChanged(minX, minZ, maxX, maxZ)` callback with the hazard's world
+  rectangle after rotation, when it becomes shown or hidden, so the page
+  can rebake that area.
+- `makeLevelAI` takes an optional seventh `blockedAt` test and combines it
+  with the voxel solid test. With no extra test the bake is unchanged.
+  Passing `hazards.blocksAt` directly works because it is a bound arrow.
+- New tests in `tests/ai/ed-03b.test.ts` (5): a lava box blocks its cells
+  and leaves cells round it walkable; a goo with dps 0 blocks nothing; a
+  hidden hazard blocks nothing until shown, then `onChanged` reports the
+  rectangle and a rebake blocks the cell; the rectangle follows a 45
+  degree rotation; no extra test leaves the bake as before.
+- Decision: the hook lives in `src/ai/level.ts`, not `src/ai/nav-grid.ts`,
+  because the grid's existing `setSolidAt` already accepts a combined
+  test. The page is not wired by this card; the reviewer wires the arena.
+- Not checked by eye: no browser here, so Foamers walking round lava, the
+  page's rebake and the look of hidden/showed hazards are unverified.
 
 ### 2026-11-13: ED-03 review, merged (Claude Opus 5.5): hazards in play
 
