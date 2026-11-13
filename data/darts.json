@@ -142,14 +142,14 @@
       "pierce": 1
     },
     "ball": {
-      "_note": "GAME-09g: the foam ball (B08 Firehose, D14): a round ball, fast (30 m/s), a little drop, light. shape: ball draws it as a sphere (src/weapons/dart-model.ts). bounces: it ricochets off a hard surface this many times, keeping restitution of its speed each time, then falls and rests like a dart. Start values for Paul to tune on the range.",
+      "_note": "GAME-09g: the foam ball (B08 Firehose, D14): a round ball, fast (30 m/s), a little drop, light. shape: ball draws it as a sphere (src/weapons/dart-model.ts). bounces: it ricochets off a hard surface this many times, keeping restitution of its speed each time, then falls and rests like a dart. Start values for Paul to tune on the range. 2026-11-13 (Paul): red, the mega dart's red, and half the size (radius 0.06 to 0.03).",
       "speed": 30,
       "gravityScale": 0.45,
       "drag": 0.25,
-      "length": 0.12,
-      "radius": 0.06,
+      "length": 0.06,
+      "radius": 0.03,
       "shape": "ball",
-      "bodyColor": "#2ec4ff",
+      "bodyColor": "#e8332a",
       "tipColor": "#ff7a1a",
       "sticks": false,
       "restitution": 0.6,

@@ -81,6 +81,23 @@ the old text is in git history.
 
 ## Log
 
+### 2026-11-13: B08 balls red and half size; B06 and B08 spread halved (Claude Opus 5.5)
+
+- Paul: OPS-04 is "great for lower end hardware". Then: B08's balls red
+  and 50% smaller; B08 and B06 spread down 50%; a new explosion effect
+  (card FX-01, strata on dgx-spark, branch `fx-01`).
+- `data/darts.json` `ball`: radius 0.06 to 0.03 and length to match,
+  colour `#e8332a` (the mega dart's red). The radius is also the ball's
+  hit size, so it is a smaller target as well as a smaller sight.
+- `data/blasters.json`: spread halved for B06 (spreadDeg 1.5 to 0.75,
+  recoil spreadPerShot 0.5 to 0.25, spreadMax 7 to 3.5) and B08
+  (spreadDeg 2.5 to 1.25, 0.9 to 0.45, 14 to 7; the control mod 0.2 to
+  0.1 and 6 to 3, so it still halves the bare blaster's bloom). Recoil
+  climb (the view kick) is unchanged: Paul asked for spread.
+- One test failed once in the first full run, with strata's run on the
+  same machine, then passed six runs in a row; its name was cut from the
+  output. Not identified yet: every later run saves its full output.
+
 ### 2026-11-13: OPS-04 review, merged (Claude Opus 5.5): quality presets
 
 - strata-dsv41 (DeepSeek V4.1 Flash quant on dgx-spark, via Pi) built
