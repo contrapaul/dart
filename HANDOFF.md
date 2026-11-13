@@ -91,6 +91,19 @@ tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-10a review, merged (Claude Opus 5.5): Make a level, Play a level
+
+- strata built it (resumed after the power cut). Review: the run had
+  added jsdom as a dependency, which the card wrongly asked for; undone,
+  and the tests now cover the pure list, file and URL functions with the
+  store stubbed. No new dependency.
+- Seen in the browser: the title shows New game, Make a level and Play a
+  level; the panel says there are no levels yet on an empty store; with a
+  level saved it lists it by name and time with Play and Edit; Play
+  opened the stored level in the game.
+- Not seen: Open a level file with a real file, Edit (the editor learns
+  `?open=<key>` in a later card), Esc closing the panel.
+
 ### 2026-11-13: ED-07c review, merged (Claude Opus 5.5): arenas to triggers
 
 - qwen-machine wrote `arenaToTriggers` (`src/level/arena-to-triggers.ts`):
