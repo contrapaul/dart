@@ -17,7 +17,11 @@ import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./aren
 import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
-import { deleteLevel, listLevels, putLevel, LOCAL_PREFIX } from "./store";
+import { deleteLevel, listLevels, putLevel } from "./store";
+import { playUrl } from "./play";
+import { openChoice } from "./open";
+import { builtInCopy } from "./builtin";
+import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -109,7 +113,7 @@ function updateTopBar() {
   counts.textContent = countText(doc.level);
   // ED-05 stage 5: the validator runs on every change, and the top bar says
   // how many problems it found.
-  problems = problemsFor(doc.level, allIds(), START_ID, EXIT_ID);
+  problems = [...extraProblems, ...problemsFor(doc.level, allIds(), START_ID, EXIT_ID)];
   const button = $<HTMLButtonElement>("problemsBtn");
   button.textContent = problemsLabel(problems);
   button.classList.toggle("over", problems.some((p) => p.severity === "error"));
@@ -152,6 +156,11 @@ function allIds(): string[] {
 /** The problems the last change left, and the panel that lists them. */
 let problems: Problem[] = [];
 
+/** ED-09 stage 3: warnings that are not the validator's, shown once in the
+ *  Problems list. Opening a built in level as a copy puts the conversion's
+ *  warnings here; the next level opened clears them. */
+let extraProblems: Problem[] = [];
+
 // ED-08 stage 5: a blocker starts hidden so it is out of the way until the
 // fight brings it in. In the editor it is drawn see-through so it can be seen
 // and clicked; this button stops drawing those prims at all, for a look at the
@@ -164,6 +173,15 @@ $("hiddenBtn").addEventListener("click", () => {
     ? `Not drawing ${count} prim${count === 1 ? "" : "s"} that start hidden.`
     : `Drawing the prims that start hidden see-through again (${count}).`;
   selectInView();
+});
+
+$("helpBtn").addEventListener("click", () => {
+  void dialog("Help", (body) => {
+    const host = document.createElement("div");
+    host.className = "help";
+    body.append(host);
+    buildHelp(host);
+  });
 });
 
 $("problemsBtn").addEventListener("click", () => {
@@ -817,6 +835,11 @@ window.addEventListener("keydown", (e) => {
   const codes = ["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight"];
   if (codes.includes(e.code)) view.keyDown(e.code);
   if (e.code === "KeyF") view.frame([...selected]);
+  // ED-09 stage 1: P plays from the level's start, Shift+P from the camera.
+  if (e.code === "KeyP" && !view.isLooking) {
+    e.preventDefault();
+    playFrom(e.shiftKey ? view.cameraSpot() : null);
+  }
   if (e.code === "KeyG") {
     snapOn = !snapOn;
     view.setSnap(snapOn);
@@ -992,6 +1015,7 @@ async function saveNow(): Promise<string | null> {
 function load(level: Level, key: string | null) {
   selected.clear();
   savedKey = key;
+  extraProblems = [];
   doc.load(level);
   syncNameField();
   scheduleSave();
@@ -1213,8 +1237,17 @@ $("openBtn").addEventListener("click", () => {
       list.append(heading);
       for (const [path, module] of Object.entries(BUILT_IN)) {
         row(nameOf(path), () => {
-          load(structuredClone(module.default as Level), null);
+          // ED-09 stage 3: a built in level opens as a copy with its arenas
+          // turned into triggers, so its fights can be edited. The
+          // conversion's warnings go to the Problems list once.
+          const copy = builtInCopy(module.default as Level);
+          load(copy.level, null);
+          extraProblems = copy.warnings.map((text): Problem => ({ text, severity: "warning", id: null }));
+          updateTopBar();
           $("dialogs").hidden = true;
+          status.textContent = copy.warnings.length
+            ? `Opened ${nameOf(path)} as a copy: ${copy.warnings.length} warning${copy.warnings.length === 1 ? "" : "s"} in Problems.`
+            : `Opened ${nameOf(path)} as a copy.`;
         });
       }
     });
@@ -1258,11 +1291,16 @@ $<HTMLInputElement>("importFile").addEventListener("change", () => {
   });
 });
 
-$("playBtn").addEventListener("click", () => {
+$("playBtn").addEventListener("click", () => playFrom(null));
+
+/** ED-09 stage 1: saves, then opens the arena on this level. `start` is the
+ *  camera's spot for Shift+P, or null to begin at the level's player start.
+ *  A save that fails says why and does not leave the editor. */
+function playFrom(start: { pos: Vec3; yaw: number } | null) {
   void saveNow().then((key) => {
-    if (key) location.href = `arena.html?level=${encodeURIComponent(LOCAL_PREFIX + key)}`;
+    if (key) location.href = playUrl(key, start);
   });
-});
+}
 
 // The sky's picture: read it, scale it on a canvas, put it in the level.
 function uploadSky(file: File) {
@@ -1296,14 +1334,25 @@ doc.onChange(() => {
   scheduleSave();
 });
 
-// The level the page opens with: the newest one saved in this browser, or a
-// new one. "Ready" waits for a frame, so the smoke check (which waits for
-// the word) has a picture before it reads it.
+// The level the page opens with: `?open=<key>` when it names a stored level,
+// else the newest one saved in this browser, else a new one. "Ready" waits
+// for a frame, so the smoke check (which waits for the word) has a picture
+// before it reads it.
 void listLevels()
   .then((stored) => {
-    const newest = stored[0];
-    if (newest) load(structuredClone(newest.level), newest.key);
+    const choice = openChoice(location.search, stored);
+    const found = choice.key ? stored.find((s) => s.key === choice.key) : undefined;
+    if (found) load(structuredClone(found.level), found.key);
     else doc.load(newLevel());
+    // A key the store does not hold is said in the Problems list, so the
+    // status line still ends on "Ready" for the smoke check.
+    if (choice.missing) {
+      extraProblems = [{
+        text: `no stored level called ${choice.missing}: opened the latest instead`,
+        severity: "warning",
+        id: null,
+      }];
+    }
   })
   .catch(() => doc.load(newLevel()))
   .finally(() => {

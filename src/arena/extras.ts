@@ -25,6 +25,7 @@ import { TriggerRunner } from "../level/triggers";
 import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
 import { dartDamageOf } from "../level/breakables";
+import { editorBackUrl, spawnFor, type PlayStart } from "../editor/play";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -35,6 +36,36 @@ const CHOSEN = chosenLevel();
 const LEVEL = CHOSEN.level;
 /** The level's id in the campaign order: the `?level=` name, not meta.id. */
 const LEVEL_NAME = CHOSEN.name;
+
+/** ED-09: where this run begins, when the editor's Shift+P named a spot. It
+ *  overrides the level's player start for this run only: the level file is
+ *  not changed, and a restart comes back here too. */
+let startOverride: PlayStart | null = null;
+/** The spot worked out from the override and the level, once. */
+let runStart: PlayStart | null = null;
+
+/** ED-09: the page calls this before the level is built, with the `start`
+ *  parameter it read (or null). */
+export function setStartOverride(start: PlayStart | null): void {
+  startOverride = start;
+  runStart = null;
+}
+
+/** Where this run begins: the override when there is one, else the level's
+ *  own player start. Worked out once, so every restart lands on the same
+ *  spot and the level file is read no more than it has to be. */
+function startSpot(): PlayStart {
+  runStart ??= spawnFor(LEVEL.playerStart, startOverride);
+  return runStart;
+}
+
+function startPos(): THREE.Vector3 {
+  return new THREE.Vector3(...startSpot().pos);
+}
+
+function startYaw(): number {
+  return startSpot().yaw;
+}
 
 /** LVL-05 stage 2: campaign play on this page. `entry` is the state the
  *  level begins with (the save's own, or a fresh one for this level); it is
@@ -69,8 +100,8 @@ export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): Ar
     // only if the page hands them over.
     crates: level.crates,
     navBounds: level.navBounds,
-    spawn: new THREE.Vector3(...LEVEL.playerStart.pos),
-    yaw: LEVEL.playerStart.yaw,
+    spawn: startPos(),
+    yaw: startYaw(),
     level,
   };
 }
@@ -187,7 +218,7 @@ export function arenaExtras(
     currentSet?.setAll(state);
   }
 
-  const start = new THREE.Vector3(...LEVEL.playerStart.pos);
+  const start = startPos();
   const _playerPos = new THREE.Vector3();
   const _riftFeet = new THREE.Vector3();
   const _riftFacing = new THREE.Vector3();
@@ -502,16 +533,36 @@ export function arenaExtras(
   function restartLevel(): void {
     respawnAtEntry(true);
     player.teleport(start);
-    player.yaw = LEVEL.playerStart.yaw;
+    player.yaw = startYaw();
     if (campaign.campaign) levelTime = 0; // a full restart restarts the clock
   }
   function levelReset(): void {
     complete.hidden = true;
     respawnAtEntry(true);
     player.teleport(start);
-    player.yaw = LEVEL.playerStart.yaw;
+    player.yaw = startYaw();
     timing = campaign.campaign;
     levelTime = 0;
+  }
+
+  // ED-09: a run started from the editor gets a way back to it in the pause
+  // panel. The button is made here rather than in arena.html, so the page
+  // keeps its own markup and a run from anywhere else has no button.
+  const backUrl = editorBackUrl(location.search);
+  if (backUrl) {
+    const panel = document.querySelector<HTMLDivElement>("#pausemenu .panel");
+    const restart = document.querySelector<HTMLButtonElement>("#restartBtn");
+    if (panel) {
+      const back = document.createElement("button");
+      back.type = "button";
+      back.id = "backToEditor";
+      back.textContent = "Back to the editor";
+      back.addEventListener("click", () => {
+        location.href = backUrl;
+      });
+      if (restart) restart.after(back);
+      else panel.append(back);
+    }
   }
 
   // The end screen's buttons (only the campaign's panel shows them).

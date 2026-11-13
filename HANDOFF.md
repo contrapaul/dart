@@ -93,6 +93,44 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-13: ED-09 review, merged (Claude Opus 5.5): play from the editor
+
+- DeepSeek built it. Seen in the browser: Open lists the built-in levels;
+  1-2 opened as a copy with its pickups, doors, spawn points and its
+  fights as triggers (`arenaToTriggers`); Play went to
+  `arena.html?level=local:<key>&from=editor`, the converted 1-2 loaded
+  with no validator errors, and "Back to the editor" returned to
+  `editor.html?open=<key>` with the level open. The Help panel's text is
+  plain and accurate (read, not seen laid out).
+- Open: a built-in level's shell boxes (its floors and walls) are drawn
+  but not editable in the editor; reworking Act 1's geometry needs shell
+  boxes turned into prims on the copy. The editor's camera also starts
+  inside a wall on 1-2: it should frame the player start.
+- Not seen: Shift+P starting at the camera, the Help panel's layout.
+
+### 2026-11-13: ED-09, play from the editor and back, built in levels, Help (DeepSeek V4.1 Flash 1017 via Pi, branch `ed-09`)
+
+- Built: `src/editor/play.ts` (the play URL, `start` parsing, the way
+  back), `view.cameraSpot()`, P and Shift+P, `start` read by the arena
+  page before the level is built, the pause panel's Back to the editor,
+  `src/editor/open.ts` (`?open=` then the latest then a new level),
+  `src/editor/builtin.ts` (a built-in level opened as a copy through
+  `arenaToTriggers`), and `src/editor/help.ts` with the Help button.
+- Decided: `start` overrides the level's player start for the run only,
+  never written to the level, and it is resolved once (`spawnFor` in
+  `src/editor/play.ts`) so every restart comes back to the same spot. The
+  editor never edits the built in files: a copy is made, and the
+  conversion's warnings go to the Problems list once, cleared by the next
+  level opened. `?open=` naming a level that is not stored is a warning in
+  the Problems list rather than a status line, so the status line still
+  reaches "Ready" for the smoke check.
+- Green: `npx tsc --noEmit`, `npx vitest run` (1402 tests, 2 skipped),
+  `npm run build`, `npm run check` and `npm run smoke` (5 pages), no em or
+  en dashes.
+- Not seen by eye (no browser here): the new Back to the editor button,
+  the spot Shift+P picks, the copy of a converted arena level in the
+  outliner, and the Help panel's layout. Nothing is pushed.
+
 ### 2026-11-13: ED-08 review, merged (Claude Opus 5.5): triggers in the editor
 
 - DeepSeek built it (resumed after the power cut). Seen in the browser: a
