@@ -116,11 +116,11 @@ describe("hazard system", () => {
       [hazard("lake", 20, { slow: 0.6, hurtsFoamers: false })],
       group,
     );
-    const foamer = { id: "foamer", pos: feet.clone() };
+    const foamer = { centre: feet.clone() };
     const result = hazards.update(0.25, feet, [foamer]);
     expect(result.playerDamage).toBe(5);
     expect(result.slow).toBe(0.6);
-    expect(result.foamerDamage.get("foamer")).toBe(0);
+    expect(result.foamerDamage.get(foamer)).toBeUndefined();
     hazards.dispose();
   });
 
@@ -136,6 +136,20 @@ describe("hazard system", () => {
     const result = hazards.update(0.25, playerFeet, []);
     expect(result.playerDamage).toBe(5);
     expect(result.slow).toBe(0.6);
+    hazards.dispose();
+  });
+  it("a hazard with no damage still slows (review)", () => {
+    const hazards = new Hazards([hazard("goo", 0, { slow: 0.4 })], group);
+    const r = hazards.update(0.25, feet, []);
+    expect(r.playerDamage).toBe(0);
+    expect(r.slow).toBe(0.4);
+    hazards.dispose();
+  });
+
+  it("a Foamer standing in the lake takes its ticks (review)", () => {
+    const hazards = new Hazards([hazard("lake", 20)], group);
+    const foamer = { centre: feet.clone() };
+    expect(hazards.update(0.25, feet, [foamer]).foamerDamage.get(foamer)).toBe(5);
     hazards.dispose();
   });
 });

@@ -23,7 +23,9 @@ interface HazardMesh {
 export interface HazardResult {
   playerDamage: number;
   slow: number;
-  foamerDamage: Map<string, number>;
+  /** Keyed by the Foamer object handed to `update`. Only Foamers that
+   *  took damage this call are in it. */
+  foamerDamage: Map<object, number>;
 }
 
 /**
@@ -35,7 +37,9 @@ export class Hazards {
   private readonly hazards: HazardMesh[] = [];
   private readonly byId = new Map<string, HazardMesh>();
   private readonly playerTick = new HazardTickState();
-  private readonly foamerTicks = new Map<string, HazardTickState>();
+  /** Review: keyed by the Foamer itself, so a Foamer that is gone takes
+   *  its tick state with it (a string map grew for the whole level). */
+  private foamerTicks = new WeakMap<object, HazardTickState>();
   private readonly point = new THREE.Vector3();
   private readonly inside: HazardSpec[] = [];
   private readonly result: HazardResult = {
@@ -104,7 +108,7 @@ export class Hazards {
   update(
     dt: number,
     player: THREE.Vector3,
-    foamers: { id: string; pos: THREE.Vector3 }[],
+    foamers: readonly { readonly centre: THREE.Vector3 }[],
   ): HazardResult {
     this.time += dt;
     for (const hazard of this.hazards) {
@@ -123,17 +127,18 @@ export class Hazards {
     out.foamerDamage.clear();
 
     for (const foamer of foamers) {
-      this.point.copy(foamer.pos);
+      this.point.copy(foamer.centre);
       this.point.y += 0.3;
       this.fill(this.point, true);
 
-      let tick = this.foamerTicks.get(foamer.id);
+      if (this.inside.length === 0 && !this.foamerTicks.has(foamer)) continue;
+      let tick = this.foamerTicks.get(foamer);
       if (!tick) {
         tick = new HazardTickState();
-        this.foamerTicks.set(foamer.id, tick);
+        this.foamerTicks.set(foamer, tick);
       }
       tick.step(dt, this.inside);
-      out.foamerDamage.set(foamer.id, tick.damage);
+      if (tick.damage > 0) out.foamerDamage.set(foamer, tick.damage);
     }
     return out;
   }
@@ -157,7 +162,7 @@ export class Hazards {
     }
     this.hazards.length = 0;
     this.byId.clear();
-    this.foamerTicks.clear();
+    this.foamerTicks = new WeakMap();
     this.result.foamerDamage.clear();
   }
 }

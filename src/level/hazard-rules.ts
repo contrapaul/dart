@@ -33,9 +33,10 @@ export class HazardTickState {
       const s = hazard.slow ?? 1;
       if (s < slow) slow = s;
     }
+    // Review: a slowing hazard with no damage (deep goo) still slows.
+    this.slow = slow;
     if (dps <= 0) return;
 
-    this.slow = slow;
     this.exposure += dt;
     while (this.exposure >= this.tickSeconds) {
       this.exposure -= this.tickSeconds;
