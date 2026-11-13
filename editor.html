@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DART level editor</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/editor/editor.css" />
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="editor-ui">
+      <div id="topbar">
+        <button id="newBtn" type="button">New</button>
+        <button id="openBtn" type="button">Open</button>
+        <input id="levelName" type="text" value="[Paul]" title="Level name" />
+        <button id="undoBtn" type="button">Undo</button>
+        <button id="redoBtn" type="button">Redo</button>
+        <button id="exportBtn" type="button">Export</button>
+        <button id="importBtn" type="button">Import</button>
+        <button id="playBtn" type="button">Play</button>
+        <input id="importFile" type="file" accept=".json,application/json" hidden />
+        <span class="counts" id="counts"></span>
+        <span class="spacer"></span>
+        <span id="status">Loading</span>
+      </div>
+      <div id="outliner">
+        <h2>Level</h2>
+        <div id="outlinerList"></div>
+      </div>
+      <div id="inspector"></div>
+      <div id="palette"></div>
+    </div>
+    <div id="dialogs" hidden><div class="panel" id="dialogBody"></div></div>
+    <script type="module" src="/src/editor/main.ts"></script>
+  </body>
+</html>
