@@ -21,7 +21,7 @@ export interface FoamerSpawner {
   spawnState: "idle" | "alert";
   spawn(
     feet: THREE.Vector3, facing?: THREE.Vector3, type?: string, promoted?: boolean,
-  ): { yaw: number } | null;
+  ): object | null;
 }
 
 /** The file's yaw (radians about Y, 0 faces -z) as the point a Foamer
@@ -40,6 +40,9 @@ export class PlacedFoamers {
   /** The ids that have been spawned since the last restart. */
   private readonly up = new Set<string>();
   private readonly feet = new THREE.Vector3();
+  /** ED-07b: a placed Foamer is on the board, with the object the system
+   *  made, so the page can report its death to the trigger runner by id. */
+  onSpawned: (id: string, foamer: object) => void = () => {};
 
   constructor(
     private readonly placed: readonly PlacedFoamer[],
@@ -102,5 +105,6 @@ export class PlacedFoamers {
       return;
     }
     this.up.add(f.id);
+    this.onSpawned(f.id, made);
   }
 }

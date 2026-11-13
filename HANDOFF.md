@@ -31,7 +31,10 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review. MEL-01
 committed on branch `mel-01`, not pushed, waiting on review; the suite
 is 1104 tests, 2 skipped on that branch. ED-01 (the game plays the
 editor's level parts) is committed on branch `ed-01`, not pushed, waiting
-on review.
+on review. ED-05 (placing Foamers, pickups, doors, spawn points, zones, the
+start and the exit, the start loadout and a Problems count) is committed on
+branch `ed-05`, not pushed, waiting on review; the suite there is 1297
+tests, 2 skipped.
 
 **Waiting on Paul:**
 
@@ -88,6 +91,73 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-06 review, merged (Claude Opus 5.5): breakable prims
+
+- DeepSeek built it (one restart after the provider dropped the
+  connection mid stage 2; the half done work was kept and finished).
+- Seen in the browser on `ed-01`: the upright foam wall is voxel foam; the
+  foam column (40 hit points) took a dart blast (to 21) and a launcher
+  blast and broke into purple foam chunks.
+- Merge fix: a hidden breakable (a blocker that breaks) is now shown and
+  hidden by triggers like any hidden prim, and hidden again when the
+  editor logic resets on a restart.
+- Not seen by eye: a dart or a swing breaking one (the blast path was
+  driven by script), the turned block, the chunk burst's cap.
+
+### 2026-11-13: ED-05 review, merged (Claude Opus 5.5): placing things in the editor
+
+- DeepSeek built it. Seen in the browser: the palette now has Foamer,
+  Pickup, Door, Spawn point and Zone; a Slowmer and an ammo box were
+  placed on the floor and listed in the outliner with their inspectors;
+  the level panel holds the start loadout (B01 ticked by default); Play
+  ran the level, and the placed Slowmer woke on sight, walked up and hit
+  the player.
+- Merge fix: `data/editor.json` had two `sky` blocks and two palettes
+  after the merge with ED-07b; one of each kept (ED-00's palette, which
+  matches the foam materials), and the editor marks keys in the colours
+  the game draws them (test updated).
+- Not seen by eye: doors, spawn points and zones placed and moved, the
+  Problems list clicked through, a marker turned with the rotate handle.
+
+### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
+
+- strata added `Hazards.blocksAt` (a shown hazard that damages Foamers),
+  the extra solid test in `makeLevelAI`, and `onChanged` with the
+  hazard's world rectangle for a rebake. 5 tests.
+- Wired by the reviewer: hazards are now built in the arena's build hook
+  (`buildArena`), before the game bakes the nav grid, and handed over as
+  `BuiltGame.blockedAt`; a trigger showing or hiding a hazard rebakes its
+  rectangle through `levelAI.carveChanged`.
+- Seen in the browser on `ed-01`: the grid's cells over the lava pool are
+  not walkable, the floor beside it is.
+- Not seen: a Foamer actually walking round the pool in a fight.
+
+### 2026-11-13: ED-07b, triggers and keys in play (Claude Opus 5.5)
+
+- The arena page runs the editor's triggers (`src/arena/extras.ts`):
+  spawns at spawn points, refused ones retried every step; every Foamer a
+  trigger can count is tagged (placed id or spawn id) and reported once
+  when down or gone; show and hide reach hidden prims, hazards and
+  placed Foamers; open and close use the page's door verb (sound
+  included); message is the banner; checkpoint sets where a restart puts
+  the player.
+- Keys: `src/level/key-pickups.ts`, a code-built key in its colour that
+  turns, taken within 1 m; a door locked to a colour opens within 2.5 m
+  when the key is held, and says "Needs the red key" otherwise; a small
+  HUD line lists the keys held. Numbers in `data/editor.json` `keys`.
+  Placed pickups now report "taken" with their file id
+  (`Pickups.onTaken`).
+- A restart puts all editor logic back to the level's start (triggers,
+  hidden prims, hazards, the level's doors, keys), keeping the trigger
+  checkpoint. Decided so: the Foamers a half run fight spawned are
+  cleared by the restart, so a fight left half done could never finish.
+- Test level `ed-07` (`arena.html?level=ed-07`). Seen in the browser:
+  entering the arena raised the pink blocker behind the player and
+  spawned 3 Slowmers; downing them spawned wave 2; downing those dropped
+  the blocker and opened the side door; the exit door said it needs the
+  red key, the key showed "Red key" on the HUD and the door then opened.
+- Not seen: a death and restart in a trigger level, a refused spawn being
+  retried, a "pressed" trigger from a button.
 ### 2026-11-13: ED-07c: the arena to triggers converter (Qwen 3.8 27B via Pi)
 
 - `arenaToTriggers` in `src/level/arena-to-triggers.ts` turns every
@@ -144,6 +214,43 @@ on review.
   Foamer cap) must be retried by the page, or a "killed all" over that
   spawn can never fire and the blockers never drop.
 - Not in the game yet: nothing calls the runner until ED-07b.
+### 2026-11-13: ED-05 built (Pi, DeepSeek V4.1 Flash 1017): placing things
+
+- The editor now places and edits everything but the primitives. One
+  command list (`src/editor/doc.ts`) holds every kind: a Foamer, a
+  pickup, a door, a spawn point or a zone is added, changed, removed,
+  copied, undone and redone the same way a box is. Ids are unique across
+  all of them, so `key-2` can never also be a door, and the start and the
+  exit change as whole objects, so a drag of either is one undo step.
+- Each kind draws a marker built in code (no model is loaded, as the card
+  says): a Foamer a capsule its rig's height with a nose along its yaw, a
+  pickup a small box in its kind's colour with the blaster or hand
+  weapon's name over it, a spawn point a ring, a zone, a door and the exit
+  see-through boxes, the start an arrow. Markers are clicked, framed and
+  dragged with the same handles as a prim. A Foamer or the start turns
+  `yaw`, a door `rotY`, and only a zone, a door and the exit take a size;
+  the other handles do nothing on those kinds, which is the card's rule.
+- The palette places each kind (with a rig list for a Foamer and a type
+  list for a pickup), the inspector edits each kind's own fields, the
+  outliner groups them and then lists the start and the exit, and nothing
+  selected shows the level's start loadout beside the sky.
+- A Problems button in the top bar runs `validateLevel` on every change
+  and lists the errors and warnings; a row that names an id selects that
+  thing.
+- Decisions: a door's `rotY`, a Foamer's `yaw` and the start's `yaw` all
+  mean "0 faces -z" (format.ts), so a turn of the handles maps to degrees
+  for a door and radians for the other two with no sign flip. A drag may
+  shrink a size to 0.1 m and not to the grid, because a door is 0.4 m
+  thick. Marker colours, the pickup box size and the ring radius are in
+  `data/editor.json` under `markers`.
+- Not seen by eye: any marker, handle, palette button or inspector field.
+  This machine cannot open a browser, so the drawing, the picking and the
+  drags are only checked by their unit tests and by the smoke check
+  (editor.html still says "Ready" and draws). Also still open: the card's
+  wish for the game's own Foamer models in the editor, which needs ED-06's
+  drawing work; the markers are placeholders until then.
+- Suite: 1297 pass, 2 skipped. `npm run check` and `npm run smoke` green.
+
 
 ### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
 
@@ -160,6 +267,27 @@ on review.
 - Not seen by eye: rotate and scale handles, undo and redo by key, export
   and import of a file, the sky image upload, opening an Act 1 level as a
   copy. The floor grid is 128 m and dense at 0.5 m: fine near, busy far.
+### 2026-11-13: ED-03b Foamers walk round hazards (Pi, strata-dsv41)
+
+- Built `Hazards.blocksAt(x, y, z)`: true inside a shown hazard with
+  `dps > 0` and `hurtsFoamers` not false. It reuses a module point vector
+  and allocates nothing. `setShown` now calls the optional
+  `onChanged(minX, minZ, maxX, maxZ)` callback with the hazard's world
+  rectangle after rotation, when it becomes shown or hidden, so the page
+  can rebake that area.
+- `makeLevelAI` takes an optional seventh `blockedAt` test and combines it
+  with the voxel solid test. With no extra test the bake is unchanged.
+  Passing `hazards.blocksAt` directly works because it is a bound arrow.
+- New tests in `tests/ai/ed-03b.test.ts` (5): a lava box blocks its cells
+  and leaves cells round it walkable; a goo with dps 0 blocks nothing; a
+  hidden hazard blocks nothing until shown, then `onChanged` reports the
+  rectangle and a rebake blocks the cell; the rectangle follows a 45
+  degree rotation; no extra test leaves the bake as before.
+- Decision: the hook lives in `src/ai/level.ts`, not `src/ai/nav-grid.ts`,
+  because the grid's existing `setSolidAt` already accepts a combined
+  test. The page is not wired by this card; the reviewer wires the arena.
+- Not checked by eye: no browser here, so Foamers walking round lava, the
+  page's rebake and the look of hidden/showed hazards are unverified.
 
 ### 2026-11-13: ED-03 review, merged (Claude Opus 5.5): hazards in play
 
@@ -179,6 +307,39 @@ on review.
 - Not seen: a Foamer walking into it (Foamers do not path round hazards
   yet; the nav grid sees a hazard as open floor), the shimmer over time,
   a hazard hidden and then shown by a trigger.
+### 2026-11-13: ED-06 breakable prims (Pi, DeepSeek V4.1 Flash 1017)
+
+- What was asked: a breakable prim in a level file should break. A box
+  on 90 degree turns fills the level's voxel volume in blocks of 3.2 m or
+  less (darts carve it, the existing path). Every other breakable is its
+  own mesh and colliders, and darts, blasts and melee swings take hit
+  points off it; at zero it goes and bursts foam chunks, and a restart
+  brings it back.
+- Stage 1 (`3f6bf0d`): `src/level/prims.ts` skips a breakable prim, and
+  `src/level/build.ts` cuts it into volumes (`voxelPrimVolumes`, counts
+  `ceil(size / 3.2)`, a 90/270 degree Y turn swapping x and z) and fills
+  them, with `breakableAnchor` deciding `floor` or `none`.
+- Stage 2 (`52fff04`): `src/level/breakables.ts` builds one mesh and its
+  colliders per hit point breakable, and `Breakables` takes damage from
+  `dartHit`, `blast(point, profile)` and `swing(...)`, bursts through
+  `DebrisSystem` and resets. The arena page chains the dart's `onHit`,
+  the explosion's new `onBlast` hook and the melee's `presses` change.
+- Stage 3 (`2487ad9`): `data/levels/ed-01.json` gains `foam-wall`
+  (voxel), `turned-block` (45 degrees, 60 hit points) and `foam-column`
+  (cylinder, 40).
+- Decisions: a breakable is voxel foam only when it can fill the grid (a
+  box on the 90 degree steps); a voxel breakable takes its nearest foam
+  palette colour, because the palette is fixed at module load and the
+  mesher workers each keep their own copy; a hidden breakable is always a
+  hit point one, so `setShown` still works; the explosion gained
+  `onBlast(point, profile)` so the page never guesses a profile from the
+  FX radius. Numbers live in `data/destruction.json` `breakables` (9
+  chunks per m3, 6 to 24, 30 default hit points).
+- Unverified: no browser here, so nothing about how a break looks (the
+  chunk burst, the frame the mesh vanishes), and whether the three
+  breakables in ed-01 stand where the player can reach them without
+  blocking the walk to the doors. `npm run check` and `npm run smoke`
+  green, 1230 tests, 2 skipped.
 
 ### 2026-11-13: ED-01 review, merged (Claude Opus 5.5)
 

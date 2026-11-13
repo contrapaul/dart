@@ -253,4 +253,26 @@ describe("GAME-09d: B06's explosive mod", () => {
     // The carve ran at the hit: the blast carved the volume's bottom row.
     expect(carved).toBeGreaterThan(0);
   });
+
+  it("ED-06: onBlast names the profile of every blast, a cluster's too", () => {
+    const r = rig();
+    const seen: { profile: string; y: number }[] = [];
+    r.explosion.onBlast = (p, profile) => seen.push({ profile, y: p.y });
+    r.explosion.explode(new THREE.Vector3(1, 1, 1), "launcher");
+    expect(seen).toEqual([{ profile: "launcher", y: 1 }]);
+    // A clustered blast's four follow-ups run through the same hook, so a
+    // page that takes blasts off its breakables never misses one.
+    seen.length = 0;
+    r.explosion.explode(new THREE.Vector3(1, 1, 1), "dart", true);
+    expect(seen).toEqual([{ profile: "dart", y: 1 }]);
+    r.explosion.tick(tuning.cluster.delaySeconds);
+    expect(seen.length).toBe(5);
+    expect(seen.slice(1).every((s) => s.profile === tuning.cluster.profile)).toBe(true);
+    // The per-second cap still drops blasts before the hook runs.
+    seen.length = 0;
+    for (let i = 0; i < tuning.maxPerSecond + 5; i++) {
+      r.explosion.explode(new THREE.Vector3(1, 1, 1), "dart");
+    }
+    expect(seen.length).toBeLessThanOrEqual(tuning.maxPerSecond);
+  });
 });

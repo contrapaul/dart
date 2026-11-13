@@ -1,11 +1,18 @@
 import editorData from "../../data/editor.json";
-import type { Level, Prim, PrimBehaviour, PrimShape, Sky, Vec3 } from "../level/format";
+import type {
+  Box, Level, PlayerStart, Prim, PrimBehaviour, PrimShape, Sky, Vec3,
+} from "../level/format";
 
 // ED-02 stage 1: the level document the editor edits. Pure data: no DOM and
 // no Three.js, so the undo list and the level can be tested headless.
-// Every change is a command holding each prim's state either side of the
+// Every change is a command holding each thing's state either side of the
 // change, on one undo list (design/EDITOR.md 4: "every change goes through
 // one command list"), and a change listener tells the page to redraw.
+//
+// ED-05 stage 1: the same commands serve every kind of placed thing, not
+// just the prims. The level stores them in separate arrays but one id space
+// covers them all (validate.ts claims a single set), so a command names a
+// kind as well as an id.
 
 /** The editor's tuning numbers, all from data/editor.json. */
 export const EDITOR = editorData;
@@ -18,45 +25,84 @@ export const LIMITS = editorData.limits;
  *  the list is capped rather than allowed to grow with an afternoon's work. */
 const HISTORY_CAP = 200;
 
-/** One prim either side of a change. `key` is the id it had before the
- *  change, so a renamed prim is still found when undoing. No `before` means
- *  the change added it; no `after` means it removed it. */
-export interface PrimEdit {
-  key: string;
-  before?: Prim;
-  after?: Prim;
+/** The level's arrays of things with an id, one per kind the editor places
+ *  (ED-05). The player start and the exit are single objects changed
+ *  through the level fields, like the sky and the name. */
+export type EntryKind = "prims" | "foamers" | "pickups" | "doors" | "spawnPoints" | "zones";
+
+export const ENTRY_KINDS: readonly EntryKind[] = ["prims", "foamers", "pickups", "doors", "spawnPoints", "zones"];
+
+/** The id prefix a kind's new ids take, and the name the outliner and the
+ *  status line use for it. */
+export const KIND_PREFIX: Record<EntryKind, string> = {
+  prims: "box",
+  foamers: "foamer",
+  pickups: "pickup",
+  doors: "door",
+  spawnPoints: "spawn",
+  zones: "zone",
+};
+
+/** Anything the editor places: it has an id, and that is all the commands
+ *  need. The kind's own type (Prim, Pickup, ...) is checked at the call. */
+export interface IdEntry {
+  id: string;
+  pos: Vec3;
 }
 
-/** One entry on the undo list: prims changed, and optionally level fields
- *  other than the prims (the sky, the name). */
+/** One kind's entry either side of a change. `key` is the id it had before
+ *  the change, so a renamed entry is still found when undoing. No `before`
+ *  means the change added it; no `after` means it removed it. */
+export interface EntryEdit {
+  kind: EntryKind;
+  key: string;
+  before?: IdEntry;
+  after?: IdEntry;
+}
+
+/** One entry on the undo list: things changed, and optionally level fields
+ *  other than the arrays (the sky, the name, the start, the exit). */
 export interface Command {
   /** Plain words for the top bar, e.g. "add box-3". */
   text: string;
-  prims: PrimEdit[];
+  entries: EntryEdit[];
   fields?: { before: Partial<Level>; after: Partial<Level> };
 }
 
-/** What the page may change of a prim in one go. */
-export interface PrimPatch {
+/** What the page may change of one entry in one go. */
+export interface EntryPatch {
   id: string;
-  patch: Partial<Prim>;
+  patch: Record<string, unknown>;
 }
 
-function applyPrims(level: Level, edits: PrimEdit[], side: "before" | "after") {
-  const prims = (level.prims ??= []);
+/** The level's array for a kind, made on first use. */
+function listOf(level: Level, kind: EntryKind): IdEntry[] {
+  const record = level as unknown as Record<string, IdEntry[] | undefined>;
+  return (record[kind] ??= []);
+}
+
+function applyEntries(level: Level, edits: EntryEdit[], side: "before" | "after") {
   for (const e of edits) {
-    // Undoing finds the prim by the id it has after the change (a rename),
+    const list = listOf(level, e.kind);
+    // Undoing finds the entry by the id it has after the change (a rename),
     // redoing finds it by the id it had before (the other way round).
     const key = side === "after" ? e.key : (e.after?.id ?? e.key);
-    const i = prims.findIndex((p) => p.id === key);
+    const i = list.findIndex((p) => p.id === key);
     const next = side === "after" ? e.after : e.before;
     if (next) {
-      if (i >= 0) prims[i] = next;
-      else prims.push(next);
+      if (i >= 0) list[i] = next;
+      else list.push(next);
     } else if (i >= 0) {
-      prims.splice(i, 1);
+      list.splice(i, 1);
     }
   }
+}
+
+/** The id prefix a copy of this entry takes: its own, so a duplicated
+ *  pickup is another pickup and not another prim. */
+function idPrefix(kind: EntryKind, entry: IdEntry): string {
+  const own = entry.id.replace(/[-_]?\d+$/, "");
+  return own || KIND_PREFIX[kind];
 }
 
 /** Rounds to a step, for grid snap on position and size. */
@@ -127,7 +173,7 @@ export class LevelDoc {
   private undoList: Command[] = [];
   private redoList: Command[] = [];
   private listeners = new Set<() => void>();
-  /** The counter new ids come from: box-1, ramp-2, and so on. */
+  /** The counter new ids come from: box-1, ramp-2, key-3, and so on. */
   private serial = 0;
 
   constructor(level: Level = newLevel()) {
@@ -161,68 +207,118 @@ export class LevelDoc {
     this.emit();
   }
 
-  /** A fresh id for a shape: the next number nothing is using. */
-  nextId(shape: PrimShape): string {
-    const used = new Set((this.current.prims ?? []).map((p) => p.id));
+  /** Every entry of a kind, in file order. */
+  entries(kind: EntryKind): IdEntry[] {
+    return listOf(this.current, kind);
+  }
+
+  /** The kind an id belongs to, or null. Ids are unique across the kinds
+   *  (the validator's one id space), so one id names one thing. */
+  kindOf(id: string): EntryKind | null {
+    for (const kind of ENTRY_KINDS) {
+      if (listOf(this.current, kind).some((e) => e.id === id)) return kind;
+    }
+    return null;
+  }
+
+  /** The entry with that id of a kind, or undefined. */
+  find<T extends IdEntry = IdEntry>(kind: EntryKind, id: string): T | undefined {
+    return listOf(this.current, kind).find((e) => e.id === id) as T | undefined;
+  }
+
+  /** The entry with that id, whatever kind it is. */
+  entry(id: string): IdEntry | undefined {
+    const kind = this.kindOf(id);
+    return kind ? this.find(kind, id) : undefined;
+  }
+
+  /** The prim with that id, for the code that only deals in prims. */
+  prim(id: string): Prim | undefined {
+    return this.find<Prim>("prims", id);
+  }
+
+  /** A fresh id for a prefix: the next number nothing is using, in any
+   *  kind, so `key-2` can never be a door or a prim too. */
+  nextId(prefix: string): string {
+    const used = new Set<string>();
+    for (const kind of ENTRY_KINDS) for (const e of listOf(this.current, kind)) used.add(e.id);
     let id: string;
     do {
       this.serial += 1;
-      id = `${shape}-${this.serial}`;
+      id = `${prefix}-${this.serial}`;
     } while (used.has(id));
     return id;
   }
 
-  /** The prim with that id, or undefined. */
-  prim(id: string): Prim | undefined {
-    return (this.current.prims ?? []).find((p) => p.id === id);
-  }
-
-  add(prim: Prim) {
-    this.run({ text: `add ${prim.id}`, prims: [{ key: prim.id, after: prim }] });
+  add<T extends IdEntry>(kind: EntryKind, entry: T): T {
+    this.run({ text: `add ${entry.id}`, entries: [{ kind, key: entry.id, after: entry }] });
+    return entry;
   }
 
   remove(ids: string | string[]) {
     const list = typeof ids === "string" ? [ids] : ids;
-    const prims: PrimEdit[] = [];
+    const entries: EntryEdit[] = [];
     for (const id of list) {
-      const before = this.prim(id);
-      if (before) prims.push({ key: id, before });
+      const kind = this.kindOf(id);
+      const before = kind && this.find(kind, id);
+      if (kind && before) entries.push({ kind, key: id, before });
     }
-    if (!prims.length) return;
-    this.run({ text: prims.length === 1 ? `remove ${prims[0]!.key}` : `remove ${prims.length} prims`, prims });
+    if (!entries.length) return;
+    this.run({
+      text: entries.length === 1 ? `remove ${entries[0]!.key}` : `remove ${entries.length} things`,
+      entries,
+    });
   }
 
-  /** Changes fields of one or more prims as one undo step (a typed value, a
-   *  drag of the transform handles, a colour). Unknown ids are skipped. */
-  change(edits: PrimPatch[], text?: string) {
-    const prims: PrimEdit[] = [];
+  /** Changes fields of one or more entries of one kind as one undo step (a
+   *  typed value, a drag of the transform handles, a colour). Unknown ids
+   *  are skipped. */
+  change(kind: EntryKind, edits: EntryPatch[], text?: string) {
+    const entries: EntryEdit[] = [];
     for (const e of edits) {
-      const before = this.prim(e.id);
+      const before = this.find(kind, e.id);
       if (!before) continue;
-      prims.push({ key: e.id, before, after: { ...before, ...e.patch } });
+      entries.push({ kind, key: e.id, before, after: { ...before, ...e.patch } });
     }
-    if (!prims.length) return;
-    this.run({ text: text ?? (prims.length === 1 ? `change ${prims[0]!.key}` : `change ${prims.length} prims`), prims });
+    if (!entries.length) return;
+    this.run({
+      text: text ?? (entries.length === 1 ? `change ${entries[0]!.key}` : `change ${entries.length} things`),
+      entries,
+    });
   }
 
-  /** Copies the prims with fresh ids, moved by `offset` metres. Returns the
-   *  new ids, in the order the old ones were given. */
-  duplicate(ids: string[], offset: Vec3 = [GRID, 0, GRID]): string[] {
-    const prims: PrimEdit[] = [];
+  /** Copies entries of a kind with fresh ids, moved by `offset` metres.
+   *  Returns the new ids, in the order the old ones were given. */
+  duplicate(kind: EntryKind, ids: string[], offset: Vec3 = [GRID, 0, GRID]): string[] {
+    const entries: EntryEdit[] = [];
     const made: string[] = [];
     for (const id of ids) {
-      const from = this.prim(id);
+      const from = this.find(kind, id);
       if (!from) continue;
-      const copy = snapPrim({
+      // Every kind carries a position and nothing else a copy must change:
+      // a prim keeps its size and rotation, a door its size and lock. So the
+      // copy is snapped on the grid at its new place.
+      const copy = {
         ...from,
-        id: this.nextId(from.shape),
-        pos: [from.pos[0] + offset[0], from.pos[1] + offset[1], from.pos[2] + offset[2]],
-      });
-      prims.push({ key: copy.id, after: copy });
+        id: this.nextId(idPrefix(kind, from)),
+        pos: snapVec3([from.pos[0] + offset[0], from.pos[1] + offset[1], from.pos[2] + offset[2]], GRID),
+      };
+      entries.push({ kind, key: copy.id, after: copy as unknown as IdEntry });
       made.push(copy.id);
     }
-    if (prims.length) this.run({ text: `duplicate ${prims.length} prim${prims.length === 1 ? "" : "s"}`, prims });
+    if (entries.length) this.run({ text: `duplicate ${entries.length} thing${entries.length === 1 ? "" : "s"}`, entries });
     return made;
+  }
+
+  /** Moves the player start, or turns it: the whole object, so a drag is one
+   *  undo step. */
+  setStart(patch: Partial<PlayerStart>, text = "move the start") {
+    this.setFields({ playerStart: { ...this.current.playerStart, ...patch } }, text);
+  }
+
+  /** Moves or resizes the exit: the whole box, so a drag is one undo step. */
+  setExit(patch: Partial<Box>, text = "move the exit") {
+    this.setFields({ exit: { ...this.current.exit, ...patch } }, text);
   }
 
   /** Changes level fields other than the prims, as one undo step: the sky,
@@ -232,13 +328,13 @@ export class LevelDoc {
     for (const key of Object.keys(patch) as (keyof Level)[]) {
       (before as Record<string, unknown>)[key] = this.current[key];
     }
-    this.run({ text, prims: [], fields: { before, after: patch } });
+    this.run({ text, entries: [], fields: { before, after: patch } });
   }
 
   undo() {
     const command = this.undoList.pop();
     if (!command) return;
-    applyPrims(this.current, command.prims, "before");
+    applyEntries(this.current, command.entries, "before");
     if (command.fields) Object.assign(this.current, command.fields.before);
     this.redoList.push(command);
     this.emit();
@@ -247,14 +343,14 @@ export class LevelDoc {
   redo() {
     const command = this.redoList.pop();
     if (!command) return;
-    applyPrims(this.current, command.prims, "after");
+    applyEntries(this.current, command.entries, "after");
     if (command.fields) Object.assign(this.current, command.fields.after);
     this.undoList.push(command);
     this.emit();
   }
 
   private run(command: Command) {
-    applyPrims(this.current, command.prims, "after");
+    applyEntries(this.current, command.entries, "after");
     if (command.fields) Object.assign(this.current, command.fields.after);
     this.undoList.push(command);
     if (this.undoList.length > HISTORY_CAP) this.undoList.shift();

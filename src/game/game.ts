@@ -82,6 +82,9 @@ export interface BuiltGame {
   navBounds: NavBounds;
   spawn: THREE.Vector3;
   yaw?: number;
+  /** ED-03b: an extra "Foamers do not walk here" test for the nav bake
+   *  (the arena's damaging hazards). Omitted: voxels only, as before. */
+  blockedAt?: (x: number, y: number, z: number) => boolean;
 }
 
 /** The hooks. The first block is called by the loop; the second is the
@@ -154,6 +157,9 @@ export interface Game<T extends BuiltGame = BuiltGame> {
   finisher: Finisher;
   melee: Melee;
   impacts: DartImpacts;
+  /** GAME-09d: the shared explosion. ED-06: the arena page chains its own
+   *  breakables onto `onBlast`, so a blast takes hit points off them too. */
+  explosion: ExplosionSystem;
   debris: DebrisSystem;
   pieces: FallingPieces;
   mesherPool: MesherPool;
@@ -270,6 +276,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // changed the ground.
   const levelAI = makeLevelAI(
     rapier, world, built.navBounds, store.value.difficulty, built.voxels, built.voxelMesh.group.position,
+    built.blockedAt,
   );
   // BUG-03: the level's voxel pieces are meshed off the main thread, so the
   // load-time bake of the grid meets only their surfaces. When the mesher
@@ -623,7 +630,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
 
   const game = {
     renderer, scene, camera, rapier, world, input, hud, store, health, player,
-    darts, loadout, shield, pickups, finisher, melee, impacts, debris, pieces, mesherPool, foamers, levelAI, vacuum,
+    darts, loadout, shield, pickups, finisher, melee, impacts, explosion, debris, pieces,
+    mesherPool, foamers, levelAI, vacuum,
     voxels, voxelMesh, audio, ui: null as unknown as UIController, built,
     // The watch menu's prompt readout (ENV-03): what is on the
     // #finishprompt element this frame; updates every render, like

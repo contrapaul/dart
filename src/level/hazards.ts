@@ -4,10 +4,20 @@ import type { Prim, PrimHazard } from "./format";
 import tuning from "../../data/hazards.json";
 import { HazardTickState, type HazardSpec } from "./hazard-rules";
 
+/** Reused by blocksAt, so the caller can pass it without binding. */
+const _blockPoint = new THREE.Vector3();
+
 interface HazardLook {
   color: string;
   opacity: number;
   glow: number;
+}
+
+interface HazardRect {
+  minX: number;
+  minZ: number;
+  maxX: number;
+  maxZ: number;
 }
 
 interface HazardMesh {
@@ -17,7 +27,33 @@ interface HazardMesh {
   readonly inverse: THREE.Matrix4;
   readonly mesh: THREE.Mesh;
   readonly material: THREE.MeshStandardMaterial;
+  readonly rect: HazardRect;
   shown: boolean;
+}
+
+/** The hazard's world rectangle after its rotation, for the page's rebake. */
+function worldRect(mesh: THREE.Mesh, prim: Prim): HazardRect {
+  const geometry = mesh.geometry;
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  const box = geometry.boundingBox!;
+  const matrix = primMatrix(prim);
+  const point = new THREE.Vector3();
+  let minX = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxZ = -Infinity;
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) {
+        point.set(x, y, z).applyMatrix4(matrix);
+        if (point.x < minX) minX = point.x;
+        if (point.x > maxX) maxX = point.x;
+        if (point.z < minZ) minZ = point.z;
+        if (point.z > maxZ) maxZ = point.z;
+      }
+    }
+  }
+  return { minX, minZ, maxX, maxZ };
 }
 
 export interface HazardResult {
@@ -48,6 +84,9 @@ export class Hazards {
     foamerDamage: new Map(),
   };
   private time = 0;
+  /** Set by the page: the hazard's world rectangle when it is shown or
+   *  hidden, so the page can rebake that area. */
+  onChanged?: (minX: number, minZ: number, maxX: number, maxZ: number) => void;
 
   constructor(prims: Prim[], parent: THREE.Object3D) {
     const looks = tuning.looks as Record<string, HazardLook>;
@@ -68,6 +107,7 @@ export class Hazards {
         inverse: primMatrix(prim).invert(),
         mesh,
         material,
+        rect: worldRect(mesh, prim),
         shown: !prim.hidden,
       };
       this.hazards.push(hazard);
@@ -100,10 +140,27 @@ export class Hazards {
 
   setShown(id: string, shown: boolean): void {
     const hazard = this.byId.get(id);
-    if (!hazard) return;
+    if (!hazard || hazard.shown === shown) return;
     hazard.shown = shown;
     hazard.mesh.visible = shown;
+    this.onChanged?.(
+      hazard.rect.minX, hazard.rect.minZ, hazard.rect.maxX, hazard.rect.maxZ,
+    );
   }
+
+  /** True when (x, y, z) is inside a shown hazard that damages Foamers. A
+   *  slow-only goo with no dps does not block. Bound so the page can pass
+   *  `hazards.blocksAt` as the grid hook; the point is reused. */
+  blocksAt = (x: number, y: number, z: number): boolean => {
+    _blockPoint.set(x, y, z);
+    for (const hazard of this.hazards) {
+      if (!hazard.shown) continue;
+      if (hazard.spec.dps <= 0) continue;
+      if (hazard.spec.hurtsFoamers === false) continue;
+      if (primContains(hazard.prim, hazard.inverse, _blockPoint)) return true;
+    }
+    return false;
+  };
 
   update(
     dt: number,

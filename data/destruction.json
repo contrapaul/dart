@@ -6,6 +6,14 @@
   "crate": {
     "breakShare": 0.25
   },
+  "breakables": {
+    "_note": "ED-06 stage 2: the prims that break by hit points (a breakable shape other than an upright box, or a box turned off the 90 degree steps). hitPoints in the level file decides when one goes; these numbers decide what a break looks like. A break bursts chunks through the debris system, whose ring (debris.max) is the hard cap. The count is the prim's volume in cubic metres times chunksPerCubicMetre, kept between minChunks and maxChunks. chunkSize is the chunk's edge in metres. defaultHitPoints is for a hidden breakable, which stage 1 leaves out of the level's voxel volume: it has no hitPoints of its own yet. Damage is never here: a dart, a blast or a swing takes the number it deals a Foamer.",
+    "chunksPerCubicMetre": 9,
+    "minChunks": 6,
+    "maxChunks": 24,
+    "chunkSize": 0.12,
+    "defaultHitPoints": 30
+  },
   "debris": {
     "max": 150,
     "perCarveMax": 14,

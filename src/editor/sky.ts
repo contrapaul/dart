@@ -1,6 +1,12 @@
 import { EDITOR, GRID, PALETTE, ROTATE_STEP } from "./doc";
 import { colourField } from "./inspector";
-import type { Level, Sky } from "../level/format";
+import { BLASTERS, MELEE, START_LOADOUT } from "./parts";
+import type { Level, Sky, StartLoadout } from "../level/format";
+
+/** The loadout a level that says nothing starts with: data/editor.json. */
+function startLoadout(level: Level): StartLoadout {
+  return level.start ?? START_LOADOUT;
+}
 
 // ED-02 stage 4: the level-wide inspector, shown when nothing is selected.
 // The name, and the sky: a gradient of three colours from the palette, or an
@@ -77,6 +83,78 @@ export function buildLevelFields(host: HTMLElement, level: Level, ctx: LevelCont
     note.textContent = `Scaled down to ${EDITOR.limits.skyImageWidth} by ${EDITOR.limits.skyImageHeight} and kept in the level file.`;
     host.append(note);
   }
+
+  // ED-05 stage 4: the level's own start loadout (design/EDITOR.md 2: a
+  // level played on its own starts with what these say). The first blaster
+  // ticked is the one held, so the list keeps its order.
+  const startHeading = document.createElement("h2");
+  startHeading.textContent = "Start";
+  host.append(startHeading);
+  const start = level.start ?? START_LOADOUT;
+  const blasterSet = new Set(start.blasters);
+  const blasterLabel = document.createElement("label");
+  blasterLabel.textContent = "blasters";
+  const blasters = document.createElement("div");
+  blasters.className = "ticks";
+  for (const blaster of BLASTERS) {
+    const tick = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = blasterSet.has(blaster.id);
+    input.addEventListener("change", () => {
+      const now = startLoadout(level);
+      // The first in the list is held: a new tick goes on the end, and the
+      // last blaster cannot be unticked (the validator wants one).
+      const list = input.checked
+        ? [...now.blasters, blaster.id]
+        : now.blasters.filter((b) => b !== blaster.id);
+      ctx.change({ start: { ...now, blasters: list.length ? list : [blaster.id] } }, `start ${blaster.id}`);
+      ctx.redraw();
+    });
+    tick.append(input, document.createTextNode(`${blaster.id} ${blaster.name}`));
+    blasters.append(tick);
+  }
+  blasterLabel.append(blasters);
+  host.append(blasterLabel);
+
+  const meleeSet = new Set(start.melee ?? []);
+  const meleeLabel = document.createElement("label");
+  meleeLabel.textContent = "hand weapons";
+  const melee = document.createElement("div");
+  melee.className = "ticks";
+  for (const weapon of MELEE) {
+    const tick = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = meleeSet.has(weapon.id);
+    input.addEventListener("change", () => {
+      const now = startLoadout(level);
+      const list = input.checked
+        ? [...(now.melee ?? []), weapon.id]
+        : (now.melee ?? []).filter((m) => m !== weapon.id);
+      ctx.change({ start: { ...now, melee: list } }, `start ${weapon.id}`);
+      ctx.redraw();
+    });
+    tick.append(input, document.createTextNode(`${weapon.id} ${weapon.name}`));
+    melee.append(tick);
+  }
+  meleeLabel.append(melee);
+  host.append(meleeLabel);
+
+  const healthLabel = document.createElement("label");
+  healthLabel.textContent = "health";
+  const health = document.createElement("input");
+  health.type = "number";
+  health.step = "10";
+  health.min = "1";
+  health.value = String(start.health ?? 100);
+  health.addEventListener("change", () => {
+    const n = Number(health.value);
+    if (!Number.isFinite(n) || n <= 0) return;
+    ctx.change({ start: { ...startLoadout(level), health: Math.round(n) } }, "start health");
+  });
+  healthLabel.append(health);
+  host.append(healthLabel);
 
   const facts = document.createElement("p");
   facts.className = "hint";

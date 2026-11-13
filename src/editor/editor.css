@@ -46,9 +46,42 @@
   white-space: nowrap;
 }
 
-#topbar .counts.over {
+#topbar .counts.over,
+#topbar button.over {
   opacity: 1;
   color: #ff9b7a;
+  border-color: #ff9b7a;
+}
+
+/* ED-05: the Problems list. An error is red, a warning amber, and a row
+ *  that names something in the level is a button to select it. */
+.problems {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.problem {
+  padding: 0.25em 0.4em;
+  border-left: 3px solid #4a3f6e;
+  font-size: 13px;
+}
+
+.problem.error {
+  border-left-color: #ff6b6b;
+}
+
+.problem.warning {
+  border-left-color: #ffd23f;
+}
+
+.problem.selectable {
+  cursor: pointer;
+}
+
+.problem.selectable:hover {
+  background: rgba(255, 210, 63, 0.15);
 }
 
 #status {
@@ -151,6 +184,23 @@
   border-radius: 4px;
   padding: 0.15em 0.3em;
   font: inherit;
+}
+
+/* ED-05: a row of tick boxes (the start loadout, the marker kinds). */
+#inspector .ticks {
+  display: grid;
+  gap: 0.15rem;
+}
+
+#inspector .ticks label {
+  display: flex;
+  grid-template-columns: none;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+#inspector .ticks input {
+  width: auto;
 }
 
 #inspector .vec {

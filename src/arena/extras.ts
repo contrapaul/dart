@@ -21,7 +21,10 @@ import { applySky } from "../render/sky";
 import { PlacedFoamers } from "../level/placed";
 import { applyStart } from "../level/start";
 import { Hazards } from "../level/hazards";
+import { TriggerRunner } from "../level/triggers";
+import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
+import { dartDamageOf } from "../level/breakables";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -46,6 +49,9 @@ const TEST_PAGE: CampaignOptions = { campaign: false, entry: null };
  *  in. */
 export interface ArenaBuilt extends BuiltGame {
   level: BuiltLevel;
+  /** ED-03: the level's hazard prims. Built here, before the nav grid is
+   *  baked, so Foamers path round them (ED-03b). */
+  hazards: Hazards;
 }
 
 /** Builds the level file's geometry in the shared game's build hook. */
@@ -53,7 +59,10 @@ export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): Ar
   // ED-01: the level's sky, before its geometry goes in.
   applySky(scene, LEVEL.sky);
   const level = buildLevel(LEVEL, rapier, world, mesherPool, scene);
+  const hazards = new Hazards(LEVEL.prims ?? [], scene);
   return {
+    hazards,
+    blockedAt: hazards.blocksAt,
     voxels: level.voxels,
     voxelMesh: level.voxelMesh,
     // ENV-01 review: the game counts carves against the level's crates
@@ -85,6 +94,8 @@ export function arenaExtras(
   // for the mod stations; input, finisher and vacuum are read from g in the
   // step hook, where the tools own the use key first.
   const { level } = built;
+  // ED-06: the prims that break by hit points, built with the level.
+  const breakables = level.breakables;
 
   // LVL-02a: the level file's ammo boxes: they refill the loadout's
   // blasters in place, and they respawn on every restart (respawnAtEntry)
@@ -277,7 +288,9 @@ export function arenaExtras(
   // through the press's own path (crush: no grace, so every tick counts,
   // the HUD flash, the hurt sound and the go-down), Foamers take theirs as
   // a hit that is not a dart, and the slow scales the walk.
-  const hazards = new Hazards(LEVEL.prims ?? [], scene);
+  const { hazards } = built;
+  // ED-03b: a hazard a trigger shows or hides changes where Foamers walk.
+  hazards.onChanged = (minX, minZ, maxX, maxZ) => g.levelAI.carveChanged(minX, minZ, maxX, maxZ);
   const presses = new PressSystem(level.presses);
 
   // GAME-10m: the ambushes. A level's hidden F12s live here, not in the
@@ -314,7 +327,21 @@ export function arenaExtras(
   g.darts.onHit = (hit) => {
     dartOnHit(hit);
     playPress(buttons.pressByCollider(hit.collider, hit.point));
+    // ED-06: a breakable takes the damage that dart deals a Foamer, and a
+    // dart stuck in one is freed when it breaks (the barrel's own rule).
+    breakables.dartHit(hit, dartDamageOf(hit.type));
   };
+
+  // ED-06: the hit point breakables. They are built with the level; here
+  // they get the game's debris system, the sounds of a hit and a break, and
+  // the explosion's own hook (chained, so the blast FX still plays).
+  breakables.debris = g.debris;
+  breakables.onDamage = (_b, _amount, at) => audio.play("DT-hit-wood", { position: at });
+  breakables.onBreak = (b, at) => {
+    audio.play("FX-chunk", { position: at });
+    g.darts.releaseInSphere(at, b.radius);
+  };
+  g.explosion.onBlast = (point, profile) => breakables.blast(point, profile);
 
   // ENV-03: the mod stations (E13). A level with none builds an empty set
   // and the page never reads the use key for them, so a level without
@@ -361,6 +388,8 @@ export function arenaExtras(
    *  earlier arenas stay cleared (the card's checkpoint rule). The voxels
    *  stay as they are. */
   function entryPos(): THREE.Vector3 {
+    // ED-07b: a trigger's checkpoint wins over the arenas' own.
+    if (triggerCheckpoint) return triggerCheckpoint.clone();
     const arena = runner.currentArena;
     return new THREE.Vector3(...(arena?.checkpointPos ?? LEVEL.playerStart.pos));
   }
@@ -407,9 +436,20 @@ export function arenaExtras(
     } else {
       runner.resetCurrent();
     }
+    // ED-07b: the editor's logic goes back to the level's start on every
+    // restart (the Foamers it spawned were just cleared, so a half run
+    // fight could never finish); the trigger checkpoint is kept, so the
+    // player comes back past the fights already won. Hidden prims, hazards
+    // and the level's own doors go back to the file's states, keys to the
+    // floor.
+    resetEditorLogic();
     // ENV-02: the doors are back to the file's states, so the buttons are
     // back to unpressed, lit again and able to open them.
     buttons.reset();
+    // ED-06: every breakable comes back, hit points and all. Only a full
+    // restart puts them back (the checkpoint rule keeps the level's other
+    // damage: a retry inside an arena does not refill the walls).
+    if (all) breakables.reset();
     setRifts("dim");
   }
 
@@ -501,7 +541,81 @@ export function arenaExtras(
   // load and every restart (respawnAtEntry above clears the board, so the
   // spawn goes in again beside the pickups).
   const placed = new PlacedFoamers(LEVEL.foamers ?? [], foamers);
+
+  // ED-07b: the editor's when/do triggers (src/level/triggers.ts) on this
+  // page. Every Foamer a trigger can count carries a tag (its placed id, or
+  // the spawn action that made it); a tagged Foamer that is down or gone is
+  // reported once. A spawn the system refuses (the live cap) waits and is
+  // tried again each step, or a "killed all" over it could never fire.
+  const tagged: { f: object; tag: string }[] = [];
+  const pendingSpawns: { foamer: string; at: string; tag: string; promoted: boolean }[] = [];
+  const spawnPoints = new Map((LEVEL.spawnPoints ?? []).map((r) => [r.id, r] as const));
+  let triggerCheckpoint: THREE.Vector3 | null = null;
+  const _spawnFeet = new THREE.Vector3();
+  placed.onSpawned = (id, f) => tagged.push({ f, tag: id });
+  function trySpawn(foamer: string, at: string, tag: string, promoted: boolean): boolean {
+    const r = spawnPoints.get(at);
+    if (!r) return true; // the validator rejects a file naming no such point
+    _spawnFeet.set(r.pos[0], r.pos[1], r.pos[2]);
+    const f = foamers.spawn(_spawnFeet, player.eye(1, _riftFacing), foamer, promoted);
+    if (!f) return false;
+    tagged.push({ f, tag });
+    audio.play("FX-spawn", { position: _spawnFeet });
+    return true;
+  }
+  const levelDoorIds = new Set((LEVEL.doors ?? []).map((d) => d.id));
+  const levelDoorStart = new Map((LEVEL.doors ?? []).map((d) => [d.id, d.lock === "none" ? "open" as const : "locked" as const]));
+  function setShown(ids: string[], shown: boolean) {
+    for (const id of ids) {
+      level.prims.get(id)?.setShown(shown);
+      breakables.handles.get(id)?.setShown(shown);
+      hazards.setShown(id, shown);
+      if (shown) placed.wake([id]);
+    }
+  }
+  const triggers = new TriggerRunner(LEVEL, {
+    spawnOne(foamer, at, tag, promoted) {
+      if (!trySpawn(foamer, at, tag, promoted)) pendingSpawns.push({ foamer, at, tag, promoted });
+    },
+    wake: (ids) => { placed.wake(ids); },
+    show: (ids) => setShown(ids, true),
+    hide: (ids) => setShown(ids, false),
+    open: (door) => events.setDoor(door, "open"),
+    close: (door) => events.setDoor(door, "locked"),
+    message: (text, seconds) => showBanner(text, seconds),
+    checkpoint: (pos) => { triggerCheckpoint = new THREE.Vector3(...pos); },
+  });
+  const keys = new KeyPickups(LEVEL.pickups ?? [], LEVEL.doors ?? []);
+  scene.add(keys.group);
+  pickups.onTaken = (id) => triggers.taken(id);
+  // The HUD line for the keys held: shown only in a level that has keys.
+  const keysLine = document.createElement("div");
+  keysLine.className = "keys-held";
+  keysLine.hidden = true;
+  document.body.append(keysLine);
+  let keysShown = "";
+  function showKeys() {
+    const text = keys.held().map((c) => c[0]!.toUpperCase() + c.slice(1) + " key").join("  ");
+    if (text === keysShown) return;
+    keysShown = text;
+    keysLine.textContent = text;
+    keysLine.hidden = text === "";
+  }
+  let keyHintCooldown = 0;
+  function resetEditorLogic() {
+    tagged.length = 0;
+    pendingSpawns.length = 0;
+    for (const id of level.prims.keys()) level.prims.get(id)!.setShown(false);
+    for (const h of breakables.handles.values()) h.setShown(false);
+    for (const p of LEVEL.prims ?? []) if (p.behaviour === "hazard") hazards.setShown(p.id, !p.hidden);
+    for (const [id, state] of levelDoorStart) level.doors.get(id)?.setState(state);
+    keys.reset();
+    showKeys();
+    triggers.reset();
+    triggers.start();
+  }
   placed.spawnAll();
+  triggers.start();
 
   const hooks: Partial<GameHooks<ArenaBuilt>> = {
     step(dt: number) {
@@ -548,6 +662,35 @@ export function arenaExtras(
       if (hz.playerDamage > 0) pressPlayer.crush(hz.playerDamage);
       player.hazardMoveScale = hz.slow;
       for (const [f, amount] of hz.foamerDamage) foamers.parryDamage(f as Foamer, amount);
+      // ED-07b: the editor's triggers, keys and key doors.
+      for (let i = pendingSpawns.length - 1; i >= 0; i--) {
+        const p = pendingSpawns[i]!;
+        if (trySpawn(p.foamer, p.at, p.tag, p.promoted)) pendingSpawns.splice(i, 1);
+      }
+      for (let i = tagged.length - 1; i >= 0; i--) {
+        const t = tagged[i]!;
+        const f = t.f as Foamer;
+        if (f.state === "down" || !foamers.list.includes(f)) {
+          tagged.splice(i, 1);
+          triggers.killed(t.tag);
+        }
+      }
+      triggers.update(dt, arenaCtx.playerPos);
+      const doorLocked = (id: string) => levelDoorIds.has(id) && level.doors.get(id)?.state !== "open";
+      for (const k of keys.update(dt, at, doorLocked, (id) => events.setDoor(id, "open"))) {
+        showBanner(k.colour[0]!.toUpperCase() + k.colour.slice(1) + " key", 1.8);
+        audio.play("PU-ammo", { position: k.pos });
+        triggers.taken(k.id);
+        showKeys();
+      }
+      keyHintCooldown -= dt;
+      if (keyHintCooldown <= 0) {
+        const need = keys.neededNear(at, doorLocked);
+        if (need) {
+          showBanner("Needs the " + need + " key", 1.5);
+          keyHintCooldown = 3;
+        }
+      }
       // ENV-02: a swing presses a button within its own reach and arc, and
       // a step presses a floor one. The melee counts its presses, so a held
       // key does not press a button every step: only a new swing asks.
@@ -556,6 +699,11 @@ export function arenaExtras(
         const eye = player.eye(1, _playerPos);
         const fwd = camera.getWorldDirection(_aimDir);
         playPress(buttons.pressNear(eye, fwd, melee.reach, melee.arcDeg, player.collider));
+        // ED-06: the same swing takes the damage it deals a Foamer off the
+        // first breakable it reaches (the bash's own weaker number included,
+        // which is what the melee reports it swung).
+        const dmg = melee.damageOf(melee.lastSwung);
+        if (dmg > 0) breakables.swing(eye, fwd, melee.reach, dmg, player.collider);
       }
       playPress(buttons.step(at));
 
@@ -576,6 +724,9 @@ export function arenaExtras(
         placed.spawnAll();
         pickups.clear();
         pickups.loadLevelBoxes(LEVEL);
+        // ED-06: a fall out of the world is a full restart, so the
+        // breakables come back with it.
+        breakables.reset();
         runner.resetAll();
         setRifts("dim");
       }
@@ -641,6 +792,9 @@ export function arenaExtras(
       ambushes: Object.fromEntries(ambushes.ids.map((id) => [id, ambushes.isHidden(id)])),
       // ED-01: which placed Foamers are still waiting for their trigger.
       placedFoamers: placed.waitingIds,
+      // ED-06: the hit points left in each breakable (0 once broken).
+      breakables: Object.fromEntries(
+        breakables.list.map((b) => [b.prim.id, b.alive ? b.hp : 0])),
     }),
   };
 
