@@ -18,6 +18,7 @@ import type { Mesher } from "../voxel/pieces";
 import type { Foamer } from "../foamers/foamer";
 import type { DartSystem } from "../weapons/darts";
 import type { Loadout } from "../weapons/loadout";
+import { QUALITY, type QualityPreset } from "../render/quality";
 
 export interface RangeSystems {
   debris: DebrisSystem;
@@ -46,8 +47,9 @@ export function createRangeSystems(
   playerCollider: RAPIER.Collider,
   voxelTargets: VoxelTarget[] = [],
   explosionTargets: ExplosionTarget[] = [],
+  preset: QualityPreset = QUALITY.preset,
 ): RangeSystems {
-  const debris = new DebrisSystem(rapier, world);
+  const debris = new DebrisSystem(rapier, world, preset.debrisMax);
   const explosion = new ExplosionSystem(world, debris, explosionTargets);
   explosion.ignore(playerCollider);
   const impacts = new DartImpacts(darts, debris, voxelTargets, explosion);

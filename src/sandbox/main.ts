@@ -3,6 +3,7 @@ import "../core/boot-errors";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { createRenderer } from "../render/scene";
+import { QUALITY } from "../render/quality";
 import { voxelFoamMaterial } from "../render/foam-material";
 import { MesherPool } from "../voxel/mesher-pool";
 import { VoxelVolume, chunkCoords, CHUNK_SIZE } from "../voxel/chunk";
@@ -50,7 +51,7 @@ const ease = (x: number) => x * x * (3 - 2 * x);
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
 const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
-const { renderer, scene, camera } = createRenderer(canvas);
+const { renderer, scene, camera } = createRenderer(canvas, {}, QUALITY.preset);
 scene.fog = new THREE.Fog(0x1b1430, 30, 80);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;

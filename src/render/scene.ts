@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { QUALITY, type QualityPreset } from "./quality";
 
 /** A bigger level than the test course needs its fog pushed out and a
  *  shadow box that covers it. The defaults are the test course's, so
@@ -12,10 +13,14 @@ export interface SceneOptions {
   shadowMap?: number;
 }
 
-export function createRenderer(canvas: HTMLCanvasElement, opts: SceneOptions = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
+export function createRenderer(
+  canvas: HTMLCanvasElement,
+  opts: SceneOptions = {},
+  preset: QualityPreset = QUALITY.preset,
+) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: preset.antialias });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, preset.pixelRatioMax));
+  renderer.shadowMap.enabled = preset.shadows;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1b1430);
@@ -27,8 +32,8 @@ export function createRenderer(canvas: HTMLCanvasElement, opts: SceneOptions = {
   scene.add(new THREE.HemisphereLight(0xfff0e0, 0x3a2a60, 1.2));
   const sun = new THREE.DirectionalLight(0xffffff, 2);
   sun.position.set(6, 12, 4);
-  sun.castShadow = true;
-  const shadow = opts.shadowMap ?? 1024;
+  sun.castShadow = preset.shadows;
+  const shadow = Math.min(opts.shadowMap ?? 1024, preset.shadowMapMax);
   sun.shadow.mapSize.set(shadow, shadow);
   const r = opts.shadowRadius ?? 12;
   sun.shadow.camera.left = sun.shadow.camera.bottom = -r;

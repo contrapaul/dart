@@ -84,6 +84,7 @@ export class FallingPieces {
     private world: RAPIER.World,
     private mesher: Mesher,
     private debris: DebrisSystem,
+    private maxPieces = T.maxPieces,
   ) {}
 
   /** Pieces that exist, including fading ones. */
@@ -123,7 +124,7 @@ export class FallingPieces {
       this.makePiece(source, island, size);
       this.stats.pieces++;
       const nonFading = this.list.filter((pc) => !pc.fading);
-      if (nonFading.length > T.maxPieces) nonFading[0]!.fading = true;
+      if (nonFading.length > this.maxPieces) nonFading[0]!.fading = true;
     }
     return islands.length;
   }

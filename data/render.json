@@ -1,5 +1,34 @@
 {
   "_note": "Look of foam surfaces (ENG-07). Colours stay in materials.json. Pore cells are per voxel, so smaller voxels get finer pores.",
+  "quality": {
+    "default": "high",
+    "presets": {
+      "low": {
+        "pixelRatioMax": 1,
+        "antialias": false,
+        "shadows": false,
+        "shadowMapMax": 512,
+        "debrisMax": 60,
+        "breakoffMaxPieces": 8
+      },
+      "medium": {
+        "pixelRatioMax": 1.5,
+        "antialias": true,
+        "shadows": true,
+        "shadowMapMax": 1024,
+        "debrisMax": 100,
+        "breakoffMaxPieces": 12
+      },
+      "high": {
+        "pixelRatioMax": 2,
+        "antialias": true,
+        "shadows": true,
+        "shadowMapMax": 2048,
+        "debrisMax": 150,
+        "breakoffMaxPieces": 16
+      }
+    }
+  },
   "foam": {
     "poreCellsPerVoxel": 3,
     "poreCoverage": 0.35,

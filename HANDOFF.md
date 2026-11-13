@@ -21,10 +21,10 @@ the old text is in git history.
 - CI (`.github/workflows/check.yml`) runs build, tests, the text checks
   and the smoke check, and reports only: Cloudflare deploys every push to
   `main` whatever CI says (Paul's decision, PLAN section 14).
-- 1007 tests pass, 2 skipped.
+- 1012 tests pass, 2 skipped.
 
-**In progress:** OPS-04, graphics quality presets (`tasks/OPS-04.md`),
-strata-dsv41 via Pi on branch `ops-04`.
+**In progress:** nothing. OPS-04 (graphics presets, `?quality=low`,
+`medium`, `high`) is merged on local main, not pushed.
 
 **Waiting on Paul:**
 
@@ -81,6 +81,24 @@ strata-dsv41 via Pi on branch `ops-04`.
 
 ## Log
 
+### 2026-11-13: OPS-04 review, merged (Claude Opus 5.5): quality presets
+
+- strata-dsv41 (DeepSeek V4.1 Flash quant on dgx-spark, via Pi) built
+  the card in one run, first try. The code matched the card; no bugs
+  found.
+- One fix: the "high equals today" test compared high with numbers it
+  wrote itself; it now also checks high's caps against
+  `destruction.json` (`debris.max`, `islands.maxPieces`), so the two
+  cannot drift apart.
+- Seen in the browser (Chromium, 1x screen): `/range?quality=low&diag`
+  boots, the diag line reads `Quality: low (...)` and the range's
+  shadow switch starts off; `/arena?quality=medium&diag` boots with
+  `Quality: medium`. 1012 tests pass (2 skipped); check and smoke green.
+- Not verified: a 2x screen (where the pixel ratio cap matters most),
+  Firefox, and whether low is fast enough on an older machine. That is
+  Paul's measurement: `/range?quality=low&bench` against
+  `/range?bench`.
+
 ### 2026-11-13: HANDOFF Status rewritten; OPS-04 card written (Claude Opus 5.5)
 
 - Paul picked OPS-04 (graphics presets) for strata on dgx-spark and the
@@ -93,6 +111,29 @@ strata-dsv41 via Pi on branch `ops-04`.
   `?quality=low|medium|high`, high exactly today's picture. Foamer count
   is left out on purpose: fewer Foamers in a level changes the fight,
   not only the picture, so that is Paul's call.
+### 2026-11-13: three quality presets (Pi, ops-04)
+
+- Task OPS-04: older machines need a cheaper picture. `data/render.json`
+  now has `quality` with `default` high and presets low, medium, high.
+  `high` keeps today's values (pixel ratio 2, antialias on, shadows on,
+  shadow map 2048, debris 150, break-off pieces 16). Suggested low is 1,
+  no antialias, no shadows, 512, 60, 8; medium is 1.5, antialias and
+  shadows on, 1024, 100, 12.
+- `src/render/quality.ts` has the pure `pickQuality(search, data)` and one
+  `QUALITY` resolved from `location.search`. `createRenderer` takes the
+  preset, caps the pixel ratio, turns antialias and shadows off when the
+  preset says so, and caps a level's own shadow map. `DebrisSystem` and
+  `FallingPieces` take their caps from the preset; tests built without one
+  keep the high values.
+- The range starts its shadows switch in the preset's state, and its pixel
+  ratio switch uses the preset's cap. `?diag` now adds `Quality: <name>`
+  with the values. The range's Foamer count is unchanged; fewer Foamers is
+  Paul's call.
+- Paul compares presets with `/range?quality=low&diag` and
+  `/range?quality=low&bench`; the same query works on the game pages.
+- Tests: 1012 passed, 2 skipped. `npm run check` and `npm run smoke` green.
+- Not verified: the low and medium pictures were not opened and looked at
+  on older hardware; smoke boots the default high pages only.
 
 ### 2026-11-12: keys 1 to 8 are B01 to B08 (Claude Opus 5.5)
 
