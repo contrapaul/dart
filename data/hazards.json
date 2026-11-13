@@ -1,0 +1,10 @@
+{
+  "_note": "ED-00: the looks a hazard primitive can take (design/EDITOR.md). A level names a look by key; the damage and slow are set per primitive in the level file. opacity is how solid it looks (0 clear, 1 opaque); glow is the emissive strength of its colour. Foam toy colours, never blood: a lake is the level, not a wound.",
+  "looks": {
+    "toxic": { "name": "Toxic", "color": "#8cff3a", "opacity": 0.55, "glow": 0.6 },
+    "lava": { "name": "Lava", "color": "#ff5a1f", "opacity": 0.7, "glow": 1.2 },
+    "molten-metal": { "name": "Molten metal", "color": "#ffc23a", "opacity": 0.75, "glow": 1.4 },
+    "goo": { "name": "Goo", "color": "#c26bff", "opacity": 0.6, "glow": 0.4 }
+  },
+  "defaults": { "dps": 20, "slow": 0.6 }
+}

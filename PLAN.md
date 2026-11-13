@@ -425,7 +425,7 @@ The full list of sounds, with IDs, takes and delivery format, is `design/SOUNDS.
 
 - **Structure (Proposed):** DOOM-style levels: exploration corridors with secrets, connecting combat arenas that lock until cleared, a key or switch puzzle, an exit. 15 to 25 minutes each.
 - **Destruction in level design:** cover that wears down, walls that can be blasted through to secrets, Foam growths that block paths until destroyed.
-- **Building levels (Proposed):** start with code-authored blockout levels (JSON of boxes, arenas, spawn points) so models can build and edit levels as text. Later, a simple in-browser level editor if needed (post P2).
+- **Building levels:** the Act 1 levels were code-authored blockouts (JSON of boxes, arenas, spawn points). **Decided 2026-11-13 (Paul):** Paul builds the levels himself in an in-browser level editor that ships with the game, so players can make levels too. Plan and open questions: `design/EDITOR.md`.
 - **Level list:** [Paul], see section 6.1.
 - **Direction (decided 2026-11-03, Paul): semi-open linear.** One clear critical path from start to exit, never a maze, as in the modern Doom games. Each stretch opens into wide, multi-level spaces with optional side areas, vertical routes, overlooks and secrets off the path. Arenas lock until cleared and then open the way on; the next goal is always visible; backtracking is short and optional. Concepts, the space kit with metric sizes, and the blockout format are in `design/levels/` (LVL-00).
 
@@ -696,6 +696,7 @@ All twelve answered 2026-10-29.
 
 | Date | Decision | Section |
 |---|---|---|
+| 2026-11-13 | Paul, after playing Act 1: he builds the levels himself, in a level editor that ships with the game so players can make their own. It edits the same level file the game plays, grown with primitives (solid, breakable, hazard, decor), placed Foamers, zones, when/do triggers, blockers, key doors and a sky. Paul's answers the same day: levels are shared as files only (no server, keeps Q3); scripting is when/do lists in the inspector; breakable is both voxel foam (boxes) and hit points (any shape); the shapes are box, ramp, wedge, cylinder and stairs. Plan in `design/EDITOR.md`. | 9 |
 | 2026-11-13 | B05 (Paul: its impact was far too weak): its own impact block with no fall off to 60 m and a floor of 0.8, so every Shrike kill at least chunks where it hit. An impact block may carry an optional `floor`. Found with it: each dart's copy of its shot dropped the impact block, so B03's point blank range had never applied in play; fixed. | 5 |
 | 2026-11-13 | Paul's answers on level 2-1 (`design/levels/LEVEL-2-1.md` section 8): the setting is the workshop, rooms called workshop room 1, 2 and so on for now; the conveyor stays scenery for now (revisit later); a sword, the first melee weapon, is found in 2-1 just before Arena 1; Arena 3 closes on a promoted Blocker wall. | 9 |
 | 2026-11-13 | Paul: mods are bought with tokens. For testing the mod stations stay free; they lock to purchases later. | 5 |

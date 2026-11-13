@@ -1,0 +1,16 @@
+{
+  "_note": "ED-00: the level editor's hard caps and defaults (design/EDITOR.md section 6). The validator reads the caps, so a level over one does not load. grid is metres, rotateStep degrees.",
+  "limits": {
+    "prims": 2000,
+    "foamers": 150,
+    "triggers": 200,
+    "levelSize": 256,
+    "skyImageWidth": 2048,
+    "skyImageHeight": 1024,
+    "stairsMaxSteps": 64
+  },
+  "grid": 0.5,
+  "rotateStep": 15,
+  "palette": ["#ff7a1a", "#2ec4ff", "#b6ff3b", "#ff4fa3", "#ffd23a", "#8a5cff", "#f4ecdc", "#6f6788", "#3a3550"],
+  "sky": { "kind": "gradient", "top": "#3a6ff0", "horizon": "#bfe3ff", "bottom": "#3a3550" }
+}

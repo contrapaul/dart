@@ -157,7 +157,7 @@ export interface Arena {
 
 export type PickupType =
   | "darts-standard" | "shells-b03" | "darts-precision" | "mega"
-  | "foam-balls" | "health" | "armor" | "token" | "toy" | "blaster" | "melee";
+  | "foam-balls" | "health" | "armor" | "token" | "toy" | "blaster" | "melee" | "key";
 
 export interface Pickup {
   id: string;
@@ -175,6 +175,8 @@ export interface Pickup {
   /** MEL-01: the hand weapon a `melee` pickup gives (an id in
    *  data/melee.json `weapons`, the M01 sword). */
   melee?: string;
+  /** ED-00: the colour a `key` pickup gives. */
+  key?: KeyColour;
 }
 
 export interface PlayerStart {
@@ -233,6 +235,139 @@ export interface Button {
   action: ButtonAction;
 }
 
+// ED-00 (design/EDITOR.md): the parts the level editor places. All are
+// optional, so every older level file still loads as it is. Colours are
+// "#rrggbb". Rotations here are degrees about X, Y and Z, applied in that
+// order (three.js Euler "XYZ").
+
+/** box: a cuboid. ramp: a right wedge whose top rises from 0 at local -z
+ *  to size.y at +z (walkable). wedge: a roof, a triangle across x with its
+ *  ridge at the top centre running along z. cylinder: upright, size.x and
+ *  size.z are the diameters. stairs: `steps` equal steps rising along +z
+ *  to size.y. Every shape fills its size box. */
+export type PrimShape = "box" | "ramp" | "wedge" | "cylinder" | "stairs";
+
+/** solid: collides. breakable: an unrotated (90 degree steps) box is voxel
+ *  foam; any other shape takes `hitPoints` damage and shatters. hazard:
+ *  see-through, no collision, hurts while inside. decor: drawn, no
+ *  collision. */
+export type PrimBehaviour = "solid" | "breakable" | "hazard" | "decor";
+
+export interface PrimHazard {
+  /** Damage per second to the player while inside. */
+  dps: number;
+  /** Walk speed multiplier inside, 0 to 1. Omitted: 1, no slow. */
+  slow?: number;
+  /** A key of data/hazards.json `looks` (colour, opacity, glow). */
+  look: string;
+  /** Foamers inside take the same damage. Omitted: true. */
+  hurtsFoamers?: boolean;
+}
+
+export interface Prim {
+  /** Unique in the level, shared with every other id a trigger names. */
+  id: string;
+  shape: PrimShape;
+  pos: Vec3;
+  size: Vec3;
+  /** Degrees, XYZ order. Omitted: [0, 0, 0]. */
+  rot?: Vec3;
+  colour: string;
+  behaviour: PrimBehaviour;
+  /** stairs only: the number of steps, 2 or more. */
+  steps?: number;
+  /** behaviour "hazard" only. */
+  hazard?: PrimHazard;
+  /** behaviour "breakable" on a shape that is not voxel foam: the damage
+   *  it takes before it shatters. */
+  hitPoints?: number;
+  /** Starts hidden: not drawn, no collision, no damage, until a trigger
+   *  shows it. This is how a blocker works. */
+  hidden?: boolean;
+}
+
+/** A Foamer placed by hand. It stands where it is put until it sees the
+ *  player (`wake` "sight", the default) or a trigger wakes it. */
+export interface PlacedFoamer {
+  id: string;
+  /** A rig ID from data/foamer-rigs.json. */
+  foamer: string;
+  /** Feet position. */
+  pos: Vec3;
+  /** Radians about Y; 0 faces -z. */
+  yaw: number;
+  promoted?: boolean;
+  wake?: "sight" | "trigger";
+  /** Starts hidden (not spawned) until a trigger wakes it. */
+  hidden?: boolean;
+}
+
+/** An invisible box a trigger listens to. */
+export interface Zone extends Box {
+  id: string;
+}
+
+export type KeyColour = "red" | "blue" | "yellow";
+
+/** A door placed in the editor. "trigger" stays shut until a trigger opens
+ *  it; a key colour opens when the player reaches it holding that key. */
+export interface LevelDoor extends Box {
+  id: string;
+  /** Degrees about Y. */
+  rotY?: number;
+  colour?: string;
+  lock: "none" | "trigger" | KeyColour;
+}
+
+/** What starts a trigger. `killed` names placed Foamer ids and spawn
+ *  action ids (a spawn counts each Foamer it made); `count` omitted means
+ *  all of them. `after` fires `seconds` after the named trigger fired. */
+export type TriggerWhen =
+  | { kind: "start" }
+  | { kind: "enter"; zone: string }
+  | { kind: "killed"; ids: string[]; count?: number }
+  | { kind: "pressed"; button: string }
+  | { kind: "taken"; pickup: string }
+  | { kind: "after"; trigger: string; seconds: number };
+
+/** What a trigger does, in order. `spawn` brings `count` Foamers in at the
+ *  named spawn points, round robin, `holdSeconds` apart; its `id` is what a
+ *  `killed` condition counts. */
+export type TriggerDo =
+  | { kind: "spawn"; id: string; foamer: string; count: number; at: string[]; promoted?: boolean; holdSeconds?: number }
+  | { kind: "wake"; ids: string[] }
+  | { kind: "show"; ids: string[] }
+  | { kind: "hide"; ids: string[] }
+  | { kind: "open"; door: string }
+  | { kind: "close"; door: string }
+  | { kind: "message"; text: string; seconds?: number }
+  | { kind: "checkpoint"; pos: Vec3; yaw: number };
+
+export interface Trigger {
+  id: string;
+  when: TriggerWhen;
+  do: TriggerDo[];
+  /** Fires every time its condition is met again. Omitted: once. */
+  repeat?: boolean;
+}
+
+/** The sky: a three stop gradient, or an image (a data: URL inside the
+ *  level file, a 2:1 panorama; nothing is fetched). */
+export type Sky =
+  | { kind: "gradient"; top: string; horizon: string; bottom: string }
+  | { kind: "image"; image: string };
+
+/** What the player starts with when the level is played on its own (not
+ *  in the campaign, where the carry decides). */
+export interface StartLoadout {
+  /** Blaster ids in data/blasters.json; the first is held. */
+  blasters: string[];
+  /** Hand weapon ids in data/melee.json. */
+  melee?: string[];
+  /** Omitted: full. */
+  health?: number;
+}
+
 export interface Level {
   meta: LevelMeta;
   shell: ShellBox[];
@@ -249,4 +384,16 @@ export interface Level {
   playerStart: PlayerStart;
   /** The box that completes the level (the pad behind the last door). */
   exit: Box;
+  /** ED-00: editor primitives, drawn after the shell. */
+  prims?: Prim[];
+  /** ED-00: Foamers placed by hand. */
+  foamers?: PlacedFoamer[];
+  /** ED-00: spawn points a trigger's spawn names (the rift look). */
+  spawnPoints?: Rift[];
+  zones?: Zone[];
+  /** ED-00: doors outside any arena. */
+  doors?: LevelDoor[];
+  triggers?: Trigger[];
+  sky?: Sky;
+  start?: StartLoadout;
 }

@@ -86,6 +86,28 @@ is 1104 tests, 2 skipped on that branch.
 
 ## Log
 
+### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
+
+- Paul played Act 1 and wants to build the levels himself, in an editor
+  that ships with the game for players too.
+- Drafted `design/EDITOR.md`: what can be placed, when/do scripting,
+  blockers, keys and doors, hazards, the screen and keys, saving and
+  sharing by file, hard caps, the engine limits, and cards ED-00 to ED-10.
+- Decision row in PLAN.md section 14; section 9 points at the plan.
+- Paul answered the four main questions: files only, when/do lists,
+  breakable both ways, shapes box, ramp, wedge, cylinder, stairs.
+- ED-00 (the contract, Claude, on main): the level file's new optional
+  parts in `src/level/format.ts` (prims with shape and behaviour, hazards,
+  placed Foamers, zones, level doors with key locks, when/do triggers,
+  sky, start loadout, the `key` pickup), `src/level/prim-geometry.ts` (the
+  five shapes' meshes, collider parts and an inside test, tested),
+  `src/editor/store.ts` (IndexedDB, not yet tried in a browser),
+  `data/hazards.json`, `data/editor.json`. The validator rules for the
+  new parts are next (Claude).
+- Cards started in parallel: ED-01 game plays them and ED-02 the editor
+  page (DeepSeek, two runs), ED-03 hazards (strata), ED-07a the trigger
+  runner and keys (qwen-machine).
+
 ### 2026-11-13: HP-01 review, merged (Claude Opus 5.5): health on the map
 
 - DeepSeek V4.1 Flash 1017 built the card (after two restarts: Paul's
