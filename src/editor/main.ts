@@ -1,18 +1,19 @@
 import * as THREE from "three";
 import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Trigger, Vec3 } from "../level/format";
 import {
-  ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
+  EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
 } from "./doc";
 import { exportFileName, readLevelFile, skyImageDataUrl } from "./files";
 import { buildPrimFields } from "./inspector";
 import {
   buildDoorFields, buildExitFields, buildFoamerFields, buildPickupFields, buildSpawnFields,
-  buildStartFields, buildZoneFields, selectKind,
+  buildStartFields, buildZoneFields, numberInput, selectField, selectKind,
 } from "./inspector-parts";
 import { EXIT_ID, START_ID } from "./markers";
 import { AMMO_TYPES, RIGS, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
+import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
 import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
@@ -44,6 +45,10 @@ const PART_BUTTONS: { kind: PartKind; name: string }[] = [
  *  click: the palette's Trigger button adds one with nothing chosen yet and
  *  selects it for the inspector. */
 const TRIGGER_BUTTON = "Add a trigger";
+
+/** ED-08 stage 4: one click builds the usual fight (lock, waves, clear) out
+ *  of ordinary triggers, which Paul can then edit like any other. */
+const ARENA_BUTTON = "Build an arena";
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const doc = new LevelDoc(newLevel());
@@ -369,6 +374,22 @@ function buildPalette() {
     pick(made.id);
   });
   host.append(addTrigger);
+
+  // ED-08 stage 4: the Arena button asks a few questions once and writes the
+  // three or more triggers the usual fight takes. It needs a zone to start
+  // from, so with none selected it says so rather than guessing one.
+  const arenaBtn = document.createElement("button");
+  arenaBtn.type = "button";
+  arenaBtn.textContent = ARENA_BUTTON;
+  arenaBtn.addEventListener("click", () => {
+    const zone = [...selected].find((id) => doc.kindOf(id) === "zones");
+    if (!zone) {
+      status.textContent = "Select a zone first, then build an arena in it.";
+      return;
+    }
+    arenaDialog(zone);
+  });
+  host.append(arenaBtn);
   if (armedPart === "pickups") {
     const select = document.createElement("select");
     select.title = "Pickup type";
@@ -969,6 +990,133 @@ $("levelName").addEventListener("change", () => {
   doc.setFields({ meta: { ...doc.level.meta, name } }, "level name");
   syncNameField();
 });
+
+/** ED-08 stage 4: the Arena dialog. It asks what the fight is made of and
+ *  writes the triggers in one undo step. Every field is a tick or a number,
+ *  so nothing is typed: the message lines are Paul's and are added later in
+ *  the inspector. */
+function arenaDialog(zone: string) {
+  const level = doc.level;
+  const blockers = new Set<string>();
+  const points = new Set<string>((level.spawnPoints ?? []).map((s) => s.id));
+  const doors = new Set<string>();
+  const waves: ArenaSpec["waves"] = [{ foamer: RIGS[0]?.id ?? "F01", count: EDITOR.arena.defaultCount }];
+
+  void dialog(`Arena in ${zone}`, (body) => {
+    const state = document.createElement("p");
+    state.className = "hint";
+    body.append(state);
+
+    const ticks = (title: string, options: { id: string; label: string }[], on: Set<string>) => {
+      const box = document.createElement("label");
+      box.textContent = title;
+      const list = document.createElement("div");
+      list.className = "ticks";
+      for (const option of options) {
+        const tick = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = on.has(option.id);
+        input.addEventListener("change", () => {
+          if (input.checked) on.add(option.id);
+          else on.delete(option.id);
+          say();
+        });
+        tick.append(input, document.createTextNode(option.label));
+        list.append(tick);
+      }
+      box.append(list);
+      body.append(box);
+    };
+
+    // Blockers: the prims that start hidden are the ones a fight brings in,
+    // so they are ticked to begin with. Any other prim can be picked too.
+    const choices = blockerChoices(level);
+    for (const prim of level.prims ?? []) if (prim.hidden) blockers.add(prim.id);
+    ticks("blockers", choices, blockers);
+
+    ticks("spawn points", (level.spawnPoints ?? []).map((s) => ({ id: s.id, label: s.id })), points);
+
+    const waveBox = document.createElement("div");
+    body.append(waveBox);
+    const waves_ = () => {
+      waveBox.replaceChildren();
+      const heading = document.createElement("h3");
+      heading.textContent = "waves";
+      waveBox.append(heading);
+      waves.forEach((wave, i) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const type = selectField(
+          RIGS.map((r) => ({ value: r.id, label: `${r.id} ${r.label}` })),
+          wave.foamer,
+          (v) => { wave.foamer = v; say(); },
+        );
+        const count = numberInput(wave.count, 1, (n) => { wave.count = Math.max(1, Math.round(n)); say(); });
+        const up = document.createElement("button");
+        up.type = "button";
+        up.textContent = "Up";
+        up.addEventListener("click", () => {
+          if (i === 0) return;
+          [waves[i - 1], waves[i]] = [waves[i]!, waves[i - 1]!];
+          waves_();
+        });
+        const cut = document.createElement("button");
+        cut.type = "button";
+        cut.textContent = "Remove";
+        cut.addEventListener("click", () => {
+          if (waves.length < 2) return;
+          waves.splice(i, 1);
+          waves_();
+        });
+        row.append(type, count, up, cut);
+        waveBox.append(row);
+      });
+      const add = document.createElement("button");
+      add.type = "button";
+      add.textContent = "Add a wave";
+      add.addEventListener("click", () => {
+        waves.push({ ...waves[waves.length - 1]! });
+        waves_();
+      });
+      waveBox.append(add);
+    };
+    waves_();
+
+    ticks("doors to open when the fight is won", (level.doors ?? []).map((d) => ({ id: d.id, label: d.id })), doors);
+
+    const build = document.createElement("button");
+    build.type = "button";
+    build.className = "name";
+    build.textContent = "Build the triggers";
+    build.addEventListener("click", () => {
+      const spec: ArenaSpec = {
+        zone, blockers: [...blockers], spawnPoints: [...points], waves: waves.map((w) => ({ ...w })), doors: [...doors],
+      };
+      const problem = arenaProblem(spec);
+      if (problem) return;
+      const made = buildArena(spec, (prefix) => doc.nextId(prefix));
+      if (!roomForTriggers(made.length)) return;
+      doc.addMany("triggers", made, `arena in ${zone}`);
+      $("dialogs").hidden = true;
+      selected.clear();
+      for (const trigger of made) selected.add(trigger.id);
+      selectInView();
+      buildOutliner();
+      buildInspector();
+      status.textContent = `Arena in ${zone}: ${made.length} triggers. Give them a message in the inspector if you want words.`;
+    });
+    body.append(build);
+
+    function say() {
+      const spec: ArenaSpec = {
+        zone, blockers: [...blockers], spawnPoints: [...points], waves: waves.map((w) => ({ ...w })), doors: [...doors],
+      };
+      state.textContent = arenaProblem(spec) ?? `Lock, ${waves.length} wave${waves.length === 1 ? "" : "s"}, clear. Nothing is written to the level until Build.`;
+    }
+    say();
+  });
+}
 
 // A dialog over the view: a title, then whatever the caller builds.
 function dialog(title: string, build: (body: HTMLElement) => void) {

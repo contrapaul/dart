@@ -308,6 +308,36 @@ button.on {
   padding: 0.2rem 0;
 }
 
+/* ED-08 stage 4: the Arena dialog asks for ticks and a row per wave, the same
+   shapes the inspector uses, so they get the same look here. */
+#dialogs .ticks {
+  display: grid;
+  gap: 0.15rem;
+  margin-bottom: 0.6rem;
+}
+
+#dialogs .ticks label {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+#dialogs .ticks input {
+  width: auto;
+}
+
+#dialogs .row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.2rem 0;
+}
+
+#dialogs h3 {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 13px;
+}
+
 #dialogs .list .row .name {
   flex: 1;
 }

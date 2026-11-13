@@ -1,5 +1,5 @@
 {
-  "_note": "ED-00, ED-02, ED-05, ED-07a, ED-07b. The level editor's own tuning numbers. limits: caps the validator enforces on a level file (prims, placed Foamers, triggers, level size in metres, sky image width and height in pixels, a stairs box's most steps), so a level over one does not load. grid: metres a position or a size snaps to. rotateStep: degrees a rotation snaps to. palette: the nine colours the inspector offers. sky: a new level's sky. triggerDefaults: the play-time defaults the level file may omit. keys: key pickups and key doors in play (collectRadius: metres from the feet a key is taken; doorReach: metres from a key door's centre at which the held key opens it; size: the key's length; colours: the key and its door, used by the editor's markers too). markers: how each kind of placed thing is drawn in the editor and the colour a pickup takes when the level file says nothing. start: the loadout a new level starts with, in data/blasters.json and data/melee.json ids.",
+  "_note": "ED-00, ED-02, ED-05, ED-07a, ED-07b. The level editor's own tuning numbers. limits: caps the validator enforces on a level file (prims, placed Foamers, triggers, level size in metres, sky image width and height in pixels, a stairs box's most steps), so a level over one does not load. grid: metres a position or a size snaps to. rotateStep: degrees a rotation snaps to. palette: the nine colours the inspector offers. sky: a new level's sky. triggerDefaults: the play-time defaults the level file may omit. keys: key pickups and key doors in play (collectRadius: metres from the feet a key is taken; doorReach: metres from a key door's centre at which the held key opens it; size: the key's length; colours: the key and its door, used by the editor's markers too). markers: how each kind of placed thing is drawn in the editor and the colour a pickup takes when the level file says nothing. arena: the Arena button's numbers (holdSeconds: seconds between the Foamers of one wave arriving at their spawn points in turn; defaultCount: the count a new wave starts with). start: the loadout a new level starts with, in data/blasters.json and data/melee.json ids.",
   "limits": {
     "prims": 2000,
     "foamers": 150,
@@ -38,5 +38,6 @@
     "noseLength": 0.6,
     "ringRadius": 1
   },
+  "arena": { "holdSeconds": 0.5, "defaultCount": 3 },
   "start": { "blasters": ["B01"], "melee": [], "health": 100 }
 }
