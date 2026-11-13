@@ -57,9 +57,17 @@ export function makeLevelAI(
    *  bakes their interiors as unwalkable through this and `origin`. */
   voxels?: VoxelVolume,
   origin?: { x: number; y: number; z: number },
+  /** ED-03b: an extra solid test for a hazard (Hazards.blocksAt). A cell
+   *  over a damaging hazard bakes with no walkable layer. */
+  blockedAt?: (x: number, y: number, z: number) => boolean,
 ): LevelAI {
   const grid = new NavGrid(rapier, world, bounds);
-  if (voxels && origin) grid.setSolidAt(solidAt(voxels, origin));
+  const voxelSolid = voxels && origin ? solidAt(voxels, origin) : null;
+  if (voxelSolid || blockedAt) {
+    grid.setSolidAt((x, y, z) =>
+      (voxelSolid ? voxelSolid(x, y, z) : false) || (blockedAt ? blockedAt(x, y, z) : false),
+    );
+  }
   // Rapier's query pipeline updates on step(), and both pages build this
   // before their first frame: one step now, so the bake sees the level.
   world.step();

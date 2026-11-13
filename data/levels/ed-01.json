@@ -362,6 +362,27 @@
       "colour": "#b6ff3b",
       "behaviour": "solid",
       "hidden": true
+    },
+    {
+      "id": "lava-pool",
+      "shape": "box",
+      "pos": [
+        3,
+        0.2,
+        4
+      ],
+      "size": [
+        4,
+        0.4,
+        3
+      ],
+      "colour": "#ff5a1f",
+      "behaviour": "hazard",
+      "hazard": {
+        "dps": 20,
+        "slow": 0.6,
+        "look": "lava"
+      }
     }
   ],
   "doors": [

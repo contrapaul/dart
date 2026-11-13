@@ -31,7 +31,10 @@ pushed, waiting on Paul's answers and Claude Opus 5.5's review. MEL-01
 committed on branch `mel-01`, not pushed, waiting on review; the suite
 is 1104 tests, 2 skipped on that branch. ED-01 (the game plays the
 editor's level parts) is committed on branch `ed-01`, not pushed, waiting
-on review.
+on review. ED-05 (placing Foamers, pickups, doors, spawn points, zones, the
+start and the exit, the start loadout and a Problems count) is committed on
+branch `ed-05`, not pushed, waiting on review; the suite there is 1297
+tests, 2 skipped.
 
 **Waiting on Paul:**
 
@@ -88,6 +91,178 @@ on review.
 
 ## Log
 
+### 2026-11-13: ED-06 review, merged (Claude Opus 5.5): breakable prims
+
+- DeepSeek built it (one restart after the provider dropped the
+  connection mid stage 2; the half done work was kept and finished).
+- Seen in the browser on `ed-01`: the upright foam wall is voxel foam; the
+  foam column (40 hit points) took a dart blast (to 21) and a launcher
+  blast and broke into purple foam chunks.
+- Merge fix: a hidden breakable (a blocker that breaks) is now shown and
+  hidden by triggers like any hidden prim, and hidden again when the
+  editor logic resets on a restart.
+- Not seen by eye: a dart or a swing breaking one (the blast path was
+  driven by script), the turned block, the chunk burst's cap.
+
+### 2026-11-13: ED-05 review, merged (Claude Opus 5.5): placing things in the editor
+
+- DeepSeek built it. Seen in the browser: the palette now has Foamer,
+  Pickup, Door, Spawn point and Zone; a Slowmer and an ammo box were
+  placed on the floor and listed in the outliner with their inspectors;
+  the level panel holds the start loadout (B01 ticked by default); Play
+  ran the level, and the placed Slowmer woke on sight, walked up and hit
+  the player.
+- Merge fix: `data/editor.json` had two `sky` blocks and two palettes
+  after the merge with ED-07b; one of each kept (ED-00's palette, which
+  matches the foam materials), and the editor marks keys in the colours
+  the game draws them (test updated).
+- Not seen by eye: doors, spawn points and zones placed and moved, the
+  Problems list clicked through, a marker turned with the rotate handle.
+
+### 2026-11-13: ED-03b review, merged (Claude Opus 5.5): Foamers walk round hazards
+
+- strata added `Hazards.blocksAt` (a shown hazard that damages Foamers),
+  the extra solid test in `makeLevelAI`, and `onChanged` with the
+  hazard's world rectangle for a rebake. 5 tests.
+- Wired by the reviewer: hazards are now built in the arena's build hook
+  (`buildArena`), before the game bakes the nav grid, and handed over as
+  `BuiltGame.blockedAt`; a trigger showing or hiding a hazard rebakes its
+  rectangle through `levelAI.carveChanged`.
+- Seen in the browser on `ed-01`: the grid's cells over the lava pool are
+  not walkable, the floor beside it is.
+- Not seen: a Foamer actually walking round the pool in a fight.
+
+### 2026-11-13: ED-07b, triggers and keys in play (Claude Opus 5.5)
+
+- The arena page runs the editor's triggers (`src/arena/extras.ts`):
+  spawns at spawn points, refused ones retried every step; every Foamer a
+  trigger can count is tagged (placed id or spawn id) and reported once
+  when down or gone; show and hide reach hidden prims, hazards and
+  placed Foamers; open and close use the page's door verb (sound
+  included); message is the banner; checkpoint sets where a restart puts
+  the player.
+- Keys: `src/level/key-pickups.ts`, a code-built key in its colour that
+  turns, taken within 1 m; a door locked to a colour opens within 2.5 m
+  when the key is held, and says "Needs the red key" otherwise; a small
+  HUD line lists the keys held. Numbers in `data/editor.json` `keys`.
+  Placed pickups now report "taken" with their file id
+  (`Pickups.onTaken`).
+- A restart puts all editor logic back to the level's start (triggers,
+  hidden prims, hazards, the level's doors, keys), keeping the trigger
+  checkpoint. Decided so: the Foamers a half run fight spawned are
+  cleared by the restart, so a fight left half done could never finish.
+- Test level `ed-07` (`arena.html?level=ed-07`). Seen in the browser:
+  entering the arena raised the pink blocker behind the player and
+  spawned 3 Slowmers; downing them spawned wave 2; downing those dropped
+  the blocker and opened the side door; the exit door said it needs the
+  red key, the key showed "Red key" on the HUD and the door then opened.
+- Not seen: a death and restart in a trigger level, a refused spawn being
+  retried, a "pressed" trigger from a button.
+
+### 2026-11-13: ED-07a review, merged (Claude Opus 5.5): the trigger runner
+
+- qwen-machine (Qwen 3.8 27B) wrote `src/level/triggers.ts` and
+  `src/level/keys.ts` with 17 tests. Reviewed line by line: zones fire on
+  entering, spawns run round robin with their hold, "killed all" counts
+  every Foamer a named spawn makes, `after` re-arms when its trigger
+  fires again, reset clears everything.
+- Noted for the wiring (ED-07b): a spawn the game refuses (the live
+  Foamer cap) must be retried by the page, or a "killed all" over that
+  spawn can never fire and the blockers never drop.
+- Not in the game yet: nothing calls the runner until ED-07b.
+### 2026-11-13: ED-05 built (Pi, DeepSeek V4.1 Flash 1017): placing things
+
+- The editor now places and edits everything but the primitives. One
+  command list (`src/editor/doc.ts`) holds every kind: a Foamer, a
+  pickup, a door, a spawn point or a zone is added, changed, removed,
+  copied, undone and redone the same way a box is. Ids are unique across
+  all of them, so `key-2` can never also be a door, and the start and the
+  exit change as whole objects, so a drag of either is one undo step.
+- Each kind draws a marker built in code (no model is loaded, as the card
+  says): a Foamer a capsule its rig's height with a nose along its yaw, a
+  pickup a small box in its kind's colour with the blaster or hand
+  weapon's name over it, a spawn point a ring, a zone, a door and the exit
+  see-through boxes, the start an arrow. Markers are clicked, framed and
+  dragged with the same handles as a prim. A Foamer or the start turns
+  `yaw`, a door `rotY`, and only a zone, a door and the exit take a size;
+  the other handles do nothing on those kinds, which is the card's rule.
+- The palette places each kind (with a rig list for a Foamer and a type
+  list for a pickup), the inspector edits each kind's own fields, the
+  outliner groups them and then lists the start and the exit, and nothing
+  selected shows the level's start loadout beside the sky.
+- A Problems button in the top bar runs `validateLevel` on every change
+  and lists the errors and warnings; a row that names an id selects that
+  thing.
+- Decisions: a door's `rotY`, a Foamer's `yaw` and the start's `yaw` all
+  mean "0 faces -z" (format.ts), so a turn of the handles maps to degrees
+  for a door and radians for the other two with no sign flip. A drag may
+  shrink a size to 0.1 m and not to the grid, because a door is 0.4 m
+  thick. Marker colours, the pickup box size and the ring radius are in
+  `data/editor.json` under `markers`.
+- Not seen by eye: any marker, handle, palette button or inspector field.
+  This machine cannot open a browser, so the drawing, the picking and the
+  drags are only checked by their unit tests and by the smoke check
+  (editor.html still says "Ready" and draws). Also still open: the card's
+  wish for the game's own Foamer models in the editor, which needs ED-06's
+  drawing work; the markers are placeholders until then.
+- Suite: 1297 pass, 2 skipped. `npm run check` and `npm run smoke` green.
+
+
+### 2026-11-13: ED-02 review, merged (Claude Opus 5.5): the editor page
+
+- DeepSeek built `editor.html`. Seen in the browser: a new level opens on
+  a 32 m floor under the gradient sky; Box then a click on the floor
+  places a box with the move handles; the inspector set it to a toxic
+  hazard (drawn see-through) and changed its size; the top bar showed
+  Saving then Saved; Play opened `arena.html?level=local:<key>` and the
+  game played that level, the toxic box standing on the floor.
+- Review fix (on main, ED-01's bug): `src/arena/extras.ts` picked its
+  level when it was imported, before `main.ts` had read the store, so a
+  stored level always played the Pit. `main.ts` now imports `extras`
+  after the store read.
+- Not seen by eye: rotate and scale handles, undo and redo by key, export
+  and import of a file, the sky image upload, opening an Act 1 level as a
+  copy. The floor grid is 128 m and dense at 0.5 m: fine near, busy far.
+### 2026-11-13: ED-03b Foamers walk round hazards (Pi, strata-dsv41)
+
+- Built `Hazards.blocksAt(x, y, z)`: true inside a shown hazard with
+  `dps > 0` and `hurtsFoamers` not false. It reuses a module point vector
+  and allocates nothing. `setShown` now calls the optional
+  `onChanged(minX, minZ, maxX, maxZ)` callback with the hazard's world
+  rectangle after rotation, when it becomes shown or hidden, so the page
+  can rebake that area.
+- `makeLevelAI` takes an optional seventh `blockedAt` test and combines it
+  with the voxel solid test. With no extra test the bake is unchanged.
+  Passing `hazards.blocksAt` directly works because it is a bound arrow.
+- New tests in `tests/ai/ed-03b.test.ts` (5): a lava box blocks its cells
+  and leaves cells round it walkable; a goo with dps 0 blocks nothing; a
+  hidden hazard blocks nothing until shown, then `onChanged` reports the
+  rectangle and a rebake blocks the cell; the rectangle follows a 45
+  degree rotation; no extra test leaves the bake as before.
+- Decision: the hook lives in `src/ai/level.ts`, not `src/ai/nav-grid.ts`,
+  because the grid's existing `setSolidAt` already accepts a combined
+  test. The page is not wired by this card; the reviewer wires the arena.
+- Not checked by eye: no browser here, so Foamers walking round lava, the
+  page's rebake and the look of hidden/showed hazards are unverified.
+
+### 2026-11-13: ED-03 review, merged (Claude Opus 5.5): hazards in play
+
+- strata built the module and its tests. Review fixes: a hazard with no
+  damage now still slows (goo); Foamer tick states are keyed by the
+  Foamer object in a WeakMap, not by a string that grew all level;
+  `primContains` reuses one vector instead of allocating per call.
+- Wired into the arena page (`src/arena/extras.ts`): ticks land on the
+  player through the press's crush path (no grace, HUD flash, hurt sound,
+  go-down); Foamers take theirs as a non-dart hit (`parryDamage`), so a
+  hazard downs them but never pops them; the slow is a new
+  `hazardMoveScale` on the player controller beside the B08 firing slow.
+- `ed-01` gained a lava pool by the start. Seen in the browser: it draws
+  as glowing orange, standing in it took 60 to 35 health in about 1.25 s
+  (20 per second) and the walk slowed to 0.6; stepping out put it back to
+  1.
+- Not seen: a Foamer walking into it (Foamers do not path round hazards
+  yet; the nav grid sees a hazard as open floor), the shimmer over time,
+  a hazard hidden and then shown by a trigger.
 ### 2026-11-13: ED-06 breakable prims (Pi, DeepSeek V4.1 Flash 1017)
 
 - What was asked: a breakable prim in a level file should break. A box
@@ -200,6 +375,84 @@ sight" check with N in `data/ai.json`; the existing idle state made it
 unnecessary, so no AI file was touched. Hazard prims are skipped in
 `src/level/prims.ts` and the nav bounds count them as floor nothing
 stands on yet (ED-03's job).
+### 2026-11-13: ED-03 hazard primitives (Pi, branch ed-03)
+
+- Task: `tasks/ED-03.md`.
+- Built `src/level/hazard-rules.ts` and `src/level/hazards.ts`; numbers in `data/hazards.json` (`tickSeconds` 0.25); 10 tests in `tests/level/hazards.test.ts`.
+- Decisions: damage is dealt in fixed ticks (`dps * tickSeconds`) so hits land on the HUD; overlapping hazards use the highest dps and the lowest slow; exposure only grows and drains inside, so leaving and returning does not reset the tick; Foamers skip hazards with `hurtsFoamers: false`; hidden hazards are invisible and do nothing until `setShown`.
+- `npm run check` green: 1186 tests pass, 2 skipped, build and text/remote checks green.
+- Not wired into the arena yet; the reviewer does that. No browser here, so the see-through look, shimmer and depth order are not checked by eye. `primContains` clones its point internally, so that allocation remains per body per frame in `src/level/prim-geometry.ts`, which this card did not touch.
+### 2026-11-13: ED-02, the level editor page (DeepSeek V4.1 Flash 1017 via Pi)
+
+Branch `ed-02`, five commits, not reviewed, not merged, not pushed.
+`editor.html` opens a level and lets you build one. Keys: right mouse
+and WASD to fly (shift sprints, the wheel changes speed), the palette
+and a click to place, click to select (shift adds), Delete to remove,
+Ctrl+D to duplicate, Ctrl+Z and Ctrl+Shift+Z for undo and redo, W, E and
+R for move, rotate and scale with the grid, Esc to let go of the mouse.
+
+- Stage 1: `src/editor/doc.ts` holds the `Level`; every change is a
+  command on one undo list. A new level is the smallest valid one (a
+  32 by 32 m floor, the player start, the exit, the default sky) and is
+  checked by `validateLevel`. Ids come from a per-shape count
+  (`box-1`, `ramp-2`). Tests in `tests/editor/doc.test.ts`.
+- Stage 2: the page, `src/editor/view.ts` (the scene's lights, the grid
+  from `data/editor.json`, the shell and pieces read only, every prim
+  from `primGeometry` and `primMatrix`) and the fly camera. The smoke
+  check loads the page and finds a picture.
+- Stage 3: placers, selection, the three handles and the inspector.
+  A hazard draws see-through, and a breakable asks for hit points.
+- Stage 4: saving and files. Autosave fires half a second after a
+  change through `putLevel`, and the top bar says Saving then Saved.
+  Open lists saved levels newest first (each can be deleted) under the
+  ten built-in levels, which open as copies so a save makes a new one.
+  Export writes `<name>.dart.json`; Import is checked with
+  `validateLevel` and refused with every error it finds, not just the
+  first. Play saves, then goes to `arena.html?level=local:<key>`.
+  The sky inspector sets the gradient's three colours, or an image
+  scaled to `limits.skyImageWidth` by `skyImageHeight` and stored as a
+  JPEG data URL, and the view draws it.
+- Stage 5: the top bar counts prims, foamers and triggers against the
+  caps in `data/editor.json` and goes red past one; placing and
+  duplicating stop at `limits.prims` and say why in the status line.
+
+Green: `npx tsc --noEmit`, `npx vitest run` (1219 pass, 2 skip),
+`npm run build`, `npm run smoke` (all 5 pages, editor 0.6 s, 9 bands),
+`npm run check` (no em dashes, no remote fetches in 36 built files).
+
+**Not seen by eye and still open:** `src/arena/` does not read a
+`?level=local:` key yet (that is ED-01's side), so Play saves the level
+and lands on the Pit with "No level called local:...". The sky image
+upload was not exercised in the browser. What was checked in headless
+Chromium: the fly camera and placing, the inspector for a hazard (look,
+damage, slow, hurts Foamers, starts hidden), the sky panel, the Open
+dialog's two lists, a broken import refused with three errors while the
+old level stayed, a good import loaded and named, the export file name
+following the level's name, and Play's single navigation to
+`arena.html?level=local%3A...` with no console errors.
+
+Known gap worth a decision: `src/editor/store.ts` was used as it is, so
+nothing in ED-02 reads a key back by name for the arena page; the
+`?level=local:` half needs the arena page to do it.
+### 2026-11-13: ED-07a trigger runner and key rules (Qwen 3.8-27B via Pi, `tasks/ED-07A.md`)
+
+- `src/level/triggers.ts`: `TriggerRunner` fires a level's when/do
+  triggers (start, enter zone, `killed`, pressed, taken, `after`) through
+  a `TriggerHost` the page provides. Spawn dos count their calls, round
+  robin over their `at` list, `holdSeconds` apart, the first one at once;
+  kill counting covers named spawns (each Foamer one makes); a trigger
+  fires once unless it says `repeat`, and a kill or a press before it can
+  fire still counts. Reset puts it back to the start state.
+- `src/level/keys.ts`: `KeyRing` holds red, blue, yellow in that order
+  and `doorOpensFor` decides a door (none always, trigger never, colour
+  when held).
+- 18 tests in `tests/level/`, including the usual arena end to end and
+  reset. The message default (3 s) lives in `data/editor.json`
+  `triggerDefaults`, not in the code.
+- No Three.js and no DOM in either file; the editor page is wired by its
+  own card.
+- Not checked by eye: no browser in this environment; the headless
+  preflight (tsc, 1195 tests, build) and the em dash check all pass.
 
 ### 2026-11-13: level editor plan drafted (Claude Opus 5.5)
 

@@ -1,0 +1,67 @@
+{
+  "_note": "ED-07b: a test level for the editor's triggers and keys, not a level to ship. The player starts in the south. Walking north into the arena zone shows a blocker wall behind them and spawns three Slowmers at two spawn points, a second wave of two follows once the first is all down, and when all five are down the blocker drops, a message shows and the side door opens. A red key lies in the arena's north east corner; the exit door is locked to red. Metres, Y up, -z is north, positions are box centres.",
+  "meta": {
+    "id": "ed-07",
+    "name": "[Paul]",
+    "act": 1,
+    "targetSeconds": 120,
+    "accent": "#ffd23a"
+  },
+  "shell": [],
+  "prims": [
+    { "id": "floor", "shape": "box", "pos": [0, -0.5, 0], "size": [24, 1, 36], "colour": "#6f6788", "behaviour": "solid" },
+    { "id": "wall-w", "shape": "box", "pos": [-12.25, 2, 0], "size": [0.5, 4, 36], "colour": "#3a3550", "behaviour": "solid" },
+    { "id": "wall-e", "shape": "box", "pos": [12.25, 2, 0], "size": [0.5, 4, 36], "colour": "#3a3550", "behaviour": "solid" },
+    { "id": "wall-s", "shape": "box", "pos": [0, 2, 18.25], "size": [25, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+    { "id": "wall-n", "shape": "box", "pos": [0, 2, -18.25], "size": [25, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+    { "id": "exit-wall-l", "shape": "box", "pos": [-7, 2, -12], "size": [10, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+    { "id": "exit-wall-r", "shape": "box", "pos": [7, 2, -12], "size": [10, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+    { "id": "blocker", "shape": "box", "pos": [0, 1.5, 7], "size": [24, 3, 0.5], "colour": "#ff4fa3", "behaviour": "solid", "hidden": true }
+  ],
+  "spawnPoints": [
+    { "id": "sp-west", "pos": [-7, 0, -6], "facing": [0, 1, 0] },
+    { "id": "sp-east", "pos": [7, 0, -6], "facing": [0, 1, 0] }
+  ],
+  "zones": [
+    { "id": "arena-zone", "pos": [0, 1, 1], "size": [24, 2, 10] }
+  ],
+  "doors": [
+    { "id": "side-door", "pos": [8, 1.5, 12], "size": [3, 3, 0.5], "lock": "trigger", "colour": "#2ec4ff" },
+    { "id": "exit-door", "pos": [0, 1.5, -12], "size": [4, 3, 0.5], "lock": "red" }
+  ],
+  "pickups": [
+    { "id": "red-key", "type": "key", "key": "red", "pos": [9, 0, -9] }
+  ],
+  "triggers": [
+    {
+      "id": "lock",
+      "when": { "kind": "enter", "zone": "arena-zone" },
+      "do": [
+        { "kind": "show", "ids": ["blocker"] },
+        { "kind": "message", "text": "[Paul]", "seconds": 2 },
+        { "kind": "spawn", "id": "wave-1", "foamer": "F01", "count": 3, "at": ["sp-west", "sp-east"], "holdSeconds": 0.5 }
+      ]
+    },
+    {
+      "id": "wave-2",
+      "when": { "kind": "killed", "ids": ["wave-1"] },
+      "do": [
+        { "kind": "spawn", "id": "wave-2-spawn", "foamer": "F01", "count": 2, "at": ["sp-west", "sp-east"] }
+      ]
+    },
+    {
+      "id": "clear",
+      "when": { "kind": "killed", "ids": ["wave-1", "wave-2-spawn"] },
+      "do": [
+        { "kind": "hide", "ids": ["blocker"] },
+        { "kind": "message", "text": "[Paul]", "seconds": 2 },
+        { "kind": "open", "door": "side-door" },
+        { "kind": "checkpoint", "pos": [0, 0, -4], "yaw": 0 }
+      ]
+    }
+  ],
+  "playerStart": { "pos": [0, 0, 14], "yaw": 0 },
+  "exit": { "pos": [0, 0.5, -15], "size": [2, 1, 2] },
+  "sky": { "kind": "gradient", "top": "#3a6ff0", "horizon": "#bfe3ff", "bottom": "#3a3550" },
+  "start": { "blasters": ["B01", "B02"], "health": 100 }
+}

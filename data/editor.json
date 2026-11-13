@@ -1,5 +1,5 @@
 {
-  "_note": "ED-00: the level editor's hard caps and defaults (design/EDITOR.md section 6). The validator reads the caps, so a level over one does not load. grid is metres, rotateStep degrees.",
+  "_note": "ED-00, ED-02, ED-05, ED-07a, ED-07b. The level editor's own tuning numbers. limits: caps the validator enforces on a level file (prims, placed Foamers, triggers, level size in metres, sky image width and height in pixels, a stairs box's most steps), so a level over one does not load. grid: metres a position or a size snaps to. rotateStep: degrees a rotation snaps to. palette: the nine colours the inspector offers. sky: a new level's sky. triggerDefaults: the play-time defaults the level file may omit. keys: key pickups and key doors in play (collectRadius: metres from the feet a key is taken; doorReach: metres from a key door's centre at which the held key opens it; size: the key's length; colours: the key and its door, used by the editor's markers too). markers: how each kind of placed thing is drawn in the editor and the colour a pickup takes when the level file says nothing. start: the loadout a new level starts with, in data/blasters.json and data/melee.json ids.",
   "limits": {
     "prims": 2000,
     "foamers": 150,
@@ -12,5 +12,30 @@
   "grid": 0.5,
   "rotateStep": 15,
   "palette": ["#ff7a1a", "#2ec4ff", "#b6ff3b", "#ff4fa3", "#ffd23a", "#8a5cff", "#f4ecdc", "#6f6788", "#3a3550"],
-  "sky": { "kind": "gradient", "top": "#3a6ff0", "horizon": "#bfe3ff", "bottom": "#3a3550" }
+  "sky": { "kind": "gradient", "top": "#3a6ff0", "horizon": "#bfe3ff", "bottom": "#3a3550" },
+  "triggerDefaults": {
+    "messageSeconds": 3
+  },
+  "keys": {
+    "collectRadius": 1,
+    "doorReach": 2.5,
+    "size": 0.5,
+    "turnRate": 1.2,
+    "colours": { "red": "#ff3b3b", "blue": "#2e7dff", "yellow": "#ffd23a" }
+  },
+  "markers": {
+    "pickupColour": "#fff6e8",
+    "healthPickupColour": "#ff9b7a",
+    "keyColours": { "red": "#ff3b3b", "blue": "#2e7dff", "yellow": "#ffd23a" },
+    "doorColour": "#c89a5b",
+    "exitColour": "#b6ff3b",
+    "startColour": "#ff7a1a",
+    "spawnColour": "#9b5cff",
+    "zoneColour": "#2ec4ff",
+    "markerOpacity": 0.35,
+    "pickupSize": 0.4,
+    "noseLength": 0.6,
+    "ringRadius": 1
+  },
+  "start": { "blasters": ["B01"], "melee": [], "health": 100 }
 }

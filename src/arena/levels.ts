@@ -11,6 +11,7 @@ import ringJson from "../../data/levels/1-4-ring.json";
 import twoJson from "../../data/levels/1-2.json";
 import threeJson from "../../data/levels/1-3.json";
 import edOneJson from "../../data/levels/ed-01.json";
+import edSevenJson from "../../data/levels/ed-07.json";
 
 // GAME-10b: the arena page's level choice. `arena.html?level=1-4-ring` loads
 // the Ring; anything else, or nothing, loads the Pit (the card: the Pit
@@ -44,6 +45,7 @@ export const ARENA_LEVELS: Record<string, Level> = {
   "env-04": envFourJson as unknown as Level,
   "env-05": envFiveJson as unknown as Level,
   "ed-01": edOneJson as unknown as Level,
+  "ed-07": edSevenJson as unknown as Level,
 };
 
 /** ED-01: the level the browser store handed over, if `?level=local:<key>`

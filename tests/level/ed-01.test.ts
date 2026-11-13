@@ -17,7 +17,8 @@ describe("the ED-01 test level", () => {
     expect([...shapes].sort()).toEqual(["box", "cylinder", "ramp", "stairs", "wedge"]);
     expect(level.prims!.filter((p) => p.behaviour === "decor").length).toBe(3);
     expect(level.prims!.filter((p) => p.hidden).map((p) => p.id)).toEqual(["blocker"]);
-    expect(level.prims!.filter((p) => p.hazard !== undefined).length).toBe(0);
+    // ED-03 adds one lava pool.
+    expect(level.prims!.filter((p) => p.hazard !== undefined).map((p) => p.id)).toEqual(["lava-pool"]);
     expect(level.foamers!.map((f) => f.wake ?? "sight")).toEqual(["sight", "trigger"]);
     expect(level.doors!.map((d) => d.lock)).toEqual(["none", "trigger"]);
     expect(level.sky!.kind).toBe("gradient");
