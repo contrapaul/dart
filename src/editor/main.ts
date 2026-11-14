@@ -10,7 +10,7 @@ import {
   buildStartFields, buildZoneFields, numberInput, selectField, selectKind,
 } from "./inspector-parts";
 import { EXIT_ID, START_ID } from "./markers";
-import { AMMO_TYPES, RIGS, dragPatch, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
+import { AMMO_TYPES, MARKERS, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
@@ -23,6 +23,7 @@ import { openChoice } from "./open";
 import { builtInCopy } from "./builtin";
 import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
+import { ICONS, type IconName } from "./icons";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -362,117 +363,134 @@ function pick(id: string, add = false) {
   buildInspector();
 }
 
+/** One toolbar button: an icon, a name in its tooltip, and the colour of
+ *  the thing it makes, so the button looks like what lands in the view. */
+function toolButton(icon: IconName, name: string, colour: string | null, on: boolean, act: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "tool" + (on ? " armed" : "");
+  button.title = name;
+  button.setAttribute("aria-label", name);
+  button.setAttribute("aria-pressed", String(on));
+  button.innerHTML = ICONS[icon];
+  if (colour) button.style.color = colour;
+  button.addEventListener("click", act);
+  return button;
+}
+
+function toolGroup(host: HTMLElement, title: string): HTMLElement {
+  const group = document.createElement("div");
+  group.className = "tools";
+  const heading = document.createElement("span");
+  heading.className = "tools-title";
+  heading.textContent = title;
+  group.append(heading);
+  host.append(group);
+  return group;
+}
+
+/** The colour a part's toolbar button is drawn in: its marker's colour. */
+function partColour(kind: PartKind): string {
+  switch (kind) {
+    case "foamers": return foamerColour(armedRig);
+    case "pickups": return pickupColour({ type: pickupType } as Pickup);
+    case "doors": return MARKERS.doorColour;
+    case "spawnPoints": return MARKERS.spawnColour;
+    case "zones": return MARKERS.zoneColour;
+  }
+}
+
+/** Arms one shape or part, or disarms it when it is already armed, and says
+ *  in the status line what a click will do. */
+function arm(shape: PrimShape | null, part: PartKind | null) {
+  armed = shape;
+  armedPart = part;
+  const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
+  status.textContent = name ? `Click the view to place a ${name.toLowerCase()}. Esc to stop.` : "";
+  buildPalette();
+}
+
+/** The toolbar down the left: shapes, things, logic and the handle modes.
+ *  The armed button is lit, and a Foamer or a pickup shows its type picker
+ *  beside it. */
 function buildPalette() {
   const host = $("palette");
   host.replaceChildren();
-  const label = document.createElement("span");
-  label.textContent = "Place:";
-  host.append(label);
+  const shapes = toolGroup(host, "Shapes");
   for (const { shape, label: name } of SHAPES) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "shape" + (armed === shape ? " armed" : "");
-    button.textContent = name;
-    button.addEventListener("click", () => {
-      armed = armed === shape ? null : shape;
-      armedPart = null;
-      buildPalette();
-    });
-    host.append(button);
+    shapes.append(toolButton(shape, name, placeColour, armed === shape,
+      () => arm(armed === shape ? null : shape, null)));
   }
   // ED-05: the other kinds. A prim armed and a part armed are exclusive, so
   // a click in the view is never ambiguous.
+  const things = toolGroup(host, "Things");
   for (const { kind, name } of PART_BUTTONS) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "shape" + (armedPart === kind ? " armed" : "");
-    button.textContent = name;
-    button.addEventListener("click", () => {
-      armedPart = armedPart === kind ? null : kind;
-      armed = null;
-      buildPalette();
-    });
-    host.append(button);
+    const on = armedPart === kind;
+    const button = toolButton(kind, name, partColour(kind), on, () => arm(null, on ? null : kind));
+    const options = on ? partOptions(kind) : null;
+    if (options) {
+      const wrap = document.createElement("div");
+      wrap.className = "tool-wrap";
+      wrap.append(button, options);
+      things.append(wrap);
+    } else things.append(button);
   }
+  const logic = toolGroup(host, "Logic");
   // ED-08: a trigger is not placed by a click, so its button adds one at
   // once and selects it, ready for the inspector.
-  const addTrigger = document.createElement("button");
-  addTrigger.type = "button";
-  addTrigger.textContent = TRIGGER_BUTTON;
-  addTrigger.addEventListener("click", () => {
+  logic.append(toolButton("trigger", TRIGGER_BUTTON, null, false, () => {
     if (!roomForTriggers(1)) return;
     const made = newTrigger(doc.nextId("trigger"));
     doc.add("triggers", made);
     pick(made.id);
-  });
-  host.append(addTrigger);
-
+  }));
   // ED-08 stage 4: the Arena button asks a few questions once and writes the
   // three or more triggers the usual fight takes. It needs a zone to start
   // from, so with none selected it says so rather than guessing one.
-  const arenaBtn = document.createElement("button");
-  arenaBtn.type = "button";
-  arenaBtn.textContent = ARENA_BUTTON;
-  arenaBtn.addEventListener("click", () => {
+  logic.append(toolButton("arena", `${ARENA_BUTTON} (select a zone first)`, null, false, () => {
     const zone = [...selected].find((id) => doc.kindOf(id) === "zones");
     if (!zone) {
       status.textContent = "Select a zone first, then build an arena in it.";
       return;
     }
     arenaDialog(zone);
-  });
-  host.append(arenaBtn);
-  if (armedPart === "pickups") {
-    const select = document.createElement("select");
+  }));
+  const handles = toolGroup(host, "Handles");
+  for (const [key, name] of [["translate", "Move (W)"], ["rotate", "Rotate (E)"], ["scale", "Scale (R)"]] as const) {
+    handles.append(toolButton(key, name, null, view.mode === key, () => {
+      view.setMode(key);
+      selectInView();
+      buildPalette();
+    }));
+  }
+}
+
+/** The type picker shown beside an armed Foamer or pickup button. */
+function partOptions(kind: PartKind): HTMLElement | null {
+  if (kind !== "pickups" && kind !== "foamers") return null;
+  const select = document.createElement("select");
+  select.className = "tool-options";
+  if (kind === "pickups") {
     select.title = "Pickup type";
-    for (const ammo of AMMO_TYPES) {
-      const option = document.createElement("option");
-      option.value = ammo.type;
-      option.textContent = ammo.label;
-      select.append(option);
-    }
+    for (const ammo of AMMO_TYPES) select.append(new Option(ammo.label, ammo.type));
     for (const [value, text] of [["health", "Health"], ["blaster", "Blaster"], ["melee", "Hand weapon"], ["key", "Key"]] as const) {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = text;
-      select.append(option);
+      select.append(new Option(text, value));
     }
     select.value = pickupType;
     select.addEventListener("change", () => {
       pickupType = select.value as Pickup["type"];
+      buildPalette();
     });
-    host.append(select);
-  }
-  if (armedPart === "foamers") {
-    const select = document.createElement("select");
+  } else {
     select.title = "Foamer type";
-    for (const rig of RIGS) {
-      const option = document.createElement("option");
-      option.value = rig.id;
-      option.textContent = `${rig.id} ${rig.label}`;
-      select.append(option);
-    }
+    for (const rig of RIGS) select.append(new Option(`${rig.id} ${rig.label}`, rig.id));
     select.value = armedRig;
     select.addEventListener("change", () => {
       armedRig = select.value;
-    });
-    host.append(select);
-  }
-  const mode = document.createElement("span");
-  mode.textContent = "\u00a0\u00a0";
-  host.append(mode);
-  for (const [key, name] of [["translate", "Move W"], ["rotate", "Rotate E"], ["scale", "Scale R"]] as const) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = view.mode === key ? "on" : "";
-    button.textContent = name;
-    button.addEventListener("click", () => {
-      view.setMode(key);
-      selectInView();
       buildPalette();
     });
-    host.append(button);
   }
+  return select;
 }
 
 /** The inspector for what is selected, or the level's sky and name when
@@ -608,30 +626,16 @@ function buildPrimInspector(host: HTMLElement) {
   });
 }
 
-// The view: right mouse looks, a left click places or selects.
+// The view: the camera's own mouse controls are in src/editor/camera.ts
+// (wheel, middle and right drags, Alt+left). A plain left click places or
+// selects.
 const canvas = $<HTMLCanvasElement>("view");
-canvas.addEventListener("contextmenu", (e) => e.preventDefault());
-canvas.addEventListener("mousedown", (e) => {
-  if (typing(e.target)) return;
-  if (e.button === 2) {
-    view.setLooking(true);
-    canvas.requestPointerLock();
-  }
-});
-document.addEventListener("pointerlockchange", () => {
-  view.setLooking(document.pointerLockElement === canvas);
-  if (!view.isLooking) view.clearKeys();
-});
-document.addEventListener("mousemove", (e) => {
-  if (!view.isLooking) return;
-  const cam = view.camera;
-  const euler = new THREE.Euler().setFromQuaternion(cam.quaternion, "YXZ");
-  euler.y -= e.movementX * 0.0025;
-  euler.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, euler.x - e.movementY * 0.0025));
-  cam.quaternion.setFromEuler(euler);
-});
 canvas.addEventListener("click", (e) => {
-  if (view.isLooking || view.dragging || typing(e.target)) return;
+  if (view.nav.swallowClick) {
+    view.nav.swallowClick = false;
+    return;
+  }
+  if (e.altKey || view.nav.busy || view.dragging || typing(e.target)) return;
   const rect = canvas.getBoundingClientRect();
   const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -833,7 +837,7 @@ window.addEventListener("keydown", (e) => {
   }
   if (meta) return;
   const codes = ["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight"];
-  if (codes.includes(e.code)) view.keyDown(e.code);
+  if (codes.includes(e.code)) view.nav.keyDown(e.code);
   if (e.code === "KeyF") view.frame([...selected]);
   // ED-09 stage 1: P plays from the level's start, Shift+P from the camera.
   if (e.code === "KeyP" && !view.isLooking) {
@@ -859,6 +863,7 @@ window.addEventListener("keydown", (e) => {
       buildInspector();
     }
   }
+  if (e.code === "Escape" && !linkKey && (armed || armedPart)) arm(null, null);
   if (e.code === "Escape" && linkKey) {
     endLink();
     status.textContent = "";
@@ -874,7 +879,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keyup", (e) => {
-  view.keyUp(e.code);
+  view.nav.keyUp(e.code);
 });
 
 function setMode(mode: TransformMode) {

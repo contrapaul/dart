@@ -6,11 +6,12 @@ import type { Level, Prim, Sky, Vec3 } from "../level/format";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { material, materialId } from "../voxel/materials";
 import { ENTRY_KINDS, GRID, ROTATE_STEP } from "./doc";
+import { EditorCamera } from "./camera";
 import { EXIT_ID, START_ID, markerFor, type Marker } from "./markers";
 
 // ED-02 stage 2: everything the editor draws and the camera that flies over
 // it. The page (src/editor/main.ts) owns the document and the panels; this
-// module owns the Three.js scene, the prim meshes, the grid, the sky and the
+// module owns the Three.js scene, the prim meshes, the sky and the
 // transform handles, and turns a click into a world point.
 
 export type TransformMode = "translate" | "rotate" | "scale";
@@ -56,18 +57,6 @@ function skyMesh(sky: Sky | undefined): THREE.Mesh {
   }
   geo.setAttribute("color", new THREE.BufferAttribute(colours, 3));
   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false }));
-}
-
-/** The floor grid: lines every `grid` metres, a brighter line every ten. */
-function gridLines(size: number, grid: number): THREE.LineSegments {
-  const half = size / 2;
-  const points: number[] = [];
-  for (let v = -half; v <= half + 1e-6; v += grid) {
-    points.push(-half, 0, v, half, 0, v, v, 0, -half, v, 0, half);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x3a3550 }));
 }
 
 /** A voxel material's colour by name, or the greybox colour. */
@@ -142,7 +131,6 @@ export class EditorView {
   private prims = new THREE.Group();
   private shell = new THREE.Group();
   private sky: THREE.Mesh | null = null;
-  private grid: THREE.LineSegments;
   private outlineBox = new THREE.Box3();
   private outline: THREE.Box3Helper;
   /** ED-08: one box round each thing a selected trigger names. */
@@ -157,8 +145,8 @@ export class EditorView {
    *  back into the prims when the drag ends. */
   private proxy = new THREE.Object3D();
   private raycaster = new THREE.Raycaster();
-  private keys = new Set<string>();
-  private looking = false;
+  /** The camera's mouse and fly controls (src/editor/camera.ts). */
+  readonly nav: EditorCamera;
   private clock = new THREE.Clock();
   private shownLevel: Level | null = null;
   /** ED-08 stage 5: when on, prims that start hidden are not drawn at all, so
@@ -185,8 +173,6 @@ export class EditorView {
     sun.position.set(6, 12, 4);
     this.scene.add(sun);
 
-    this.grid = gridLines(128, GRID);
-    this.scene.add(this.grid);
     this.scene.add(this.shell);
     this.scene.add(this.prims);
     this.scene.add(this.markers);
@@ -213,6 +199,8 @@ export class EditorView {
     this.controls.addEventListener("dragging-changed", (e) => {
       if (!e.value) this.dragEndedAt = performance.now();
     });
+
+    this.nav = new EditorCamera(this.camera, canvas, (x, y) => this.pick(x, y)?.point ?? null);
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -426,7 +414,7 @@ export class EditorView {
 
   /** ED-09: where the camera is, dropped to the floor under it, for Shift+P.
    *  The floor is the first prim or shell straight down from the camera, or
-   *  the grid plane at y = 0 when there is nothing under it. The yaw is the
+   *  the ground plane at y = 0 when there is nothing under it. The yaw is the
    *  camera's own, so the run begins facing the way the editor was looking. */
   cameraSpot(): { pos: Vec3; yaw: number } {
     const from = this.camera.position.clone();
@@ -440,7 +428,7 @@ export class EditorView {
   }
 
   /** Where a click on the canvas lands on the world: the first prim or the
-   *  shell under the cursor, else the grid plane at y = 0. */
+   *  shell under the cursor, else the ground plane at y = 0. */
   pick(ndcX: number, ndcY: number): { point: THREE.Vector3; normal: THREE.Vector3; id: string | null } | null {
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
@@ -492,47 +480,12 @@ export class EditorView {
   private dragEndedAt = -Infinity;
 
   get isLooking(): boolean {
-    return this.looking;
-  }
-
-  setLooking(on: boolean) {
-    this.looking = on;
-  }
-
-  /** The keys down for the fly camera (WASD, Q/E, Shift). */
-  keyDown(code: string) {
-    this.keys.add(code);
-  }
-
-  keyUp(code: string) {
-    this.keys.delete(code);
-  }
-
-  clearKeys() {
-    this.keys.clear();
+    return this.nav.looking;
   }
 
   private tick() {
-    const dt = Math.min(0.05, this.clock.getDelta());
-    if (this.looking) {
-      const speed = (this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? 26 : 9) * dt;
-      const forward = new THREE.Vector3();
-      this.camera.getWorldDirection(forward);
-      const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-      const move = new THREE.Vector3();
-      if (this.keys.has("KeyW")) move.add(forward);
-      if (this.keys.has("KeyS")) move.sub(forward);
-      if (this.keys.has("KeyD")) move.add(right);
-      if (this.keys.has("KeyA")) move.sub(right);
-      if (this.keys.has("KeyE")) move.y += 1;
-      if (this.keys.has("KeyQ")) move.y -= 1;
-      if (move.lengthSq() > 0) this.camera.position.addScaledVector(move.normalize(), speed);
-    }
+    this.nav.update(Math.min(0.05, this.clock.getDelta()));
     if (this.sky) this.sky.position.copy(this.camera.position);
-    this.grid.position.set(
-      Math.round(this.camera.position.x / GRID) * GRID, 0,
-      Math.round(this.camera.position.z / GRID) * GRID,
-    );
     this.renderer.render(this.scene, this.camera);
   }
 }

@@ -14,7 +14,10 @@ export const HELP: HelpSection[] = [
   {
     title: "Keys",
     rows: [
-      ["Right mouse + WASD, Q/E", "Fly the camera. Hold right mouse to look."],
+      ["Mouse wheel", "Zoom toward the point under the cursor."],
+      ["Middle mouse drag", "Pan the camera."],
+      ["Right mouse drag", "Look round. Hold it and WASD, Q/E fly, Shift faster."],
+      ["Alt + left drag", "Orbit round the point under the cursor."],
       ["F", "Frame what is selected."],
       ["Click, Shift+click", "Select, add to the selection."],
       ["W, E, R", "Move, rotate, scale handles."],
@@ -29,9 +32,9 @@ export const HELP: HelpSection[] = [
   {
     title: "Placing things",
     rows: [
-      ["Palette", "Pick a shape or a thing, then click the view. It lands on the surface under the cursor."],
+      ["Tool bar", "The icons on the left. Pick a shape or a thing, then click the view. It lands on the surface under the cursor. Esc stops placing."],
       ["Inspector", "The right panel edits what is selected: position, size, colour, behaviour."],
-      ["Outliner", "The left panel lists everything. Click a row to select it."],
+      ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
     ],
     text: [
       "A prim is set to solid, breakable, hazard or decor in the inspector.",

@@ -93,6 +93,32 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-14: editor camera, no grid, tool bar (Claude Opus 5.5)
+
+- Asked: the camera was clunky (no wheel zoom, middle mouse did nothing,
+  right mouse took the cursor with pointer lock), the grid lines flickered
+  against the floor, and the place buttons hid in the footer.
+- Built: `src/editor/camera.ts`. Wheel zooms toward the point under the
+  cursor, middle drag pans (the grabbed point stays under the cursor),
+  right drag looks round with WASD, Q/E flying while held, Alt + left drag
+  orbits round the point under the cursor. No pointer lock. Numbers in
+  `data/editor.json` `camera`. Maths tested in `tests/editor/camera.test.ts`.
+- The floor grid is gone (a new level starts with a floor box; snapping is
+  unchanged, G still toggles it).
+- The footer palette is now an icon tool bar down the left edge
+  (`src/editor/icons.ts`, line drawings in code): Shapes, Things, Logic,
+  Handles. Each button is drawn in the colour of what it places, the armed
+  one is lit, the status line says what a click will do, Esc stops placing,
+  and an armed Foamer or pickup shows its type picker beside the button.
+- Seen in the browser: wheel zoom, middle pan, Alt orbit (and the click
+  after it does not select), right drag with no pointer lock, arming and
+  placing a Foamer, Esc disarming (a dispatched key; the browser pane ate
+  the real Esc). Check and smoke green.
+- Not checked: a real mouse's middle button and wheel on Paul's machine,
+  trackpad pinch, the orbit's up and down direction feeling right.
+- Next: Paul says placing and moving Foamers and shapes is also clunky;
+  asked which parts before changing it.
+
 ### 2026-11-13: ED-09 review, merged (Claude Opus 5.5): play from the editor
 
 - DeepSeek built it. Seen in the browser: Open lists the built-in levels;

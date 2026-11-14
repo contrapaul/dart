@@ -1,7 +1,7 @@
 /* ED-02: the level editor page's own panels, on top of src/style.css. The
    3D view fills the window and the four panels sit over it (design/EDITOR.md
-   section 4): top bar, outliner on the left, inspector on the right, palette
-   along the bottom. Desktop, mouse and keyboard. */
+   section 4): top bar, the tool bar and the outliner on the left, the
+   inspector on the right. Desktop, mouse and keyboard. */
 
 #editor-ui {
   position: fixed;
@@ -92,9 +92,9 @@
 
 #outliner {
   position: absolute;
-  left: 0;
+  left: 3.4rem;
   top: 2.4rem;
-  bottom: 3.6rem;
+  bottom: 0;
   width: 15rem;
   overflow: auto;
   background: rgba(20, 12, 40, 0.86);
@@ -162,7 +162,7 @@
   position: absolute;
   right: 0;
   top: 2.4rem;
-  bottom: 3.6rem;
+  bottom: 0;
   width: 17rem;
   overflow: auto;
   background: rgba(20, 12, 40, 0.86);
@@ -234,24 +234,78 @@
   font-size: 11px;
 }
 
+/* The tool bar down the left edge: icon buttons in groups. A button is
+   drawn in the colour of what it places; the armed one is lit. */
 #palette {
   position: absolute;
   left: 0;
-  right: 0;
+  top: 2.4rem;
   bottom: 0;
+  width: 3.4rem;
+  box-sizing: border-box;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.6rem;
-  background: rgba(20, 12, 40, 0.9);
-  border-top: 1px solid rgba(255, 210, 63, 0.35);
-  font-size: 13px;
-  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  overflow-y: auto;
+  overflow-x: visible;
+  background: rgba(20, 12, 40, 0.94);
+  border-right: 1px solid rgba(255, 210, 63, 0.35);
 }
 
-#palette .shape.armed {
+#palette .tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#palette .tools-title {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.55;
+}
+
+#palette .tool {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#palette .tool:hover {
   border-color: #ffd23f;
-  background: rgba(255, 210, 63, 0.25);
+}
+
+#palette .tool.armed {
+  border-color: #ffd23f;
+  background: rgba(255, 210, 63, 0.28);
+  box-shadow: 0 0 0 2px rgba(255, 210, 63, 0.35);
+}
+
+#palette .tool-wrap {
+  position: relative;
+}
+
+/* The type picker of an armed Foamer or pickup, out to the right of the bar
+   over the outliner, so the bar keeps its width. */
+#palette .tool-options {
+  position: fixed;
+  left: 3.6rem;
+  margin-top: -2.2rem;
+  z-index: 2;
+  background: #140c28;
+  color: #fff6e8;
+  border: 1px solid #ffd23f;
+  border-radius: 4px;
+  padding: 0.3em 0.4em;
+  font: inherit;
+  font-size: 13px;
 }
 
 button {

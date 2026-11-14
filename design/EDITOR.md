@@ -87,14 +87,14 @@ key, and the HUD shows the keys held. Keys are lost at the level exit.
 
 ## 4. The editor screen
 
-- **Centre**: the 3D view with a floor grid.
+- **Centre**: the 3D view (no floor grid: a new level starts with a floor box, and the grid lines fought with it).
 - **Left**: the outliner, a list of everything in the level grouped as
   Geometry, Hazards, Foamers, Pickups, Logic. Click to select, eye to hide
   while editing, lock to stop clicks.
 - **Right**: the inspector for what is selected: position, size,
   rotation, colour, behaviour (solid, breakable, hazard, decor), the
   hazard's damage, a trigger's when and do.
-- **Bottom**: the palette of things to place.
+- **Left edge**: the tool bar, icon buttons for the shapes, the things to place, triggers and the handle modes, each drawn in the colour of what it places.
 - **Top**: New, Open, Save, Export, Import, Undo, Redo, Play, the problems
   count.
 
@@ -103,7 +103,10 @@ Roblox Studio), so nothing is invented:
 
 | Key | Does |
 |---|---|
-| Hold right mouse + WASD, Q/E | Fly the camera |
+| Mouse wheel | Zoom toward the point under the cursor |
+| Middle mouse drag | Pan |
+| Right mouse drag, + WASD, Q/E | Look round, and fly while held (no pointer lock) |
+| Alt + left drag | Orbit round the point under the cursor |
 | F | Frame the selection |
 | Click, Shift+click | Select, add to the selection |
 | W, E, R | Move, rotate, scale handles (three.js `TransformControls`, bundled) |
@@ -112,7 +115,7 @@ Roblox Studio), so nothing is invented:
 | Ctrl+Z, Ctrl+Y | Undo, redo (every change goes through one command list) |
 | P | Play from the start; Shift+P plays from the camera |
 
-Placing: pick a thing in the palette, click in the world, and it lands on
+Placing: pick a thing in the tool bar, click in the world, and it lands on
 the surface under the cursor, snapped to the grid.
 
 Colour: a colour picker, with the game's foam palette as swatches and the
