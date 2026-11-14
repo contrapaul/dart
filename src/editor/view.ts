@@ -144,6 +144,12 @@ export class EditorView {
   /** The proxy the handles move; its position, rotation and scale are read
    *  back into the prims when the drag ends. */
   private proxy = new THREE.Object3D();
+  /** The selected meshes and markers, and where each one and the proxy were
+   *  when a drag began, so they follow the drag live (`follow`). */
+  private selectedObjects: THREE.Object3D[] = [];
+  private followStart: { proxy: THREE.Object3D; objects: { pos: THREE.Vector3; quat: THREE.Quaternion; scale: THREE.Vector3 }[] } | null = null;
+  /** The see-through copy of what the armed tool will place. */
+  private ghost = new THREE.Group();
   private raycaster = new THREE.Raycaster();
   /** The camera's mouse and fly controls (src/editor/camera.ts). */
   readonly nav: EditorCamera;
@@ -186,19 +192,25 @@ export class EditorView {
       new THREE.MeshBasicMaterial({ visible: false }),
     ));
     this.scene.add(this.proxy);
+    this.scene.add(this.ghost);
 
     this.controls = new TransformControls(this.camera, canvas);
     this.controls.setTranslationSnap(GRID);
     this.controls.setRotationSnap(ROTATE_STEP * DEG);
     this.controls.setScaleSnap(GRID);
+    this.controls.setSize(editorData.camera.handleSize);
     this.controls.enabled = false;
     this.scene.add(this.controls.getHelper());
     // Review fix: the click that ends a handle drag must not reselect what
     // is under the cursor, and the browser's click comes after the drag
     // has already ended.
     this.controls.addEventListener("dragging-changed", (e) => {
-      if (!e.value) this.dragEndedAt = performance.now();
+      if (e.value) this.beginFollow();
+      else this.dragEndedAt = performance.now();
     });
+    // The selection moves with the handles while they are dragged, not only
+    // when the drag ends.
+    this.controls.addEventListener("objectChange", () => this.follow());
 
     this.nav = new EditorCamera(this.camera, canvas, (x, y) => this.pick(x, y)?.point ?? null);
 
@@ -325,6 +337,8 @@ export class EditorView {
   select(ids: string[], mode: TransformMode) {
     const objects = ids.map((id) => this.meshes.get(id) ?? this.markerData.get(id)?.object)
       .filter((m): m is THREE.Object3D => !!m);
+    this.selectedObjects = objects;
+    this.followStart = null;
     if (!objects.length) {
       this.outline.visible = false;
       this.controls.enabled = false;
@@ -429,14 +443,18 @@ export class EditorView {
 
   /** Where a click on the canvas lands on the world: the first prim or the
    *  shell under the cursor, else the ground plane at y = 0. */
-  pick(ndcX: number, ndcY: number): { point: THREE.Vector3; normal: THREE.Vector3; id: string | null } | null {
+  pick(ndcX: number, ndcY: number, skip?: Set<string>): { point: THREE.Vector3; normal: THREE.Vector3; id: string | null } | null {
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
     const hits = this.raycaster.intersectObjects(targets, false);
-    const hit = hits.find((h) => this.meshes.get(h.object.userData.id as string)?.visible !== false);
+    const hit = hits.find((h) => {
+      const id = h.object.userData.id as string | undefined;
+      if (id && skip?.has(id)) return false;
+      return this.meshes.get(id ?? "")?.visible !== false;
+    });
     // ED-05: a marker is picked in front of the level behind it. A marker is
     // a group or a mesh, so the walk is recursive; its root carries the id.
-    const markerHit = this.raycaster.intersectObjects([...this.markers.children], true).find((h) => {
+    const markerHit = skip ? undefined : this.raycaster.intersectObjects([...this.markers.children], true).find((h) => {
       for (let node: THREE.Object3D | null = h.object; node; node = node.parent) {
         if (node.parent === this.markers) return true;
       }
@@ -460,6 +478,101 @@ export class EditorView {
     const point = new THREE.Vector3();
     if (!this.raycaster.ray.intersectPlane(plane, point)) return null;
     return { point, normal: new THREE.Vector3(0, 1, 0), id: null };
+  }
+
+  /** Notes where the selection and the proxy are, at the start of a drag of
+   *  the handles or of the things themselves. */
+  beginFollow() {
+    const copy = new THREE.Object3D();
+    copy.position.copy(this.proxy.position);
+    copy.quaternion.copy(this.proxy.quaternion);
+    copy.scale.copy(this.proxy.scale);
+    this.followStart = {
+      proxy: copy,
+      objects: this.selectedObjects.map((o) => ({ pos: o.position.clone(), quat: o.quaternion.clone(), scale: o.scale.clone() })),
+    };
+  }
+
+  /** Moves, turns or stretches the selected meshes by what the proxy has
+   *  done since `beginFollow`. The document changes when the drag ends; this
+   *  is only what is drawn meanwhile. */
+  follow() {
+    const start = this.followStart;
+    if (!start) return;
+    const move = this.proxy.position.clone().sub(start.proxy.position);
+    const turn = this.proxy.quaternion.clone().multiply(start.proxy.quaternion.clone().invert());
+    const ratio = new THREE.Vector3(
+      this.proxy.scale.x / (start.proxy.scale.x || 1),
+      this.proxy.scale.y / (start.proxy.scale.y || 1),
+      this.proxy.scale.z / (start.proxy.scale.z || 1),
+    );
+    this.selectedObjects.forEach((o, i) => {
+      const from = start.objects[i]!;
+      o.position.copy(from.pos).add(move);
+      o.quaternion.copy(turn).multiply(from.quat);
+      o.scale.copy(from.scale).multiply(ratio);
+    });
+    this.outlineBox.makeEmpty();
+    for (const o of this.selectedObjects) this.outlineBox.expandByObject(o);
+  }
+
+  /** The box round the selection as drawn now. */
+  selectionBox(): THREE.Box3 {
+    return this.outlineBox.clone();
+  }
+
+  /** The handles' proxy position, for a drag of the things themselves. */
+  get proxyPosition(): THREE.Vector3 {
+    return this.proxy.position;
+  }
+
+  /** Puts the proxy (and so the selection, through `follow`) at a point. */
+  moveProxyTo(point: THREE.Vector3) {
+    this.proxy.position.copy(point);
+    this.follow();
+  }
+
+  /** True when the cursor is over one of the handles, so a press there is
+   *  the handles' and not a drag of the thing or a pick. In move mode only
+   *  an arrow counts: the centre and plane squares sit over the thing, and
+   *  a drag of the thing itself does their job. */
+  get overHandle(): boolean {
+    const axis = this.controls.axis;
+    if (!this.controls.enabled || axis === null) return false;
+    return this.controls.mode !== "translate" || axis.length === 1;
+  }
+
+  /** Keeps the handles from taking a press the page is using for its own
+   *  drag, then gives them back. */
+  holdHandles(on: boolean) {
+    this.controls.enabled = !on && this.controls.object !== undefined;
+  }
+
+  /** Shows a see-through copy of what the armed tool will place, or nothing. */
+  setGhost(object: THREE.Object3D | null) {
+    for (const child of [...this.ghost.children]) {
+      this.ghost.remove(child);
+      disposeTree(child);
+    }
+    if (!object) return;
+    object.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.material) return;
+      const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const m of list) {
+        m.transparent = true;
+        m.opacity = Math.min(m.opacity, 0.45);
+        m.depthWrite = false;
+      }
+    });
+    this.ghost.add(object);
+  }
+
+  /** A mesh for a prim that is not in the level, for the ghost. */
+  primObject(prim: Prim): THREE.Object3D {
+    const mesh = new THREE.Mesh(primGeometry(prim), primMaterial(prim));
+    primMatrix(prim).decompose(mesh.position, mesh.quaternion, mesh.scale);
+    return mesh;
   }
 
   /** True while a prim's mesh is shown (the outliner's eye state). */

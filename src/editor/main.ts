@@ -9,7 +9,7 @@ import {
   buildDoorFields, buildExitFields, buildFoamerFields, buildPickupFields, buildSpawnFields,
   buildStartFields, buildZoneFields, numberInput, selectField, selectKind,
 } from "./inspector-parts";
-import { EXIT_ID, START_ID } from "./markers";
+import { EXIT_ID, START_ID, markerFor } from "./markers";
 import { AMMO_TYPES, MARKERS, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
@@ -405,8 +405,12 @@ function partColour(kind: PartKind): string {
 function arm(shape: PrimShape | null, part: PartKind | null) {
   armed = shape;
   armedPart = part;
+  view.setGhost(null);
   const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
-  status.textContent = name ? `Click the view to place a ${name.toLowerCase()}. Esc to stop.` : "";
+  const how = shape ? "Click to place, or drag out its size on a floor." : "Click to place.";
+  const hint = $("toolHint");
+  hint.textContent = name ? `${name}: ${how} Shift keeps the tool. Esc stops.` : "";
+  hint.hidden = !name;
   buildPalette();
 }
 
@@ -630,32 +634,156 @@ function buildPrimInspector(host: HTMLElement) {
 // (wheel, middle and right drags, Alt+left). A plain left click places or
 // selects.
 const canvas = $<HTMLCanvasElement>("view");
+
+/** Pixels the cursor must travel before a press becomes a drag. */
+const DRAG_PIXELS = 4;
+
+/** A left press in the view that may turn into a drag: placing the armed
+ *  tool (a shape's footprint can be dragged out on a floor), or moving the
+ *  thing under the cursor along the surfaces. */
+let press:
+  | { kind: "place"; x: number; y: number; point: THREE.Vector3; normal: THREE.Vector3; corner: THREE.Vector3 | null }
+  | { kind: "move"; x: number; y: number; id: string; grab: THREE.Vector3; started: boolean; offset: THREE.Vector3; lift: number; startY: number }
+  | null = null;
+/** Set when a press was a place or a drag, so the click after it is not a pick. */
+let pressUsed = false;
+
+function ndcOf(e: { clientX: number; clientY: number }): [number, number] {
+  const rect = canvas.getBoundingClientRect();
+  return [((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1];
+}
+
+/** The see-through copy of what a click would place, at the cursor. */
+function showGhost(point: THREE.Vector3 | null, normal: THREE.Vector3, corner?: THREE.Vector3) {
+  if (!point || (!armed && !armedPart)) {
+    view.setGhost(null);
+    return;
+  }
+  if (armed) {
+    view.setGhost(view.primObject(primAt(armed, "ghost", point, normal, corner)));
+    return;
+  }
+  const entry = partAt(armedPart!, "ghost", point, normal);
+  view.setGhost(markerFor(armedPart!, entry as never).object);
+}
+
+/** Where a ray from the cursor meets the level's floor height of a drag. */
+function floorPoint(e: PointerEvent, y: number): THREE.Vector3 | null {
+  const [x, ny] = ndcOf(e);
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(x, ny), view.camera);
+  return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), new THREE.Vector3());
+}
+
+// Registered in the capture phase, so it runs before the handles' own
+// listener and can keep them out of a press that drags the thing itself.
+canvas.addEventListener("pointerdown", (e) => {
+  pressUsed = false;
+  if (e.button !== 0 || e.altKey || view.nav.busy || view.overHandle || linkKey) return;
+  const hit = view.pick(...ndcOf(e));
+  if (!hit) return;
+  if (armed || armedPart) {
+    press = { kind: "place", x: e.clientX, y: e.clientY, point: hit.point, normal: hit.normal, corner: null };
+    return;
+  }
+  // A placed thing (a Foamer, a pickup) drags at once; a shape only once it
+  // is selected, so a drag that starts on the floor does not move the floor.
+  if (hit.id && (selected.has(hit.id) || view.markerOf(hit.id))) {
+    press = {
+      kind: "move", x: e.clientX, y: e.clientY, id: hit.id, grab: hit.point,
+      started: false, offset: new THREE.Vector3(), lift: 0, startY: 0,
+    };
+    view.holdHandles(true);
+  }
+}, true);
+
+window.addEventListener("pointermove", (e) => {
+  if (!press) {
+    if ((armed || armedPart) && e.target === canvas && !view.nav.busy) {
+      const hit = view.pick(...ndcOf(e));
+      showGhost(hit?.point ?? null, hit?.normal ?? new THREE.Vector3(0, 1, 0));
+    }
+    return;
+  }
+  const far = Math.hypot(e.clientX - press.x, e.clientY - press.y) > DRAG_PIXELS;
+  if (press.kind === "place") {
+    // Only a shape on a floor drags out a footprint; a part, or a click on
+    // a wall, places at the press point when the button comes up.
+    if (!armed || press.normal.y < 0.5 || (!far && !press.corner)) return;
+    press.corner = floorPoint(e, press.point.y);
+    showGhost(press.point, press.normal, press.corner ?? undefined);
+    return;
+  }
+  if (!press.started) {
+    if (!far) return;
+    if (!selected.has(press.id)) pick(press.id, e.shiftKey);
+    beginHandleDrag("translate");
+    view.beginFollow();
+    const proxy = view.proxyPosition;
+    press.offset.set(proxy.x - press.grab.x, 0, proxy.z - press.grab.z);
+    press.lift = proxy.y - view.selectionBox().min.y;
+    press.startY = proxy.y;
+    press.started = true;
+    canvas.style.cursor = "grabbing";
+  }
+  // The selection slides over whatever is under the cursor, itself not
+  // counted, and stands on a floor; over a wall it keeps its height.
+  const hit = view.pick(...ndcOf(e), new Set(selected));
+  if (!hit) return;
+  const to = hit.point.clone().add(press.offset);
+  to.y = hit.normal.y > 0.5 ? hit.point.y + press.lift : press.startY;
+  if (snapOn) {
+    to.x = Math.round(to.x / GRID) * GRID;
+    to.z = Math.round(to.z / GRID) * GRID;
+  }
+  view.moveProxyTo(to);
+});
+
+window.addEventListener("pointerup", (e) => {
+  const was = press;
+  press = null;
+  if (!was || e.button !== 0) return;
+  if (was.kind === "move") view.holdHandles(false);
+  if (was.kind === "place") {
+    pressUsed = true;
+    const shift = e.shiftKey;
+    view.setGhost(null);
+    if (armed) place(armed, was.point, was.normal, was.corner ?? undefined);
+    else if (armedPart) placePart(armedPart, was.point, was.normal);
+    // One thing per pick of the tool; Shift keeps the tool for the next.
+    if (!shift) arm(null, null);
+    else buildPalette();
+    return;
+  }
+  if (was.started) {
+    pressUsed = true;
+    canvas.style.cursor = "";
+    endHandleDrag();
+  }
+});
+
+canvas.addEventListener("pointerleave", () => {
+  if (!press) view.setGhost(null);
+});
 canvas.addEventListener("click", (e) => {
   if (view.nav.swallowClick) {
     view.nav.swallowClick = false;
     return;
   }
+  if (pressUsed) {
+    pressUsed = false;
+    return;
+  }
   if (e.altKey || view.nav.busy || view.dragging || typing(e.target)) return;
-  const rect = canvas.getBoundingClientRect();
-  const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  const hit = view.pick(ndcX, ndcY);
+  const hit = view.pick(...ndcOf(e));
   // ED-08 stage 3: while linking, the click adds the thing to the trigger's
   // field and does not select anything else.
   if (linkKey) {
     if (hit?.id) link(hit.id);
     return;
   }
-  if (armed) {
-    if (!hit) return;
-    place(armed, hit.point, hit.normal);
-    return;
-  }
-  if (armedPart) {
-    if (!hit) return;
-    placePart(armedPart, hit.point, hit.normal);
-    return;
-  }
+  // Placing happens when the button comes up (above), not on the click.
+  if (armed || armedPart) return;
   if (hit?.id) pick(hit.id, e.shiftKey);
   else if (!e.shiftKey) {
     selected.clear();
@@ -698,19 +826,37 @@ function endLink() {
   linkKey = null;
 }
 
-/** Places a prim of a shape on the surface under the cursor, standing on
- *  that surface: the click point plus half the prim's height along the
- *  surface normal, snapped to the grid. */
-function place(shape: PrimShape, point: THREE.Vector3, normal: THREE.Vector3) {
-  if (!roomFor(1)) return;
+/** A prim of a shape standing on the surface under the cursor: the click
+ *  point plus half the prim's size along the surface normal, snapped to the
+ *  grid. With `corner`, the second corner of a footprint dragged out on a
+ *  floor, the prim covers that footprint instead of its default size. */
+function primAt(shape: PrimShape, id: string, point: THREE.Vector3, normal: THREE.Vector3, corner?: THREE.Vector3): Prim {
   const base = makePrim(shape, [point.x, point.y, point.z], placeColour);
+  if (corner) {
+    const a = snapOn ? snapVec3([point.x, point.y, point.z], GRID) : [point.x, point.y, point.z];
+    const b = snapOn ? snapVec3([corner.x, corner.y, corner.z], GRID) : [corner.x, corner.y, corner.z];
+    const min = snapOn ? GRID : 0.1;
+    const size: Vec3 = [Math.max(min, Math.abs(b[0]! - a[0]!)), base.size[1], Math.max(min, Math.abs(b[2]! - a[2]!))];
+    // The footprint grows from the anchor toward the cursor, so a small
+    // drag never jumps the shape to the far side of the click.
+    const cx = a[0]! + Math.sign(b[0]! - a[0]! || 1) * size[0] / 2;
+    const cz = a[2]! + Math.sign(b[2]! - a[2]! || 1) * size[2] / 2;
+    const made: Prim = { ...base, id, size, pos: [cx, point.y + size[1] / 2, cz] };
+    return snapOn ? { ...snapPrim(made), pos: made.pos } : made;
+  }
   const pos: Vec3 = [
     point.x + normal.x * base.size[0] / 2,
     point.y + normal.y * base.size[1] / 2,
     point.z + normal.z * base.size[2] / 2,
   ];
-  const made: Prim = { ...base, id: doc.nextId(shape), pos };
-  const prim: Prim = snapOn ? snapPrim(made) : made;
+  const made: Prim = { ...base, id, pos };
+  return snapOn ? snapPrim(made) : made;
+}
+
+/** Places a prim (see `primAt`) and selects it. */
+function place(shape: PrimShape, point: THREE.Vector3, normal: THREE.Vector3, corner?: THREE.Vector3) {
+  if (!roomFor(1)) return;
+  const prim = primAt(shape, doc.nextId(shape), point, normal, corner);
   selected.clear();
   doc.add("prims", prim);
   // Select what was just placed, after the document's own redraw: the
@@ -718,44 +864,31 @@ function place(shape: PrimShape, point: THREE.Vector3, normal: THREE.Vector3) {
   pick(prim.id);
 }
 
-/** ED-05: places a Foamer, a pickup, a door, a spawn point or a zone on the
- *  surface under the cursor, snapped to the grid. The factory (src/editor/
- *  parts.ts) fills the fields the validator wants for that kind. */
-function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) {
-  if (kind === "foamers" && !roomForKind("foamers")) return;
+/** ED-05: a Foamer, a pickup, a door, a spawn point or a zone on the surface
+ *  under the cursor, snapped to the grid. The factory (src/editor/parts.ts)
+ *  fills the fields the validator wants for that kind. */
+function partAt(kind: PartKind, id: string, point: THREE.Vector3, normal: THREE.Vector3): { id: string; pos: Vec3 } {
   const at: Vec3 = [point.x, point.y, point.z];
-  let id: string;
-  let entry: { id: string };
-  if (kind === "foamers") {
-    const made = makeFoamer(doc.nextId("foamer"), at, armedRig);
-    entry = snapOn ? { ...made, pos: snapVec3(made.pos, GRID) } : made;
-    id = entry.id;
-    doc.add(kind, entry as never);
-  } else if (kind === "pickups") {
-    const made = makePickup(doc.nextId(pickupPrefix()), pickupType, at);
-    entry = snapOn ? { ...made, pos: snapVec3(made.pos, GRID) } : made;
-    id = entry.id;
-    doc.add(kind, entry as never);
-  } else if (kind === "doors") {
-    const made = makeDoor(doc.nextId("door"), at);
+  const snapped = <T extends { pos: Vec3 }>(made: T): T => snapOn ? { ...made, pos: snapVec3(made.pos, GRID) } : made;
+  if (kind === "foamers") return snapped(makeFoamer(id, at, armedRig));
+  if (kind === "pickups") return snapped(makePickup(id, pickupType, at));
+  if (kind === "doors") {
+    const made = makeDoor(id, at);
     // A door stands on the surface it was clicked: its centre is half its
     // height up along the normal, as a prim's is.
-    const placed = { ...made, pos: [point.x + normal.x * 0.2, made.pos[1], point.z + normal.z * 0.2] as Vec3 };
-    entry = snapOn ? { ...placed, pos: snapVec3(placed.pos, GRID) } : placed;
-    id = entry.id;
-    doc.add(kind, entry as never);
-  } else if (kind === "spawnPoints") {
-    const made = makeSpawn(doc.nextId("spawn"), at);
-    entry = snapOn ? { ...made, pos: snapVec3(made.pos, GRID) } : made;
-    id = entry.id;
-    doc.add(kind, entry as never);
-  } else {
-    const made = makeZone(doc.nextId("zone"), at);
-    entry = snapOn ? { ...made, pos: snapVec3(made.pos, GRID) } : made;
-    id = entry.id;
-    doc.add(kind, entry as never);
+    return snapped({ ...made, pos: [point.x + normal.x * 0.2, made.pos[1], point.z + normal.z * 0.2] as Vec3 });
   }
-  pick(id);
+  if (kind === "spawnPoints") return snapped(makeSpawn(id, at));
+  return snapped(makeZone(id, at));
+}
+
+/** Places a part (see `partAt`) and selects it. */
+function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) {
+  if (kind === "foamers" && !roomForKind("foamers")) return;
+  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : "zone";
+  const entry = partAt(kind, doc.nextId(prefix), point, normal);
+  doc.add(kind, entry as never);
+  pick(entry.id);
 }
 
 /** The id prefix a pickup takes: a key is `key`, everything else `pickup`. */
@@ -839,6 +972,10 @@ window.addEventListener("keydown", (e) => {
   const codes = ["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight"];
   if (codes.includes(e.code)) view.nav.keyDown(e.code);
   if (e.code === "KeyF") view.frame([...selected]);
+  // [ and ] turn the selection about the vertical by one rotate step.
+  if ((e.code === "BracketLeft" || e.code === "BracketRight") && !view.isLooking) {
+    turnSelection(e.code === "BracketLeft" ? -ROTATE_STEP : ROTATE_STEP);
+  }
   // ED-09 stage 1: P plays from the level's start, Shift+P from the camera.
   if (e.code === "KeyP" && !view.isLooking) {
     e.preventDefault();
@@ -882,6 +1019,32 @@ window.addEventListener("keyup", (e) => {
   view.nav.keyUp(e.code);
 });
 
+/** Turns every selected thing that can turn by `deg` about the vertical,
+ *  each about its own centre: one undo step per kind. */
+function turnSelection(deg: number) {
+  const ids = [...selected];
+  const prims = ids.flatMap((id) => {
+    const prim = doc.prim(id);
+    if (!prim) return [];
+    const r = prim.rot ?? [0, 0, 0];
+    const rot: Vec3 = [r[0], (((r[1] + deg) % 360) + 360) % 360, r[2]];
+    return [{ id, patch: { rot: snapOn ? snapVec3(rot, ROTATE_STEP) : rot } }];
+  });
+  if (prims.length) doc.change("prims", prims, "turn");
+  const byKind = new Map<EntryKind, { id: string; patch: Record<string, unknown> }[]>();
+  for (const part of partHandles(ids)) {
+    const patch = dragPatch(part, [0, 0, 0], deg, [1, 1, 1], snapOn ? GRID : 0);
+    if (!patch) continue;
+    if (part.kind === "start") doc.setStart(patch as never, "turn the start");
+    else if (part.kind !== "exit") {
+      const list = byKind.get(part.kind) ?? [];
+      list.push({ id: part.id, patch });
+      byKind.set(part.kind, list);
+    }
+  }
+  for (const [kind, edits] of byKind) doc.change(kind, edits, "turn");
+}
+
 function setMode(mode: TransformMode) {
   view.setMode(mode);
   selectInView();
@@ -897,39 +1060,50 @@ let dragStart: {
    *  at the start, so a marker's patch is worked out from what it was. */
   parts: { id: string; kind: EntryKind | "start" | "exit"; pos: Vec3; yawDeg: number; size: Vec3 | null }[];
 } | null = null;
-view.controls.addEventListener("mouseDown", () => {
+/** Where each selected placed thing is, its yaw and size, as the drag and
+ *  turn code reads them. */
+function partHandles(ids: string[]): NonNullable<typeof dragStart>["parts"] {
+  return ids.flatMap((id) => {
+    const marker = view.markerOf(id);
+    if (!marker) return [];
+    const kind = marker.kind;
+    let pos: Vec3 = marker.pos;
+    let yawDeg = marker.rot[1];
+    let size: Vec3 | null = marker.size;
+    if (kind === "start" || kind === "exit") {
+      // The view's pseudo ids: the start and the exit live outside the
+      // level's arrays and are read back from the level itself.
+      const start = doc.level.playerStart;
+      const exit = doc.level.exit;
+      if (kind === "start") { pos = start.pos; yawDeg = (start.yaw * 180) / Math.PI; size = null; }
+      else { pos = exit.pos; size = exit.size; }
+    } else {
+      const entry = doc.find(kind, id);
+      if (!entry) return [];
+    }
+    return [{ id, kind, pos: [...pos] as Vec3, yawDeg, size: size ? [...size] as Vec3 : null }];
+  });
+}
+
+/** The start of a drag of the selection, by its handles or by the things
+ *  themselves (`mode` is then "translate"). */
+function beginHandleDrag(mode: TransformMode = view.mode) {
   const ids = [...selected];
   const state = view.proxyState();
   dragStart = {
-    mode: view.mode,
+    mode,
     ids,
     pos: state.pos,
     rot: state.rot,
     scale: state.scale,
     size: Object.fromEntries(ids.map((id) => [id, doc.prim(id)?.size ?? [1, 1, 1]])),
-    parts: ids.flatMap((id) => {
-      const marker = view.markerOf(id);
-      if (!marker) return [];
-      const kind = marker.kind;
-      let pos: Vec3 = marker.pos;
-      let yawDeg = marker.rot[1];
-      let size: Vec3 | null = marker.size;
-      if (kind === "start" || kind === "exit") {
-        // The view's pseudo ids: the start and the exit live outside the
-        // level's arrays and are read back from the level itself.
-        const start = doc.level.playerStart;
-        const exit = doc.level.exit;
-        if (kind === "start") { pos = start.pos; yawDeg = (start.yaw * 180) / Math.PI; size = null; }
-        else { pos = exit.pos; size = exit.size; }
-      } else {
-        const entry = doc.find(kind, id);
-        if (!entry) return [];
-      }
-      return [{ id, kind, pos: [...pos] as Vec3, yawDeg, size: size ? [...size] as Vec3 : null }];
-    }),
+    parts: partHandles(ids),
   };
-});
-view.controls.addEventListener("mouseUp", () => {
+}
+view.controls.addEventListener("mouseDown", () => beginHandleDrag());
+
+/** The end of a drag: writes what moved into the document, one undo step. */
+function endHandleDrag() {
   const start = dragStart;
   dragStart = null;
   if (!start || !start.ids.length) return;
@@ -988,7 +1162,8 @@ view.controls.addEventListener("mouseUp", () => {
     return { id, patch };
   }).filter((e) => Object.keys(e.patch).length);
   if (edits.length) doc.change("prims", edits, start.mode === "scale" ? "resize" : start.mode === "rotate" ? "rotate" : "move");
-});
+}
+view.controls.addEventListener("mouseUp", () => endHandleDrag());
 
 $("undoBtn").addEventListener("click", () => doc.undo());
 $("redoBtn").addEventListener("click", () => doc.redo());

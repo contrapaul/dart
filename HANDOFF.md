@@ -116,8 +116,27 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
   the real Esc). Check and smoke green.
 - Not checked: a real mouse's middle button and wheel on Paul's machine,
   trackpad pinch, the orbit's up and down direction feeling right.
-- Next: Paul says placing and moving Foamers and shapes is also clunky;
-  asked which parts before changing it.
+- Then placing and moving (Paul picked all four fixes offered):
+  - A see-through ghost of the armed tool follows the cursor.
+  - One click places one thing and the tool drops back to select; Shift
+    keeps it. The hint sits in a chip at the foot of the view (the long
+    status text had wrapped the top bar to three lines).
+  - A shape can be dragged out on a floor to set its footprint.
+  - Drag a thing to slide it over the floors and walls under the cursor.
+    A Foamer or other placed thing drags at once; a shape only once it is
+    selected, so a drag on the floor does not move the floor. In move mode
+    the handles' centre and plane squares give way to this drag; the
+    arrows, rotate and scale handles keep their press.
+  - The selection now follows the handles live during a drag (before, the
+    mesh only jumped on release).
+  - [ and ] turn the selection 15 degrees about the vertical.
+  - Handles are smaller (`camera.handleSize` 0.7).
+- Seen in the browser: ghost box and Foamer, drag-out box (6.5 by 1),
+  disarm after placing, body drag mid-way and committed, floor drag
+  ignored, ] turning a box to 30. Check (1408 tests) and smoke green.
+- Not seen: a real handle drag following live (synthetic events cannot
+  grab the handles; the same `follow` code moves the body drag, which was
+  seen), Shift keeping the tool, dragging onto a wall.
 
 ### 2026-11-13: ED-09 review, merged (Claude Opus 5.5): play from the editor
 

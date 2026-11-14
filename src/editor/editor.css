@@ -27,6 +27,12 @@
   font-size: 13px;
 }
 
+#topbar {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 #topbar .spacer {
   flex: 1;
 }
@@ -86,6 +92,9 @@
 
 #status {
   min-width: 5em;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   opacity: 0.75;
   text-align: right;
 }
@@ -286,6 +295,25 @@
   border-color: #ffd23f;
   background: rgba(255, 210, 63, 0.28);
   box-shadow: 0 0 0 2px rgba(255, 210, 63, 0.35);
+}
+
+/* What a click does while a tool is armed, at the foot of the view. */
+#toolHint {
+  position: absolute;
+  bottom: 0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 40rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(20, 12, 40, 0.92);
+  border: 1px solid #ffd23f;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+#toolHint[hidden] {
+  display: none;
 }
 
 #palette .tool-wrap {

@@ -20,6 +20,8 @@ export const HELP: HelpSection[] = [
       ["Alt + left drag", "Orbit round the point under the cursor."],
       ["F", "Frame what is selected."],
       ["Click, Shift+click", "Select, add to the selection."],
+      ["Drag a thing", "Slide it over the floors and walls under the cursor. A shape is clicked first, so a drag on the floor does not move the floor."],
+      ["[ and ]", "Turn what is selected by 15 degrees."],
       ["W, E, R", "Move, rotate, scale handles."],
       ["G", "Grid snap on or off."],
       ["Ctrl+D, Delete", "Duplicate, delete."],
@@ -32,7 +34,7 @@ export const HELP: HelpSection[] = [
   {
     title: "Placing things",
     rows: [
-      ["Tool bar", "The icons on the left. Pick a shape or a thing, then click the view. It lands on the surface under the cursor. Esc stops placing."],
+      ["Tool bar", "The icons on the left. Pick a shape or a thing and a see-through copy follows the cursor. Click to place one, or drag on a floor to draw a shape's size. Shift+click keeps the tool. Esc stops."],
       ["Inspector", "The right panel edits what is selected: position, size, colour, behaviour."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
     ],
