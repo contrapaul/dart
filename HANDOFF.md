@@ -126,6 +126,61 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
   player or Foamers in a level, Foamers pathing round props (the nav grid
   is baked from the same colliders, so it should).
 
+### 2026-11-17: ED-23, saved assets (Claude Fable 5.2)
+
+- Asked: build ED-23 (`tasks/ED-23.md`). Built in the `ed-12` worktree on
+  top of ED-14 (commit `428afe2`). Not committed.
+- The rules: `src/editor/assets.ts`. An asset is a name, a clip (the
+  same entries a copy makes) and a small JPEG picture. Assets live in
+  their own IndexedDB database, `dart.assets`, so the levels' database is
+  untouched. Caps in `data/editor.json` `assets`: 200 assets, 300 things
+  in one, a 128 pixel picture.
+- The panel: `src/editor/asset-panel.ts`, behind an Assets button in the
+  top bar. Name and "Save selection", a tile for each asset (picture,
+  name to rename, Export, Delete), Export all, Import.
+- The picture: `EditorView.picture` draws just the selected things from
+  a corner on the view's own canvas, copies the middle square, and draws
+  the real view again in the same step.
+- Placing: picking a tile closes the panel and arms the asset. Its ghost
+  is every thing in it, built once and moved (`EditorView.ghostAt`) by
+  `pasteMove`, the same move the paste makes. A click places it as one
+  new group and one undo step. Shift keeps the tool, Esc stops. Over a
+  level cap it is refused with the reason.
+- Files: `<name>.dart-assets.json`, marker `dart-assets`, version 1. A
+  file that is not ours, a newer version or a broken asset is refused
+  whole with the reason. A taken name gets a number, never a replace. A
+  picture that is not a small PNG or JPEG held in the file is dropped,
+  so an imported file cannot make the page fetch from another host.
+- Tests: `tests/editor/assets.test.ts` (19). Check (1509 tests, 2
+  skipped) and smoke green.
+- Seen in the browser pane with real clicks and typing: a box and a zone
+  selected, named and saved, the tile showing its picture; the ghost
+  following the cursor; a click placing box-2 and zone-3 where the ghost
+  was; in a new level, two placed with Shift held, each its own group
+  (`group-1`, `group-2`), Esc stopping the tool. With scripted events:
+  Ctrl+Z and Ctrl+Y on a placed asset, an import of an exported text
+  (named "test piece 2"), a refused file, a rename, a delete. No console
+  errors. The test asset and test level were deleted after.
+- Not seen: a real file download from Export, a real file picked for
+  Import (the file was handed to the input by script), an asset holding
+  Foamers, doors, pickups or a trigger, an asset near the caps, two
+  editor tabs open at once.
+- Known: Delete has no "are you sure". A placed asset becomes one group,
+  so groups inside it are merged. The top bar has one more button and
+  already clipped at 800 px.
+
+### 2026-11-17: ED-23 card, saved assets (Claude Fable 5.2)
+
+- Asked: copy and paste, a way to combine geometry together, and saved
+  assets, to be in the builder in future updates.
+- Copy and paste and groups are already built (ED-13, commit `428afe2`
+  on branch `ed-12`, not merged to `main`).
+- Written: `tasks/ED-23.md`, saved assets, brought forward from Plan M's
+  "Stamps". Nothing is built. PLAN.md has the row and the decision.
+- Decided (Paul, 2026-11-17): "combine geometry" means a group, which
+  is built. No true merge into one shape is planned. The other open
+  questions are on the card.
+
 ### 2026-11-16: ED-14, drag a face to resize (Claude Fable 5.2)
 
 - Asked: build ED-14 (`tasks/ED-14.md`). Built in the `ed-12` worktree on

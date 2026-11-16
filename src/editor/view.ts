@@ -695,6 +695,8 @@ export class EditorView {
       this.ghost.remove(child);
       disposeTree(child);
     }
+    this.ghost.position.set(0, 0, 0);
+    this.ghost.visible = true;
     if (!object) return;
     object.traverse((child) => {
       const mesh = child as THREE.Mesh;
@@ -707,6 +709,55 @@ export class EditorView {
       }
     });
     this.ghost.add(object);
+  }
+
+  /** ED-23: moves the ghost as a whole, or hides it (`null`). An asset's
+   *  ghost is many things, so it is built once and moved, not rebuilt. */
+  ghostAt(move: Vec3 | null) {
+    this.ghost.visible = !!move;
+    if (move) this.ghost.position.set(move[0], move[1], move[2]);
+  }
+
+  /** ED-23: a small square picture of just these things, as a JPEG data:
+   *  URL, or "" when none of them is drawn. It is drawn on the view's own
+   *  canvas and the real view is drawn again at once, so nothing shows. */
+  picture(ids: string[], pixels: number): string {
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1b1430);
+    scene.add(new THREE.HemisphereLight(0xfff0e0, 0x3a2a60, 1.2));
+    const sun = new THREE.DirectionalLight(0xffffff, 2);
+    sun.position.set(6, 12, 4);
+    scene.add(sun);
+    for (const id of ids) {
+      const object = this.meshes.get(id) ?? this.markerData.get(id)?.object;
+      if (!object) continue;
+      // A copy shares the geometry and the materials, so there is nothing
+      // of its own to dispose.
+      const copy = object.clone();
+      copy.visible = true;
+      scene.add(copy);
+    }
+    if (scene.children.length <= 2) return "";
+    const ball = new THREE.Box3().setFromObject(scene).getBoundingSphere(new THREE.Sphere());
+    const canvas = this.renderer.domElement;
+    const lens = 35;
+    const camera = new THREE.PerspectiveCamera(lens, canvas.width / canvas.height, 0.05, 2000);
+    // Fit the ball in the shorter side of the canvas, seen from a corner.
+    const half = (lens / 2) * DEG;
+    const narrow = Math.min(half, Math.atan(Math.tan(half) * camera.aspect));
+    const back = Math.max(ball.radius, 0.25) / Math.sin(narrow);
+    camera.position.copy(ball.center).add(new THREE.Vector3(1, 0.8, 1).normalize().multiplyScalar(back));
+    camera.lookAt(ball.center);
+    this.renderer.render(scene, camera);
+    const out = document.createElement("canvas");
+    out.width = pixels;
+    out.height = pixels;
+    const side = Math.min(canvas.width, canvas.height);
+    out.getContext("2d")?.drawImage(
+      canvas, (canvas.width - side) / 2, (canvas.height - side) / 2, side, side, 0, 0, pixels, pixels,
+    );
+    this.renderer.render(this.scene, this.camera);
+    return out.toDataURL("image/jpeg", 0.8);
   }
 
   /** A mesh for a prim that is not in the level, for the ghost. */

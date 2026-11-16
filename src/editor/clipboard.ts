@@ -97,6 +97,29 @@ function retarget(t: Trigger, map: Map<string, string>, move: Vec3): Trigger {
   return { ...t, when, do: rows };
 }
 
+/** How far a paste moves the clip's things. With a point, the middle of the
+ *  set lands on it, standing on it; without one, the set steps one grid
+ *  square aside. The move is snapped (`grid`, 0 for no snap). ED-23's ghost
+ *  uses it too, so the ghost is where the asset will land. */
+export function pasteMove(clip: Clip, at: Vec3 | null, grid: number): Vec3 {
+  const placed: Thing[] = [];
+  for (const kind of ENTRY_KINDS) {
+    if (kind === "triggers") continue;
+    for (const e of (clip.entries[kind] ?? []) as Thing[]) if (e.pos) placed.push(e);
+  }
+  if (!at || !placed.length) return [GRID, 0, GRID];
+  const xs = placed.map((e) => e.pos![0]);
+  const zs = placed.map((e) => e.pos![2]);
+  // A prim, a door and a zone are centred on their place; a Foamer, a
+  // pickup and a spawn point stand on theirs.
+  const foot = Math.min(...placed.map((e) => e.pos![1] - (e.size ? e.size[1] / 2 : 0)));
+  return [
+    snapValue(at[0] - (Math.min(...xs) + Math.max(...xs)) / 2, grid),
+    snapValue(at[1] - foot, grid),
+    snapValue(at[2] - (Math.min(...zs) + Math.max(...zs)) / 2, grid),
+  ];
+}
+
 /** The clip's entries ready to add to a level: every one with a new id, its
  *  group swapped for a new one, and its place moved so the set keeps its
  *  shape. With a point, the middle of the set lands on it, standing on it;
@@ -109,24 +132,7 @@ export function pasteClip(
   at: Vec3 | null,
   grid: number,
 ): { kind: EntryKind; entry: IdEntry }[] {
-  const placed: Thing[] = [];
-  for (const kind of ENTRY_KINDS) {
-    if (kind === "triggers") continue;
-    for (const e of (clip.entries[kind] ?? []) as Thing[]) if (e.pos) placed.push(e);
-  }
-  let move: Vec3 = [GRID, 0, GRID];
-  if (at && placed.length) {
-    const xs = placed.map((e) => e.pos![0]);
-    const zs = placed.map((e) => e.pos![2]);
-    // A prim, a door and a zone are centred on their place; a Foamer, a
-    // pickup and a spawn point stand on theirs.
-    const foot = Math.min(...placed.map((e) => e.pos![1] - (e.size ? e.size[1] / 2 : 0)));
-    move = [
-      snapValue(at[0] - (Math.min(...xs) + Math.max(...xs)) / 2, grid),
-      snapValue(at[1] - foot, grid),
-      snapValue(at[2] - (Math.min(...zs) + Math.max(...zs)) / 2, grid),
-    ];
-  }
+  const move = pasteMove(clip, at, grid);
 
   const map = new Map<string, string>();
   const groups = new Map<string, string>();

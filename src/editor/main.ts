@@ -19,7 +19,9 @@ import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, putLevel } from "./store";
 import { acceptClose, playUrl } from "./play";
-import { capProblem, clipText, groupMembers, idsInRect, makeClip, pasteClip, readClip } from "./clipboard";
+import { capProblem, clipText, groupMembers, idsInRect, makeClip, pasteClip, pasteMove, readClip, type Clip } from "./clipboard";
+import { ASSET_LIMITS, asOneGroup, type Asset } from "./assets";
+import { buildAssetPanel } from "./asset-panel";
 import { faceCentre, faceDirection, resizeFace, sizeText, type Resizable } from "./resize";
 import { openChoice } from "./open";
 import { builtInCopy } from "./builtin";
@@ -69,6 +71,8 @@ const view = new EditorView($<HTMLCanvasElement>("view"));
 type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props";
 let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
+/** ED-23: the saved asset the next click in the view places, or null. */
+let armedAsset: Asset | null = null;
 /** The kind of pickup and the rig the palette places. */
 let pickupType: Pickup["type"] = "darts-standard";
 let armedRig = RIGS[0]?.id ?? "F01";
@@ -442,6 +446,7 @@ function partColour(kind: PartKind): string {
 function arm(shape: PrimShape | null, part: PartKind | null) {
   armed = shape;
   armedPart = part;
+  armedAsset = null;
   view.setGhost(null);
   const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
   const how = shape ? "Click to place, or drag out its size on a floor." : "Click to place.";
@@ -449,6 +454,25 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
   hint.textContent = name ? `${name}: ${how} Shift keeps the tool. Esc stops.` : "";
   hint.hidden = !name;
   buildPalette();
+}
+
+/** ED-23: arms a saved asset. Its ghost is every thing in it, built once
+ *  and then moved under the cursor. */
+function armAsset(asset: Asset) {
+  arm(null, null);
+  armedAsset = asset;
+  const ghost = new THREE.Group();
+  for (const kind of ENTRY_KINDS) {
+    if (kind === "triggers") continue;
+    for (const entry of asset.clip.entries[kind] ?? []) {
+      ghost.add(kind === "prims" ? view.primObject(entry as unknown as Prim) : markerFor(kind, entry as never).object);
+    }
+  }
+  view.setGhost(ghost);
+  view.ghostAt(null);
+  const hint = $("toolHint");
+  hint.textContent = `${asset.name}: Click to place. Shift keeps the tool. Esc stops.`;
+  hint.hidden = false;
 }
 
 /** The toolbar down the left: shapes, things, logic and the handle modes.
@@ -794,7 +818,7 @@ canvas.addEventListener("pointerdown", (e) => {
   pressUsed = false;
   if (e.button !== 0 || e.altKey || view.nav.busy || view.overHandle || linkKey) return;
   // ED-14: a press on a face handle pulls or pushes that face.
-  const face = !armed && !armedPart && selected.size === 1 ? view.pickFace(...ndcOf(e)) : null;
+  const face = !armed && !armedPart && !armedAsset && selected.size === 1 ? view.pickFace(...ndcOf(e)) : null;
   const only = face ? [...selected][0]! : null;
   const box = only ? resizable(only) : null;
   if (face && only && box) {
@@ -808,7 +832,7 @@ canvas.addEventListener("pointerdown", (e) => {
     return;
   }
   const hit = view.pick(...ndcOf(e));
-  if (armed || armedPart) {
+  if (armed || armedPart || armedAsset) {
     if (hit) press = { kind: "place", x: e.clientX, y: e.clientY, point: hit.point, normal: hit.normal, corner: null };
     return;
   }
@@ -833,6 +857,10 @@ window.addEventListener("pointermove", (e) => {
     if ((armed || armedPart) && e.target === canvas && !view.nav.busy) {
       const hit = view.pick(...ndcOf(e));
       showGhost(hit?.point ?? null, hit?.normal ?? new THREE.Vector3(0, 1, 0));
+    }
+    if (armedAsset && e.target === canvas && !view.nav.busy) {
+      const hit = view.pick(...ndcOf(e));
+      view.ghostAt(hit ? pasteMove(armedAsset.clip, [hit.point.x, hit.point.y, hit.point.z], snapOn ? GRID : 0) : null);
     }
     return;
   }
@@ -925,6 +953,12 @@ window.addEventListener("pointerup", (e) => {
   if (was.kind === "place") {
     pressUsed = true;
     const shift = e.shiftKey;
+    if (armedAsset) {
+      const count = pasteAt(armedAsset.clip, [was.point.x, was.point.y, was.point.z], `place ${armedAsset.name}`, true);
+      if (count) status.textContent = `Placed ${armedAsset.name}.`;
+      if (!shift) arm(null, null);
+      return;
+    }
     view.setGhost(null);
     if (armed) place(armed, was.point, was.normal, was.corner ?? undefined);
     else if (armedPart) placePart(armedPart, was.point, was.normal);
@@ -941,11 +975,13 @@ window.addEventListener("pointerup", (e) => {
 });
 
 canvas.addEventListener("pointerleave", () => {
-  if (!press) view.setGhost(null);
+  if (press) return;
+  if (armedAsset) view.ghostAt(null);
+  else view.setGhost(null);
 });
 // ED-13: a double click picks the one thing, out of its group.
 canvas.addEventListener("dblclick", (e) => {
-  if (armed || armedPart || linkKey || e.altKey) return;
+  if (armed || armedPart || armedAsset || linkKey || e.altKey) return;
   const hit = view.pick(...ndcOf(e));
   if (hit?.id) pick(hit.id, false);
 });
@@ -967,7 +1003,7 @@ canvas.addEventListener("click", (e) => {
     return;
   }
   // Placing happens when the button comes up (above), not on the click.
-  if (armed || armedPart) return;
+  if (armed || armedPart || armedAsset) return;
   if (hit?.id) pickGroup(hit.id, e.shiftKey);
   else if (!e.shiftKey) {
     selected.clear();
@@ -1213,7 +1249,7 @@ window.addEventListener("keydown", (e) => {
       buildInspector();
     }
   }
-  if (e.code === "Escape" && !linkKey && (armed || armedPart)) arm(null, null);
+  if (e.code === "Escape" && !linkKey && (armed || armedPart || armedAsset)) arm(null, null);
   if (e.code === "Escape" && linkKey) {
     endLink();
     status.textContent = "";
@@ -1265,22 +1301,46 @@ document.addEventListener("paste", (e) => {
   const clip = readClip(e.clipboardData?.getData("text/plain") ?? "");
   if (!clip) return;
   e.preventDefault();
-  const problem = capProblem(doc.level, clip);
-  if (problem) {
-    status.textContent = problem;
-    return;
-  }
   // Under the cursor when it is over the view, else in the middle of it.
   const hit = lastPointer ? view.pick(...ndcOf(lastPointer)) : view.pick(0, 0);
   const at: Vec3 | null = hit ? [hit.point.x, hit.point.y, hit.point.z] : null;
-  const made = pasteClip(clip, {
+  const count = pasteAt(clip, at, "paste");
+  if (count) status.textContent = `Pasted ${count} thing${count === 1 ? "" : "s"}.`;
+});
+
+/** Adds a clip's things to the level at a point as one undo step, selects
+ *  them, and returns how many. Over a cap it says why and adds nothing.
+ *  ED-23: a placed asset (`oneGroup`) goes in as one group. */
+function pasteAt(clip: Clip, at: Vec3 | null, verb: string, oneGroup = false): number {
+  const problem = capProblem(doc.level, clip);
+  if (problem) {
+    status.textContent = problem;
+    return 0;
+  }
+  let made = pasteClip(clip, {
     next: (prefix) => doc.nextId(prefix),
     nextGroup: (taken) => doc.nextGroup(taken),
   }, at, snapOn ? GRID : 0);
-  if (!made.length) return;
-  doc.addMixed(made, `paste ${made.length} thing${made.length === 1 ? "" : "s"}`);
+  if (oneGroup) made = asOneGroup(made, doc.nextGroup());
+  if (!made.length) return 0;
+  doc.addMixed(made, `${verb}, ${made.length} thing${made.length === 1 ? "" : "s"}`);
   selectMany(made.map((m) => m.entry.id));
-  status.textContent = `Pasted ${made.length} thing${made.length === 1 ? "" : "s"}.`;
+  return made.length;
+}
+
+// ED-23: the Assets panel. Saving takes what is selected; picking an asset
+// closes the panel and arms it, to be placed by a click in the view.
+$("assetsBtn").addEventListener("click", () => {
+  void dialog("Assets", (body) => buildAssetPanel(body, {
+    selection: () => makeClip(doc.level, [...selected]),
+    picture: (clip) => view.picture(
+      Object.values(clip.entries).flat().map((entry) => entry.id), ASSET_LIMITS.pictureSize,
+    ),
+    place: (asset) => {
+      $("dialogs").hidden = true;
+      armAsset(asset);
+    },
+  }));
 });
 
 window.addEventListener("keyup", (e) => {
