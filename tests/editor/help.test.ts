@@ -19,6 +19,8 @@ describe("ED-09 stage 4: the help panel", () => {
     const keys = HELP[0]!.rows.map(([what]) => what);
     expect(keys).toContain("P");
     expect(keys).toContain("Shift+P");
+    expect(keys).toContain("Tab");
+    expect(keys).toContain("Shift+Tab");
   });
 
   it("has no em or en dashes and no remote host", () => {

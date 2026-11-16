@@ -93,6 +93,92 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-16: ED-11, quick playtest in a frame (Claude Fable 5.2)
+
+- Asked: build ED-11 (`tasks/ED-11.md`). On branch `ed-11`, in the main
+  checkout, not a worktree. Nothing is committed.
+- Built: Play, Tab and P save, then put `arena.html?...&frame=1` in an
+  `<iframe>` over the whole editor. Shift+Tab and Shift+P start from the
+  camera. The editor page never unloads, so the undo list, the camera and
+  the selection are as they were. The editor stops drawing while the
+  frame is up (`EditorView.running`).
+- The framed arena page (`body.framed`) shows no title menu, and its
+  status line reads "Click to play. Esc goes back to the editor." When
+  the mouse is released it posts `dart:close-playtest` to the editor,
+  which removes the frame. Esc before the first click closes it too. The
+  popped and level complete screens stay up and gain Back to the editor.
+  The editor takes the message only from its own frame and origin
+  (`acceptClose` in `src/editor/play.ts`).
+- Without `frame=1` the arena page is as before, so My levels and the old
+  links are unchanged. The pause panel's Back to the editor still
+  navigates there.
+- The Play button sits between two spacers in the top bar, lime, with a
+  play triangle. Help lists Tab, Shift+Tab and Esc.
+- Decided: the status text is swapped by a MutationObserver in
+  `src/arena/extras.ts`, because the shared UI (`src/game/ui.ts`) writes
+  "Esc to pause" itself and the card keeps `src/game/` untouched.
+- Measured, Tab to the "Click to play" text in the frame, in the browser
+  pane on this Mac: dev server, 1-2 as a copy, 330 to 355 ms over ten
+  runs; `vite preview`, a new level with one box, 245 to 360 ms over five
+  runs. The poll is 10 to 20 ms coarse and the text can land a frame
+  before the picture.
+- Seen in the browser pane: the frame over the editor with no menu; Esc
+  before the first click closing it; a box placed, then ten play and
+  close rounds, leaving no frame, one canvas and the box, and Ctrl+Z
+  then removing the box; Shift+Tab's URL carrying `start`.
+- Check (1412 tests, 2 skipped) and smoke green.
+- Not seen: a real mouse. The pane grants no pointer lock, so "playing"
+  and "Esc" were a faked `pointerLockElement` and a dispatched
+  `pointerlockchange`. Still to try by hand: click to play in the frame,
+  walk, Esc; a gamepad's pause button; the popped and level complete
+  screens' new buttons; Tab while a text field has the keyboard (it
+  should move focus, not play).
+- Known: at an 800 px wide window the counts line in the top bar is now
+  cut short by the wider Play button (the bar already clipped, it clips
+  sooner).
+
+### 2026-11-16: editor Plan S chosen, cards ED-11 to ED-14 written (Claude Fable 5.2)
+
+- Paul chose Plan S only from `design/EDITOR-OVERHAUL.md`. Recorded in
+  PLAN.md section 14, with four rows in section 12. Plans M and L and the
+  extras are not going ahead.
+- Written: `tasks/ED-11.md` (quick playtest in a frame), `tasks/ED-12.md`
+  (frame on open, shell boxes to prims, no empty saves), `tasks/ED-13.md`
+  (box select, copy and paste, groups), `tasks/ED-14.md` (drag a face to
+  resize, size label). No code changed.
+- Order: ED-11 and ED-12 can run side by side (both touch `main.ts`, in
+  different parts), then ED-13, then ED-14.
+- Assumed, not answered by Paul: playtest in a frame rather than in the
+  editor's own page, Tab as the play key, and shell boxes becoming prims
+  in a built-in copy. Each card says so and says to stop if it looks
+  wrong.
+- Not set: who builds and who reviews each card (`[Paul to assign]`).
+- Not verified: ED-12's shell ramp to prim ramp match is unchecked; the
+  card tells the builder to warn rather than guess.
+
+### 2026-11-16: editor review and overhaul plan, draft (Claude Fable 5.2)
+
+- Asked: review the level editor and draft upgrade or overhaul plans. It
+  must be easy and fun, visual over text, with a quick playtest.
+- Written: `design/EDITOR-OVERHAUL.md`. A review (what is sound, what gets
+  in the way) and three sizes of plan: S tune-up, M overhaul the surface
+  (recommended, cards ED-11 to ED-23), L rebuild (not recommended). No
+  code changed.
+- Main findings: Play leaves the page and coming back reloads the editor
+  (undo list, camera and selection lost); the outliner, triggers, arena
+  builder and Open dialog are lists of ids; Foamers and pickups are
+  capsules and boxes; no box select, copy and paste, groups or one-sided
+  resize; `main.ts` is 1,544 lines.
+- Proposed, not decided: quick playtest by putting `arena.html` in a
+  frame over the editor, so the editor never unloads. Nothing goes in
+  PLAN.md section 14 until Paul answers section 7 of the new file.
+- Seen in the browser: a new level, 1-2 opened as a copy (camera against a
+  wall, 0 prims), a trigger's inspector, Play landing on the title card.
+  `npm test`: 1408 pass, 2 skipped.
+- Not done: no building session with a real mouse, and no timing of the
+  Play round trip. The time a frame takes to start is to be measured in
+  ED-11.
+
 ### 2026-11-14: editor camera, no grid, tool bar (Claude Opus 5.5)
 
 - Asked: the camera was clunky (no wheel zoom, middle mouse did nothing,

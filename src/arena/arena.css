@@ -108,3 +108,11 @@
   gap: 0.6em;
   justify-content: center;
 }
+
+/* ED-11: a run in the editor's frame has no title menu, only "Click to
+   play" on the status line. */
+body.framed #overlay .menu,
+body.framed #overlay #titleSettings,
+body.framed #overlay .links {
+  display: none;
+}

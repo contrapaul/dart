@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editorBackUrl, parseStart, playUrl, spawnFor, startParam } from "../../src/editor/play";
+import { CLOSE_MESSAGE, acceptClose, editorBackUrl, isFramed, parseStart, playUrl, spawnFor, startParam } from "../../src/editor/play";
 
 // ED-09 stage 1: the URLs between the editor and the arena page.
 
@@ -61,5 +61,41 @@ describe("ED-09 the spawn the level starts from", () => {
     expect(spawnFor(levelStart, from)).toEqual({ pos: [3, 1, 4], yaw: 0 });
     expect(levelStart.pos).toEqual([0, 0, 5]);
     expect(from.pos).toEqual([3, 1, 4]);
+  });
+});
+
+// ED-11: the run in a frame over the editor.
+describe("ED-11 the framed play URL", () => {
+  it("says it is framed, with and without a start", () => {
+    const plain = new URLSearchParams(playUrl("lvl-abc", null, true).split("?")[1]);
+    expect(plain.get("frame")).toBe("1");
+    expect(plain.get("start")).toBeNull();
+    const from = new URLSearchParams(playUrl("lvl-abc", { pos: [1, 0, 2], yaw: 0.5 }, true).split("?")[1]);
+    expect(from.get("frame")).toBe("1");
+    expect(from.get("start")).toBe("1,0,2,0.5");
+    expect(from.get("level")).toBe("local:lvl-abc");
+  });
+
+  it("reads a page as framed only when the URL says so", () => {
+    expect(isFramed("?level=local%3Alvl-abc&from=editor&frame=1")).toBe(true);
+    expect(isFramed("?level=local%3Alvl-abc&from=editor")).toBe(false);
+    expect(isFramed("")).toBe(false);
+    expect(playUrl("lvl-abc")).not.toContain("frame");
+  });
+});
+
+describe("ED-11 the close message", () => {
+  const frame = {};
+  const origin = "http://localhost:5173";
+
+  it("is taken from the editor's own frame and origin", () => {
+    expect(acceptClose({ data: CLOSE_MESSAGE, origin, source: frame }, origin, frame)).toBe(true);
+  });
+
+  it("is refused from another origin, another window, or with other words", () => {
+    expect(acceptClose({ data: CLOSE_MESSAGE, origin: "http://elsewhere.test", source: frame }, origin, frame)).toBe(false);
+    expect(acceptClose({ data: CLOSE_MESSAGE, origin, source: {} }, origin, frame)).toBe(false);
+    expect(acceptClose({ data: "something else", origin, source: frame }, origin, frame)).toBe(false);
+    expect(acceptClose({ data: CLOSE_MESSAGE, origin, source: null }, origin, null)).toBe(false);
   });
 });
