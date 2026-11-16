@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LevelDoc, makePrim, newLevel, snapPrim, snapVec3 } from "../../src/editor/doc";
+import { LevelDoc, makePrim, newLevel, snapAxis, snapPrim, snapVec3 } from "../../src/editor/doc";
 import { validateLevel } from "../../src/level/validate";
 import type { Prim } from "../../src/level/format";
 
@@ -174,5 +174,25 @@ describe("ED-02 snapping", () => {
     const snapped = snapPrim({ ...box, size: [0.1, 0.1, 0.1], rot: [-15, 375, 0] });
     expect(snapped.size).toEqual([0.5, 0.5, 0.5]);
     expect(snapped.rot).toEqual([345, 15, 0]);
+  });
+});
+
+// ED-12: a number typed into one box of the inspector snaps that box only.
+// The other two keep what they held, on the grid or not (a wall of a built
+// in level at y 0.4 used to jump to 0.5 when only its x was edited).
+describe("ED-12 one field edited in the inspector", () => {
+  it("snaps the edited axis and leaves the others as they were", () => {
+    expect(snapAxis([-1.5, 0.4, 61.13], 0, 0.74, 0.5)).toEqual([0.5, 0.4, 61.13]);
+    expect(snapAxis([-1.5, 0.4, 61.13], 2, 3.3, 0.5)).toEqual([-1.5, 0.4, 3.5]);
+  });
+
+  it("takes the number as typed when snap is off", () => {
+    expect(snapAxis([1, 2, 3], 1, 0.74, 0)).toEqual([1, 0.74, 3]);
+  });
+
+  it("does not change the vector it was given", () => {
+    const v: [number, number, number] = [1, 2, 3];
+    snapAxis(v, 0, 9, 0.5);
+    expect(v).toEqual([1, 2, 3]);
   });
 });

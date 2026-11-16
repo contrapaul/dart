@@ -6,7 +6,8 @@ import type { Level, Prim, Sky, Vec3 } from "../level/format";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { material, materialId } from "../voxel/materials";
 import { ENTRY_KINDS, GRID, ROTATE_STEP } from "./doc";
-import { EditorCamera } from "./camera";
+import { EditorCamera, openCameraSpot } from "./camera";
+import { faceCentre, type Resizable } from "./resize";
 import { EXIT_ID, START_ID, markerFor, type Marker } from "./markers";
 
 // ED-02 stage 2: everything the editor draws and the camera that flies over
@@ -150,6 +151,10 @@ export class EditorView {
   private followStart: { proxy: THREE.Object3D; objects: { pos: THREE.Vector3; quat: THREE.Quaternion; scale: THREE.Vector3 }[] } | null = null;
   /** The see-through copy of what the armed tool will place. */
   private ghost = new THREE.Group();
+  /** ED-14: six handles, one on each face of the one selected box, shown in
+   *  scale mode in place of the three.js scale handle. */
+  private faces = new THREE.Group();
+  private faceTarget: { id: string; size: Vec3 } | null = null;
   private raycaster = new THREE.Raycaster();
   /** The camera's mouse and fly controls (src/editor/camera.ts). */
   readonly nav: EditorCamera;
@@ -193,6 +198,20 @@ export class EditorView {
     ));
     this.scene.add(this.proxy);
     this.scene.add(this.ghost);
+    const AXIS_COLOURS = [0xff5a5a, 0x7dff5a, 0x5a9bff];
+    for (const axis of [0, 1, 2] as const) {
+      for (const side of [1, -1] as const) {
+        const handle = new THREE.Mesh(
+          new THREE.BoxGeometry(1, 1, 1),
+          new THREE.MeshBasicMaterial({ color: AXIS_COLOURS[axis], depthTest: false, transparent: true }),
+        );
+        handle.renderOrder = 10;
+        handle.userData.face = { axis, side };
+        this.faces.add(handle);
+      }
+    }
+    this.faces.visible = false;
+    this.scene.add(this.faces);
 
     this.controls = new TransformControls(this.camera, canvas);
     this.controls.setTranslationSnap(GRID);
@@ -364,6 +383,84 @@ export class EditorView {
     this.controls.setMode(marker && !marker.size ? "translate" : mode);
     this.controls.attach(this.proxy);
     this.controls.enabled = true;
+    // ED-14: one box in scale mode gets a handle on each face, which moves
+    // that face alone. The three.js scale handle grows a box from its
+    // centre, and stays for a selection of several things.
+    const sized = marker ? marker.size : prim ? prim.size : null;
+    this.faces.visible = false;
+    this.faceTarget = null;
+    if (mode === "scale" && objects.length === 1 && sized) {
+      this.controls.detach();
+      this.controls.enabled = false;
+      this.faceTarget = { id, size: [sized[0], sized[1], sized[2]] };
+      this.placeFaces({ pos: [last.position.x, last.position.y, last.position.z], size: sized, rot: this.proxyState().rot });
+      this.faces.visible = true;
+    }
+  }
+
+  /** ED-14: puts the six face handles on a box. */
+  private placeFaces(box: Resizable) {
+    for (const handle of this.faces.children) {
+      const { axis, side } = handle.userData.face as { axis: 0 | 1 | 2; side: 1 | -1 };
+      handle.position.set(...faceCentre(box, axis, side));
+    }
+  }
+
+  /** ED-14: the face handle under the cursor, or null. */
+  pickFace(ndcX: number, ndcY: number): { axis: 0 | 1 | 2; side: 1 | -1 } | null {
+    if (!this.faces.visible) return null;
+    this.scaleFaces();
+    this.faces.updateMatrixWorld(true);
+    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const hit = this.raycaster.intersectObjects(this.faces.children, false)[0];
+    return hit ? (hit.object.userData.face as { axis: 0 | 1 | 2; side: 1 | -1 }) : null;
+  }
+
+  /** ED-14: how far along a line in the world the cursor is: the point on
+   *  the line (from `origin` along `dir`, a unit vector) nearest the ray
+   *  under the cursor, in metres from `origin`. */
+  axisTravel(ndcX: number, ndcY: number, origin: THREE.Vector3, dir: THREE.Vector3): number {
+    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const ray = this.raycaster.ray;
+    const w = origin.clone().sub(ray.origin);
+    const b = dir.dot(ray.direction);
+    const d = dir.dot(w);
+    const e = ray.direction.dot(w);
+    const denom = 1 - b * b;
+    // The cursor's ray runs along the line: there is no one nearest point.
+    if (denom < 1e-6) return 0;
+    return (b * e - d) / denom;
+  }
+
+  /** ED-14: shows a face drag as it goes, before it is written to the
+   *  level: the box at its new place and size, with its handles. */
+  previewResize(box: Resizable) {
+    const target = this.faceTarget;
+    if (!target) return;
+    const mesh = this.meshes.get(target.id);
+    const prim = (this.shownLevel?.prims ?? []).find((p) => p.id === target.id);
+    if (mesh && prim) {
+      mesh.geometry.dispose();
+      mesh.geometry = primGeometry({ ...prim, size: box.size });
+      mesh.position.set(...box.pos);
+    } else {
+      const object = this.markerData.get(target.id)?.object;
+      if (object) {
+        object.position.set(...box.pos);
+        object.scale.set(box.size[0] / target.size[0], box.size[1] / target.size[1], box.size[2] / target.size[2]);
+      }
+    }
+    this.placeFaces(box);
+    this.outlineBox.makeEmpty();
+    for (const o of this.selectedObjects) this.outlineBox.expandByObject(o);
+  }
+
+  /** ED-14: keeps the face handles the same size on the screen. */
+  private scaleFaces() {
+    for (const handle of this.faces.children) {
+      const s = Math.max(0.05, handle.position.distanceTo(this.camera.position) * editorData.camera.faceHandleSize);
+      handle.scale.setScalar(s);
+    }
   }
 
   /** ED-08 stage 3: a box round each thing a selected trigger names, so what
@@ -424,6 +521,47 @@ export class EditorView {
     const dir = new THREE.Vector3(0.6, 0.5, 0.6).normalize();
     this.camera.position.copy(centre).addScaledVector(dir, radius * 2.6);
     this.camera.lookAt(centre);
+  }
+
+  /** ED-13: where every thing that can be selected is on the screen, in
+   *  page pixels, for box select. Things that are not drawn (hidden with
+   *  the eye, or starting hidden while those are off) and things behind the
+   *  camera are left out. */
+  screenPoints(): { id: string; x: number; y: number }[] {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const out: { id: string; x: number; y: number }[] = [];
+    const v = new THREE.Vector3();
+    const add = (id: string, object: THREE.Object3D) => {
+      if (!object.visible) return;
+      object.getWorldPosition(v).project(this.camera);
+      if (v.z < -1 || v.z > 1) return;
+      out.push({ id, x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height });
+    };
+    for (const [id, mesh] of this.meshes) add(id, mesh);
+    for (const [id, marker] of this.markerData) add(id, marker.object);
+    return out;
+  }
+
+  /** ED-12: puts the camera behind and above the player start, looking at
+   *  it, when a level opens. If a wall or a roof is between the two, the
+   *  camera comes in to just short of it, so it never opens inside or
+   *  behind geometry. Call after `show`. */
+  openOn(start: { pos: Vec3; yaw: number }) {
+    const spot = openCameraSpot(start);
+    const target = new THREE.Vector3(...spot.target);
+    target.y += 1; // about chest height, not the feet on the floor
+    const to = new THREE.Vector3(...spot.pos).sub(target);
+    const far = to.length();
+    const dir = to.clone().normalize();
+    this.scene.updateMatrixWorld();
+    this.raycaster.set(target, dir);
+    this.raycaster.far = far;
+    const hit = this.raycaster.intersectObjects([...this.prims.children, ...this.shell.children], false)
+      .find((h) => h.object.visible);
+    this.raycaster.far = Infinity;
+    const distance = hit ? Math.max(1, hit.distance - 0.5) : far;
+    this.camera.position.copy(target).addScaledVector(dir, distance);
+    this.camera.lookAt(target);
   }
 
   /** ED-09: where the camera is, dropped to the floor under it, for Shift+P.
@@ -610,6 +748,7 @@ export class EditorView {
     }
     this.nav.update(Math.min(0.05, this.clock.getDelta()));
     if (this.sky) this.sky.position.copy(this.camera.position);
+    if (this.faces.visible) this.scaleFaces();
     this.renderer.render(this.scene, this.camera);
   }
 }

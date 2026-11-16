@@ -2,9 +2,10 @@
 
 Status: **built, 2026-11-13** (cards ED-00 to ED-10a, see HANDOFF.md).
 Paul answered the four main questions in section 10 the same day; the
-smaller ones (5 to 10) stand as written unless he changes them. Open: a
-built-in level's shell boxes are not editable yet, and the editor's
-camera does not frame the player start on open.
+smaller ones (5 to 10) stand as written unless he changes them. The two
+items left open here were closed by ED-12 (2026-11-16): a built-in
+level's shell boxes become prims in the copy, and the camera opens on
+the player start.
 
 Paul (2026-11-13), after playing Act 1: "I really need to build these
 levels myself." He wants a proper level builder, shipped with the game so

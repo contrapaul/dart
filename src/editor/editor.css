@@ -509,3 +509,35 @@ button.on {
   z-index: 100;
   background: #140c28;
 }
+
+/* ED-13: the rectangle a box select draws. */
+#selectBox {
+  position: fixed;
+  z-index: 50;
+  border: 1px solid #ffd23f;
+  background: rgba(255, 210, 63, 0.12);
+  pointer-events: none;
+}
+
+#selectBox[hidden] {
+  display: none;
+}
+
+/* ED-14: the size in metres, by the cursor, while a face or a footprint is
+   dragged. */
+#sizeLabel {
+  position: fixed;
+  z-index: 50;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(20, 12, 40, 0.9);
+  border: 1px solid #ffd23f;
+  color: #fff6e8;
+  font-size: 13px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#sizeLabel[hidden] {
+  display: none;
+}

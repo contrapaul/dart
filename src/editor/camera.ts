@@ -45,6 +45,19 @@ export function orbit(camera: THREE.Camera, pivot: THREE.Vector3, yaw: number, p
 
 type Drag = { kind: "look" | "pan" | "orbit"; x: number; y: number; pivot: THREE.Vector3; distance: number };
 
+/** ED-12: where the camera goes when a level opens: behind and above the
+ *  player start, looking at it, so the level opens on the place a run
+ *  begins. Yaw 0 faces -z. */
+export function openCameraSpot(start: { pos: [number, number, number]; yaw: number }): {
+  pos: [number, number, number]; target: [number, number, number];
+} {
+  const back = CAM.openBack;
+  return {
+    pos: [start.pos[0] + Math.sin(start.yaw) * back, start.pos[1] + CAM.openUp, start.pos[2] + Math.cos(start.yaw) * back],
+    target: [start.pos[0], start.pos[1], start.pos[2]],
+  };
+}
+
 export class EditorCamera {
   private drag: Drag | null = null;
   private keys = new Set<string>();
