@@ -28,12 +28,34 @@ export function startParam(start: PlayStart): string {
 /** The arena URL for a stored level, played from the editor. `start` is the
  *  camera's spot when Shift+P was pressed, or null for the level's own
  *  player start. */
-export function playUrl(key: string, start: PlayStart | null = null): string {
+export function playUrl(key: string, start: PlayStart | null = null, frame = false): string {
   const params = new URLSearchParams();
   params.set("level", LOCAL_PREFIX + key);
   params.set("from", "editor");
   if (start) params.set("start", startParam(start));
+  if (frame) params.set("frame", "1");
   return `arena.html?${params.toString()}`;
+}
+
+/** ED-11: true when the arena page was opened in the editor's frame
+ *  (`frame=1`). It then shows no title menu and no pause panel, and tells
+ *  the editor to close it instead of going anywhere itself. */
+export function isFramed(search: string): boolean {
+  return new URLSearchParams(search).get("frame") === "1";
+}
+
+/** ED-11: what the framed arena page posts to the editor to be closed. */
+export const CLOSE_MESSAGE = "dart:close-playtest";
+
+/** ED-11: whether a message closes the playtest. Only the editor's own
+ *  frame, on the editor's own origin, saying the close words, may. */
+export function acceptClose(
+  event: { data: unknown; origin: string; source: unknown },
+  ownOrigin: string,
+  frameWindow: unknown,
+): boolean {
+  return frameWindow != null && event.source === frameWindow
+    && event.origin === ownOrigin && event.data === CLOSE_MESSAGE;
 }
 
 /** Where a run begins: the `start` parameter overrides the level's own player

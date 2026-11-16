@@ -596,7 +596,15 @@ export class EditorView {
     return this.nav.looking;
   }
 
+  /** ED-11: false while a playtest covers the view, so the editor does not
+   *  draw frames nobody sees under the running game. */
+  running = true;
+
   private tick() {
+    if (!this.running) {
+      this.clock.getDelta();
+      return;
+    }
     this.nav.update(Math.min(0.05, this.clock.getDelta()));
     if (this.sky) this.sky.position.copy(this.camera.position);
     this.renderer.render(this.scene, this.camera);

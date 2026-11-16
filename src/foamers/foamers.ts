@@ -14,6 +14,8 @@ import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import { armourOf, plateFaces } from "./armour";
+import { SPURT, spurtsFoam } from "./spurt";
+import { coneDirection } from "../voxel/spray";
 import { addShotDamage, shotSummary, chunkRadius } from "./chunk";
 import { judgeImpact, downPushOf, impactChunkRadius, chunkDebrisExtra, popBurstBoost, DEFAULT_IMPACT } from "./impact";
 import { chargeOf, type ChargeSpec } from "./charge";
@@ -206,6 +208,11 @@ const _q = new THREE.Quaternion();
 const _p = new THREE.Vector3();
 const _v = new THREE.Vector3();
 const _chunkC = new THREE.Vector3(); // GAME-09b: the carve centre scratch
+const _spurtN = new THREE.Vector3(); // FX-spurt: the hit's outward normal
+const _spurtD = new THREE.Vector3(); // FX-spurt: one cube's direction, then its start
+const _spurtV = new THREE.Vector3(); // FX-spurt: one cube's velocity
+const SPURT_MATERIAL = materialId(SPURT.material);
+const SPURT_CONE = (SPURT.coneDegrees * Math.PI) / 180;
 const _cv = new THREE.Vector3();
 const _topP = new THREE.Vector3();
 const _topQ = new THREE.Quaternion();
@@ -320,7 +327,13 @@ export class FoamerSystem {
   /** Called once per Foamer sound event, at the part's or the Foamer's own
    *  position (AUD-01 stage 3b). Foamer sounds are owned by GameSounds. */
   onSound: (kind: FoamerSoundKind, f: Foamer, point: THREE.Vector3) => void = () => {};
-  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0, chunks: 0 };
+  readonly stats = { spawned: 0, popped: 0, hits: 0, bonks: 0, chunks: 0, spurtCubes: 0 };
+  /** FX-spurt: when each live spurt cube expires (system seconds), as a
+   *  ring of maxLive slots. Every cube has the same life, so the slot at
+   *  `spurtNext` is the oldest: if it has not expired, the cap is reached. */
+  private readonly spurtExpiry = new Float64Array(SPURT.maxLive);
+  private spurtNext = 0;
+  private readonly spurtRng = makeRng(SPURT.seed);
   /** Fallen pieces, oldest first. Capped at brokenParts.max. */
   readonly broken: BrokenPiece[] = [];
   /** Downed Foamers, in the order they went down (oldest first). */
@@ -2136,6 +2149,9 @@ export class FoamerSystem {
     // ENG-08 stage 3b: being shot wakes it (the brain's tookDamage).
     f.damageSinceStep = true;
     this.paintWound(f, part, hit);
+    // FX-spurt: the Foamer's own foam spurts out of the hit; a weapon, a
+    // plate, a shield or a piece of gear does not.
+    if (spurtsFoam(f.spec, part.spec)) this.spurt(hit);
     // GAME-10e: a dart that the Blocker shield turns away thuds into the
     // foam plate rather than into the Foamer.
     sound(this, shielded ? "shield-hit" : "wound", f, partPoint(part));
@@ -2172,6 +2188,29 @@ export class FoamerSystem {
     ) {
       f.finishWeakened = true;
       this.startStagger(f, true);
+    }
+  }
+
+  /** FX-spurt (Paul, 2026-11-16): a quick spurt of foam-core cubes out of
+   *  a dart's hit point, in a cone around the surface normal. Through the
+   *  shared debris ring (the barrel leak's sprayCube) with a short life of
+   *  their own; never more than SPURT.maxLive alive at once. Seeded. */
+  private spurt(hit: DartHit) {
+    const size = SPURT.cubeSizeMetres;
+    _spurtN.copy(hit.normal);
+    if (_spurtN.lengthSq() < 1e-6) _spurtN.copy(hit.direction).negate();
+    _spurtN.normalize();
+    for (let n = 0; n < SPURT.count; n++) {
+      if (this.spurtExpiry[this.spurtNext] > this.time) return; // the cap
+      this.spurtExpiry[this.spurtNext] = this.time + SPURT.lifeSeconds;
+      this.spurtNext = (this.spurtNext + 1) % this.spurtExpiry.length;
+      coneDirection(_spurtD, _spurtN, SPURT_CONE, this.spurtRng);
+      const speed = SPURT.speedMin + this.spurtRng() * (SPURT.speedMax - SPURT.speedMin);
+      _spurtV.copy(_spurtD).multiplyScalar(speed);
+      // Start half a cube out of the surface, along the cube's own way.
+      _spurtD.multiplyScalar(size * 0.5).add(hit.point);
+      this.debris.sprayCube(_spurtD, _spurtV, size, SPURT_MATERIAL, SPURT.lifeSeconds);
+      this.stats.spurtCubes++;
     }
   }
 

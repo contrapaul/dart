@@ -488,3 +488,24 @@ button.on {
   font-size: 12px;
   color: #b9aee0;
 }
+
+/* ED-11: the Play button, and the frame a playtest runs in, over everything. */
+#playBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding-inline: 1.2em;
+  color: #b6ff3b;
+  border-color: #b6ff3b;
+  font-weight: 700;
+}
+
+#playFrame {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  z-index: 100;
+  background: #140c28;
+}

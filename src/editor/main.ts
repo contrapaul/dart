@@ -18,7 +18,7 @@ import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, putLevel } from "./store";
-import { playUrl } from "./play";
+import { acceptClose, playUrl } from "./play";
 import { openChoice } from "./open";
 import { builtInCopy } from "./builtin";
 import { buildHelp } from "./help";
@@ -925,6 +925,12 @@ function roomFor(count: number): boolean {
 }
 
 window.addEventListener("keydown", (e) => {
+  // ED-11: while a playtest is up the keys are the game's. Esc reaches this
+  // page only when the frame does not have the keyboard, and closes it.
+  if (playFrame) {
+    if (e.code === "Escape") closePlay();
+    return;
+  }
   if (typing(e.target)) return;
   const meta = e.ctrlKey || e.metaKey;
   if (meta && e.code === "KeyZ") {
@@ -977,7 +983,8 @@ window.addEventListener("keydown", (e) => {
     turnSelection(e.code === "BracketLeft" ? -ROTATE_STEP : ROTATE_STEP);
   }
   // ED-09 stage 1: P plays from the level's start, Shift+P from the camera.
-  if (e.code === "KeyP" && !view.isLooking) {
+  // ED-11: Tab and Shift+Tab do the same.
+  if ((e.code === "KeyP" || e.code === "Tab") && !view.isLooking) {
     e.preventDefault();
     playFrom(e.shiftKey ? view.cameraSpot() : null);
   }
@@ -1473,14 +1480,42 @@ $<HTMLInputElement>("importFile").addEventListener("change", () => {
 
 $("playBtn").addEventListener("click", () => playFrom(null));
 
-/** ED-09 stage 1: saves, then opens the arena on this level. `start` is the
- *  camera's spot for Shift+P, or null to begin at the level's player start.
- *  A save that fails says why and does not leave the editor. */
+/** ED-11: the frame a playtest runs in, or null when none is up. */
+let playFrame: HTMLIFrameElement | null = null;
+
+/** ED-09 stage 1, ED-11: saves, then plays this level in a frame over the
+ *  editor, so the editor never unloads and the undo list, the camera and the
+ *  selection are as they were when the frame closes. `start` is the camera's
+ *  spot for Shift+Tab, or null to begin at the level's player start. A save
+ *  that fails says why and plays nothing. */
 function playFrom(start: { pos: Vec3; yaw: number } | null) {
+  if (playFrame) return;
   void saveNow().then((key) => {
-    if (key) location.href = playUrl(key, start);
+    if (!key || playFrame) return;
+    const frame = document.createElement("iframe");
+    frame.id = "playFrame";
+    frame.title = "Playtest";
+    frame.src = playUrl(key, start, true);
+    frame.addEventListener("load", () => frame.contentWindow?.focus());
+    document.body.append(frame);
+    playFrame = frame;
+    view.running = false;
   });
 }
+
+/** ED-11: ends the playtest. The frame is removed, not hidden, so the game's
+ *  physics world, GPU memory and listeners all go with it. */
+function closePlay() {
+  if (!playFrame) return;
+  playFrame.remove();
+  playFrame = null;
+  view.running = true;
+  window.focus();
+}
+
+window.addEventListener("message", (e) => {
+  if (acceptClose(e, location.origin, playFrame?.contentWindow ?? null)) closePlay();
+});
 
 // The sky's picture: read it, scale it on a canvas, put it in the level.
 function uploadSky(file: File) {

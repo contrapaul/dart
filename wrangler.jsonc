@@ -10,5 +10,8 @@
     "not_found_handling": "single-page-application",
     "html_handling": "auto-trailing-slash"
   },
-  "routes": [{ "pattern": "dart.contrapaul.com", "custom_domain": true }]
+  "routes": [{ "pattern": "dart.contrapaul.com", "custom_domain": true }],
+  // Cloudflare deploys every branch but main with `npx wrangler preview`,
+  // which refuses to run without this block. Empty is enough.
+  "previews": {}
 }

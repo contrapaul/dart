@@ -8,7 +8,7 @@ import { startLoop, STEP, loopDiagLine } from "../core/loop";
 import { firstFrame, pageBoot } from "../core/boot-report";
 import { Input, settings as lookSettings } from "../core/input";
 import { Zoom } from "./zoom";
-import { SettingsStore, type Settings, DIFFICULTIES } from "../core/settings";
+import { SettingsStore, type Settings, DIFFICULTIES, debrisBudget } from "../core/settings";
 import { PlayerController } from "../player/controller";
 import { PlayerHealth } from "../player/health";
 import { Shield } from "../player/shield";
@@ -224,7 +224,13 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   boot.step("Level built");
   const { voxels, voxelMesh, crates } = built;
   const voxelSize = voxels.voxelSize;
-  const debris = new DebrisSystem(rapier, world, QUALITY.preset.debrisMax);
+  // UI-01 stage 2: one settings store (localStorage, defaults on failure).
+  const store = new SettingsStore();
+  // The Debris setting scales the quality preset's chunk cap and the chunk
+  // life. The cap is fixed here (the ring is built once); the life follows
+  // the setting live (applyAll).
+  const debrisStart = debrisBudget(store.value.debris, QUALITY.preset.debrisMax);
+  const debris = new DebrisSystem(rapier, world, debrisStart.max, debrisStart.lifetime);
   scene.add(debris.mesh);
   // Loose islands cut by a carve break off and fall as their own bodies.
   const pieces = new FallingPieces(rapier, world, mesherPool, debris, QUALITY.preset.breakoffMaxPieces);
@@ -237,8 +243,6 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   // UI-01 stage 1: the player's health. The damage of each Foamer attack
   // comes from data/foamers.json (attacks[].damage), looked up by id.
   const health = new PlayerHealth();
-  // UI-01 stage 2: one settings store (localStorage, defaults on failure).
-  const store = new SettingsStore();
   const darts = new DartSystem(scene, world, rapier, player.collider);
   // The loadout loads before the start overlay can resolve, so by the time
   // the player can act every viewmodel is on screen.
@@ -491,6 +495,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   /** The settings live. */
   function applyAll(): void {
     applySettings(store.value, camera, health, hud, audio, shield, zoom);
+    debris.lifetime = debrisBudget(store.value.debris, QUALITY.preset.debrisMax).lifetime;
   }
   store.onChange(applyAll);
   // The defaults from storage go onto the camera, look and health now; the
@@ -782,6 +787,8 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
       // step above skipped it).
       loadout.activeViewmodel.muzzleCameraPoint(0, _muzzleCam);
       updateAim(camera, world, player.collider, _muzzleCam, _muzzle, _aimDir);
+      // ARM-01: only a one-handed blaster leaves a hand for the shield.
+      shield.handFree = loadout.active.spec.hands === 1;
       const se = shield.update(dt, {
         fireHeld: input.isDown("fire"),
         firePressed: input.wasPressed("fire"),

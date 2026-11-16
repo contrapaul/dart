@@ -1,0 +1,14 @@
+{
+  "_note": "FX-spurt (Paul, 2026-11-16): the quick spurt of foam cubes out of the point where a dart hits a Foamer's own foam. Never from armour, a shield or the Foamer's weapon. count is the cubes one hit throws, cubeSizeMetres their size, coneDegrees the half angle of the cone around the hit's surface normal, speedMin and speedMax the launch speed range in m/s, lifeSeconds how long a cube lasts (short, so full-auto fire does not fill the shared debris ring), material the cube colour (the foam core colour a wound shows: foam only). maxLive is the hard cap on spurt cubes alive at once over every Foamer; a hit past it throws fewer or none, and the debris ring's own cap sits above it. seed starts the seeded PRNG the directions and speeds come from. kinds is the part kinds that are the Foamer's own foam; parts adds part ids that are soft foam although their kind is not in kinds (the Darter's orange weak point, the Floater's jaw). A part with an armour entry that cuts damage (a plate, a shield) never spurts. Start values for Paul to tune on the range.",
+  "count": 5,
+  "cubeSizeMetres": 0.045,
+  "coneDegrees": 35,
+  "speedMin": 2.5,
+  "speedMax": 5,
+  "lifeSeconds": 0.7,
+  "maxLive": 40,
+  "material": "foam-core",
+  "seed": 4409,
+  "kinds": ["body", "head", "arm", "leg", "fin"],
+  "parts": ["weakpoint", "jaw"]
+}

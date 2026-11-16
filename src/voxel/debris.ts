@@ -17,6 +17,8 @@ interface Slot {
   body: RAPIER.RigidBody | null;
   age: number;
   size: number;
+  /** Seconds this chunk lasts (the ring's lifetime unless the caller gave one). */
+  life: number;
   /** Pose before the last step, for render interpolation. */
   prevT: THREE.Vector3;
   prevQ: THREE.Quaternion;
@@ -34,8 +36,13 @@ export class DebrisSystem {
   private p = new THREE.Vector3();
   private s = new THREE.Vector3();
 
-  constructor(private rapier: Rapier, private world: RAPIER.World, cap = T.max) {
-    this.slots = Array.from({ length: cap }, () => ({ body: null, age: 0, size: 0, prevT: new THREE.Vector3(), prevQ: new THREE.Quaternion() }));
+  /** `lifetime` is the seconds a new chunk lasts; a page may change it live
+   *  (the Debris setting). The cap is fixed for the system's life. */
+  constructor(
+    private rapier: Rapier, private world: RAPIER.World, cap = T.max,
+    public lifetime: number = T.lifetime,
+  ) {
+    this.slots = Array.from({ length: cap }, () => ({ body: null, age: 0, size: 0, life: lifetime, prevT: new THREE.Vector3(), prevQ: new THREE.Quaternion() }));
     this.mesh = new THREE.InstancedMesh(
       new THREE.BoxGeometry(1, 1, 1),
       createFoamMaterial({ cellsPerUnit: renderJson.foam.poreCellsPerVoxel, wrapCells: 0 }),
@@ -100,9 +107,11 @@ export class DebrisSystem {
 
   /** ENV-05: one loose chunk with a velocity the caller picked (a barrel's
    *  leak spray), so a seeded caller can aim it. The same ring slots and
-   *  the same hard cap as every other chunk; the colour is a material id. */
-  sprayCube(at: THREE.Vector3, vel: THREE.Vector3, size: number, mat: number) {
-    this.add(at, vel, size, mat);
+   *  the same hard cap as every other chunk; the colour is a material id.
+   *  FX-spurt: `life` is this chunk's own seconds (a quick spurt leaves
+   *  early); without one it lasts the ring's lifetime. */
+  sprayCube(at: THREE.Vector3, vel: THREE.Vector3, size: number, mat: number, life = this.lifetime) {
+    this.add(at, vel, size, mat, life);
   }
 
   /** Fixed step, before world.step(): age chunks and free the expired ones. */
@@ -114,7 +123,7 @@ export class DebrisSystem {
       s.prevT.set(t.x, t.y, t.z);
       s.prevQ.set(r.x, r.y, r.z, r.w);
       s.age += dt;
-      if (s.age >= T.lifetime) this.free(s);
+      if (s.age >= s.life) this.free(s);
     }
   }
 
@@ -126,7 +135,7 @@ export class DebrisSystem {
       if (!s.body) continue;
       const t = s.body.translation();
       const r = s.body.rotation();
-      const k = s.size * Math.min(1, (T.lifetime - s.age) / T.fadeTime);
+      const k = s.size * Math.min(1, (s.life - s.age) / T.fadeTime);
       this.p.set(t.x, t.y, t.z).sub(s.prevT).multiplyScalar(alpha).add(s.prevT);
       this.q.copy(s.prevQ).slerp(this.qNow.set(r.x, r.y, r.z, r.w), alpha);
       this.m4.compose(this.p, this.q, this.s.setScalar(k));
@@ -135,7 +144,7 @@ export class DebrisSystem {
     this.mesh.instanceMatrix.needsUpdate = true;
   }
 
-  private add(pos: THREE.Vector3, vel: THREE.Vector3, size: number, mat: number) {
+  private add(pos: THREE.Vector3, vel: THREE.Vector3, size: number, mat: number, life = this.lifetime) {
     const i = this.next;
     this.next = (this.next + 1) % this.slots.length;
     const s = this.slots[i];
@@ -156,6 +165,7 @@ export class DebrisSystem {
     );
     s.age = 0;
     s.size = size;
+    s.life = life;
     s.prevT.copy(pos);
     s.prevQ.identity();
     this.color.setRGB(this.colors[mat * 3], this.colors[mat * 3 + 1], this.colors[mat * 3 + 2]);

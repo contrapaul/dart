@@ -25,7 +25,7 @@ import { TriggerRunner } from "../level/triggers";
 import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
 import { dartDamageOf } from "../level/breakables";
-import { editorBackUrl, spawnFor, type PlayStart } from "../editor/play";
+import { CLOSE_MESSAGE, editorBackUrl, isFramed, spawnFor, type PlayStart } from "../editor/play";
 
 // What only an arena does (ENG-13, LVL-01 stage 3): the lock-in runner, the
 // rifts, the exit pad, the banner and the checkpoint restart. The rest of
@@ -549,19 +549,58 @@ export function arenaExtras(
   // panel. The button is made here rather than in arena.html, so the page
   // keeps its own markup and a run from anywhere else has no button.
   const backUrl = editorBackUrl(location.search);
+  // ED-11: in the editor's frame the way back is a message to the editor,
+  // which removes the frame. The page itself goes nowhere, or the editor
+  // would load inside its own frame.
+  const framed = backUrl !== null && isFramed(location.search) && window.parent !== window;
   if (backUrl) {
+    const goBack = () => {
+      if (framed) window.parent.postMessage(CLOSE_MESSAGE, location.origin);
+      else location.href = backUrl;
+    };
+    const backButton = (id: string) => {
+      const back = document.createElement("button");
+      back.type = "button";
+      back.id = id;
+      back.textContent = "Back to the editor";
+      back.addEventListener("click", goBack);
+      return back;
+    };
     const panel = document.querySelector<HTMLDivElement>("#pausemenu .panel");
     const restart = document.querySelector<HTMLButtonElement>("#restartBtn");
     if (panel) {
-      const back = document.createElement("button");
-      back.type = "button";
-      back.id = "backToEditor";
-      back.textContent = "Back to the editor";
-      back.addEventListener("click", () => {
-        location.href = backUrl;
-      });
+      const back = backButton("backToEditor");
       if (restart) restart.after(back);
       else panel.append(back);
+    }
+    if (framed) {
+      // No title menu: the status line's "Click to play" is the whole card.
+      document.body.classList.add("framed");
+      // The shared UI writes "Esc to pause" on the status line; here Esc
+      // goes back, so the line says that instead whenever it is written.
+      const statusLine = document.querySelector<HTMLParagraphElement>("#status");
+      if (statusLine) {
+        const fix = () => {
+          if (statusLine.textContent === "Click to play. Esc to pause.") {
+            statusLine.textContent = "Click to play. Esc goes back to the editor.";
+          }
+        };
+        new MutationObserver(fix).observe(statusLine, { childList: true, characterData: true, subtree: true });
+        fix();
+      }
+      // The end screens keep their own buttons and gain the way back.
+      document.querySelector("#complete .choices")?.append(backButton("completeBackToEditor"));
+      document.querySelector("#popped")?.append(backButton("poppedBackToEditor"));
+      // Esc releases the mouse, and in a test run that means back to the
+      // editor, with no pause panel. The end screens release it too, and
+      // they stay up.
+      document.addEventListener("pointerlockchange", () => {
+        if (!document.pointerLockElement && g.ui.started && !g.ui.poppedOut && complete.hidden) goBack();
+      });
+      // Before the first click there is no mouse to release.
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Escape" && !g.ui.started) goBack();
+      });
     }
   }
 

@@ -19,6 +19,7 @@ import type { Foamer } from "../foamers/foamer";
 import type { DartSystem } from "../weapons/darts";
 import type { Loadout } from "../weapons/loadout";
 import { QUALITY, type QualityPreset } from "../render/quality";
+import { debrisBudget } from "../core/settings";
 
 export interface RangeSystems {
   debris: DebrisSystem;
@@ -48,8 +49,11 @@ export function createRangeSystems(
   voxelTargets: VoxelTarget[] = [],
   explosionTargets: ExplosionTarget[] = [],
   preset: QualityPreset = QUALITY.preset,
+  /** The player's Debris setting (a key of DEBRIS_LEVELS). */
+  debrisLevel = "normal",
 ): RangeSystems {
-  const debris = new DebrisSystem(rapier, world, preset.debrisMax);
+  const budget = debrisBudget(debrisLevel, preset.debrisMax);
+  const debris = new DebrisSystem(rapier, world, budget.max, budget.lifetime);
   const explosion = new ExplosionSystem(world, debris, explosionTargets);
   explosion.ignore(playerCollider);
   const impacts = new DartImpacts(darts, debris, voxelTargets, explosion);
