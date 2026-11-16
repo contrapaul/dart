@@ -1,0 +1,25 @@
+{
+  "_note": "ARM-01: the player's arms on the blasters and the sword. A code-built placeholder (a mitten glove, a cuff and a sleeve): the look is [Paul]'s to redraw. Each hand sits on a grip point and its sleeve runs to an elbow point off the screen. Which part a blaster's support hand rides is on the blaster, in data/blasters.json `viewmodel.support`; a blaster with `hands: 1` has no support hand.",
+  "look": {
+    "_note": "Metres. colors are placeholders for [Paul]. palm is the fist's width, height and depth (an ellipsoid round the grip, so the grip passes through it); the thumb lies along the top of the fist on the inner side; the cuff is the glove's band at the wrist; the sleeve runs from wristRadius at the cuff to elbowRadius at the elbow.",
+    "colors": { "glove": "#fff6e8", "cuff": "#ff7a1a", "sleeve": "#2b2b33" },
+    "palm": [0.08, 0.095, 0.085],
+    "thumb": { "radius": 0.017, "length": 0.05 },
+    "cuff": { "radius": 0.04, "length": 0.035 },
+    "wristRadius": 0.034,
+    "elbowRadius": 0.052
+  },
+  "trigger": {
+    "_note": "Where the trigger hand's fist sits when a blaster does not say (`viewmodel.trigger`), in model space: the model's origin is the trigger-hand grip (PLAN 5.2).",
+    "at": [0, 0, 0.01]
+  },
+  "elbow": {
+    "_note": "Where each sleeve runs to, in the blaster's model space (so the arms kick, tilt and dip with it): right is the trigger arm, left the support arm. Both are behind the camera, so the sleeves leave the bottom of the view.",
+    "right": [0.14, -0.33, 0.44],
+    "left": [-0.62, -0.39, 0.38]
+  },
+  "sword": {
+    "_note": "The sword hand's elbow, measured from the sword's own placement (data/melee.json `look.position`), in the camera's axes.",
+    "elbow": [0.15, -0.35, 0.7]
+  }
+}

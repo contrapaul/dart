@@ -259,6 +259,28 @@ describe("ENV-05 the barrel system", () => {
     expect(r.blastCalls.length).toBe(0);
   });
 
+  it("reset builds no new geometry: every barrel shares one set", () => {
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const debris = new DebrisSystem(RAPIER, world);
+    const scene = new THREE.Scene();
+    const barrels = new Barrels(
+      RAPIER, world, scene, debris, new ExplosionSystem(world, debris, []),
+      [{ pos: [0, 0, 0] }, { pos: [3, 0, 0] }],
+    );
+    const geometries = () => {
+      const set = new Set<THREE.BufferGeometry>();
+      scene.traverse((o) => { if (o instanceof THREE.Mesh) set.add(o.geometry); });
+      return set;
+    };
+    const before = geometries();
+    expect(before.size, "body, band and lid, shared by both barrels").toBe(3);
+    barrels.reset();
+    barrels.reset();
+    const after = geometries();
+    expect(after.size).toBe(3);
+    for (const g of after) expect(before.has(g)).toBe(true);
+  });
+
   it("reset puts the barrels back fresh", () => {
     const r = rig([[0, 0, 0], [2, 0, 0]]);
     const c = colliders(r.world)[0]!;

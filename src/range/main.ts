@@ -162,8 +162,11 @@ const voxelTargets: VoxelTarget[] = [];
 // wires them: the impacts get an ExplosionSystem, so B07's rounds, B05's
 // explosive mod and B06's every fifth shot explode here as they do in the
 // game. The range has no voxel wall, so the blast has no volume to carve.
+// The settings store comes first: the Debris setting sizes the debris ring.
+const store = new SettingsStore();
 const { debris, explosion, impacts, foamers, projectiles } = createRangeSystems(
-  rapier, world, darts, mesherPool, player.collider, voxelTargets,
+  rapier, world, darts, mesherPool, player.collider, voxelTargets, [], QUALITY.preset,
+  store.value.debris,
 );
 const blastFx = new BlastFx(scene);
 // ENV-05 (E15): the leaking foam barrels, two of them, placed from
@@ -212,7 +215,6 @@ foamers.spawnCount = R.spawn.count;
 foamers.spawnPoints = R.spawn.points.map((p) => [p[0], p[1], p[2]]);
 // ENG-08 stage 3b: one director (its difficulty from the settings preset's
 // director key) and one nav grid, baked over the range floor at load.
-const store = new SettingsStore();
 // GAME-04 stage 2: the parry window's difficulty multiplier, like every other
 // preset value on this page.
 shield.parryWindowScale = DIFFICULTIES[store.value.difficulty]?.parryWindow ?? 1;
@@ -948,6 +950,8 @@ loopCtl = startLoop({
       // GAME-04: the shield first, so it can take this step's fire press
       // as the throw before the blaster sees it (as on the game pages).
       shield.toggleMode = store.value.shieldMode;
+      // ARM-01: only a one-handed blaster leaves a hand for the shield.
+      shield.handFree = loadout.active.spec.hands === 1;
       const se = shield.update(dt, {
         fireHeld: input.isDown("fire"),
         firePressed: input.wasPressed("fire"),

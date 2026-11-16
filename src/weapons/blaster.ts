@@ -22,6 +22,13 @@ export interface ViewmodelSpec {
   position: [number, number, number];
   rotationDeg: [number, number, number];
   scale: number;
+  /** ARM-01: where the trigger hand's fist sits, in model space (left
+   *  out: the arms data's own default, at the grip). */
+  trigger?: [number, number, number];
+  /** ARM-01: the support hand: the named node it rides and where on the
+   *  model it holds, in model space at rest. Left out on a one-handed
+   *  blaster. */
+  support?: { node: string; at: [number, number, number] };
 }
 
 export interface MotionSpec {
@@ -57,6 +64,9 @@ export interface MotionSpec {
 export interface BlasterSpec {
   name: string;
   model: string;
+  /** ARM-01: the hands the blaster takes. Only a one-handed blaster
+   *  leaves a hand free for the shield. */
+  hands: 1 | 2;
   mode: BlasterMode;
   dartType: DartTypeName;
   dartsPerShot: number;
@@ -195,6 +205,7 @@ interface RawBlaster {
   bothBarrels?: boolean;
   recoil?: Partial<RecoilSpec>;
   muzzles: string[];
+  hands?: 1 | 2;
   viewmodel: ViewmodelSpec;
   motion: MotionSpec;
   chunk?: ShotChunk | null;
@@ -217,6 +228,7 @@ export function resolveSpec(blasterId: string, activeMods: string[] = []): Blast
   const s: BlasterSpec = {
     name: raw.name,
     model: raw.model,
+    hands: raw.hands ?? 2,
     mode: raw.mode as BlasterMode,
     dartType: raw.dartType as DartTypeName,
     dartsPerShot: raw.dartsPerShot,

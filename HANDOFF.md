@@ -93,6 +93,191 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-16: a Debris row in the Settings panel: more chunks, for longer (Claude Fable 5.2)
+
+Not committed, not pushed. No task card: Paul asked for it directly.
+
+**What was asked.** Paul: "Can we build debris into settings such that
+more powerful devices can choose to display more and for longer?" The
+chunk count was already in the `?quality=` presets (60, 100, 150), with
+high as the top; the chunk life was a fixed 4 s and nothing was in the
+menu. Asked which way to go, Paul picked a Debris row in Settings.
+
+**What was built.**
+
+- `data/destruction.json` `debris.levels`: Low (0.5 count, 0.5 life),
+  Normal (1, 1), High (2, 2), Extra (4, 3), and `debris.hardMax` 600, the
+  most chunks any level may hold.
+- `src/core/settings.ts`: a `debris` setting (default `normal`, saved with
+  the rest, an unknown saved level falls back to normal), `DEBRIS_LEVELS`
+  and the pure `debrisBudget(level, presetMax)`.
+- `src/voxel/debris.ts`: the constructor takes a `lifetime`, a public
+  field a page may change live.
+- `src/ui/menus.ts`: a Debris row of four buttons under the shield
+  toggle. The readout says "Count: after reload" when the level differs
+  from the one the page loaded with.
+- `src/game/game.ts` and `src/range/main.ts` build the settings store
+  before the debris ring and size it from the setting;
+  `src/range/setup.ts` takes the level as a last argument. The game
+  applies the life live on a change.
+
+**Decisions and why.** PLAN section 14. The level scales the quality
+preset's cap instead of replacing it (I had told Paul it would override
+it): with fixed numbers `?quality=low` would have stopped lowering debris
+unless the player also picked Low. On the default preset: 75 chunks for
+2 s, 150 for 4 s, 300 for 8 s, 600 for 12 s.
+
+**Checks.** 10 new tests in `tests/core/debris-level.test.ts`, written
+and run red first. 1441 pass, 2 skipped
+(`npx vitest run --exclude '.claude/**'`); `npm run build` green.
+
+**Seen in the browser.** The title's Settings panel shows the Debris row;
+picking Extra lights it, shows the reload note and saves. After a reload
+the range's ring held 600 slots with a 12 s life; with the setting
+cleared it was back to 150 and 4 s. No console errors.
+
+**Not verified.** The frame rate at High and Extra (600 chunks are 600
+physics bodies; nobody has measured it, that is Paul's on real machines).
+The life changing live in the game page mid-play. The range has no
+Settings panel, so there the level only comes from a save made on the
+game page. Firefox. The FX-spurt cubes keep their own 0.7 s life and
+their cap of 40 at every level; the barrel leak's cubes follow the
+setting.
+
+### 2026-11-16: FX-spurt, foam spurt on a body hit, and a review of ENV-05's barrel leak (Claude Fable 5.2)
+
+Not committed, not pushed. No task card: Paul asked for it directly.
+
+**What was asked.** Paul: "Review the work done on the 'stream' of cubes
+from barrels. Add a quick 'spurt' of cubes to the impact location on mobs,
+not including armor, shields, or enemy weapons." The stream is ENV-05's
+leaking barrel (`src/level/barrels.ts`), not a blaster's muzzle.
+
+**Review of the barrel leak.** Findings, most serious first:
+
+1. Fixed. `Barrels.reset()` built three new cylinder geometries on every
+   call and never disposed the old ones, so each `T` on the range leaked
+   GPU buffers. The three geometries are now built once in the constructor
+   and shared (test: "reset builds no new geometry").
+2. Fixed. `Barrels.update()` allocated an array every fixed step
+   (`this.list.filter`). It now refills one kept array.
+3. Not fixed, for Paul: the leak can take the whole debris ring. One leak
+   is 25 cubes a second and a cube lives 4 s (`data/destruction.json`
+   `debris.lifetime`), so one leak holds about 100 of the ring's 150 slots
+   and two leaks (one barrel hit twice, or both barrels) ask for 200. The
+   hard cap holds, but the ring then reuses its oldest chunk early, so
+   wall and Foamer debris, and the leak's own pool, blink out before
+   their fade. Fix options: lower `spray.cubesPerSecond`, or give leak
+   cubes a shorter life (`sprayCube` takes one now, see below). It changes
+   the look Paul already saw, so it was left.
+4. Not fixed, small: the header says "the same shot on the same barrel
+   sprays the same way". Direction and speed are seeded, but each cube's
+   spin comes from `Math.random` in `DebrisSystem.add`, so the bounces
+   differ. Look only, no rule depends on it.
+5. Not fixed, small: a cube starts half its size out along its own cone
+   direction, not along the normal, so at the cone's edge a corner can
+   start inside the barrel's collider and get pushed out by the solver.
+   Not seen to cause a pop.
+6. Good as built: the rules are pure and well tested, every number is in
+   `data/barrel.json`, the ring is the hard cap, a chained barrel cannot
+   go off twice, and nothing else allocates per step.
+
+**What was built.**
+
+- `data/spurt.json`: every number (count 5, size 0.045 m, cone 35
+  degrees, speed 2.5 to 5 m/s, life 0.7 s, `maxLive` 40, colour
+  `foam-core`, seed) and the rule's two lists (`kinds`, `parts`).
+- `src/foamers/spurt.ts`: `spurtsFoam(spec, part)`. A part spurts when its
+  kind is in `kinds` (body, head, arm, leg, fin) or its id is in `parts`
+  (`weakpoint`, `jaw`), and it has no armour entry that cuts damage.
+- `src/foamers/foamers.ts`: `handleHit` calls `spurt(hit)` after the wound
+  is painted. The cubes leave the hit point in a cone around the surface
+  normal through `DebrisSystem.sprayCube`, from a seeded PRNG. A ring of
+  expiry times caps live spurt cubes at `maxLive`; nothing is allocated
+  per hit. `stats.spurtCubes` counts them.
+- `src/voxel/spray.ts`: `coneDirection`, the barrel leak's cone maths
+  moved out so both use one copy (same PRNG call order, so the barrel
+  sprays exactly as before).
+- `src/voxel/debris.ts`: `sprayCube` takes an optional `life` in seconds;
+  a slot remembers its own life. Everything else keeps the ring's 4 s.
+
+**Decisions and why.** See PLAN section 14. In short: gear and worn parts
+(satchel, drum, tank, jets, the F09 turret, helm, pauldrons, spines,
+claws, hood, cape, visor, hips) throw no spurt, only the soft foam does;
+a shield throws none from behind either; the colour is the one foam core
+colour a wound shows.
+
+**Checks.** 12 new tests (`tests/foamers/spurt.test.ts` 11,
+`tests/level/barrels.test.ts` 1): 1431 pass, 2 skipped, run with
+`npx vitest run --exclude '.claude/**'` (the `ed-12` worktree's tests are
+another session's). `npm run build`, the em dash check and the remote
+fetch check are green. The spurt tests were written before the code, but
+were not run red first (they could not import modules that did not exist).
+
+**Seen in the browser** (`range.html?watch`, darts fired by script):
+cream foam cubes leave an F01's chest toward the shooter on each hit and
+are gone in under a second, beside the green carve debris. By the stats:
+body hits on the F01 and F08 threw cubes; hits on the F01 club, the F08
+launcher, the F05 chest plate and the F11 shield threw none.
+
+**Not verified.** The F04 shield in the browser (the scripted darts did
+not register a hit on it; the unit test covers it from both sides). The
+look under real full-auto fire by hand, the frame rate with it, Firefox,
+and the game page (`game.ts` uses the same `FoamerSystem`, so it has the
+spurt, but it was not opened). The barrel changes were not looked at in
+the browser beyond the range loading with no console errors.
+
+**For Paul.** Tune on the range in `data/spurt.json`. If spines, claws or
+other parts should spurt, add their ids to `parts`.
+
+### 2026-11-16: ARM-01, player arms and hands, shield only with B02 (Claude Fable 5.2)
+
+- Asked (Paul): arms and hands to hold the weapons so they do not feel
+  disembodied. His choices: a code-built placeholder, gloves and sleeves,
+  both hands with the support hand riding its part, a hand on the sword,
+  no reload hand moves yet. He added: drop the shield from every blaster
+  except B02 and melee weapons; the rest need two hands. There is no task
+  card: ARM-01 is a name given here.
+- Built: `src/weapons/arms.ts`, an `Arm` (a mitten glove, a cuff and a
+  sleeve from primitives) that sits on a grip point and points its sleeve
+  at an elbow point off the screen. Sizes, colours and elbows are in
+  `data/arms.json`. `Viewmodel` gives every blaster a trigger hand and,
+  when `viewmodel.support` is set in `data/blasters.json`, a support hand
+  on the named node (B01 and B07 `pump`, B03 `fore-end`, B04 to B06 and
+  B08 `body`), so it moves with a pump stroke and the break action.
+  `MeleeView` puts a hand on the sword's grip.
+- Shield: a blaster has `hands` (2 unless the data says 1; only B02 says
+  1). The game and range pages set `shield.handFree` from the active
+  blaster each step. With no free hand the shield action does nothing and
+  the lowered disc is hidden; a raised disc comes down, a thrown one still
+  returns. So block, parry, throw, the shield charge and the shield bash
+  now need B02 in hand.
+- Decided: the hands are a sibling group of the model with the same
+  placement, not children of it, because a blaster pickup clones the
+  model and must not carry hands. The glove colours are placeholders for
+  [Paul]. The range's watch helper (`forcedHold`) still raises the disc
+  with any blaster, since it is a test rig.
+- Read "melee weapons" as: nothing to change today, because melee is a
+  key press and not a held weapon. If Paul meant something else, say so.
+- Found: B08's model origin is not at its carry handle as its brief says
+  (the crossbar is at about 0, 0.105, 0.055), so B08 sets its own
+  `viewmodel.trigger`. The model was not changed.
+- Checked: `npm test` (the new `tests/weapons/arms.test.ts` and
+  `tests/shield/hands.test.ts` pass; the only failures were 4 tests inside
+  another session's `.claude/worktrees/ed-12`), `npm run build` clean. In
+  the browser on `range.html`: all 8 blasters looked at with hands, B02
+  with one hand and the disc, the disc gone on B01 and raised on B02.
+- Not verified: the pump stroke and break action in motion and the sword
+  hand were not seen in a browser (the pane cannot take the mouse, so the
+  game page does not run there); they are covered by unit tests only.
+  Grip points for B04 to B08 were set by eye from one camera angle. Not
+  measured for frame rate. Nothing is committed; the work sits in the main
+  checkout, which was on branch `ed-11` at the time.
+- Open for Paul: during a sword swing the dipped blaster's two hands and
+  the sword hand can all be in view for a moment. The Help and settings
+  text still describe the shield as always there. Whether Foamer balance
+  needs a pass now that 7 blasters cannot parry.
+
 ### 2026-11-16: ED-11, quick playtest in a frame (Claude Fable 5.2)
 
 - Asked: build ED-11 (`tasks/ED-11.md`). On branch `ed-11`, in the main

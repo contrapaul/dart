@@ -19,6 +19,14 @@
     "perCarveMax": 14,
     "voxelsPerPiece": 3,
     "lifetime": 4,
+    "hardMax": 600,
+    "levels": {
+      "_note": "The Debris row in the Settings panel (Paul, 2026-11-16): a player on a stronger machine picks more chunks for longer. countScale multiplies the quality preset's debrisMax (data/render.json), lifeScale multiplies lifetime above; normal is 1 and 1, so it changes nothing. hardMax above is the most chunks any level may hold, whatever the preset. name is the button's text.",
+      "low": { "name": "Low", "countScale": 0.5, "lifeScale": 0.5 },
+      "normal": { "name": "Normal", "countScale": 1, "lifeScale": 1 },
+      "high": { "name": "High", "countScale": 2, "lifeScale": 2 },
+      "extra": { "name": "Extra", "countScale": 4, "lifeScale": 3 }
+    },
     "fadeTime": 0.3,
     "minSpeed": 2,
     "maxSpeed": 5,

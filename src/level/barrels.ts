@@ -6,6 +6,7 @@ import type { DebrisSystem } from "../voxel/debris";
 import type { DartHit } from "../weapons/darts";
 import type { ExplosionSystem } from "../weapons/explosion";
 import { makeRng } from "../audio/synth";
+import { coneDirection } from "../voxel/spray";
 import {
   advance, blastReaches, CHAIN_DELAY, classifyHit, puncture, shareLeft, startFuse,
   type Fuse,
@@ -63,15 +64,20 @@ export class Barrels {
    *  collider rides nothing, so it would hang where the barrel was. */
   onGone: (centre: THREE.Vector3, radius: number) => void = () => {};
   private list: Barrel[] = [];
+  /** The barrels on a chain at the start of a step: kept, so a step
+   *  allocates nothing. */
+  private readonly chained: Barrel[] = [];
   private group = new THREE.Group();
   private readonly bodyMaterial: THREE.MeshStandardMaterial;
   private readonly bandMaterial: THREE.MeshStandardMaterial;
   private readonly lidMaterial: THREE.MeshStandardMaterial;
+  /** One set of geometries for every barrel and every reset. */
+  private readonly bodyGeo: THREE.CylinderGeometry;
+  private readonly bandGeo: THREE.CylinderGeometry;
+  private readonly lidGeo: THREE.CylinderGeometry;
   private readonly sprayMaterial = materialId(T.spray.material);
   private readonly coneRad = (T.spray.coneDegrees * Math.PI) / 180;
   private readonly _dir = new THREE.Vector3();
-  private readonly _side = new THREE.Vector3();
-  private readonly _up = new THREE.Vector3();
   private readonly _vel = new THREE.Vector3();
 
   constructor(
@@ -92,6 +98,10 @@ export class Barrels {
     this.lidMaterial = new THREE.MeshStandardMaterial({
       color: colour(T.look.lidMaterial), roughness: 0.85,
     });
+    const radius = T.look.diameterMetres / 2;
+    this.bodyGeo = new THREE.CylinderGeometry(radius, radius, T.look.heightMetres, 20);
+    this.bandGeo = new THREE.CylinderGeometry(radius * 1.02, radius * 1.02, T.look.bandHeightMetres, 20);
+    this.lidGeo = new THREE.CylinderGeometry(radius * 0.94, radius * 0.94, T.look.lidHeightMetres, 20);
     scene.add(this.group);
     this.build();
   }
@@ -144,7 +154,9 @@ export class Barrels {
     // that arrives in this step waits its own delay rather than going off
     // at once (`this.list` is walked in placement order, and a setOff adds
     // new chain timers while it walks).
-    const chained = this.list.filter((b) => !b.gone && b.chain !== null);
+    const chained = this.chained;
+    chained.length = 0;
+    for (const b of this.list) if (!b.gone && b.chain !== null) chained.push(b);
     for (const b of this.list) {
       if (b.gone) continue;
       // A barrel waiting on a chain keeps leaking: the leak runs until it
@@ -183,16 +195,7 @@ export class Barrels {
       for (let i = 0; i < count; i++) {
         // A direction inside the cone around the hit normal: uniform in the
         // solid angle, built from the seeded stream.
-        const cosA = 1 - leak.rng() * (1 - Math.cos(this.coneRad));
-        const sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
-        const az = leak.rng() * Math.PI * 2;
-        this._side.set(0, 1, 0);
-        if (Math.abs(leak.dir.y) > 0.9) this._side.set(1, 0, 0);
-        this._side.crossVectors(leak.dir, this._side).normalize();
-        this._up.crossVectors(leak.dir, this._side).normalize();
-        this._dir.copy(leak.dir).multiplyScalar(cosA)
-          .addScaledVector(this._side, sinA * Math.cos(az))
-          .addScaledVector(this._up, sinA * Math.sin(az));
+        coneDirection(this._dir, leak.dir, this.coneRad, leak.rng);
         this._vel.copy(this._dir).multiplyScalar(speed);
         // Out of the surface by the cube's half, so it does not start inside
         // the barrel's own collider.
@@ -224,9 +227,6 @@ export class Barrels {
     const L = T.look;
     const radius = L.diameterMetres / 2;
     const height = L.heightMetres;
-    const bodyGeo = new THREE.CylinderGeometry(radius, radius, height, 20);
-    const bandGeo = new THREE.CylinderGeometry(radius * 1.02, radius * 1.02, L.bandHeightMetres, 20);
-    const lidGeo = new THREE.CylinderGeometry(radius * 0.94, radius * 0.94, L.lidHeightMetres, 20);
     for (const p of this.placements) {
       const index = this.list.length;
       const centre = new THREE.Vector3(
@@ -235,10 +235,10 @@ export class Barrels {
       const group = new THREE.Group();
       // The group sits at the barrel's centre, so the body is at its local
       // origin, the band a little above the middle and the lid on top.
-      const body = new THREE.Mesh(bodyGeo, this.bodyMaterial);
-      const band = new THREE.Mesh(bandGeo, this.bandMaterial);
+      const body = new THREE.Mesh(this.bodyGeo, this.bodyMaterial);
+      const band = new THREE.Mesh(this.bandGeo, this.bandMaterial);
       band.position.y = height * 0.18;
-      const lid = new THREE.Mesh(lidGeo, this.lidMaterial);
+      const lid = new THREE.Mesh(this.lidGeo, this.lidMaterial);
       lid.position.y = height / 2 + L.lidHeightMetres * 0.5;
       body.castShadow = body.receiveShadow = true;
       band.castShadow = lid.castShadow = true;

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import meleeJson from "../../data/melee.json";
+import { Arm, ARMS } from "../weapons/arms";
 
 // GAME-06 / MEL-01: the placeholder look for melee weapon 1 (M01): a
 // code-built foam sword (toy colours, no art files, no metal: every part is
@@ -111,6 +112,8 @@ export class MeleeView {
   private stroke: Stroke | null = null;
   private t = 0;
   private swingTime: number;
+  /** ARM-01: the hand on the sword's grip. */
+  private arm = new Arm(1);
 
   constructor(camera: THREE.PerspectiveCamera) {
     const L = T.look;
@@ -122,6 +125,13 @@ export class MeleeView {
     rest.add(buildSword());
     this.swingGroup.add(rest);
     this.group.add(this.swingGroup);
+    // ARM-01: the fist sits on the middle of the grip and follows it
+    // through the stroke; the sleeve runs to the data's elbow.
+    const grip = new THREE.Object3D();
+    grip.position.y = -L.guard.height / 2 - L.grip.length / 2;
+    rest.add(grip);
+    this.group.add(this.arm.group);
+    this.arm.hold(grip, ARMS.sword.elbow);
     camera.add(this.group);
   }
 
@@ -155,6 +165,7 @@ export class MeleeView {
       s.yaw * DEG,
       s.axis === "z" ? a : 0,
     );
+    this.arm.update();
     if (p >= 1) {
       this.stroke = null;
       this.group.visible = false;

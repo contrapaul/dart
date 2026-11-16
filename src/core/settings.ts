@@ -1,4 +1,5 @@
 import difficultyJson from "../../data/difficulty.json";
+import destructionJson from "../../data/destruction.json";
 
 // Settings (UI-01 stage 2): one object for the whole game, loaded from and
 // saved to localStorage under `dart.settings`. Storage may be blocked
@@ -23,6 +24,29 @@ export interface DifficultyPreset {
 
 export const DIFFICULTIES = difficultyJson as unknown as Record<string, DifficultyPreset>;
 
+/** One level of the Debris setting: scales on the quality preset's chunk
+ *  cap and on the chunk life (data/destruction.json debris.levels). */
+export interface DebrisLevel {
+  name: string;
+  countScale: number;
+  lifeScale: number;
+}
+
+const { _note: _levelsNote, ...debrisLevels } = destructionJson.debris.levels;
+export const DEBRIS_LEVELS: Record<string, DebrisLevel> = debrisLevels;
+
+/** The chunk cap and the chunk life in seconds for a Debris level, from
+ *  the quality preset's cap. An unknown level is normal. Never more than
+ *  debris.hardMax chunks, never fewer than 1. */
+export function debrisBudget(level: string, presetMax: number): { max: number; lifetime: number } {
+  const l = DEBRIS_LEVELS[level] ?? DEBRIS_LEVELS.normal!;
+  const D = destructionJson.debris;
+  return {
+    max: Math.min(D.hardMax, Math.max(1, Math.round(presetMax * l.countScale))),
+    lifetime: D.lifetime * l.lifeScale,
+  };
+}
+
 export interface Settings {
   difficulty: string; // a key of DIFFICULTIES, or "custom"
   /** Damage-taken multiplier, 0.25 to 2 (the slider's range). */
@@ -40,6 +64,8 @@ export interface Settings {
   /** GAME-04: true raises the shield on one press and lowers it on the
    *  next, false holds the action to keep it up. */
   shieldMode: boolean;
+  /** A key of DEBRIS_LEVELS: how many foam chunks stay, and for how long. */
+  debris: string;
 }
 
 export const STORAGE_KEY = "dart.settings";
@@ -57,6 +83,7 @@ export const DEFAULTS: Settings = {
   reduceFlashes: false,
   reduceHeadBob: false,
   shieldMode: false,
+  debris: "normal",
 };
 
 /** Defaults a fresh player gets; the values the sliders clamp to live in
@@ -96,6 +123,7 @@ export class SettingsStore {
       if (!(merged.difficulty in DIFFICULTIES) && merged.difficulty !== "custom") {
         merged.difficulty = base.difficulty;
       }
+      if (!(merged.debris in DEBRIS_LEVELS)) merged.debris = base.debris;
       return merged;
     } catch {
       return base; // broken JSON: play with defaults

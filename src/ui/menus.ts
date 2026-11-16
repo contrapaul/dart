@@ -1,4 +1,4 @@
-import { DIFFICULTIES, SettingsStore, type Settings } from "../core/settings";
+import { DEBRIS_LEVELS, DIFFICULTIES, SettingsStore, type Settings } from "../core/settings";
 
 // Pause menu and settings panel (UI-01 stage 2), plain DOM, system fonts.
 // Keyboard and mouse only in this task; the tab order follows the element
@@ -64,6 +64,11 @@ export class SettingsPanel {
   private flashes: ReturnType<typeof addToggle>;
   private bob: ReturnType<typeof addToggle>;
   private shieldToggle: ReturnType<typeof addToggle>;
+  private debrisButtons = new Map<string, HTMLButtonElement>();
+  private debrisLabel: HTMLElement;
+  /** The Debris level the page was built with: the chunk count is fixed
+   *  until the page loads again. */
+  private readonly debrisAtLoad: string;
 
   constructor(
     private root: HTMLElement,
@@ -136,6 +141,28 @@ export class SettingsPanel {
     this.shieldToggle.box.addEventListener("change", () =>
       this.store.set("shieldMode", this.shieldToggle.box.checked));
 
+    // Debris: how many foam chunks stay and for how long, for stronger
+    // machines (levels from data/destruction.json). The life changes at
+    // once; the count needs a reload, and the readout says so.
+    this.debrisAtLoad = store.value.debris;
+    const deb = document.createElement("div");
+    deb.className = "row presets";
+    const debName = document.createElement("span");
+    debName.textContent = "Debris";
+    this.debrisLabel = document.createElement("span");
+    this.debrisLabel.className = "val";
+    deb.appendChild(debName);
+    for (const key of Object.keys(DEBRIS_LEVELS)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = DEBRIS_LEVELS[key].name;
+      b.addEventListener("click", () => this.store.set("debris", key));
+      this.debrisButtons.set(key, b);
+      deb.appendChild(b);
+    }
+    deb.appendChild(this.debrisLabel);
+    rows.appendChild(deb);
+
     store.onChange(() => this.sync());
   }
 
@@ -157,6 +184,10 @@ export class SettingsPanel {
     for (const [key, b] of this.presetButtons) {
       b.classList.toggle("on", key === s.difficulty);
     }
+    for (const [key, b] of this.debrisButtons) {
+      b.classList.toggle("on", key === s.debris);
+    }
+    this.debrisLabel.textContent = s.debris === this.debrisAtLoad ? "" : "Count: after reload";
   }
 
   open(): void {

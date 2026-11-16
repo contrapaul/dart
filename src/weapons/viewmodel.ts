@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { Blaster, BlasterSpec } from "./blaster";
+import { Arm, ARMS } from "./arms";
 
 const DEG = Math.PI / 180;
 const TRIGGER_HOLD = 0.08;   // trigger kept down after a shot
@@ -32,6 +33,11 @@ function seg(p: number, t0: number, t1: number): number {
 export class Viewmodel {
   /** Added to under the camera. */
   readonly group = new THREE.Group();
+  /** ARM-01: the player's hands: the trigger hand, then the support hand
+   *  when the blaster has one. A sibling of the model with the model's
+   *  own placement, so a pickup's clone of the model carries no hands. */
+  readonly hands = new THREE.Group();
+  private arms: Arm[] = [];
 
   private spec: BlasterSpec;
   private root: THREE.Object3D | null = null;
@@ -108,6 +114,39 @@ export class Viewmodel {
     this.onShot = this.boundHook;
     this.applyMods(spec.show, spec.hide);
     this.captureRest();
+
+    // ARM-01: each hand holds a grip point on the model: the trigger hand
+    // on the grip, the support hand on the part the data names, moving
+    // with that part (a pump stroke, the break action).
+    this.group.add(this.hands);
+    const grip = (parent: THREE.Object3D, at: readonly number[]): THREE.Object3D => {
+      const a = new THREE.Object3D();
+      a.position.set(at[0]!, at[1]!, at[2]!);
+      scene.add(a);
+      if (parent !== scene) parent.attach(a);
+      return a;
+    };
+    const hold = (side: 1 | -1, anchor: THREE.Object3D, elbow: readonly number[]): void => {
+      const arm = new Arm(side);
+      this.hands.add(arm.group);
+      this.arms.push(arm);
+      arm.hold(anchor, elbow);
+    };
+    this.placeHands();
+    hold(1, grip(scene, v.trigger ?? ARMS.trigger.at), ARMS.elbow.right);
+    if (v.support) {
+      hold(-1, grip(this.nodeByName.get(v.support.node) ?? scene, v.support.at), ARMS.elbow.left);
+    }
+  }
+
+  /** ARM-01: the hands take the model's placement, then each follows its
+   *  grip. */
+  private placeHands(): void {
+    if (!this.root) return;
+    this.hands.position.copy(this.root.position);
+    this.hands.quaternion.copy(this.root.quaternion);
+    this.hands.scale.copy(this.root.scale);
+    for (const a of this.arms) a.update();
   }
 
   /** Build from a ready-to-mount node tree, no GLTF load: the test
@@ -356,6 +395,7 @@ export class Viewmodel {
     } else {
       this.breakAction(dt, blaster);
     }
+    this.placeHands();
     this.shotsThisFrame = 0; // ensure we consume at most one per frame
   }
 

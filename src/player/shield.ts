@@ -146,6 +146,12 @@ export class Shield {
   toggleMode = false;
   /** The watch helper's hold, ORed with the input's shield action. */
   forcedHold = false;
+  /** ARM-01: false while both hands are on the blaster. The page sets it
+   *  each step from the active blaster's `hands`: with no free hand the
+   *  shield action does nothing and the lowered disc is put away. A disc
+   *  already up comes down; one in flight still comes back. The watch
+   *  helper's hold is a test rig and raises it regardless. */
+  handFree = true;
   /** Radians of view pitch kick from a blocked hit; the page adds it to
    *  the camera pitch along with the blaster's climb. */
   get kick(): number {
@@ -425,12 +431,12 @@ export class Shield {
 
     // The shield action as the setting wants it: hold, or one press to
     // raise and the next to lower. The watch helper's hold counts too.
-    if (this.toggleMode) {
+    if (this.toggleMode && this.handFree) {
       if (controls.shieldPressed) this.toggleOn = !this.toggleOn;
     } else {
       this.toggleOn = false;
     }
-    const wantUp = controls.shieldHeld || this.toggleOn || this.forcedHold;
+    const wantUp = this.forcedHold || (this.handFree && (controls.shieldHeld || this.toggleOn));
 
     // Movement gates: slower walk and no sprint while the disc is up.
     const up = this.state === "raised";
@@ -1080,7 +1086,8 @@ export class Shield {
       (lo.rotationDeg[1] + (hi.rotationDeg[1] - lo.rotationDeg[1]) * a) * DEG,
       (lo.rotationDeg[2] + (hi.rotationDeg[2] - lo.rotationDeg[2]) * a) * DEG,
     );
-    g.visible = this.state !== "thrown" && this.state !== "returning";
+    g.visible = this.state !== "thrown" && this.state !== "returning"
+      && (this.handFree || this.state === "raised" || a > 0);
     // A parry just hit: the flash plate, its opacity over flashTime (1 to
     // 0); otherwise hidden.
     const f = this.flashLeft > 0 ? this.flashLeft / T.parry.flashTime : 0;
