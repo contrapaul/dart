@@ -93,6 +93,29 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-16: OPS, a `previews` block so branch builds deploy (Claude Fable 5.2)
+
+No task card: it came out of pull request 1 (`ed-11` to `main`).
+
+**What was asked.** The Cloudflare check "Workers Builds: dart" was red on
+the pull request. Paul pasted the build log and said "Yes, add it".
+
+**The cause.** The build itself passed. Cloudflare's deploy command for a
+branch that is not `main` is `npx wrangler preview`, and it stops when
+`wrangler.jsonc` has no `previews` block. `ed-11` was the first branch
+Cloudflare tried to deploy this way. `main` uses a different deploy
+command, so it was never affected.
+
+**What was built.** `"previews": {}` in `wrangler.jsonc`, with a comment.
+
+**Decided.** Every pushed branch now gets a preview deploy at a Cloudflare
+URL. Paul chose this over turning branch builds off in the dashboard.
+Unmerged work is reachable by anyone with the link; the repo is public
+anyway.
+
+**Unverified.** `wrangler preview` is an open beta command. Whether the
+preview page loads and plays has not been checked by a person.
+
 ### 2026-11-16: a Debris row in the Settings panel: more chunks, for longer (Claude Fable 5.2)
 
 Not committed, not pushed. No task card: Paul asked for it directly.
