@@ -93,6 +93,30 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-17: pull request 2 rebased onto the props (Claude Opus 5.5)
+
+- Asked: rebase `ed-12` (ED-12 to ED-14, ED-23) onto `main` after the
+  props and the two collider fixes were pushed.
+- Conflicts: the top of this log (both sides kept), the `_note` in
+  `data/editor.json` (the branch's camera notes plus "props" in the caps
+  list), and two import lines in `src/editor/main.ts` and
+  `src/editor/inspector-parts.ts` (both sides' names kept).
+- Fix: a paste now checks the props cap too (`capProblem` in
+  `src/editor/clipboard.ts`, test in `tests/editor/clipboard.test.ts`).
+  Copy, paste, groups and assets already go through every entry kind, so
+  props come along.
+- Check: 1545 tests pass, 2 skipped; smoke ok on all five pages; no em
+  dashes. Seen in the browser: a leaking barrel placed, copied and pasted
+  through the clipboard events, no console errors.
+- Found: `npm test` in the main checkout also runs the test files under
+  `.claude/worktrees/`, so its count is doubled while a worktree exists
+  (2985 there was about 1440 on main plus this branch's copies).
+- Noticed, not changed: a paste with the cursor on the side of a thing
+  lands on that face, so the copy can float (0.5 m up when pasted over a
+  barrel). That is ED-13's rule for every kind.
+- Not seen: a real mouse or real clipboard keys. Still not reviewed by a
+  second model.
+
 ### 2026-11-17: props in the editor, and two bug fixes (Claude Opus 5.5)
 
 - Asked: barrels and other decorative debris in the builder. Paul chose:
@@ -125,6 +149,218 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 - Not seen: a player walking into a prop, the barrel's blast hurting the
   player or Foamers in a level, Foamers pathing round props (the nav grid
   is baked from the same colliders, so it should).
+
+### 2026-11-17: ED-12 to ED-14 and ED-23 merged to main (Claude Opus 5.5)
+
+- Asked: review the state of the project, push and merge.
+- Branch `ed-12` was cut from `ed-11` before pull request 1 merged it
+  with ARM-01, the foam spurt, the Debris row and the `previews` block.
+  It was rebased onto `main` (`482c92a`). The only conflict was the top
+  of this log, where both sides had added entries; both were kept.
+- On the rebased branch: `npm run check` 1538 tests, 2 skipped, the em
+  dash and remote checks clean; `npm run smoke` ok on all five pages.
+- Merged by pull request, so Cloudflare deploys it to the live site.
+- Not reviewed by a second model, unlike the earlier editor cards. Not
+  tried by Paul with a real mouse, the real clipboard keys or real
+  asset files.
+
+### 2026-11-17: ED-23, saved assets (Claude Fable 5.2)
+
+- Asked: build ED-23 (`tasks/ED-23.md`). Built in the `ed-12` worktree on
+  top of ED-14 (commit `428afe2`). Not committed.
+- The rules: `src/editor/assets.ts`. An asset is a name, a clip (the
+  same entries a copy makes) and a small JPEG picture. Assets live in
+  their own IndexedDB database, `dart.assets`, so the levels' database is
+  untouched. Caps in `data/editor.json` `assets`: 200 assets, 300 things
+  in one, a 128 pixel picture.
+- The panel: `src/editor/asset-panel.ts`, behind an Assets button in the
+  top bar. Name and "Save selection", a tile for each asset (picture,
+  name to rename, Export, Delete), Export all, Import.
+- The picture: `EditorView.picture` draws just the selected things from
+  a corner on the view's own canvas, copies the middle square, and draws
+  the real view again in the same step.
+- Placing: picking a tile closes the panel and arms the asset. Its ghost
+  is every thing in it, built once and moved (`EditorView.ghostAt`) by
+  `pasteMove`, the same move the paste makes. A click places it as one
+  new group and one undo step. Shift keeps the tool, Esc stops. Over a
+  level cap it is refused with the reason.
+- Files: `<name>.dart-assets.json`, marker `dart-assets`, version 1. A
+  file that is not ours, a newer version or a broken asset is refused
+  whole with the reason. A taken name gets a number, never a replace. A
+  picture that is not a small PNG or JPEG held in the file is dropped,
+  so an imported file cannot make the page fetch from another host.
+- Tests: `tests/editor/assets.test.ts` (19). Check (1509 tests, 2
+  skipped) and smoke green.
+- Seen in the browser pane with real clicks and typing: a box and a zone
+  selected, named and saved, the tile showing its picture; the ghost
+  following the cursor; a click placing box-2 and zone-3 where the ghost
+  was; in a new level, two placed with Shift held, each its own group
+  (`group-1`, `group-2`), Esc stopping the tool. With scripted events:
+  Ctrl+Z and Ctrl+Y on a placed asset, an import of an exported text
+  (named "test piece 2"), a refused file, a rename, a delete. No console
+  errors. The test asset and test level were deleted after.
+- Not seen: a real file download from Export, a real file picked for
+  Import (the file was handed to the input by script), an asset holding
+  Foamers, doors, pickups or a trigger, an asset near the caps, two
+  editor tabs open at once.
+- Known: Delete has no "are you sure". A placed asset becomes one group,
+  so groups inside it are merged. The top bar has one more button and
+  already clipped at 800 px.
+
+### 2026-11-17: ED-23 card, saved assets (Claude Fable 5.2)
+
+- Asked: copy and paste, a way to combine geometry together, and saved
+  assets, to be in the builder in future updates.
+- Copy and paste and groups are already built (ED-13, commit `428afe2`
+  on branch `ed-12`, not merged to `main`).
+- Written: `tasks/ED-23.md`, saved assets, brought forward from Plan M's
+  "Stamps". Nothing is built. PLAN.md has the row and the decision.
+- Decided (Paul, 2026-11-17): "combine geometry" means a group, which
+  is built. No true merge into one shape is planned. The other open
+  questions are on the card.
+
+### 2026-11-16: ED-14, drag a face to resize (Claude Fable 5.2)
+
+- Asked: build ED-14 (`tasks/ED-14.md`). Built in the `ed-12` worktree on
+  top of ED-12 and ED-13. Not committed. The state before it is saved as
+  a patch so the three can be committed apart.
+- The maths: `src/editor/resize.ts`. `resizeFace` moves one face along
+  the thing's own axis, leaves the opposite face where it is, snaps the
+  new size when snap is on, and keeps it at or above a smallest size.
+  Only the dragged axis changes. It holds for a turned or tipped box.
+- The handles: in scale mode (R), one selected prim, zone, door or the
+  exit shows six small handles, one on each face, coloured by axis, in
+  place of the three.js scale handle. Several things selected keep the
+  three.js handle. The thing follows the drag live and the change is one
+  undo step on release.
+- The size label: `#sizeLabel` by the cursor shows the size in metres
+  while a face is dragged and while a shape's footprint is dragged out.
+- Fixed in passing: a door's marker in the editor was turned by its
+  `rotY` degrees read as radians (`src/editor/markers.ts`), so a door at
+  90 degrees was drawn at about 117. The game was not affected.
+- Tests: `tests/editor/resize.test.ts` (15): all six faces, boxes turned
+  90 and 30 degrees, a box tipped like a converted ramp, the smallest
+  size, snap on and off, only the dragged axis snapped. Check (1490
+  tests, 2 skipped) and smoke green.
+- Seen in the browser pane: the six handles on a box in scale mode; a
+  real mouse drag (the pane's own drag, not dispatched events) on the
+  left face took the box from 2 to 3.5 m wide with its right face still,
+  the label reading "3.5 x 2 x 2" mid drag, and Ctrl+Z put it back. With
+  dispatched events: a zone's top face from 3 to 3.5 m tall with its
+  foot still, the label showing, the zone still selected after.
+- Not seen: a door and the exit resized, a turned box resized in the
+  view (the maths is tested), the footprint label while placing, how the
+  handle size feels on Paul's screen, a face seen nearly end on (the
+  drag then moves a long way for a small mouse move).
+- Known: a face drag moves the centre by half the change, so a box that
+  was on the 0.5 m grid can end with its centre on a quarter. That is
+  what keeps the far face still.
+
+### 2026-11-16: ED-13, box select, copy and paste, groups (Claude Fable 5.2)
+
+- Asked: build ED-13 (`tasks/ED-13.md`). Built in the `ed-12` worktree
+  (`.claude/worktrees/ed-12`, branch `ed-12`) on top of ED-12, because
+  ED-12 was not committed and both edit `main.ts`. Not committed. ED-12's
+  own changes are saved as a patch so the two can be committed apart.
+- Box select: a left drag that starts on empty space, the floor or a
+  shape that is not selected draws a rectangle (`#selectBox`) and selects
+  every thing whose centre is inside it. Shift adds. Things not drawn are
+  skipped. A drag on a selected thing still moves it.
+- Copy, cut, paste: `src/editor/clipboard.ts`. The clip is JSON text with
+  a `dart-clip` marker and a version, on the system clipboard through the
+  browser's own copy, cut and paste events. Paste gives every entry a new
+  id, lands the set under the cursor (or mid view) standing on that
+  point, keeps the things' places relative to each other, and is one undo
+  step (`LevelDoc.addMixed`). A copied trigger points at the copies made
+  with it and keeps the names of things that were not copied. A paste
+  over a cap is refused with the reason. Other clipboard text is left to
+  the browser. The start and the exit are never copied.
+- Groups: an optional `group` on prims, Foamers, pickups, doors, spawn
+  points and zones (`src/level/format.ts`; the game ignores it; the
+  validator checks it is a name). Ctrl+G groups, Ctrl+Shift+G ungroups,
+  one undo step each. A click in the view on a member selects the group;
+  a double click picks the one. Copies made by paste or Ctrl+D join a new
+  group.
+- Decided: the paste's move is snapped, not each place, so off-grid
+  things keep their spacing (the lesson from ED-12's inspector fix).
+- Decided: the outliner still picks one row at a time.
+- Tests: `tests/editor/clipboard.test.ts` (16). Check (1475 tests, 2
+  skipped) and smoke green.
+- Seen in the browser pane, with dispatched pointer, key and clipboard
+  events: three boxes placed; a box drag showed the rectangle and
+  selected the boxes and the start under them; Ctrl+G, then a click on
+  one box selected all three and a double click one; copy put a
+  `dart-clip` on the event's clipboard; paste made 3 more (7 prims),
+  selected; Ctrl+Z took them out and Ctrl+Y put them back; "hello" on the
+  clipboard was ignored; New, then paste, gave 4 prims and no problems;
+  cut left 1 and its undo gave 4.
+- Not seen: a real mouse drag for the rectangle, the real Ctrl+C, Ctrl+X
+  and Ctrl+V keys with the system clipboard (the events were made by
+  hand), paste between two browser tabs, Ctrl+G not being taken by the
+  browser's find-next in Firefox.
+- Known: a box select catches the floor when the drag crosses the
+  floor's centre, since it goes by centres. A grouped thing shows no mark
+  in the outliner or the inspector.
+
+### 2026-11-16: ED-12, frame on open, editable shell, no empty saves (Claude Fable 5.2)
+
+- Asked: build ED-12 (`tasks/ED-12.md`). Built on branch `ed-12` (from
+  `ed-11`) in the worktree `.claude/worktrees/ed-12`. Not committed.
+- Shell to prims: `src/editor/shell-to-prims.ts`, run by `builtInCopy`
+  after `arenaToTriggers`. Every shell box is a solid box prim of the same
+  place and size, in its material's colour, keeping its id when free. A
+  copy that would pass the 2,000 prim cap is left alone with a warning.
+- Decided: a shell ramp becomes a turned box prim, not a prim ramp. The
+  shell ramp is a slab with space under it; a prim ramp is filled
+  underneath. The turned box is the same slab.
+- Decided: `src/level/build.ts` now anchors a `wall` piece to solid,
+  unturned box prims as well as shell boxes. Without it the copies of 1-2
+  and 1-4 lost 180 and 976 bedrock voxels, so a wall piece would have
+  hung from nothing. The card did not list this file. PLAN section 14.
+- Frame on open: `openCameraSpot` in `camera.ts`, `EditorView.openOn`.
+  The camera sits `camera.openBack` (10 m) behind and `camera.openUp`
+  (6 m) above the player start, and comes in when a wall or roof is in
+  the way. Every way of opening a level goes through it.
+- No empty saves: loading a level into the document no longer schedules a
+  save. The first change does. Play still saves first.
+- Fixed in passing, because it broke converted ramps: a move with snap on
+  also snapped the turn to 15 degrees. Now only what the drag changed is
+  written.
+- Tests: `tests/editor/shell.test.ts` (44). For every level file the
+  copy validates as the original does, has an empty shell and one prim
+  per shell box; boxes keep place, size and colour; each ramp's walking
+  face starts and ends at the same points. 1-1-pit, 1-2 and 1-4 are built
+  with Rapier both ways: rays down and along both axes on a 1.43 m grid
+  stop at the same distance, the nav bounds match, and the bedrock counts
+  match. The anchor check was seen to fail with the `build.ts` change
+  taken out. Check (1456 tests, 2 skipped) and smoke green.
+- Seen in the browser pane (own dev server on port 5174): a new level
+  opens looking at the start arrow with the exit ahead; opening the
+  editor and pressing New leave 0 levels in the store; 1-2 as a copy
+  shows 105 prims, the start in view, `b02-plinth` selected with handles
+  and moved from the inspector (then "Saved"); Tab plays the copy in the
+  frame and the first room draws.
+- Not seen: walking the copy against the original by hand (the pane has
+  no pointer lock; the ray test stands in for it), dragging a wall with a
+  real mouse, a converted ramp moved in the view.
+- Fixed the same day (Paul asked): a number typed into one box of the
+  inspector snaps that box only (`snapAxis` in `doc.ts`, used by both
+  vector fields). Before, it snapped all three, so `b02-plinth` in the
+  1-2 copy rose from y 0.4 to 0.5 when only its x was changed. Tests in
+  `tests/editor/doc.test.ts` (3). Seen in the browser: x typed as 0.74
+  became 0.5 and y stayed 0.4; size z typed as 2.2 became 2 and size y
+  stayed 0.8; the player start's x moved alone. Check (1459 tests, 2
+  skipped) and smoke green.
+- Still so: a typed number is itself snapped (0.74 becomes 0.5), and a
+  drag in the view with snap on snaps the whole position. Not asked for,
+  not changed.
+- Known: in a level with a roof the opening camera ends close to the
+  start, just under the ceiling, because it will not go through the
+  roof.
+- The colours of converted walls come from `data/materials.json`. The
+  editor used to draw the shell with the same colours, but a prim is lit
+  by the editor's prim material, so shades may differ a little from the
+  read only shell.
 
 ### 2026-11-16: OPS, a `previews` block so branch builds deploy (Claude Fable 5.2)
 

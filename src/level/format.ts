@@ -70,6 +70,9 @@ export interface Piece {
 
 export interface Rift {
   id: string;
+  /** ED-13: an editor group. Things that share one are selected and moved
+   *  together in the editor. The game ignores it. */
+  group?: string;
   pos: Vec3;
   /** Outward normal of the seam. [0, 1, 0] is a rift in the floor. */
   facing: Vec3;
@@ -161,6 +164,9 @@ export type PickupType =
 
 export interface Pickup {
   id: string;
+  /** ED-13: an editor group. Things that share one are selected and moved
+   *  together in the editor. The game ignores it. */
+  group?: string;
   type: PickupType;
   /** A darts-* box's dart count. LVL-05: a blaster pickup has none; MEL-01:
    *  a melee pickup has none either. */
@@ -267,6 +273,9 @@ export interface PrimHazard {
 export interface Prim {
   /** Unique in the level, shared with every other id a trigger names. */
   id: string;
+  /** ED-13: an editor group. Things that share one are selected and moved
+   *  together in the editor. The game ignores it. */
+  group?: string;
   shape: PrimShape;
   pos: Vec3;
   size: Vec3;
@@ -290,6 +299,9 @@ export interface Prim {
  *  player (`wake` "sight", the default) or a trigger wakes it. */
 export interface PlacedFoamer {
   id: string;
+  /** ED-13: an editor group. Things that share one are selected and moved
+   *  together in the editor. The game ignores it. */
+  group?: string;
   /** A rig ID from data/foamer-rigs.json. */
   foamer: string;
   /** Feet position. */
@@ -317,6 +329,9 @@ export interface Prop {
 /** An invisible box a trigger listens to. */
 export interface Zone extends Box {
   id: string;
+  /** ED-13: an editor group. Things that share one are selected and moved
+   *  together in the editor. The game ignores it. */
+  group?: string;
 }
 
 export type KeyColour = "red" | "blue" | "yellow";
@@ -325,6 +340,9 @@ export type KeyColour = "red" | "blue" | "yellow";
  *  it; a key colour opens when the player reaches it holding that key. */
 export interface LevelDoor extends Box {
   id: string;
+  /** ED-13: an editor group. Things that share one are selected and moved
+   *  together in the editor. The game ignores it. */
+  group?: string;
   /** Degrees about Y. */
   rotY?: number;
   colour?: string;

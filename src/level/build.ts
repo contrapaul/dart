@@ -268,8 +268,14 @@ function fillPieces(
       // box on all three axes (a ramp or a turned box is not a grid of
       // voxels, so it is never a wall).
       const bed = materialId("bedrock");
-      for (const box of level.shell) {
-        if (box.shape === "ramp" || (box.rotY ?? 0) !== 0) continue;
+      // ED-12: a solid, unturned box prim is a wall too, so a built in
+      // level whose shell the editor turned into prims anchors the same.
+      const walls: { pos: Vec3; size: Vec3 }[] = [
+        ...level.shell.filter((box) => box.shape !== "ramp" && (box.rotY ?? 0) === 0),
+        ...(level.prims ?? []).filter((p) => p.shape === "box" && p.behaviour === "solid"
+          && !p.hidden && !(p.rot ?? [0, 0, 0]).some((r) => r !== 0)),
+      ];
+      for (const box of walls) {
         for (const v of piece.volumes) {
           const [lo, hi] = voxelBounds(v, origin);
           // The cell's own extent on axis `a` is origin + [i, i+1]*VOXEL: it

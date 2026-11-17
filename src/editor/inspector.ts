@@ -1,7 +1,7 @@
 import hazardData from "../../data/hazards.json";
 import type { Prim, PrimBehaviour, PrimShape, Vec3 } from "../level/format";
 import { isVoxelBreakable } from "../level/validate";
-import { GRID, LIMITS, PALETTE, ROTATE_STEP, snapVec3 } from "./doc";
+import { GRID, LIMITS, PALETTE, ROTATE_STEP, snapAxis } from "./doc";
 
 // ED-02 stage 3: the inspector's fields for the selected prims. It reads a
 // prim and calls back with a patch; the page turns the patch into one undo
@@ -51,12 +51,11 @@ function vecField(
 ): HTMLElement {
   const host = document.createElement("div");
   host.className = "vec";
-  const value: Vec3 = [...current] as Vec3;
+  let value: Vec3 = [...current] as Vec3;
   (["x", "y", "z"] as const).forEach((axis, i) => {
     const input = numberInput(current[i]!, step, (n) => {
-      value[i] = n;
-      const next = snap > 0 ? snapVec3(value, snap) : value;
-      onChange(next as Vec3);
+      value = snapAxis(value, i as 0 | 1 | 2, n, snap);
+      onChange(value);
     });
     input.title = axis;
     host.append(input);

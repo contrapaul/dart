@@ -201,6 +201,7 @@ are.
 - ED-23 Stamps. Save a selection as a stamp with a picture; stamp it
   again in any level. Stored in the browser, exported and imported as a
   file. Paul builds his own kit; none ships unless he makes it.
+  Brought forward on its own 2026-11-17 as `tasks/ED-23.md`.
 
 ### Plan L: rebuild (not recommended)
 

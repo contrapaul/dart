@@ -1,6 +1,6 @@
 import type { Level, LevelDoor, Pickup, PlacedFoamer, Prop, Rift, Vec3, Zone } from "../level/format";
 import { LEAKING_BARREL, PROP_KINDS, propSolid } from "../level/props";
-import { GRID, ROTATE_STEP, snapVec3, type EntryKind } from "./doc";
+import { GRID, ROTATE_STEP, snapAxis, type EntryKind } from "./doc";
 import { EXIT_ID, START_ID } from "./markers";
 import { BLASTERS, MELEE, makePickup } from "./parts";
 
@@ -47,11 +47,11 @@ export function numberInput(value: number, step: number, commit: (n: number) => 
 export function vecField(current: Vec3, step: number, snap: number, commit: (v: Vec3) => void): HTMLElement {
   const host = document.createElement("div");
   host.className = "vec";
-  const value: Vec3 = [...current] as Vec3;
+  let value: Vec3 = [...current] as Vec3;
   (["x", "y", "z"] as const).forEach((axis, i) => {
     const input = numberInput(current[i]!, step, (n) => {
-      value[i] = n;
-      commit((snap > 0 ? snapVec3(value, snap) : value) as Vec3);
+      value = snapAxis(value, i as 0 | 1 | 2, n, snap);
+      commit(value);
     });
     input.title = axis;
     host.append(input);

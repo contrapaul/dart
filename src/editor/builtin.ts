@@ -1,5 +1,6 @@
 import type { Level } from "../level/format";
 import { arenaToTriggers } from "../level/arena-to-triggers";
+import { shellToPrims } from "./shell-to-prims";
 
 // ED-09 stage 3: a built in level opens in the editor as a copy. Its fights
 // are written as `arenas`, which the editor does not edit, so the copy is
@@ -17,5 +18,7 @@ export interface BuiltInCopy {
 export function builtInCopy(level: Level): BuiltInCopy {
   const copy = structuredClone(level);
   const { level: converted, warnings } = arenaToTriggers(copy);
-  return { level: converted, warnings };
+  // ED-12: its walls and floors become prims, so they can be edited too.
+  const shell = shellToPrims(converted);
+  return { level: shell.level, warnings: [...warnings, ...shell.warnings] };
 }

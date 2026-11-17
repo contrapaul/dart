@@ -52,6 +52,8 @@ export const KIND_PREFIX: Record<EntryKind, string> = {
 export interface IdEntry {
   id: string;
   pos?: Vec3;
+  /** ED-13: the editor group it belongs to, if any. */
+  group?: string;
 }
 
 /** One kind's entry either side of a change. `key` is the id it had before
@@ -104,7 +106,7 @@ function applyEntries(level: Level, edits: EntryEdit[], side: "before" | "after"
 
 /** The id prefix a copy of this entry takes: its own, so a duplicated
  *  pickup is another pickup and not another prim. */
-function idPrefix(kind: EntryKind, entry: IdEntry): string {
+export function idPrefix(kind: EntryKind, entry: IdEntry): string {
   const own = entry.id.replace(/[-_]?\d+$/, "");
   return own || KIND_PREFIX[kind];
 }
@@ -113,6 +115,15 @@ function idPrefix(kind: EntryKind, entry: IdEntry): string {
 export function snapValue(v: number, step: number): number {
   if (!(step > 0)) return v;
   return Math.round(v / step) * step;
+}
+
+/** ED-12: the vector with one axis set to `n`, snapped when `step` is above
+ *  zero. The other two axes are left as they are, on the grid or not: this
+ *  is one number typed into the inspector, and it must not move the rest. */
+export function snapAxis(v: Vec3, axis: 0 | 1 | 2, n: number, step: number): Vec3 {
+  const next: Vec3 = [v[0], v[1], v[2]];
+  next[axis] = snapValue(n, step);
+  return next;
 }
 
 export function snapVec3(v: Vec3, step: number): Vec3 {
@@ -254,6 +265,41 @@ export class LevelDoc {
     return id;
   }
 
+  /** ED-13: a group name no entry carries yet, and that is not in `taken`
+   *  (names handed out for copies that are not in the level yet). */
+  nextGroup(taken: Iterable<string> = []): string {
+    const used = new Set<string>(taken);
+    for (const kind of ENTRY_KINDS) {
+      for (const e of listOf(this.current, kind)) if (e.group) used.add(e.group);
+    }
+    let n = 1;
+    while (used.has(`group-${n}`)) n += 1;
+    return `group-${n}`;
+  }
+
+  /** ED-13: puts entries of any kind in a group, or takes them out of
+   *  theirs (`null`), as one undo step. A trigger is not a thing in the
+   *  world and is never grouped. */
+  setGroup(ids: string[], group: string | null) {
+    const entries: EntryEdit[] = [];
+    for (const id of ids) {
+      const kind = this.kindOf(id);
+      const before = kind && kind !== "triggers" ? this.find(kind, id) : undefined;
+      if (!kind || !before || (before.group ?? null) === group) continue;
+      const after: IdEntry = { ...before };
+      if (group) after.group = group;
+      else delete after.group;
+      entries.push({ kind, key: id, before, after });
+    }
+    if (entries.length) this.run({ text: group ? `group ${entries.length} things` : `ungroup ${entries.length} things`, entries });
+  }
+
+  /** ED-13: adds entries of several kinds as one undo step (a paste). */
+  addMixed(entries: { kind: EntryKind; entry: IdEntry }[], text: string) {
+    if (!entries.length) return;
+    this.run({ text, entries: entries.map(({ kind, entry }) => ({ kind, key: entry.id, after: entry })) });
+  }
+
   add<T extends IdEntry>(kind: EntryKind, entry: T): T {
     this.run({ text: `add ${entry.id}`, entries: [{ kind, key: entry.id, after: entry }] });
     return entry;
@@ -303,8 +349,11 @@ export class LevelDoc {
   }
 
   /** Copies entries of a kind with fresh ids, moved by `offset` metres.
-   *  Returns the new ids, in the order the old ones were given. */
-  duplicate(kind: EntryKind, ids: string[], offset: Vec3 = [GRID, 0, GRID]): string[] {
+   *  Returns the new ids, in the order the old ones were given. ED-13: a
+   *  copy of a grouped thing joins a new group, not the old one. `groups`
+   *  maps old group to new; hand the same map to each call when a group
+   *  spans kinds, so its copies stay together. */
+  duplicate(kind: EntryKind, ids: string[], offset: Vec3 = [GRID, 0, GRID], groups = new Map<string, string>()): string[] {
     const entries: EntryEdit[] = [];
     const made: string[] = [];
     for (const id of ids) {
@@ -314,6 +363,10 @@ export class LevelDoc {
       // must change: a prim keeps its size and rotation, a door its size and
       // lock. So the copy is snapped on the grid at its new place.
       const copy: IdEntry = { ...from, id: this.nextId(idPrefix(kind, from)) };
+      if (from.group) {
+        if (!groups.has(from.group)) groups.set(from.group, this.nextGroup(groups.values()));
+        copy.group = groups.get(from.group)!;
+      }
       if (from.pos) {
         copy.pos = snapVec3([from.pos[0] + offset[0], from.pos[1] + offset[1], from.pos[2] + offset[2]], GRID);
       }

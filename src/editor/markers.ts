@@ -187,7 +187,8 @@ function propMarker(p: Prop): THREE.Group {
 }
 
 function doorMarker(d: LevelDoor): THREE.Mesh {
-  return ghostBox(d.pos, d.size, doorColour(d), d.rotY ?? 0);
+  // rotY is degrees in the level file; the mesh turns in radians.
+  return ghostBox(d.pos, d.size, doorColour(d), ((d.rotY ?? 0) * Math.PI) / 180);
 }
 
 /** Builds the marker for one entry, with the data the handles need. */

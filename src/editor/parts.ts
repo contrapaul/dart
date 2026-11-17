@@ -140,7 +140,7 @@ export interface Handles {
 
 /** The smallest a drag may shrink a size to, metres: a door is thinner than
  *  a grid step (0.4 m), so the grid cannot be the floor. */
-const MIN_SIZE = 0.1;
+export const MIN_SIZE = 0.1;
 
 /** Only these kinds turn: a Foamer and the player start by yaw, a door by
  *  rotY. The others keep their rotation. */

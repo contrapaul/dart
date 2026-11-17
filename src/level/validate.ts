@@ -684,4 +684,14 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
       if (!woken) warnings.push(`foamer ${f.id}: waits for a trigger, but no trigger wakes it`);
     }
   }
+  // ED-13: an editor group is a name. The game does not read it.
+  const grouped: { id: string; group?: unknown }[] = [
+    ...(level.prims ?? []), ...(level.foamers ?? []), ...(level.pickups ?? []),
+    ...(level.doors ?? []), ...(level.spawnPoints ?? []), ...(level.zones ?? []),
+  ];
+  for (const e of grouped) {
+    if (e.group !== undefined && (typeof e.group !== "string" || !e.group)) {
+      errors.push(`${e.id}: group must be a name`);
+    }
+  }
 }

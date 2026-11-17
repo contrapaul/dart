@@ -10,7 +10,7 @@ import {
   buildStartFields, buildZoneFields, numberInput, selectField, selectKind,
 } from "./inspector-parts";
 import { EXIT_ID, START_ID, markerFor } from "./markers";
-import { AMMO_TYPES, MARKERS, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
+import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
@@ -19,6 +19,10 @@ import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, putLevel } from "./store";
 import { acceptClose, playUrl } from "./play";
+import { capProblem, clipText, groupMembers, idsInRect, makeClip, pasteClip, pasteMove, readClip, type Clip } from "./clipboard";
+import { ASSET_LIMITS, asOneGroup, type Asset } from "./assets";
+import { buildAssetPanel } from "./asset-panel";
+import { faceCentre, faceDirection, resizeFace, sizeText, type Resizable } from "./resize";
 import { openChoice } from "./open";
 import { builtInCopy } from "./builtin";
 import { buildHelp } from "./help";
@@ -67,6 +71,8 @@ const view = new EditorView($<HTMLCanvasElement>("view"));
 type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props";
 let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
+/** ED-23: the saved asset the next click in the view places, or null. */
+let armedAsset: Asset | null = null;
 /** The kind of pickup and the rig the palette places. */
 let pickupType: Pickup["type"] = "darts-standard";
 let armedRig = RIGS[0]?.id ?? "F01";
@@ -372,6 +378,31 @@ function pick(id: string, add = false) {
   buildInspector();
 }
 
+/** ED-13: a click in the view on a grouped thing selects its whole group;
+ *  Shift adds the group, or takes it out when all of it is selected. A thing
+ *  in no group is picked as before. */
+function pickGroup(id: string, add = false) {
+  const members = groupMembers(doc.level, id);
+  if (members.length < 2) {
+    pick(id, add);
+    return;
+  }
+  selectMany(members, add, add && members.every((m) => selected.has(m)));
+}
+
+/** ED-13: selects several things at once (a group, a box select, a paste). */
+function selectMany(ids: string[], add = false, remove = false) {
+  endLink();
+  if (!add) selected.clear();
+  for (const id of ids) {
+    if (remove) selected.delete(id);
+    else selected.add(id);
+  }
+  selectInView();
+  buildOutliner();
+  buildInspector();
+}
+
 /** One toolbar button: an icon, a name in its tooltip, and the colour of
  *  the thing it makes, so the button looks like what lands in the view. */
 function toolButton(icon: IconName, name: string, colour: string | null, on: boolean, act: () => void): HTMLButtonElement {
@@ -415,6 +446,7 @@ function partColour(kind: PartKind): string {
 function arm(shape: PrimShape | null, part: PartKind | null) {
   armed = shape;
   armedPart = part;
+  armedAsset = null;
   view.setGhost(null);
   const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
   const how = shape ? "Click to place, or drag out its size on a floor." : "Click to place.";
@@ -422,6 +454,25 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
   hint.textContent = name ? `${name}: ${how} Shift keeps the tool. Esc stops.` : "";
   hint.hidden = !name;
   buildPalette();
+}
+
+/** ED-23: arms a saved asset. Its ghost is every thing in it, built once
+ *  and then moved under the cursor. */
+function armAsset(asset: Asset) {
+  arm(null, null);
+  armedAsset = asset;
+  const ghost = new THREE.Group();
+  for (const kind of ENTRY_KINDS) {
+    if (kind === "triggers") continue;
+    for (const entry of asset.clip.entries[kind] ?? []) {
+      ghost.add(kind === "prims" ? view.primObject(entry as unknown as Prim) : markerFor(kind, entry as never).object);
+    }
+  }
+  view.setGhost(ghost);
+  view.ghostAt(null);
+  const hint = $("toolHint");
+  hint.textContent = `${asset.name}: Click to place. Shift keeps the tool. Esc stops.`;
+  hint.hidden = false;
 }
 
 /** The toolbar down the left: shapes, things, logic and the handle modes.
@@ -678,7 +729,59 @@ const DRAG_PIXELS = 4;
 let press:
   | { kind: "place"; x: number; y: number; point: THREE.Vector3; normal: THREE.Vector3; corner: THREE.Vector3 | null }
   | { kind: "move"; x: number; y: number; id: string; grab: THREE.Vector3; started: boolean; offset: THREE.Vector3; lift: number; startY: number }
+  | { kind: "box"; x: number; y: number; started: boolean }
+  | {
+    kind: "resize"; x: number; y: number; id: string; box: Resizable; axis: 0 | 1 | 2; side: 1 | -1;
+    origin: THREE.Vector3; dir: THREE.Vector3; grab: number; next: { pos: Vec3; size: Vec3 } | null;
+  }
   | null = null;
+
+/** ED-14: the size in metres shown by the cursor while a face is dragged or
+ *  a shape's footprint is dragged out. Made on first use. */
+let sizeLabel: HTMLDivElement | null = null;
+function showSize(e: { clientX: number; clientY: number }, size: Vec3 | null) {
+  if (!sizeLabel) {
+    sizeLabel = document.createElement("div");
+    sizeLabel.id = "sizeLabel";
+    document.body.append(sizeLabel);
+  }
+  sizeLabel.hidden = !size;
+  if (!size) return;
+  sizeLabel.textContent = sizeText(size);
+  sizeLabel.style.left = `${e.clientX + 16}px`;
+  sizeLabel.style.top = `${e.clientY + 16}px`;
+}
+
+/** ED-14: the one selected thing as a box a face drag can resize (a prim, a
+ *  zone, a door or the exit), or null. */
+function resizable(id: string): Resizable | null {
+  const prim = doc.prim(id);
+  if (prim) return { pos: prim.pos, size: prim.size, rot: prim.rot };
+  const marker = view.markerOf(id);
+  if (!marker?.size) return null;
+  const pos = marker.kind === "exit" ? doc.level.exit.pos : marker.pos;
+  const size = marker.kind === "exit" ? doc.level.exit.size : marker.size;
+  return { pos, size, rot: marker.rot };
+}
+
+/** ED-13: the rectangle a box select draws, made on first use. */
+let selectBox: HTMLDivElement | null = null;
+function showSelectBox(x0: number, y0: number, x1: number, y1: number) {
+  if (!selectBox) {
+    selectBox = document.createElement("div");
+    selectBox.id = "selectBox";
+    document.body.append(selectBox);
+  }
+  selectBox.hidden = false;
+  selectBox.style.left = `${Math.min(x0, x1)}px`;
+  selectBox.style.top = `${Math.min(y0, y1)}px`;
+  selectBox.style.width = `${Math.abs(x1 - x0)}px`;
+  selectBox.style.height = `${Math.abs(y1 - y0)}px`;
+}
+
+/** ED-13: where the cursor last was over the view, for a paste, or null
+ *  when it is somewhere else. */
+let lastPointer: { clientX: number; clientY: number } | null = null;
 /** Set when a press was a place or a drag, so the click after it is not a pick. */
 let pressUsed = false;
 
@@ -714,43 +817,83 @@ function floorPoint(e: PointerEvent, y: number): THREE.Vector3 | null {
 canvas.addEventListener("pointerdown", (e) => {
   pressUsed = false;
   if (e.button !== 0 || e.altKey || view.nav.busy || view.overHandle || linkKey) return;
+  // ED-14: a press on a face handle pulls or pushes that face.
+  const face = !armed && !armedPart && !armedAsset && selected.size === 1 ? view.pickFace(...ndcOf(e)) : null;
+  const only = face ? [...selected][0]! : null;
+  const box = only ? resizable(only) : null;
+  if (face && only && box) {
+    const origin = new THREE.Vector3(...faceCentre(box, face.axis, face.side));
+    const dir = faceDirection(box, face.axis, face.side);
+    press = {
+      kind: "resize", x: e.clientX, y: e.clientY, id: only, box, axis: face.axis, side: face.side,
+      origin, dir, grab: view.axisTravel(...ndcOf(e), origin, dir), next: null,
+    };
+    canvas.style.cursor = "grabbing";
+    return;
+  }
   const hit = view.pick(...ndcOf(e));
-  if (!hit) return;
-  if (armed || armedPart) {
-    press = { kind: "place", x: e.clientX, y: e.clientY, point: hit.point, normal: hit.normal, corner: null };
+  if (armed || armedPart || armedAsset) {
+    if (hit) press = { kind: "place", x: e.clientX, y: e.clientY, point: hit.point, normal: hit.normal, corner: null };
     return;
   }
   // A placed thing (a Foamer, a pickup) drags at once; a shape only once it
   // is selected, so a drag that starts on the floor does not move the floor.
-  if (hit.id && (selected.has(hit.id) || view.markerOf(hit.id))) {
+  if (hit?.id && (selected.has(hit.id) || view.markerOf(hit.id))) {
     press = {
       kind: "move", x: e.clientX, y: e.clientY, id: hit.id, grab: hit.point,
       started: false, offset: new THREE.Vector3(), lift: 0, startY: 0,
     };
     view.holdHandles(true);
+    return;
   }
+  // ED-13: anywhere else (empty space, the floor, a shape that is not
+  // selected) a drag draws a box and selects what is in it.
+  press = { kind: "box", x: e.clientX, y: e.clientY, started: false };
 }, true);
 
 window.addEventListener("pointermove", (e) => {
+  lastPointer = e.target === canvas ? { clientX: e.clientX, clientY: e.clientY } : null;
   if (!press) {
     if ((armed || armedPart) && e.target === canvas && !view.nav.busy) {
       const hit = view.pick(...ndcOf(e));
       showGhost(hit?.point ?? null, hit?.normal ?? new THREE.Vector3(0, 1, 0));
     }
+    if (armedAsset && e.target === canvas && !view.nav.busy) {
+      const hit = view.pick(...ndcOf(e));
+      view.ghostAt(hit ? pasteMove(armedAsset.clip, [hit.point.x, hit.point.y, hit.point.z], snapOn ? GRID : 0) : null);
+    }
     return;
   }
   const far = Math.hypot(e.clientX - press.x, e.clientY - press.y) > DRAG_PIXELS;
+  if (press.kind === "resize") {
+    if (!far && !press.next) return;
+    const metres = view.axisTravel(...ndcOf(e), press.origin, press.dir) - press.grab;
+    // A prim is never under a grid step; a door is thinner than one.
+    const min = doc.prim(press.id) ? GRID : MIN_SIZE;
+    press.next = resizeFace(press.box, press.axis, press.side, metres, snapOn ? GRID : 0, min);
+    view.previewResize({ ...press.box, ...press.next });
+    showSize(e, press.next.size);
+    return;
+  }
+  if (press.kind === "box") {
+    if (!far && !press.started) return;
+    press.started = true;
+    showSelectBox(press.x, press.y, e.clientX, e.clientY);
+    return;
+  }
   if (press.kind === "place") {
     // Only a shape on a floor drags out a footprint; a part, or a click on
     // a wall, places at the press point when the button comes up.
     if (!armed || press.normal.y < 0.5 || (!far && !press.corner)) return;
     press.corner = floorPoint(e, press.point.y);
     showGhost(press.point, press.normal, press.corner ?? undefined);
+    // ED-14: the footprint's size, by the cursor, while it is dragged out.
+    showSize(e, press.corner ? primAt(armed, "ghost", press.point, press.normal, press.corner).size : null);
     return;
   }
   if (!press.started) {
     if (!far) return;
-    if (!selected.has(press.id)) pick(press.id, e.shiftKey);
+    if (!selected.has(press.id)) pickGroup(press.id, e.shiftKey);
     beginHandleDrag("translate");
     view.beginFollow();
     const proxy = view.proxyPosition;
@@ -778,9 +921,44 @@ window.addEventListener("pointerup", (e) => {
   press = null;
   if (!was || e.button !== 0) return;
   if (was.kind === "move") view.holdHandles(false);
+  showSize(e, null);
+  if (was.kind === "resize") {
+    canvas.style.cursor = "";
+    const next = was.next;
+    // The click that follows a press on a handle is not a pick.
+    pressUsed = true;
+    if (!next) return;
+    const same = next.size.every((n, i) => n === was.box.size[i]);
+    if (same) {
+      // Nothing to write: put the view back as the level has it.
+      redraw();
+      return;
+    }
+    // One undo step, on whichever kind of thing it is.
+    const kind = doc.kindOf(was.id);
+    if (kind) doc.change(kind, [{ id: was.id, patch: next }], "resize");
+    else if (was.id === EXIT_ID) doc.setExit(next, "resize the exit");
+    return;
+  }
+  if (was.kind === "box") {
+    if (selectBox) selectBox.hidden = true;
+    if (!was.started) return;
+    pressUsed = true;
+    // Whole groups come with any member the box catches.
+    const caught = idsInRect(view.screenPoints(), { x0: was.x, y0: was.y, x1: e.clientX, y1: e.clientY });
+    selectMany([...new Set(caught.flatMap((id) => groupMembers(doc.level, id)))], e.shiftKey);
+    status.textContent = `${selected.size} selected.`;
+    return;
+  }
   if (was.kind === "place") {
     pressUsed = true;
     const shift = e.shiftKey;
+    if (armedAsset) {
+      const count = pasteAt(armedAsset.clip, [was.point.x, was.point.y, was.point.z], `place ${armedAsset.name}`, true);
+      if (count) status.textContent = `Placed ${armedAsset.name}.`;
+      if (!shift) arm(null, null);
+      return;
+    }
     view.setGhost(null);
     if (armed) place(armed, was.point, was.normal, was.corner ?? undefined);
     else if (armedPart) placePart(armedPart, was.point, was.normal);
@@ -789,7 +967,7 @@ window.addEventListener("pointerup", (e) => {
     else buildPalette();
     return;
   }
-  if (was.started) {
+  if (was.kind === "move" && was.started) {
     pressUsed = true;
     canvas.style.cursor = "";
     endHandleDrag();
@@ -797,7 +975,15 @@ window.addEventListener("pointerup", (e) => {
 });
 
 canvas.addEventListener("pointerleave", () => {
-  if (!press) view.setGhost(null);
+  if (press) return;
+  if (armedAsset) view.ghostAt(null);
+  else view.setGhost(null);
+});
+// ED-13: a double click picks the one thing, out of its group.
+canvas.addEventListener("dblclick", (e) => {
+  if (armed || armedPart || armedAsset || linkKey || e.altKey) return;
+  const hit = view.pick(...ndcOf(e));
+  if (hit?.id) pick(hit.id, false);
 });
 canvas.addEventListener("click", (e) => {
   if (view.nav.swallowClick) {
@@ -817,8 +1003,8 @@ canvas.addEventListener("click", (e) => {
     return;
   }
   // Placing happens when the button comes up (above), not on the click.
-  if (armed || armedPart) return;
-  if (hit?.id) pick(hit.id, e.shiftKey);
+  if (armed || armedPart || armedAsset) return;
+  if (hit?.id) pickGroup(hit.id, e.shiftKey);
   else if (!e.shiftKey) {
     selected.clear();
     selectInView();
@@ -1001,16 +1187,33 @@ window.addEventListener("keydown", (e) => {
       return;
     }
     const made: string[] = [];
+    // ED-13: the copies of a group form a new group, across the kinds.
+    const groups = new Map<string, string>();
     for (const [kind, ids] of byKind) {
       if (kind === "prims" && !roomFor(ids.length)) continue;
       if (kind === "foamers" && doc.entries("foamers").length + ids.length > LIMITS.foamers) {
         status.textContent = `Foamer cap: ${LIMITS.foamers}.`;
         continue;
       }
-      made.push(...doc.duplicate(kind, ids));
+      made.push(...doc.duplicate(kind, ids, undefined, groups));
     }
     selected.clear();
     for (const id of made) selected.add(id);
+    return;
+  }
+  // ED-13: Ctrl+G groups what is selected, Ctrl+Shift+G takes it apart.
+  if (meta && e.code === "KeyG") {
+    e.preventDefault();
+    const ids = [...selected];
+    if (e.shiftKey) {
+      doc.setGroup(ids, null);
+      status.textContent = "Ungrouped.";
+    } else if (ids.filter((id) => doc.kindOf(id) && doc.kindOf(id) !== "triggers").length < 2) {
+      status.textContent = "Select two or more things to group them.";
+    } else {
+      doc.setGroup(ids, doc.nextGroup());
+      status.textContent = "Grouped. A click on one selects them all; a double click picks one.";
+    }
     return;
   }
   if (meta) return;
@@ -1046,7 +1249,7 @@ window.addEventListener("keydown", (e) => {
       buildInspector();
     }
   }
-  if (e.code === "Escape" && !linkKey && (armed || armedPart)) arm(null, null);
+  if (e.code === "Escape" && !linkKey && (armed || armedPart || armedAsset)) arm(null, null);
   if (e.code === "Escape" && linkKey) {
     endLink();
     status.textContent = "";
@@ -1059,6 +1262,85 @@ window.addEventListener("keydown", (e) => {
       selected.clear();
     }
   }
+});
+
+// ED-13: copy, cut and paste go through the browser's own clipboard events,
+// so they need no permission and the clip is plain text any tab can read.
+// A text field, words selected on the page, and a running playtest keep
+// the browser's own behaviour.
+function clipboardIsOurs(): boolean {
+  return !playFrame && !typing(document.activeElement) && !window.getSelection()?.toString();
+}
+
+function copySelection(e: ClipboardEvent): number {
+  const clip = makeClip(doc.level, [...selected]);
+  const count = Object.values(clip.entries).reduce((n, list) => n + list.length, 0);
+  if (!count || !e.clipboardData) return 0;
+  e.clipboardData.setData("text/plain", clipText(clip));
+  e.preventDefault();
+  return count;
+}
+
+document.addEventListener("copy", (e) => {
+  if (!clipboardIsOurs()) return;
+  const count = copySelection(e);
+  if (count) status.textContent = `Copied ${count} thing${count === 1 ? "" : "s"}.`;
+});
+
+document.addEventListener("cut", (e) => {
+  if (!clipboardIsOurs()) return;
+  const count = copySelection(e);
+  if (!count) return;
+  doc.remove([...selected]);
+  selected.clear();
+  status.textContent = `Cut ${count} thing${count === 1 ? "" : "s"}.`;
+});
+
+document.addEventListener("paste", (e) => {
+  if (!clipboardIsOurs()) return;
+  const clip = readClip(e.clipboardData?.getData("text/plain") ?? "");
+  if (!clip) return;
+  e.preventDefault();
+  // Under the cursor when it is over the view, else in the middle of it.
+  const hit = lastPointer ? view.pick(...ndcOf(lastPointer)) : view.pick(0, 0);
+  const at: Vec3 | null = hit ? [hit.point.x, hit.point.y, hit.point.z] : null;
+  const count = pasteAt(clip, at, "paste");
+  if (count) status.textContent = `Pasted ${count} thing${count === 1 ? "" : "s"}.`;
+});
+
+/** Adds a clip's things to the level at a point as one undo step, selects
+ *  them, and returns how many. Over a cap it says why and adds nothing.
+ *  ED-23: a placed asset (`oneGroup`) goes in as one group. */
+function pasteAt(clip: Clip, at: Vec3 | null, verb: string, oneGroup = false): number {
+  const problem = capProblem(doc.level, clip);
+  if (problem) {
+    status.textContent = problem;
+    return 0;
+  }
+  let made = pasteClip(clip, {
+    next: (prefix) => doc.nextId(prefix),
+    nextGroup: (taken) => doc.nextGroup(taken),
+  }, at, snapOn ? GRID : 0);
+  if (oneGroup) made = asOneGroup(made, doc.nextGroup());
+  if (!made.length) return 0;
+  doc.addMixed(made, `${verb}, ${made.length} thing${made.length === 1 ? "" : "s"}`);
+  selectMany(made.map((m) => m.entry.id));
+  return made.length;
+}
+
+// ED-23: the Assets panel. Saving takes what is selected; picking an asset
+// closes the panel and arms it, to be placed by a click in the view.
+$("assetsBtn").addEventListener("click", () => {
+  void dialog("Assets", (body) => buildAssetPanel(body, {
+    selection: () => makeClip(doc.level, [...selected]),
+    picture: (clip) => view.picture(
+      Object.values(clip.entries).flat().map((entry) => entry.id), ASSET_LIMITS.pictureSize,
+    ),
+    place: (asset) => {
+      $("dialogs").hidden = true;
+      armAsset(asset);
+    },
+  }));
 });
 
 window.addEventListener("keyup", (e) => {
@@ -1202,8 +1484,11 @@ function endHandleDrag() {
       const rot: Vec3 = [
         (before.rot?.[0] ?? 0) + turn[0], (before.rot?.[1] ?? 0) + turn[1], (before.rot?.[2] ?? 0) + turn[2],
       ];
-      patch.pos = snapOn ? snapVec3(pos, GRID) : pos;
-      patch.rot = snapOn ? snapVec3(rot, ROTATE_STEP) : rot;
+      // ED-12: only what the drag changed is written, and only that is
+      // snapped. A move used to snap the turn as well, which bent a prim
+      // at an off-step angle (a converted ramp) the first time it was moved.
+      if (moved) patch.pos = snapOn ? snapVec3(pos, GRID) : pos;
+      if (turned) patch.rot = snapOn ? snapVec3(rot, ROTATE_STEP) : rot;
     }
     return { id, patch };
   }).filter((e) => Object.keys(e.patch).length);
@@ -1238,13 +1523,21 @@ async function saveNow(): Promise<string | null> {
   }
 }
 
+/** ED-12: true while a level is being put into the document, which is not
+ *  a change to it. A level is first written to the store on its first
+ *  change, so opening the editor or pressing New leaves no empty level. */
+let opening = false;
+
 function load(level: Level, key: string | null) {
   selected.clear();
   savedKey = key;
   extraProblems = [];
+  opening = true;
   doc.load(level);
+  opening = false;
   syncNameField();
-  scheduleSave();
+  // ED-12: every level opens looking at the place a run begins.
+  view.openOn(level.playerStart);
 }
 
 $("newBtn").addEventListener("click", () => load(newLevel(), null));
@@ -1585,7 +1878,7 @@ doc.onChange(() => {
     if (!doc.kindOf(id)) selected.delete(id);
   }
   redraw();
-  scheduleSave();
+  if (!opening) scheduleSave();
 });
 
 // The level the page opens with: `?open=<key>` when it names a stored level,
@@ -1597,7 +1890,7 @@ void listLevels()
     const choice = openChoice(location.search, stored);
     const found = choice.key ? stored.find((s) => s.key === choice.key) : undefined;
     if (found) load(structuredClone(found.level), found.key);
-    else doc.load(newLevel());
+    else load(newLevel(), null);
     // A key the store does not hold is said in the Problems list, so the
     // status line still ends on "Ready" for the smoke check.
     if (choice.missing) {
@@ -1608,7 +1901,7 @@ void listLevels()
       }];
     }
   })
-  .catch(() => doc.load(newLevel()))
+  .catch(() => load(newLevel(), null))
   .finally(() => {
     syncNameField();
     redraw();
