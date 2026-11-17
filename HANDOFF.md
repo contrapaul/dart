@@ -126,6 +126,20 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
   player or Foamers in a level, Foamers pathing round props (the nav grid
   is baked from the same colliders, so it should).
 
+### 2026-11-17: ED-12 to ED-14 and ED-23 merged to main (Claude Opus 5.5)
+
+- Asked: review the state of the project, push and merge.
+- Branch `ed-12` was cut from `ed-11` before pull request 1 merged it
+  with ARM-01, the foam spurt, the Debris row and the `previews` block.
+  It was rebased onto `main` (`482c92a`). The only conflict was the top
+  of this log, where both sides had added entries; both were kept.
+- On the rebased branch: `npm run check` 1538 tests, 2 skipped, the em
+  dash and remote checks clean; `npm run smoke` ok on all five pages.
+- Merged by pull request, so Cloudflare deploys it to the live site.
+- Not reviewed by a second model, unlike the earlier editor cards. Not
+  tried by Paul with a real mouse, the real clipboard keys or real
+  asset files.
+
 ### 2026-11-17: ED-23, saved assets (Claude Fable 5.2)
 
 - Asked: build ED-23 (`tasks/ED-23.md`). Built in the `ed-12` worktree on
