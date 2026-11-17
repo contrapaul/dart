@@ -444,6 +444,9 @@ export class EditorView {
   /** Where a click on the canvas lands on the world: the first prim or the
    *  shell under the cursor, else the ground plane at y = 0. */
   pick(ndcX: number, ndcY: number, skip?: Set<string>): { point: THREE.Vector3; normal: THREE.Vector3; id: string | null } | null {
+    // Meshes rebuilt by a change since the last frame have no world matrix
+    // yet, so a pick before the next render would see them at the origin.
+    this.scene.updateMatrixWorld();
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
     const hits = this.raycaster.intersectObjects(targets, false);
