@@ -76,13 +76,15 @@ export function collidersFor(rapier: Rapier, prim: Prim): RAPIER.ColliderDesc[] 
       pts[i + 2] = v.z;
     }
     const hull = rapier.ColliderDesc.convexHull(pts);
-    // A hull Rapier cannot build falls back to the size box, which is at
-    // most a little too big and never too small to stand on.
-    out.push(
-      (hull ?? rapier.ColliderDesc.cuboid(prim.size[0] / 2, prim.size[1] / 2, prim.size[2] / 2))
-        .setTranslation(pos.x, pos.y, pos.z)
-        .setRotation(rot),
-    );
+    // The hull's points are already in world space, so it takes no
+    // translation or rotation of its own (review fix: it used to take both
+    // again, which put every ramp, wedge and cylinder collider off its mesh).
+    // A hull Rapier cannot build falls back to the size box, placed as the
+    // prim is, which is at most a little too big and never too small to
+    // stand on.
+    out.push(hull ?? rapier.ColliderDesc.cuboid(prim.size[0] / 2, prim.size[1] / 2, prim.size[2] / 2)
+      .setTranslation(pos.x, pos.y, pos.z)
+      .setRotation(rot));
   }
   return out;
 }

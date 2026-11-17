@@ -106,6 +106,26 @@ describe("buildPrims", () => {
     expect(group.children.length).toBe(1);
   });
 
+  it("puts a hull collider where its mesh is, not moved twice (review fix)", async () => {
+    // A cylinder, a ramp and a turned wedge away from the origin: a ray down
+    // through each one's centre stops on its top, and one beside it does not.
+    const { rapier, world } = await createPhysics();
+    buildPrims(level([
+      box({ id: "cyl", shape: "cylinder", pos: [6, 1, 3], size: [1, 2, 1] }),
+      box({ id: "ramp", shape: "ramp", pos: [-5, 0.5, -4], size: [2, 1, 2] }),
+      box({ id: "wedge", shape: "wedge", pos: [3, 1, -6], size: [2, 2, 2], rot: [0, 90, 0] }),
+    ]), rapier, world, new THREE.Group());
+    world.step();
+    const top = (x: number, z: number) => {
+      const hit = world.castRay(new rapier.Ray({ x, y: 10, z }, { x: 0, y: -1, z: 0 }), 20, true);
+      return hit ? 10 - hit.timeOfImpact : null;
+    };
+    expect(top(6, 3)).toBeCloseTo(2, 3);
+    expect(top(12, 6)).toBeNull();
+    expect(top(-5, -4)).toBeCloseTo(0.5, 3);
+    expect(top(3, -6)).toBeCloseTo(2, 3);
+  });
+
   it("covers a level built from prims alone in the nav bounds", async () => {
     const { rapier, world } = await createPhysics();
     const built = buildLevel(level([
