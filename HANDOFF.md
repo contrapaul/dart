@@ -93,6 +93,30 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-17: pull request 2 rebased onto the props (Claude Opus 5.5)
+
+- Asked: rebase `ed-12` (ED-12 to ED-14, ED-23) onto `main` after the
+  props and the two collider fixes were pushed.
+- Conflicts: the top of this log (both sides kept), the `_note` in
+  `data/editor.json` (the branch's camera notes plus "props" in the caps
+  list), and two import lines in `src/editor/main.ts` and
+  `src/editor/inspector-parts.ts` (both sides' names kept).
+- Fix: a paste now checks the props cap too (`capProblem` in
+  `src/editor/clipboard.ts`, test in `tests/editor/clipboard.test.ts`).
+  Copy, paste, groups and assets already go through every entry kind, so
+  props come along.
+- Check: 1545 tests pass, 2 skipped; smoke ok on all five pages; no em
+  dashes. Seen in the browser: a leaking barrel placed, copied and pasted
+  through the clipboard events, no console errors.
+- Found: `npm test` in the main checkout also runs the test files under
+  `.claude/worktrees/`, so its count is doubled while a worktree exists
+  (2985 there was about 1440 on main plus this branch's copies).
+- Noticed, not changed: a paste with the cursor on the side of a thing
+  lands on that face, so the copy can float (0.5 m up when pasted over a
+  barrel). That is ED-13's rule for every kind.
+- Not seen: a real mouse or real clipboard keys. Still not reviewed by a
+  second model.
+
 ### 2026-11-17: props in the editor, and two bug fixes (Claude Opus 5.5)
 
 - Asked: barrels and other decorative debris in the builder. Paul chose:

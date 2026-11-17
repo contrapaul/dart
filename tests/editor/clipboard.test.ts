@@ -127,6 +127,14 @@ describe("ED-13 copy and paste", () => {
     full.prims = Array.from({ length: editorData.limits.prims }, (_, i) => box(`b-${i}`, i));
     expect(capProblem(full, clip)).toContain(String(editorData.limits.prims));
   });
+
+  it("refuses a paste that would pass the props cap", () => {
+    const crate = (id: string, x: number) => ({ id, kind: "crate", pos: [x, 0, 0] as [number, number, number] });
+    const clip = makeClip({ ...level(), props: [crate("prop-1", 0)] }, ["prop-1"]);
+    const full = { ...level(), props: Array.from({ length: editorData.limits.props }, (_, i) => crate(`p-${i}`, i)) };
+    expect(capProblem(level(), clip)).toBeNull();
+    expect(capProblem(full, clip)).toContain(String(editorData.limits.props));
+  });
 });
 
 describe("ED-13 groups", () => {

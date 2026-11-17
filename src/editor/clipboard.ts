@@ -63,7 +63,7 @@ export function readClip(text: string): Clip | null {
  *  null when it can. */
 export function capProblem(level: Level, clip: Clip): string | null {
   const caps: [EntryKind, number, string][] = [
-    ["prims", LIMITS.prims, "prims"], ["foamers", LIMITS.foamers, "Foamers"], ["triggers", LIMITS.triggers, "triggers"],
+    ["prims", LIMITS.prims, "prims"], ["foamers", LIMITS.foamers, "Foamers"], ["triggers", LIMITS.triggers, "triggers"], ["props", LIMITS.props, "props"],
   ];
   for (const [kind, cap, name] of caps) {
     const have = listOf(level, kind).length;
