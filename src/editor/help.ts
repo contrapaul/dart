@@ -38,6 +38,7 @@ export const HELP: HelpSection[] = [
     title: "Placing things",
     rows: [
       ["Tool bar", "The icons on the left. Pick a shape or a thing and a see-through copy follows the cursor. Click to place one, or drag on a floor to draw a shape's size. Shift+click keeps the tool. Esc stops."],
+      ["Props", "The barrel icon. Pick a barrel, crate, rubble or tank beside it. A prop has a Solid box: off, it is scenery you walk through. The leaking barrel sprays foam when hit and then blows up."],
       ["Inspector", "The right panel edits what is selected: position, size, colour, behaviour."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
     ],

@@ -302,6 +302,18 @@ export interface PlacedFoamer {
   hidden?: boolean;
 }
 
+/** A prop placed in the editor. `kind` is a key of data/props.json, or
+ *  "barrel-leaking" for the Range's barrel that sprays foam and blows. `pos`
+ *  is its foot on the floor, `rotY` its turn in degrees (0 faces -z), and
+ *  `solid` overrides the kind's own (the leaking barrel is always solid). */
+export interface Prop {
+  id: string;
+  kind: string;
+  pos: Vec3;
+  rotY?: number;
+  solid?: boolean;
+}
+
 /** An invisible box a trigger listens to. */
 export interface Zone extends Box {
   id: string;
@@ -396,4 +408,7 @@ export interface Level {
   triggers?: Trigger[];
   sky?: Sky;
   start?: StartLoadout;
+  /** Props: barrels, crates, rubble, tanks (data/props.json, and the
+   *  Range's leaking barrel). */
+  props?: Prop[];
 }

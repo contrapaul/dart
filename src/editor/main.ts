@@ -1,16 +1,16 @@
 import * as THREE from "three";
-import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Trigger, Vec3 } from "../level/format";
+import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
 import {
   EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
 } from "./doc";
 import { exportFileName, readLevelFile, skyImageDataUrl } from "./files";
 import { buildPrimFields } from "./inspector";
 import {
-  buildDoorFields, buildExitFields, buildFoamerFields, buildPickupFields, buildSpawnFields,
+  buildDoorFields, buildExitFields, buildFoamerFields, buildPickupFields, buildPropFields, buildSpawnFields,
   buildStartFields, buildZoneFields, numberInput, selectField, selectKind,
 } from "./inspector-parts";
 import { EXIT_ID, START_ID, markerFor } from "./markers";
-import { AMMO_TYPES, MARKERS, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeSpawn, makeZone, rigLabel } from "./parts";
+import { AMMO_TYPES, MARKERS, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
@@ -24,6 +24,7 @@ import { builtInCopy } from "./builtin";
 import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
 import { ICONS, type IconName } from "./icons";
+import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -44,6 +45,7 @@ const PART_BUTTONS: { kind: PartKind; name: string }[] = [
   { kind: "doors", name: "Door" },
   { kind: "spawnPoints", name: "Spawn point" },
   { kind: "zones", name: "Zone" },
+  { kind: "props", name: "Prop" },
 ];
 
 /** ED-08: a trigger is not a thing in the world, so it is not placed by a
@@ -62,12 +64,14 @@ const view = new EditorView($<HTMLCanvasElement>("view"));
 /** What the palette will place on the next click in the view: a primitive
  *  shape, or ED-05's other kinds (a Foamer, a pickup, a door, a spawn point,
  *  a zone). Only one is armed at a time. */
-type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones";
+type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props";
 let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
 /** The kind of pickup and the rig the palette places. */
 let pickupType: Pickup["type"] = "darts-standard";
 let armedRig = RIGS[0]?.id ?? "F01";
+/** The prop kind the Prop tool places (data/props.json or the leaking barrel). */
+let armedProp = LEAKING_BARREL;
 /** The colour new prims take: the last one picked in the inspector. */
 let placeColour = "#ff7a1a";
 const selected = new Set<string>();
@@ -222,6 +226,7 @@ const PART_GROUPS: { kind: PartKind; title: string }[] = [
   { kind: "doors", title: "Doors" },
   { kind: "spawnPoints", title: "Spawn points" },
   { kind: "zones", title: "Zones" },
+  { kind: "props", title: "Props" },
 ];
 
 /** The name a row shows for a placed thing: its id, and what it is. */
@@ -238,6 +243,10 @@ function partName(id: string): string {
   if (kind === "doors") {
     const d = doc.find<LevelDoor>(kind, id);
     return d ? `${id}  ${d.lock}` : id;
+  }
+  if (kind === "props") {
+    const p = doc.find<Prop>(kind, id);
+    return p ? `${id}  ${PROP_KINDS[p.kind]?.label ?? p.kind}` : id;
   }
   return id;
 }
@@ -397,6 +406,7 @@ function partColour(kind: PartKind): string {
     case "doors": return MARKERS.doorColour;
     case "spawnPoints": return MARKERS.spawnColour;
     case "zones": return MARKERS.zoneColour;
+    case "props": return PROP_KINDS[armedProp]?.parts[0]?.colour ?? MARKERS.doorColour;
   }
 }
 
@@ -471,6 +481,29 @@ function buildPalette() {
 
 /** The type picker shown beside an armed Foamer or pickup button. */
 function partOptions(kind: PartKind): HTMLElement | null {
+  if (kind === "props") {
+    // Grouped as data/props.json groups them, the leaking barrel first.
+    const select = document.createElement("select");
+    select.className = "tool-options";
+    select.title = "Prop";
+    const groups = new Map<string, HTMLOptGroupElement>();
+    for (const [value, k] of Object.entries(PROP_KINDS)) {
+      let group = groups.get(k.group);
+      if (!group) {
+        group = document.createElement("optgroup");
+        group.label = k.group;
+        groups.set(k.group, group);
+        select.append(group);
+      }
+      group.append(new Option(k.label, value));
+    }
+    select.value = armedProp;
+    select.addEventListener("change", () => {
+      armedProp = select.value;
+      buildPalette();
+    });
+    return select;
+  }
   if (kind !== "pickups" && kind !== "foamers") return null;
   const select = document.createElement("select");
   select.className = "tool-options";
@@ -566,6 +599,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
   else if (kind === "pickups") buildPickupFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "doors") buildDoorFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "spawnPoints") buildSpawnFields(host, doc.find(kind, id)!, ctx);
+  else if (kind === "props") buildPropFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "triggers") buildTriggerInspector(host, id);
   else buildZoneFields(host, doc.find(kind, id)!, ctx);
 }
@@ -879,13 +913,18 @@ function partAt(kind: PartKind, id: string, point: THREE.Vector3, normal: THREE.
     return snapped({ ...made, pos: [point.x + normal.x * 0.2, made.pos[1], point.z + normal.z * 0.2] as Vec3 });
   }
   if (kind === "spawnPoints") return snapped(makeSpawn(id, at));
+  if (kind === "props") return makeProp(id, armedProp, at);
   return snapped(makeZone(id, at));
 }
 
 /** Places a part (see `partAt`) and selects it. */
 function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) {
   if (kind === "foamers" && !roomForKind("foamers")) return;
-  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : "zone";
+  if (kind === "props" && doc.entries("props").length >= LIMITS.props) {
+    status.textContent = `Prop cap: ${LIMITS.props}.`;
+    return;
+  }
+  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : "zone";
   const entry = partAt(kind, doc.nextId(prefix), point, normal);
   doc.add(kind, entry as never);
   pick(entry.id);

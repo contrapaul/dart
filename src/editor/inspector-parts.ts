@@ -1,4 +1,5 @@
-import type { Level, LevelDoor, Pickup, PlacedFoamer, Rift, Vec3, Zone } from "../level/format";
+import type { Level, LevelDoor, Pickup, PlacedFoamer, Prop, Rift, Vec3, Zone } from "../level/format";
+import { LEAKING_BARREL, PROP_KINDS, propSolid } from "../level/props";
 import { GRID, ROTATE_STEP, snapVec3, type EntryKind } from "./doc";
 import { EXIT_ID, START_ID } from "./markers";
 import { BLASTERS, MELEE, makePickup } from "./parts";
@@ -183,6 +184,26 @@ export function buildDoorFields(host: HTMLElement, d: LevelDoor, ctx: PartContex
   colour.value = d.colour ?? "#c89a5b";
   colour.addEventListener("input", () => ctx.change({ colour: colour.value }, "colour"));
   host.append(label("colour", colour));
+}
+
+/** A prop: what it is, where, its turn, and whether it blocks. The leaking
+ *  barrel always blocks, so its box is shown ticked and cannot be changed. */
+export function buildPropFields(host: HTMLElement, p: Prop, ctx: PartContext) {
+  host.append(label("prop", selectField(
+    Object.entries(PROP_KINDS).map(([value, k]) => ({ value, label: k.label })),
+    p.kind, (v) => ctx.change({ kind: v, solid: undefined }, `make it a ${PROP_KINDS[v]?.label ?? v}`),
+  )));
+  host.append(label("position", vecField(p.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move"))));
+  host.append(label("rotation", numberInput(p.rotY ?? 0, ROTATE_STEP, (n) => ctx.change({ rotY: n }, "turn"))));
+  const solid = checkField("solid", propSolid(p), (on) => ctx.change({ solid: on }, on ? "make solid" : "make walk-through"));
+  if (p.kind === LEAKING_BARREL) solid.querySelector("input")!.disabled = true;
+  host.append(solid);
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.textContent = p.kind === LEAKING_BARREL
+    ? "Darts puncture it and it sprays foam, then blows. A blast sets off barrels nearby."
+    : "Solid blocks the player, Foamers and darts. Off, it is scenery you walk through.";
+  host.append(hint);
 }
 
 export function buildSpawnFields(host: HTMLElement, r: Rift, ctx: PartContext) {

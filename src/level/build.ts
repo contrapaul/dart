@@ -10,6 +10,7 @@ import { Crates, type CrateBox } from "../voxel/crates";
 import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
 import { buildPrims, foamMaterialFor, type PrimHandle } from "./prims";
+import { levelPropPrims } from "./props";
 import { isVoxelBreakable } from "./validate";
 import { Breakables } from "./breakables";
 import type {
@@ -329,7 +330,9 @@ export function buildLevel(
   }
 
   // ED-01: the editor's prims, merged per colour where they never hide.
-  const prims = buildPrims(level, rapier, world, group);
+  // Props (barrels, crates, rubble) are prims too, built and merged with
+  // them; the leaking barrels are not, the arena runs those.
+  const prims = buildPrims({ ...level, prims: [...(level.prims ?? []), ...levelPropPrims(level)] }, rapier, world, group);
   // ED-06: the ones that break by hit points get a mesh and colliders of
   // their own, and a handle if they start hidden.
   const breakables = new Breakables(level, rapier, world, group);

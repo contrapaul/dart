@@ -93,6 +93,39 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-17: props in the editor, and two bug fixes (Claude Opus 5.5)
+
+- Asked: barrels and other decorative debris in the builder. Paul chose:
+  both barrels (the Range's leaking barrel and a plain one), a Solid tick
+  box per prop, and crates and boxes, rubble and scatter, tanks and drums.
+- Built: `data/props.json` (ten kinds, each a list of parts in the
+  editor's shapes, looks are start values for Paul) and
+  `src/level/props.ts`, which turns a prop into world prims (solid or
+  decor), so the game merges and collides them with the other prims
+  (`src/level/build.ts`). The leaking barrel is the Range's ENV-05 barrel:
+  `src/arena/extras.ts` now runs a `Barrels` system for a level's leaking
+  barrels (dart hits, blasts chaining, darts released, back on restart).
+  Level format: `props?: Prop[]` (`{id, kind, pos, rotY?, solid?}`), cap
+  `limits.props` 500, checked by the validator. Editor: a barrel icon in
+  the tool bar with a grouped picker, the prop drawn as itself (ghost and
+  marker), drag to move, [ and ] to turn, inspector fields (kind,
+  position, rotation, solid), a Props group in the outliner.
+- Fix (own commit): every ramp, wedge and cylinder prim's collider was
+  placed twice over (hull points already in world space, then moved and
+  turned again), so its collision sat away from its mesh, e.g. a cylinder
+  at x 3.5 collided at x 7. Test in `tests/level/prims.test.ts`.
+- Fix (own commit): the editor's pick ran before rebuilt meshes had a
+  world matrix, so a second placement in the same frame (a script, or a
+  very fast Shift+click) landed 0.5 m up on a stale floor.
+- Seen in the browser: all eleven props placed, on the floor, drawn as
+  themselves in the editor and in the game; rays down find each solid
+  prop's top (crate 1.0, tank 2.85, barrel 0.92) and none on rubble,
+  chunks or darts; three darts set off the leaking barrel in a level.
+  Check (2985 tests) and smoke green.
+- Not seen: a player walking into a prop, the barrel's blast hurting the
+  player or Foamers in a level, Foamers pathing round props (the nav grid
+  is baked from the same colliders, so it should).
+
 ### 2026-11-16: OPS, a `previews` block so branch builds deploy (Claude Fable 5.2)
 
 No task card: it came out of pull request 1 (`ed-11` to `main`).

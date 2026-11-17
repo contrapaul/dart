@@ -40,6 +40,7 @@ players can make their own levels.
 | **Doors** | Slide open. Each is open, locked until a trigger opens it, or locked to a key colour. | Arena doors only |
 | **Zones** | Invisible boxes that a trigger listens to ("the player entered"). | Arena triggers only |
 | **Existing kit** | Buttons, presses, barrels, mod stations. | Yes |
+| **Props** | Barrels (the leaking barrel that blows, and a plain one), crates and boxes, rubble and scatter, tanks and drums (`data/props.json`). Each has a Solid tick box. Added 2026-11-17. | No |
 | **Sky** | A colour gradient (top, horizon, bottom), or an uploaded image. | No |
 | **Level settings** | Name, what the player starts with (blasters, hand weapon, health) for a level played on its own. | No |
 

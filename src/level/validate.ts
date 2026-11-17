@@ -9,6 +9,7 @@ import buttonData from "../../data/buttons.json";
 import pressTuning from "../../data/press.json";
 import hazardData from "../../data/hazards.json";
 import editorData from "../../data/editor.json";
+import { isPropKind } from "./props";
 
 // Checks a level file against design/levels/BLOCKOUT.md section 5. Rule 7
 // (secrets) is for a thing LVL-01 does not load yet; the dart type names of
@@ -508,6 +509,16 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
   if (prims.length > LIMITS.prims) errors.push(`${prims.length} prims, over the limit of ${LIMITS.prims}`);
   if (foamers.length > LIMITS.foamers) errors.push(`${foamers.length} placed Foamers, over the limit of ${LIMITS.foamers}`);
   if (triggers.length > LIMITS.triggers) errors.push(`${triggers.length} triggers, over the limit of ${LIMITS.triggers}`);
+  const props = level.props ?? [];
+  if (props.length > LIMITS.props) errors.push(`${props.length} props, over the limit of ${LIMITS.props}`);
+  for (const p of props) {
+    const what = `prop ${p.id}`;
+    claim(p.id, what);
+    if (!isPropKind(p.kind)) errors.push(`${what}: unknown kind ${p.kind}`);
+    if (!isVec3(p.pos)) errors.push(`${what}: pos must be three numbers`);
+    if (p.rotY !== undefined && !Number.isFinite(p.rotY)) errors.push(`${what}: rotY must be a number`);
+    if (p.solid !== undefined && typeof p.solid !== "boolean") errors.push(`${what}: solid must be true or false`);
+  }
   for (let k = 0; k < 3; k++) {
     if (shell.max[k] - shell.min[k] > LIMITS.levelSize) {
       errors.push(`the level is ${(shell.max[k] - shell.min[k]).toFixed(1)} m along ${"xyz"[k]}, over the limit of ${LIMITS.levelSize}`);

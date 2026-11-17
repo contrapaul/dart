@@ -1,0 +1,118 @@
+{
+  "_note": "Props the level editor places: barrels, crates, rubble, tanks. Each kind is a list of parts in the editor's own shapes (box, cylinder, wedge; src/level/format.ts PrimShape), in metres, with the prop's foot on the floor at y 0 and the prop facing -z. pos is a part's centre, size its full size, rot its turn in degrees (XYZ, as a prim's), colour its #rrggbb. label is the editor's name for it, group the tool bar picker's heading, solid whether a new one blocks the player, the Foamers and darts (the inspector can change it per prop). The leaking barrel (barrel-leaking) is not here: it is the Range's barrel (data/barrel.json), drawn and run by src/level/barrels.ts, and always solid. The looks are start values in the foam palette, [Paul] to restyle.",
+  "kinds": {
+    "barrel": {
+      "label": "Barrel",
+      "group": "Barrels and tanks",
+      "solid": true,
+      "parts": [
+        { "shape": "cylinder", "pos": [0, 0.45, 0], "size": [0.6, 0.9, 0.6], "colour": "#5f7fa8" },
+        { "shape": "cylinder", "pos": [0, 0.25, 0], "size": [0.63, 0.06, 0.63], "colour": "#3a3550" },
+        { "shape": "cylinder", "pos": [0, 0.65, 0], "size": [0.63, 0.06, 0.63], "colour": "#3a3550" },
+        { "shape": "cylinder", "pos": [0, 0.91, 0], "size": [0.54, 0.02, 0.54], "colour": "#8aa0c0" }
+      ]
+    },
+    "barrel-side": {
+      "label": "Barrel on its side",
+      "group": "Barrels and tanks",
+      "solid": true,
+      "parts": [
+        { "shape": "cylinder", "pos": [0, 0.3, 0], "size": [0.6, 0.9, 0.6], "rot": [0, 0, 90], "colour": "#5f7fa8" },
+        { "shape": "cylinder", "pos": [-0.2, 0.3, 0], "size": [0.63, 0.06, 0.63], "rot": [0, 0, 90], "colour": "#3a3550" },
+        { "shape": "cylinder", "pos": [0.2, 0.3, 0], "size": [0.63, 0.06, 0.63], "rot": [0, 0, 90], "colour": "#3a3550" }
+      ]
+    },
+    "tank": {
+      "label": "Tall tank",
+      "group": "Barrels and tanks",
+      "solid": true,
+      "parts": [
+        { "shape": "cylinder", "pos": [0, 0.075, 0], "size": [1.5, 0.15, 1.5], "colour": "#3a3550" },
+        { "shape": "cylinder", "pos": [0, 1.4, 0], "size": [1.4, 2.5, 1.4], "colour": "#b6c3cf" },
+        { "shape": "cylinder", "pos": [0, 2.75, 0], "size": [1.2, 0.2, 1.2], "colour": "#8a96a3" },
+        { "shape": "cylinder", "pos": [0, 1.9, 0], "size": [1.43, 0.08, 1.43], "colour": "#ff7a1a" },
+        { "shape": "cylinder", "pos": [0.85, 0.6, 0], "size": [0.2, 0.5, 0.2], "rot": [0, 0, 90], "colour": "#8a96a3" }
+      ]
+    },
+    "gas-bottle": {
+      "label": "Gas bottle",
+      "group": "Barrels and tanks",
+      "solid": true,
+      "parts": [
+        { "shape": "cylinder", "pos": [0, 0.55, 0], "size": [0.35, 1.1, 0.35], "colour": "#2ec4ff" },
+        { "shape": "cylinder", "pos": [0, 1.14, 0], "size": [0.24, 0.08, 0.24], "colour": "#2ec4ff" },
+        { "shape": "box", "pos": [0, 1.24, 0], "size": [0.1, 0.12, 0.1], "colour": "#3a3550" }
+      ]
+    },
+    "crate": {
+      "label": "Crate",
+      "group": "Crates and boxes",
+      "solid": true,
+      "parts": [
+        { "shape": "box", "pos": [0, 0.5, 0], "size": [1, 1, 1], "colour": "#c89a5b" },
+        { "shape": "box", "pos": [0, 0.06, 0], "size": [1.03, 0.12, 1.03], "colour": "#9c7440" },
+        { "shape": "box", "pos": [0, 0.94, 0], "size": [1.03, 0.12, 1.03], "colour": "#9c7440" },
+        { "shape": "box", "pos": [0, 0.5, 0], "size": [1.03, 0.8, 0.12], "colour": "#9c7440" }
+      ]
+    },
+    "crate-stack": {
+      "label": "Stack of crates",
+      "group": "Crates and boxes",
+      "solid": true,
+      "parts": [
+        { "shape": "box", "pos": [0, 0.5, 0], "size": [1, 1, 1], "colour": "#c89a5b" },
+        { "shape": "box", "pos": [0, 0.06, 0], "size": [1.03, 0.12, 1.03], "colour": "#9c7440" },
+        { "shape": "box", "pos": [0, 0.94, 0], "size": [1.03, 0.12, 1.03], "colour": "#9c7440" },
+        { "shape": "box", "pos": [0.08, 1.4, -0.04], "size": [0.8, 0.8, 0.8], "rot": [0, 20, 0], "colour": "#c89a5b" },
+        { "shape": "box", "pos": [0.08, 1.75, -0.04], "size": [0.83, 0.1, 0.83], "rot": [0, 20, 0], "colour": "#9c7440" }
+      ]
+    },
+    "carton": {
+      "label": "Cardboard box",
+      "group": "Crates and boxes",
+      "solid": true,
+      "parts": [
+        { "shape": "box", "pos": [0, 0.225, 0], "size": [0.6, 0.45, 0.45], "colour": "#d8b27a" },
+        { "shape": "box", "pos": [0, 0.455, 0], "size": [0.62, 0.02, 0.1], "colour": "#f4ecdc" }
+      ]
+    },
+    "rubble": {
+      "label": "Rubble pile",
+      "group": "Rubble and scatter",
+      "solid": false,
+      "parts": [
+        { "shape": "box", "pos": [0, 0.15, 0], "size": [0.7, 0.35, 0.6], "rot": [10, 20, 5], "colour": "#8a8299" },
+        { "shape": "box", "pos": [0.45, 0.12, 0.2], "size": [0.45, 0.3, 0.4], "rot": [-15, 50, 10], "colour": "#6f6788" },
+        { "shape": "box", "pos": [-0.4, 0.1, -0.25], "size": [0.4, 0.25, 0.5], "rot": [20, -30, 0], "colour": "#a39bb3" },
+        { "shape": "box", "pos": [0.1, 0.38, -0.1], "size": [0.3, 0.3, 0.3], "rot": [30, 10, 20], "colour": "#6f6788" },
+        { "shape": "wedge", "pos": [-0.2, 0.12, 0.4], "size": [0.5, 0.3, 0.4], "rot": [0, 35, 0], "colour": "#8a8299" }
+      ]
+    },
+    "chunks": {
+      "label": "Loose chunks",
+      "group": "Rubble and scatter",
+      "solid": false,
+      "parts": [
+        { "shape": "box", "pos": [0, 0.08, 0], "size": [0.2, 0.16, 0.18], "rot": [0, 25, 0], "colour": "#8a8299" },
+        { "shape": "box", "pos": [0.55, 0.06, 0.3], "size": [0.15, 0.12, 0.14], "rot": [10, 70, 0], "colour": "#a39bb3" },
+        { "shape": "box", "pos": [-0.45, 0.07, 0.4], "size": [0.18, 0.14, 0.2], "rot": [0, -40, 8], "colour": "#6f6788" },
+        { "shape": "box", "pos": [-0.3, 0.05, -0.5], "size": [0.12, 0.1, 0.12], "rot": [0, 15, 0], "colour": "#8a8299" },
+        { "shape": "wedge", "pos": [0.35, 0.07, -0.4], "size": [0.22, 0.14, 0.18], "rot": [0, 60, 0], "colour": "#a39bb3" }
+      ]
+    },
+    "dart-scatter": {
+      "label": "Spent foam darts",
+      "group": "Rubble and scatter",
+      "solid": false,
+      "parts": [
+        { "shape": "cylinder", "pos": [0, 0.015, 0], "size": [0.03, 0.12, 0.03], "rot": [0, 10, 90], "colour": "#ff7a1a" },
+        { "shape": "cylinder", "pos": [0.25, 0.015, 0.15], "size": [0.03, 0.12, 0.03], "rot": [0, 75, 90], "colour": "#2ec4ff" },
+        { "shape": "cylinder", "pos": [-0.2, 0.015, 0.25], "size": [0.03, 0.12, 0.03], "rot": [0, -40, 90], "colour": "#ff7a1a" },
+        { "shape": "cylinder", "pos": [0.1, 0.015, -0.3], "size": [0.03, 0.12, 0.03], "rot": [0, 130, 90], "colour": "#b6ff3b" },
+        { "shape": "cylinder", "pos": [-0.35, 0.015, -0.1], "size": [0.03, 0.12, 0.03], "rot": [0, 30, 90], "colour": "#2ec4ff" },
+        { "shape": "cylinder", "pos": [0.4, 0.015, -0.15], "size": [0.03, 0.12, 0.03], "rot": [0, -80, 90], "colour": "#ff7a1a" },
+        { "shape": "cylinder", "pos": [-0.05, 0.015, 0.45], "size": [0.03, 0.12, 0.03], "rot": [0, 55, 90], "colour": "#ff4fa3" }
+      ]
+    }
+  }
+}

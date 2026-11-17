@@ -4,7 +4,7 @@ import blastersData from "../../data/blasters.json";
 import meleeData from "../../data/melee.json";
 import materialData from "../../data/materials.json";
 import type {
-  KeyColour, LevelDoor, Pickup, PlacedFoamer, Rift, Vec3, Zone,
+  KeyColour, LevelDoor, Pickup, PlacedFoamer, Rift, Vec3, Prop, Zone,
 } from "../level/format";
 import { EDITOR, GRID, snapValue, snapVec3, type EntryKind } from "./doc";
 
@@ -116,6 +116,12 @@ export function makeSpawn(id: string, pos: Vec3): Rift {
   return { id, pos: at([pos[0], pos[1], pos[2]]), facing: [0, 1, 0] };
 }
 
+/** A prop (data/props.json, or the leaking barrel) with its foot on the
+ *  floor, facing -z. */
+export function makeProp(id: string, kind: string, pos: Vec3): Prop {
+  return { id, kind, pos: at(pos) };
+}
+
 /** A zone a trigger's "enter" watches: a 4 by 3 by 4 m box on the floor. */
 export function makeZone(id: string, pos: Vec3): Zone {
   return { id, pos: at([pos[0], pos[1] + 1.5, pos[2]]), size: [4, 3, 4] };
@@ -139,7 +145,7 @@ const MIN_SIZE = 0.1;
 /** Only these kinds turn: a Foamer and the player start by yaw, a door by
  *  rotY. The others keep their rotation. */
 function turns(kind: Handles["kind"]): boolean {
-  return kind === "foamers" || kind === "doors" || kind === "start";
+  return kind === "foamers" || kind === "doors" || kind === "props" || kind === "start";
 }
 
 /** Only these kinds have a size a drag can change. */
@@ -162,7 +168,7 @@ export function dragPatch(
     // A door's rotY and a Foamer's and the start's yaw are all "0 faces -z"
     // (format.ts), so a turn of the handles is the same number in degrees
     // for a door and the same angle in radians for the other two.
-    if (h.kind === "doors") patch.rotY = snap > 0 ? snapValue(deg, EDITOR.rotateStep) : deg;
+    if (h.kind === "doors" || h.kind === "props") patch.rotY = snap > 0 ? snapValue(deg, EDITOR.rotateStep) : deg;
     else patch.yaw = (deg * Math.PI) / 180;
   }
   if (resizes(h.kind) && h.size) {

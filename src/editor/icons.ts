@@ -16,6 +16,7 @@ export const ICONS = {
   doors: svg('<path d="M6 21V3h12v18M3 21h18"/><circle cx="15" cy="12" r="1"/>'),
   spawnPoints: svg('<ellipse cx="12" cy="18" rx="8" ry="3"/><path d="M12 15V4M8 8l4-4 4 4"/>'),
   zones: svg('<rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="3 2.4"/>'),
+  props: svg('<ellipse cx="12" cy="5.5" rx="6" ry="2.2"/><path d="M6 5.5v13c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2v-13M6 10c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2M6 14.5c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/>'),
   trigger: svg('<path d="M13 2L5 13h6l-1 9 8-11h-6z"/>'),
   arena: svg('<circle cx="12" cy="12" r="8" stroke-dasharray="3 2.4"/><path d="M12 8v8M8 12h8"/>'),
   translate: svg('<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>'),

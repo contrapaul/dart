@@ -21,6 +21,8 @@ import { applySky } from "../render/sky";
 import { PlacedFoamers } from "../level/placed";
 import { applyStart } from "../level/start";
 import { Hazards } from "../level/hazards";
+import { Barrels } from "../level/barrels";
+import { leakingBarrels } from "../level/props";
 import { TriggerRunner } from "../level/triggers";
 import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
@@ -382,6 +384,23 @@ export function arenaExtras(
   // on in the data), so it stays for the run, as the shield does; the
   // restart's respawnAtEntry below resets the spent flags.
   const stations = new Stations(g.rapier, g.world, scene, LEVEL.stations ?? []);
+
+  // The level's leaking barrels (editor props), run as the Range runs its
+  // own (ENV-05): a dart punctures one after the rest of the hit chain, a
+  // blast that reaches one sets it off a chainDelay later, and darts stuck
+  // in one come loose when it goes. A level with none builds an empty set.
+  const barrels = new Barrels(g.rapier, g.world, scene, g.debris, g.explosion, leakingBarrels(LEVEL));
+  const barrelsHit = g.darts.onHit;
+  g.darts.onHit = (hit) => {
+    barrelsHit(hit);
+    barrels.hit(hit);
+  };
+  barrels.onGone = (centre, radius) => g.darts.releaseInSphere(centre, radius);
+  const barrelsExplode = g.explosion.onExplode;
+  g.explosion.onExplode = (p, radius) => {
+    barrelsExplode(p, radius);
+    barrels.onBlast(p, radius);
+  };
   const blasterName = (id: string) =>
     (blastersData as Record<string, { name?: string }>)[id]?.name ?? id;
   stations.onGranted = (it) => {
@@ -441,6 +460,7 @@ export function arenaExtras(
     pickups.clear();
     pickups.loadLevelBoxes(LEVEL); // LVL-02a: the file boxes come back
     stations.reset(); // ENV-03: the stations grant again on a restart
+    barrels.reset(); // the leaking barrels come back whole
     presses.reset(); // ENV-04: the heads are back up on their own timers
     // GAME-10m: the woken ambusher goes with the other Foamers and the
     // hidden ones go back to their growths. The carved voxels stay as
@@ -722,6 +742,7 @@ export function arenaExtras(
       for (const f of foamers.list) if (f.state !== "down") aliveHealth += Math.max(0, f.health);
       arenaCtx.aliveHealth = aliveHealth;
       runner.update(dt, arenaCtx);
+      barrels.update(dt);
       // GAME-10m: the wake tests (the player's feet within wakeMetres of
       // a growth, or the growth holding fewer voxels than it was counted
       // with). F12-burst plays where it came out; the woken Foamer's own

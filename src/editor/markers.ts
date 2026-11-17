@@ -4,8 +4,10 @@ import type { RigSpec } from "../foamers/rig";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 import type {
-  Box, LevelDoor, Pickup, PlacedFoamer, PlayerStart, Rift, Vec3, Zone,
+  Box, LevelDoor, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
 } from "../level/format";
+import { primGeometry, primMatrix } from "../level/prim-geometry";
+import { PROP_KINDS } from "../level/props";
 import { BLASTERS, MARKERS, MELEE, doorColour, foamerColour, pickupColour } from "./parts";
 
 // ED-05 stage 2: one simple marker per placed thing, built in code. No model
@@ -30,7 +32,7 @@ export interface Marker {
   rot: Vec3;
   /** The entry's size, for the scale handles, or null when it has none. */
   size: Vec3 | null;
-  kind: "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "start" | "exit";
+  kind: "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "start" | "exit";
 }
 
 const RIGS = rigData.rigs as unknown as RigSpec[];
@@ -170,6 +172,20 @@ function startMarker(s: PlayerStart): THREE.Group {
   return group;
 }
 
+/** A prop drawn as itself: its parts in their colours, turned and placed. */
+function propMarker(p: Prop): THREE.Group {
+  const group = new THREE.Group();
+  for (const part of PROP_KINDS[p.kind]?.parts ?? []) {
+    const shape: Prim = { id: "", shape: part.shape, pos: part.pos, size: part.size, rot: part.rot, colour: part.colour, behaviour: "decor" };
+    const mesh = new THREE.Mesh(primGeometry(shape), paint(part.colour));
+    primMatrix(shape).decompose(mesh.position, mesh.quaternion, mesh.scale);
+    group.add(mesh);
+  }
+  group.position.set(...p.pos);
+  group.rotation.y = ((p.rotY ?? 0) * Math.PI) / 180;
+  return group;
+}
+
 function doorMarker(d: LevelDoor): THREE.Mesh {
   return ghostBox(d.pos, d.size, doorColour(d), d.rotY ?? 0);
 }
@@ -177,7 +193,7 @@ function doorMarker(d: LevelDoor): THREE.Mesh {
 /** Builds the marker for one entry, with the data the handles need. */
 export function markerFor(
   kind: Marker["kind"],
-  entry: PlacedFoamer | Pickup | LevelDoor | Rift | Zone | PlayerStart | Box,
+  entry: PlacedFoamer | Pickup | LevelDoor | Rift | Zone | Prop | PlayerStart | Box,
 ): Marker {
   switch (kind) {
     case "foamers": {
@@ -199,6 +215,10 @@ export function markerFor(
     case "zones": {
       const z = entry as Zone;
       return { object: ghostBox(z.pos, z.size, MARKERS.zoneColour), pos: z.pos, rot: [0, 0, 0], size: z.size, kind };
+    }
+    case "props": {
+      const p = entry as Prop;
+      return { object: propMarker(p), pos: p.pos, rot: [0, p.rotY ?? 0, 0], size: null, kind };
     }
     case "start": {
       const s = entry as PlayerStart;
