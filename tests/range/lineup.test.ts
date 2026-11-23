@@ -67,10 +67,11 @@ beforeAll(async () => {
 
 describe("PT-01 stage 2: the line of Foamers", () => {
   it("the lineup types come from the data file, not from code", () => {
-    // The card: F01 to F13 today, read from the data.
-    expect(TYPES.length).toBeGreaterThanOrEqual(13);
+    // The card: F01 to F14 today, read from the data.
+    expect(TYPES.length).toBeGreaterThanOrEqual(14);
     expect(TYPES).toContain("F01");
     expect(TYPES).toContain("F13");
+    expect(TYPES).toContain("F14");
   });
 
   it("one of every type, in a line, facing the player, at the data's distances", async () => {

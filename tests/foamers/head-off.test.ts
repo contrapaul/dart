@@ -85,7 +85,7 @@ beforeAll(async () => { await RAPIER.init(); });
 
 describe("PT-02: the head off means down", () => {
   it("1. every type with a head part goes down when it comes off, with health left", async () => {
-    expect(HEADED.length, "the rigs with a breakable head").toBe(10);
+    expect(HEADED.length, "the rigs with a breakable head").toBe(11);
     for (const type of HEADED) {
       const r = rig();
       const f = await make(r, type);
