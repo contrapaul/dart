@@ -1,4 +1,13 @@
-"""Build B02 Musketeer from the approved written brief, export GLB, render views."""
+"""Build the B02 Musketeer (the BENCH-01 redesign by Inkling-2-Mini, chosen by Paul 2026-11-23).
+
+Kept from the approved card: semi-auto sidearm, 6-dart magazine in the grip
+that drops out on reload, a slide that kicks on every shot, burst and heavy
+mods, yellow lead colour, toy-plastic look, one muzzle on a plain round
+bumper. Redesigned: squarer and wider silhouette, wider frame and slide,
+chunkier guard and paddle trigger, a flaring grip base ring, a longer
+ribbed magazine, four wide slide grooves, and hidden mod geometry.
+Writes public/models/blasters/B02.glb and the renders in art/blasters/B02/renders/.
+"""
 from pathlib import Path
 import math
 import bpy
@@ -25,33 +34,32 @@ SMALL_BEVEL = 0.001
 
 # Blender axes: +Y forward (the muzzle), +Z up, X across. Origin at the top
 # of the grip, where the trigger hand holds it. Metres at true size.
-FRAME_BACK, FRAME_FRONT = -0.050, 0.170
-FRAME_BOTTOM, FRAME_TOP, FRAME_W = 0.045, 0.085, 0.036
-SLIDE_BACK, SLIDE_FRONT = -0.062, 0.170
-SLIDE_BOTTOM, SLIDE_TOP, SLIDE_W = 0.084, 0.120, 0.033
-SLIDE_GROOVES, GROOVE_L, GROOVE_DEPTH = 5, 0.004, 0.0025
-GROOVE_Y0, GROOVE_STEP = -0.052, 0.008
-REAR_SIGHT_Y, FRONT_SIGHT_Y = -0.052, 0.158
-SIGHT_H = 0.008
-BARREL_Y0, BARREL_Y1, BARREL_R, BARREL_Z = 0.165, 0.180, 0.011, 0.068
-# A plain round bumper on the barrel tip (Paul, 2026-11-07: no flare).
-BUMPER_Y0, BUMPER_Y1 = 0.178, 0.194
-BUMPER_R, BUMPER_INNER = 0.017, 0.008
+FRAME_BACK, FRAME_FRONT = -0.042, 0.152
+FRAME_BOTTOM, FRAME_TOP, FRAME_W = 0.045, 0.085, 0.042
+SLIDE_BACK, SLIDE_FRONT = -0.055, 0.158
+SLIDE_BOTTOM, SLIDE_TOP, SLIDE_W = 0.084, 0.124, 0.040
+GROOVE_Y0, GROOVE_STEP, GROOVE_L, GROOVE_DEPTH = -0.048, 0.010, 0.006, 0.005
+GROOVE_COUNT = 4
+REAR_SIGHT_Y, FRONT_SIGHT_Y = -0.047, 0.147
+SIGHT_H = 0.009
+BARREL_Y0, BARREL_Y1, BARREL_R, BARREL_Z = 0.150, 0.170, 0.013, 0.068
+BUMPER_Y0, BUMPER_Y1 = 0.168, 0.188
+BUMPER_R, BUMPER_INNER = 0.020, 0.009
 MUZZLE_Y = BUMPER_Y1
 
-GRIP_H, GRIP_D, GRIP_W = 0.10, 0.045, 0.032
-GRIP_ANGLE = math.radians(15)
-GRIP_CORNER = 0.009
+GRIP_H, GRIP_D, GRIP_W = 0.092, 0.048, 0.037
+GRIP_ANGLE = math.radians(17)
+GRIP_CORNER = 0.010
 GRIP_TEX_SIZE, GRIP_TEX_RIBS = 128, 8
-GUARD_W = 0.022
-TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.024, 0.012, 0.008
-TRIGGER_ORIGIN = (0.0, 0.013, 0.047)
+GUARD_W = 0.025
+TRIGGER_H, TRIGGER_D, TRIGGER_W = 0.026, 0.013, 0.009
+TRIGGER_ORIGIN = (0.0, 0.014, 0.048)
 
-# The magazine sits in the grip, tilted with it; its lime end and base plate
-# show just below the grip's bottom.
-MAG_H, MAG_D, MAG_W = 0.090, 0.030, 0.022
-MAG_SHOW = 0.016
-BASE_H = 0.006
+MAG_H, MAG_D, MAG_W = 0.088, 0.032, 0.026
+MAG_SHOW = 0.024
+BASE_H = 0.007
+MAG_RIB_COUNT = 3
+MAG_RIB_STEP = 0.022
 
 RESOLUTION = (1024, 768)
 ORTHO_SCALE = 0.42
@@ -105,20 +113,17 @@ def grip_material():
     normal.inputs["Strength"].default_value = 1.0
     mat.node_tree.links.new(texture.outputs["Color"], normal.inputs["Color"])
     mat.node_tree.links.new(normal.outputs["Normal"],
-                            nodes["Principled BSDF"].inputs["Normal"])
+                           nodes["Principled BSDF"].inputs["Normal"])
     return mat
-
 
 def activate(obj):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
 
-
 def apply_modifier(obj, mod):
     activate(obj)
     bpy.ops.object.modifier_apply(modifier=mod.name)
-
 
 def bevel(obj, width=BEVEL, segments=2):
     if width:
@@ -131,7 +136,6 @@ def bevel(obj, width=BEVEL, segments=2):
         apply_modifier(obj, normal)
     return obj
 
-
 def mesh_object(name, vertices, faces, mat):
     mesh = bpy.data.meshes.new(name + " mesh")
     mesh.from_pydata(vertices, [], faces)
@@ -140,7 +144,6 @@ def mesh_object(name, vertices, faces, mat):
     bpy.context.collection.objects.link(obj)
     obj.data.materials.append(mat)
     return obj
-
 
 def box(name, loc, dims, mat, edge=BEVEL):
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
@@ -151,7 +154,6 @@ def box(name, loc, dims, mat, edge=BEVEL):
     obj.data.materials.append(mat)
     return bevel(obj, edge)
 
-
 def profile(name, points, width, mat, edge=BEVEL):
     count = len(points)
     vertices = [(x, y, z) for x in (-width / 2, width / 2) for y, z in points]
@@ -160,13 +162,12 @@ def profile(name, points, width, mat, edge=BEVEL):
               for i in range(count)]
     return bevel(mesh_object(name, vertices, faces, mat), edge)
 
-
 def rounded_grip(mat):
     ring_specs = [
-        (0.045, 0.78), (0.043, 0.93), (0.040, 1.0),
-        (0.032, 1.0), (0.020, 1.025), (0.005, 1.055),
-        (-0.010, 1.06), (-0.025, 1.03), (-0.040, 1.0),
-        (-0.049, 1.08), (-0.052, 1.04), (0.045 - GRIP_H, 0.82),
+        (0.045, 0.80), (0.043, 0.93), (0.040, 1.00),
+        (0.030, 1.02), (0.018, 1.06), (0.005, 1.09),
+        (-0.010, 1.10), (-0.025, 1.05), (-0.040, 1.02),
+        (-0.047, 1.17), (-0.051, 1.06), (0.045 - GRIP_H, 0.82),
     ]
     corner_segments = 8
     count = corner_segments * 4
@@ -227,17 +228,15 @@ def rounded_grip(mat):
         polygon.use_smooth = True
     return obj
 
-
 def cylinder(name, loc, radius, depth, mat, vertices=24, edge=SMALL_BEVEL):
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth,
-                                      location=loc, rotation=(math.pi / 2, 0, 0))
+                                       location=loc, rotation=(math.pi / 2, 0, 0))
     obj = bpy.context.object
     obj.name = name
     obj.data.materials.append(mat)
     for face in obj.data.polygons:
         face.use_smooth = len(face.vertices) == 4
     return bevel(obj, edge, 1)
-
 
 def tube(name, loc, outer, inner, depth, mat, segments=16):
     vertices = []
@@ -258,7 +257,6 @@ def tube(name, loc, outer, inner, depth, mat, segments=16):
         face.use_smooth = face.index % 4 < 2
     return bevel(obj, SMALL_BEVEL, 2)
 
-
 def join_at(objects, name, origin):
     bpy.ops.object.select_all(action="DESELECT")
     for obj in objects:
@@ -271,18 +269,15 @@ def join_at(objects, name, origin):
     bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
     return obj
 
-
 def parent_keep_world(obj, parent):
     bpy.context.view_layer.update()
     world = obj.matrix_world.copy()
     obj.parent = parent
     obj.matrix_world = world
 
-
 def grip_axis_y(z):
     """The grip's centre line: it leans back as it goes down."""
     return -GRIP_D / 2 - math.tan(GRIP_ANGLE) * (0.045 - z)
-
 
 def build_model():
     yellow = material("Foam yellow", YELLOW)
@@ -294,11 +289,12 @@ def build_model():
     lime = material("Clear lime", LIME, MAG_ALPHA)
     static = []
 
-    # Frame: a rounded slab with a sloped nose; the barrel leaves its front.
+    # Frame: a squarish rounded slab with a blunt nose; the barrel leaves
+    # its front. Wider and shorter than the approved take.
     frame_points = [
-        (FRAME_BACK, FRAME_BOTTOM + 0.006), (FRAME_BACK + 0.006, FRAME_BOTTOM),
+        (FRAME_BACK, FRAME_BOTTOM + 0.006), (FRAME_BACK + 0.008, FRAME_BOTTOM),
         (FRAME_FRONT - 0.012, FRAME_BOTTOM), (FRAME_FRONT, FRAME_BOTTOM + 0.012),
-        (FRAME_FRONT, FRAME_TOP), (FRAME_BACK, FRAME_TOP),
+        (FRAME_FRONT, FRAME_TOP + 0.002), (FRAME_BACK, FRAME_TOP),
     ]
     static.append(profile("Frame", frame_points, FRAME_W, yellow_deep))
     static.append(cylinder("Barrel", (0, (BARREL_Y0 + BARREL_Y1) / 2, BARREL_Z),
@@ -308,12 +304,12 @@ def build_model():
                        BUMPER_R, BUMPER_INNER, BUMPER_Y1 - BUMPER_Y0, orange, 24))
 
     static.append(rounded_grip(grip_charcoal))
-    guard_outer = [(-0.006, 0.018), (0.008, 0.007), (0.038, 0.007),
-                   (0.051, 0.018), (0.053, 0.039), (0.047, 0.049),
-                   (-0.001, 0.047)]
-    guard_inner = [(0.004, 0.023), (0.014, 0.015), (0.041, 0.015),
-                   (0.049, 0.023), (0.049, 0.032), (0.047, 0.040),
-                   (0.008, 0.039)]
+    guard_outer = [(-0.005, 0.016), (0.010, 0.005), (0.042, 0.005),
+                   (0.055, 0.017), (0.057, 0.039), (0.050, 0.050),
+                   (-0.002, 0.047)]
+    guard_inner = [(0.003, 0.021), (0.015, 0.012), (0.041, 0.012),
+                   (0.052, 0.021), (0.052, 0.033), (0.048, 0.041),
+                   (0.008, 0.040)]
     guard = profile("Trigger guard", guard_outer, GUARD_W, charcoal)
     cutter = profile("Guard opening", guard_inner, GUARD_W + 0.02, charcoal, 0)
     mod = guard.modifiers.new("Moulded guard opening", "BOOLEAN")
@@ -324,46 +320,48 @@ def build_model():
     bevel(guard, 0.0006, 2)
     static.append(guard)
 
-    # Slide: moves back along its own Y on each shot. Purple grip grooves at
-    # the back, a notch rear sight and a post front sight on top.
+    # Slide: a flat-topped chamfered slab that kicks back on every shot.
+    # Four wide vertical grooves at the back, rear sight ears, front block.
     slide_points = [
-        (SLIDE_BACK, SLIDE_BOTTOM), (SLIDE_FRONT - 0.006, SLIDE_BOTTOM),
-        (SLIDE_FRONT, SLIDE_BOTTOM + 0.008), (SLIDE_FRONT, SLIDE_TOP - 0.010),
-        (SLIDE_FRONT - 0.016, SLIDE_TOP), (SLIDE_BACK + 0.004, SLIDE_TOP),
-        (SLIDE_BACK, SLIDE_TOP - 0.004),
+        (SLIDE_BACK, SLIDE_BOTTOM), (SLIDE_FRONT - 0.008, SLIDE_BOTTOM),
+        (SLIDE_FRONT, SLIDE_BOTTOM + 0.010), (SLIDE_FRONT, SLIDE_TOP - 0.009),
+        (SLIDE_FRONT - 0.014, SLIDE_TOP), (SLIDE_BACK + 0.005, SLIDE_TOP),
+        (SLIDE_BACK, SLIDE_TOP - 0.005),
     ]
     slide_parts = [profile("Slide", slide_points, SLIDE_W, yellow)]
-    for i in range(SLIDE_GROOVES):
+    for i in range(GROOVE_COUNT):
         y = GROOVE_Y0 + i * GROOVE_STEP
         for side in (-1, 1):
             slide_parts.append(box("Slide groove",
-                                   (side * (SLIDE_W / 2 + GROOVE_DEPTH / 2 - 0.0008), y,
-                                    (SLIDE_BOTTOM + SLIDE_TOP) / 2 + 0.002),
-                                   (GROOVE_DEPTH, GROOVE_L, SLIDE_TOP - SLIDE_BOTTOM - 0.012),
+                                   (side * (SLIDE_W / 2 + GROOVE_DEPTH / 2 - 0.0008),
+                                    y, (SLIDE_BOTTOM + SLIDE_TOP) / 2 + 0.002),
+                                   (GROOVE_DEPTH, GROOVE_L,
+                                    SLIDE_TOP - SLIDE_BOTTOM - 0.016),
                                    purple, SMALL_BEVEL))
-    for x in (-0.007, 0.007):
+    for x in (-0.0085, 0.0085):
         slide_parts.append(box("Rear sight ear", (x, REAR_SIGHT_Y, SLIDE_TOP + SIGHT_H / 2),
-                               (0.006, 0.008, SIGHT_H), purple, SMALL_BEVEL))
+                               (0.007, 0.008, SIGHT_H), purple, SMALL_BEVEL))
     slide_parts.append(box("Front sight post", (0, FRONT_SIGHT_Y, SLIDE_TOP + SIGHT_H / 2),
-                           (0.004, 0.006, SIGHT_H), purple, SMALL_BEVEL))
+                           (0.008, 0.010, SIGHT_H + 0.004), purple, SMALL_BEVEL))
     slide = join_at(slide_parts, "slide",
                     (0, (SLIDE_BACK + SLIDE_FRONT) / 2, (SLIDE_BOTTOM + SLIDE_TOP) / 2))
 
+    # Trigger: a thick paddle with a deep C curve.
     trigger_points = []
     for i in range(9):
         t = i / 8
-        front_y = 0.005 - 0.020 * t * (1 - t) + 0.001 * t ** 3
+        front_y = 0.005 - 0.024 * t * (1 - t) + 0.002 * t ** 3
         trigger_points.append((front_y, TRIGGER_H * t))
     for i in reversed(range(9)):
         t = i / 8
-        front_y = 0.005 - 0.020 * t * (1 - t) + 0.001 * t ** 3
+        front_y = 0.005 - 0.024 * t * (1 - t) + 0.002 * t ** 3
         trigger_points.append((front_y - TRIGGER_D / 2, TRIGGER_H * t))
     trigger = profile("trigger", trigger_points, TRIGGER_W, purple, SMALL_BEVEL)
     trigger.location = TRIGGER_ORIGIN
-    # Local X points left, so positive glTF local X rotation pulls rearward.
     trigger.rotation_euler.y = math.pi
 
-    # Magazine: a box in the grip, tilted with it, its end showing below.
+    # Magazine: a lime shell in the grip with three purple ribs around it
+    # and a wide purple base plate; the end shows below the grip.
     grip_bottom = 0.045 - GRIP_H
     mag_bottom = grip_bottom - MAG_SHOW
     mag_centre_z = mag_bottom + BASE_H + MAG_H / 2
@@ -373,11 +371,18 @@ def build_model():
     base_z = mag_bottom + BASE_H / 2
     base = box("Magazine base plate", (0, grip_axis_y(base_z), base_z),
                (MAG_W + 0.006, MAG_D + 0.006, BASE_H), purple, 0.002)
-    for part, z in ((mag_shell, mag_centre_z), (base, base_z)):
-        pivot = Vector((0, grip_axis_y(z), z))
+    mag_parts = [mag_shell, base]
+    for index in range(MAG_RIB_COUNT):
+        rib_z = mag_bottom + BASE_H + 0.012 + index * MAG_RIB_STEP
+        rib = box("Magazine rib", (0, grip_axis_y(rib_z), rib_z),
+                  (MAG_W + 0.004, MAG_D + 0.004, 0.004), purple, 0.0015)
+        rib.rotation_euler.x = tilt
+        rib.location = Vector((0, grip_axis_y(rib_z), rib_z))
+        mag_parts.append(rib)
+    for part, z in ((mag_shell, mag_centre_z), (base, base_z)) + tuple((rib, 0.0) for rib in mag_parts[2:]):
         part.rotation_euler.x = tilt
-        part.location = pivot
-    mag = join_at([mag_shell, base], "mag",
+        part.location = Vector((0, grip_axis_y(part.location.z), part.location.z))
+    mag = join_at(mag_parts, "mag",
                   (0, grip_axis_y(mag_centre_z), mag_centre_z))
 
     for obj in static:
@@ -393,13 +398,35 @@ def build_model():
     muzzle.location = (0, MUZZLE_Y, BARREL_Z)
     muzzle.empty_display_size = 0.01
     parent_keep_world(muzzle, body)
-    return body, slide, trigger, mag
 
+    # Mods: heavy = thicker barrel sleeve; burst = three orange pips on the
+    # slide nose. Both hidden by default.
+    sleeve = tube("Heavy sleeve", (0, (BARREL_Y0 + BARREL_Y1) / 2 + 0.002, BARREL_Z),
+                  0.0155, 0.0125, 0.034, yellow_deep, 20)
+    mod_heavy = join_at([sleeve], "mod_heavy", (0, BARREL_Y0 + 0.016, BARREL_Z))
+    pips = []
+    for index, y in enumerate((0.146, 0.154, 0.162)):
+        bpy.ops.mesh.primitive_cylinder_add(
+            vertices=12, radius=0.0022, depth=0.005,
+            location=(0, y, SLIDE_TOP + 0.002))
+        pip = bpy.context.object
+        pip.name = "Burst pip " + str(index + 1)
+        pip.data.materials.append(orange)
+        pips.append(pip)
+    mod_burst = join_at(pips, "mod_burst", (0, 0.154, SLIDE_TOP + 0.002))
+    for obj in (mod_heavy, mod_burst):
+        obj["hidden"] = True
+        obj.hide_render = True
+        obj.hide_set(True)
+    for obj in bpy.data.objects:
+        if obj.name.startswith("Burst pip"):
+            obj.hide_render = True
+            obj.hide_set(True)
+    return body, slide, trigger, mag, mod_heavy, mod_burst
 
 def point_at(obj, target):
     direction = Vector(target) - obj.location
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-
 
 def add_camera(name, loc, target=None, ortho=True):
     data = bpy.data.cameras.new(name)
@@ -419,7 +446,6 @@ def add_camera(name, loc, target=None, ortho=True):
         data.lens = EYE_CAMERA_LENS
     return obj
 
-
 def area_light(name, loc, energy, target):
     data = bpy.data.lights.new(name, "AREA")
     data.energy = energy
@@ -429,8 +455,6 @@ def area_light(name, loc, energy, target):
     bpy.context.collection.objects.link(obj)
     obj.location = loc
     point_at(obj, target)
-
-
 
 def render_views():
     scene = bpy.context.scene
@@ -476,7 +500,6 @@ def render_views():
     bpy.ops.render.render(write_still=True)
     print("Rendered", scene.render.filepath)
 
-
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
@@ -489,7 +512,6 @@ def main():
     unapplied = [obj.name for obj in bpy.data.objects if obj.modifiers]
     if unapplied:
         raise RuntimeError("Unapplied modifiers: " + ", ".join(unapplied))
-    # Only the grip uses UVs. Primitive UVs vary slightly between runs.
     body = objects[0]
     for mesh in bpy.data.meshes:
         if mesh != body.data:
@@ -509,7 +531,6 @@ def main():
     )
     print("Exported", GLB_PATH)
     render_views()
-
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,22 @@
 # ART-04 notes: B02 Musketeer
 
+## Round 2: Inkling-2-Mini's redesign replaces the model (2026-11-23)
+
+Paul chose the BENCH-01 redesign by Inkling-2-Mini (Q8_K_XL, DGX Spark) to
+replace the round 1 model. `build.py` is now that script, with its paths
+pointed at `public/models/blasters/B02.glb` and these renders; `DESIGN.md`
+is its brief (what is kept from `design/blasters/B02.md`, what changes).
+The bake-off copy stays in `benchmarks/inkling/B02/`.
+
+Rebuilt here with Blender 5.2.3: the GLB is byte for byte the same as the
+bake-off one. `check_glb.py`: every check passes, 5,128 triangles,
+26.8 cm long, 21.1 cm tall, 4.8 cm wide, 7 materials, 254 KB.
+
+Seen in the range (Claude Opus 5.5): held in the hand with the B02 framing,
+fires, slide and reload run, no console errors. Not seen: the burst and
+heavy mod geometry in play, and how the wider grip sits in the hand from
+every angle. The round 1 model and script are in git history.
+
 ## Round 1 (Claude Opus 5.5, 2026-11-07)
 
 Built from `design/blasters/B02.md` (approved by Paul 2026-11-07) with
