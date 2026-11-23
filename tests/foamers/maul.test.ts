@@ -11,7 +11,7 @@ import { DartSystem } from "../../src/weapons/darts";
 import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
 import { FoamerSystem, specFor } from "../../src/foamers/foamers";
 import { rigHeight, type RigSpec } from "../../src/foamers/rig";
-import { meleeParryOf } from "../../src/foamers/combo";
+import { meleeParryOf, parryableAttack } from "../../src/foamers/combo";
 import { BALL_MATERIAL } from "../../src/foamers/projectiles";
 import { voxelFoamMaterial } from "../../src/render/foam-material";
 import type { Foamer } from "../../src/foamers/foamer";
@@ -119,7 +119,7 @@ describe("the F14 maul brawler (GAME-10n stage 1)", () => {
   it("4. it walks in and swings the maul in reach", () => {
     const r = rig();
     const player = new THREE.Vector3(0, 1.6, 0);
-    const f = mauler(r, 6, player);
+    const f = mauler(r, 2.5, player);
     run(r, player, () => f.state === "windup", 60 * 20);
     expect(f.state).toBe("windup");
     expect(f.attack()!.id).toBe("sweep");
@@ -224,5 +224,89 @@ describe("the F14 combo and parry (GAME-10n stage 2)", () => {
     const bonk = SPEC.attacks.find((a) => a.id === "bonk")!;
     expect(bonk.damage).toBe(10);
     expect(bonk.needs).toEqual(["foreArmR"]);
+  });
+});
+
+describe("the F14 floor slam (GAME-10n stage 3)", () => {
+  /** Wait for a slam windup to appear and return once it fires (the ring
+   *  is live) or the wait runs out. */
+  function waitForSlam(r: Rig, player: THREE.Vector3, f: Foamer) {
+    for (let i = 0; i < 60 * 30; i++) {
+      tick(r, player);
+      if (f.wave.active) return true;
+    }
+    return false;
+  }
+
+  it("10. it slams from its own feet, inside its band only", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 4.5, player);
+    expect(waitForSlam(r, player, f)).toBe(true);
+    // The ring sits on the F14's own feet, not out where the player was.
+    expect(f.wave.x).toBeCloseTo(f.centre.x, 4);
+    expect(f.wave.z).toBeCloseTo(f.centre.z, 4);
+    const numbers = (SPEC as unknown as { slam: { minMetres: number; maxMetres: number; cooldownSeconds: number; windupSeconds: number } }).slam;
+    expect(numbers.minMetres).toBe(3);
+    expect(numbers.maxMetres).toBe(6);
+    expect(numbers.cooldownSeconds).toBe(5);
+    expect(numbers.windupSeconds).toBe(0.9);
+    expect(f.slamCooldown).toBeGreaterThan(0);
+  });
+
+  it("11. the ring's numbers are the card's", () => {
+    const sw = (SPEC as unknown as { shockwave: { speed: number; radius: number; thickness: number; damage: number } }).shockwave;
+    expect(sw.speed).toBe(7);
+    expect(sw.radius).toBe(7);
+    expect(sw.thickness).toBe(0.6);
+    expect(sw.damage).toBe(14);
+  });
+
+  it("12. a slam windup makes the maul head no pink (it is not parryable)", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 4.5, player);
+    await settle(r, f);
+    const head = f.parts.get("maulHead")!;
+    const headMat = () => (head.mesh.group.children[0] as THREE.Mesh).material as THREE.Material;
+    let sawSlamWindup = false;
+    for (let i = 0; i < 60 * 30 && !sawSlamWindup; i++) {
+      tick(r, player);
+      if (f.state === "windup" && f.attack()?.id === "slam") {
+        sawSlamWindup = true;
+        expect(parryableAttack(SPEC, "slam")).toBe(false);
+        expect(headMat()).toBe(voxelFoamMaterial());
+      }
+    }
+    expect(sawSlamWindup).toBe(true);
+  });
+
+  it("13. with the maul head gone there is no slam", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 4.5, player);
+    r.foamers.parryAttack(f);
+    r.foamers.parryAttack(f);
+    expect(f.parts.has("maulHead")).toBe(false);
+    for (let i = 0; i < 60 * 20; i++) {
+      tick(r, player);
+      expect(f.attack()?.id).not.toBe("slam");
+    }
+    expect(f.wave.active).toBe(false);
+  });
+
+  it("14. it slams no more often than its cooldown", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 4.5, player);
+    const starts: number[] = [];
+    let was = false;
+    for (let i = 0; i < 60 * 30; i++) {
+      tick(r, player);
+      const now = f.state === "windup" && f.attack()?.id === "slam";
+      if (now && !was) starts.push(f.stateTime);
+      was = now;
+    }
+    expect(starts.length).toBeGreaterThan(0);
   });
 });

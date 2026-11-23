@@ -170,6 +170,9 @@ export class Foamer {
   /** GAME-10f: seconds until it may leap again, counted down every step
    *  (the cooldown runs from the start of the crouch). */
   leapCooldown = 0;
+  /** GAME-10n: seconds until it may slam the floor again, counted down
+   *  every step (the cooldown runs from the start of the rear). */
+  slamCooldown = 0;
   /** GAME-10f: the leap line locked at the end of the crouch (unit, ground
    *  plane), the metres along it to the landing point, and the flight's
    *  length and initial vertical speed, from leapFlight. */

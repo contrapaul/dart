@@ -869,7 +869,33 @@
         "damage": 2,
         "_note": "GAME-10n: both legs take double damage from a dart that lands on them, the way the Biomechanic's tank does. The feet are painted orange for the same reason."
       },
+      "slam": {
+        "_note": "GAME-10n stage 3: the floor slam. Between minMetres and maxMetres, in sight, off cooldown, on its legs and with the maul head still on the handle, it stops where it stands and rears (windupSeconds, the telegraph: no pink, it is not parryable, the answer is distance), then brings the maul down and the ring goes out from its own feet. cooldownSeconds runs from the start of the rear. The shockwave numbers are the block below, the Brawler's block (GAME-10f): the ring is the same ring, started where it stands instead of where it landed.",
+        "minMetres": 3,
+        "maxMetres": 6,
+        "cooldownSeconds": 5,
+        "windupSeconds": 0.9
+      },
+      "shockwave": {
+        "speed": 7,
+        "radius": 7,
+        "thickness": 0.6,
+        "damage": 14,
+        "tubeMetres": 0.14
+      },
       "attacks": [
+        {
+          "_note": "GAME-10n stage 3: the slam's strike. Not chosen by chooseAttack for a walking approach: the slam state sets it, and the ring does the damage (damage 14 in the shockwave block), so this attack costs nothing itself. Its windup and strike times are the slam's (windupSeconds), kept out of the combo.",
+          "id": "slam",
+          "damage": 0,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "maulHead"
+          ],
+          "windup": 0.9,
+          "strike": 0.3
+        },
         {
           "_note": "GAME-10n stage 2: the wide maul sweep, the opener and the second blow of the combo. Nothing pink: it is the safe one to eat, and the point is that eating two of them puts you in front of the smash.",
           "id": "sweep",

@@ -20,12 +20,13 @@ import { addShotDamage, shotSummary, chunkRadius } from "./chunk";
 import { judgeImpact, downPushOf, impactChunkRadius, chunkDebrisExtra, popBurstBoost, DEFAULT_IMPACT } from "./impact";
 import { chargeOf, type ChargeSpec } from "./charge";
 import {
-  bandReaches, leapFlight, leapOf, landingPoint, shockwaveOf,
+  bandReaches, leapFlight, leapOf, landingPoint, shockwaveOf, slamOf,
   startShockwave, stepShockwave, type ShockwaveSpec,
 } from "./leap";
 import { pounceOf } from "./pounce";
 import { decideLeap } from "../ai/f07-brain";
 import { decidePounce } from "../ai/f12-brain";
+import { decideSlam } from "../ai/f14-brain";
 import { floatOf } from "./float";
 import { flyOf } from "./fly";
 import { blobOf, mouthOf, smallBlobKind, bigBlobKind } from "./blob";
@@ -775,6 +776,8 @@ export class FoamerSystem {
     // GAME-10f: the leap cooldown runs from the start of the crouch (set
     // there), whether or not the leap happens again soon.
     if (f.leapCooldown > 0) f.leapCooldown = Math.max(0, f.leapCooldown - dt);
+    // GAME-10n: the slam cooldown runs from the start of the rear.
+    if (f.slamCooldown > 0) f.slamCooldown = Math.max(0, f.slamCooldown - dt);
     // Face the player (+z is forward, so the wanted yaw is atan2(dx, dz)),
     // at the turn rate with the no-head handicap. Not while staggering: a
     // stagger is stillness and wobble only. Not while falling either (the
@@ -892,6 +895,23 @@ export class FoamerSystem {
         f.pounceX = player.x;
         f.pounceZ = player.z;
         sound(this, "crouch", f, f.centre);
+      } else if (slamOf(f.spec) && shockwaveOf(f.spec) && decideSlam(
+        {
+          distance: dist, cooldownLeft: f.slamCooldown,
+          onFeet: f.legs().length > 0, hasMaul: f.parts.has("maulHead"),
+        },
+        slamOf(f.spec)!,
+      )) {
+        // GAME-10n: the floor slam. It stops where it stands and rears (the
+        // telegraph), then the maul comes down and the ring goes out from
+        // its own feet. Not parryable and no pink: the answer is distance,
+        // not a raised shield. The strike's damage is the ring's, so the
+        // windup branch sends no bonk for this attack.
+        f.state = "windup";
+        f.stateTime = 0;
+        f.setAttack("slam");
+        f.slamCooldown = slamOf(f.spec)!.cooldownSeconds;
+        sound(this, "attack", f, f.centre);
       }
     } else if (f.state === "crouch") {
       // The telegraph: still, then the leap. The Brawler does not land on
@@ -1040,6 +1060,13 @@ export class FoamerSystem {
         // spec has none: back to approach, or to the crawl if it is prone.
         f.state = f.prone ? "crawl" : "approach";
         f.stateTime = 0;
+      } else if (atk.id === "slam" && (!f.parts.has("maulHead") || f.legs().length === 0)) {
+        // GAME-10n: the card's rule, checked at the release as well as at
+        // the start: a maul head or a leg lost during the rear cancels the
+        // slam (and a ring from a maul that is no longer there would read
+        // as a bug). Back to the walk, or the crawl if it is down a leg.
+        f.state = f.prone ? "crawl" : "approach";
+        f.stateTime = 0;
       } else if (f.stateTime >= atk.windup) {
         const dy = Math.abs(player.y - f.centre.y);
         // GAME-11: a prone Foamer strikes from its head, ahead of the feet.
@@ -1119,6 +1146,12 @@ export class FoamerSystem {
                 this.projectiles?.launch(f, player, (s - (shots - 1) / 2) * spread);
             }
             sound(this, "throw", f, f.centre);
+          } else if (atk.id === "slam") {
+            // GAME-10n: the maul comes down on the floor. Nothing is bonked
+            // here: the ring does the damage as it grows (the shockwave
+            // step below), through the page's onShockwaveHit, exactly as the
+            // Brawler's landing ring does. The attack itself costs nothing.
+            this.startFloorSlam(f);
           } else if (inReach) {
             f.bonk(atk.id);
             // GAME-10k: a landed strike is one attack of the combo spent.
@@ -1731,6 +1764,26 @@ export class FoamerSystem {
       range: charge.rangeMetres,
       canCharge: true,
     });
+  }
+
+  /**
+   * GAME-10n: send the F14's ring out from where it stands. The Brawler's
+   * landing does the same at the end of its leap (the leaping branch); a
+   * standing slam reads the same numbers and draws the same ring, so the
+   * shockwave step and the pages' onShockwaveHit need nothing new.
+   */
+  private startFloorSlam(f: Foamer): void {
+    const sw = shockwaveOf(f.spec);
+    if (!sw) return;
+    startShockwave(f.wave, sw, f.centre.x, f.centre.z);
+    const ring = f.waveMesh;
+    if (ring) {
+      ring.scale.set(0, 1, 0);
+      ring.position.set(f.centre.x, f.centre.y + sw.tubeMetres * 0.5, f.centre.z);
+      ring.visible = true;
+    }
+    sound(this, "land", f, f.centre);
+    this.onLand(f, f.centre, sw);
   }
 
   /** True if the Foamer may start an attack now: in range and, with a
