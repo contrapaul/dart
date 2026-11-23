@@ -19,13 +19,15 @@ export interface SlamInput {
   /** The maul head is still on the handle. With it broken off there is
    *  nothing to bring down. */
   hasMaul: boolean;
+  /** The player is in line of sight (the card: the slam needs sight). */
+  inSight: boolean;
 }
 
 /** May it start the rear that leads to a slam? Only with the cooldown
- *  spent, on its feet, with the maul head, and with the player between the
+ *  spent, on its feet, in sight, with the maul head, and with the player between the
  *  minimum (the maul itself covers that) and the maximum (past it the ring
  *  fades out before it arrives). */
 export function decideSlam(input: SlamInput, spec: SlamSpec): boolean {
-  if (!input.onFeet || !input.hasMaul || input.cooldownLeft > 0) return false;
+  if (!input.onFeet || !input.hasMaul || !input.inSight || input.cooldownLeft > 0) return false;
   return input.distance >= spec.minMetres && input.distance <= spec.maxMetres;
 }

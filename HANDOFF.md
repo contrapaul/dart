@@ -93,6 +93,60 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-23: GAME-10n, the F14 maul brawler (DeepSeek V4.1 Flash 1017 via Pi)
+
+- Asked: build the F14 elite from `tasks/GAME-10n.md` in four stages,
+  each one committed green, and leave the docs updated.
+- Built, in four commits on branch `game-10n` (`feddab0`, `e2e0705`,
+  `2970597`, and the stage 4 commit):
+  1. The rig and the type. A broad, low-slung biped 2.83 m tall, wider
+     than the Seawall: deep purple body, flat-topped head under an ink
+     visor band with two cream eyes, lime pauldrons, arms, chest and
+     back plates, orange legs and feet (weak point, damage 2 on both),
+     a lime foam maul in the right hand. Health 70, speed 1.3, turnRate
+     2, attackRange 2.2.
+  2. The combo: sweep (12) twice then smash (30, 0.8 s windup,
+     parryable). The maul head is the tell part and turns pink only
+     during the smash windup; two parries break it off, and a parry
+     staggers it 2 s. With the head gone it bonks with the bare forearm
+     for 10.
+  3. The floor slam: between 3 and 6 m, in sight, off a 5 s cooldown, it
+     rears 0.9 s (no pink) and the ring goes out from its own feet,
+     speed 7, radius 7, thickness 0.6, damage 14. Losing the maul head
+     or a leg during the rear cancels it.
+  4. The leg break: 2 s stagger per leg, once each; one leg left it
+     still stands, none left it falls and crawls. Sounds reuse existing
+     IDs (`F11-windup` for the smash, `F11-swing` for the sweeps and the
+     fist, `F07-land` for the ring).
+- Decisions, all in PLAN section 14: the slam reuses the Brawler's
+  shockwave (`startShockwave` plus the pages' existing
+  `onShockwaveHit`) rather than a second ring system; the per-leg
+  stagger is a new `handicaps.legsBrokenStagger` number read inside
+  `startStagger`, with `Foamer.legStaggered` keeping it once per leg;
+  `fallBelowLegs` is 1 so one leg left still stands.
+- New files: `src/ai/f14-brain.ts` (`decideSlam`),
+  `tests/foamers/maul.test.ts` (18 tests), the F14 rig renders in
+  `design/foamers/`. New tables: `SlamSpec` and `slamOf` in
+  `src/foamers/leap.ts`.
+- Docs: CONTENT-PLAN section 3, 3.1 and 3.3 rows for F14 with the name
+  left as `[Paul]`, and a note that this F14 is a new elite, not the cut
+  template row of the same number.
+- Not verified: **nothing was seen by eye.** There is no browser here,
+  so the rig sheet, the slam windup and the slam strike were only ever
+  checked as PNGs from `tools/render-rig.ts`, and the Foamer was never
+  seen in the game, moving, slamming or breaking. The sounds were never
+  heard. The maul head still rests close to the floor in the side view
+  and the visor band sits proud of the brow; both are Paul's to judge.
+  The F14's name and all its numbers are proposals.
+- Next: review by another model, then the F14 placed in a level. `npx
+  tsc --noEmit`, `npx vitest run` (1563 passing, 2 skipped) and `npm
+  run build` all pass on the stage 4 commit.
+- Flaky test, not this card: `tests/ai/nav-grid.test.ts` "bakes a 40 by
+  40 m floor in under 150 ms" fails now and then on this machine under
+  load. It failed twice in three full runs with this card's changes
+  stashed, so it is the timing budget, not the F14. Worth a look on its
+  own: the bake is a wall-clock assertion with no warm-up.
+
 ### 2026-11-17: pull request 2 rebased onto the props (Claude Opus 5.5)
 
 - Asked: rebase `ed-12` (ED-12 to ED-14, ED-23) onto `main` after the

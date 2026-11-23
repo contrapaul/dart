@@ -869,6 +869,22 @@
         "damage": 2,
         "_note": "GAME-10n: both legs take double damage from a dart that lands on them, the way the Biomechanic's tank does. The feet are painted orange for the same reason."
       },
+      "handicaps": {
+        "_note": "GAME-11 with GAME-10n stage 4 on top: the card's legBreak numbers. The F14 keeps its feet on one leg (it staggers instead of falling when a leg breaks), so fallBelowLegs is 1: one leg left is still standing, none left and it falls, then crawls as the card says. Every other number is the base's, spelled out because a type's handicaps block replaces the base's whole object. legsBrokenStagger is the card's new hook: each leg breaking staggers it for that long, once per leg, in the stagger state the parry uses, so the player can finish it there.",
+        "someLegsSpeed": 0.5,
+        "noLegsSpeed": 0.25,
+        "fallBelowLegs": 1,
+        "crawlSpeed": 0.3,
+        "crawlLength": 0.7,
+        "legsBrokenStagger": 2,
+        "fall": {
+          "startTilt": 0.12,
+          "proneTilt": 1.35,
+          "sideShare": 0.35,
+          "bounce": 0.25,
+          "settle": 0.25
+        }
+      },
       "slam": {
         "_note": "GAME-10n stage 3: the floor slam. Between minMetres and maxMetres, in sight, off cooldown, on its legs and with the maul head still on the handle, it stops where it stands and rears (windupSeconds, the telegraph: no pink, it is not parryable, the answer is distance), then brings the maul down and the ring goes out from its own feet. cooldownSeconds runs from the start of the rear. The shockwave numbers are the block below, the Brawler's block (GAME-10f): the ring is the same ring, started where it stands instead of where it landed.",
         "minMetres": 3,

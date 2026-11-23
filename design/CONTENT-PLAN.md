@@ -109,6 +109,7 @@ Health is in standard-dart hits (a standard dart does 1). Attacks marked
 | F11 | Elite | Shield that only a parry breaks | Combo, then a parryable finisher (P) | Parry mastery | Shield | 60 | 3-3 | Seawall | Strongest looking F02, with a serious shield and a foam hammer | Deep lime armour, purple hammer, orange shield |
 | F12 | Elite | Hides in foam growths, leaps out | Pounce | Clearing growths, awareness | none | 25 | 3-3 | Ambusher | A lean bipedal foamer that leaps out like a geist in World of Warcraft or an elite in left for dead | Deep purple body, orange spines, lime eyes |
 | F13 | Elite | Support: rebuilds other Foamers' foam | Heals allies | Target priority | Its tank | 25 | 3-4 | Biomechanic | A fat foamer with a tank of compressed foam that it sprays on others or on you to cause damage | Orange body, purple hood, lime tank (weak point) |
+| F14 | Elite | Wide, low brawler, slow to close, slams the floor in a ring | Twice a sweep, then a parryable smash; floor slam (jump or dash it) | Spacing, the stagger window, breaking the legs | Legs | 70 | 3-3 | [Paul] | A broad, low-slung biped: wide lime shoulder blocks, flat-topped head under an ink visor, a foam maul as big gear. New elite (GAME-10n), not the cut template row | Deep purple body, lime armour and maul, orange legs and feet (weak point), ink visor, cream eyes |
 | BOSS 1 | Boss | [Paul] | 3 phases, weak points | Act 1 skills | Several | 300 | Boss 1 | Foam Demon | [Paul] | [Paul] |
 | BOSS 2 | Boss | [Paul] | | Act 2 skills | | 500 | Boss 2 | | | |
 | BOSS 3 | Boss | [Paul] | | Everything | | 800 | Boss 3 | | | |
@@ -150,6 +151,7 @@ Per Foamer (proposal, matching the roster above):
 | F11 | Shield (only by parry), arms, legs | Shield |
 | F12 | Legs | Legs (no more pouncing) |
 | F13 | Tank, arms | Tank (no more healing) |
+| F14 | Legs, arms, head, maul | Legs (no more slam; it staggers instead of falling while one stands) |
 | Bosses | Several each, by phase | [Paul] |
 
 ### 3.2 Wounds, going down and popping (Paul, 2026-10-31)
@@ -228,6 +230,7 @@ proposals for Paul's looks, not designs.
 | F11 | **Rebuilt (Paul: "janky", wanted larger and more ominous):** a 3.4 m armoured knight. Horned helm with slit eyes, spiked pauldrons, belt, bent legs with boots, a cape | Spiked tower shield (left), spiked foam mace (right). Combo: overhead slam, sweep, then a slow high wind-up (the parry window) and a full-body slam | Shield (parry only), mace, arms, legs, helm |
 | F12 | Long low stalker, spined back, jointed legs, tail, gaping head | Its pounce | Legs, tail |
 | F13 | Hooded medic, foam tank and antenna on its back | Spray wand (core-coloured tip) | Tank, antenna, wand, arms |
+| F14 | Broad, low, unhurried: flat-topped head under an ink visor band with two cream eyes, lime pauldrons standing off the shoulders, lime chest and back plates, orange legs | A lime foam maul in the right hand (the smash's tell part turns pink) | Maul head, maul, arms, legs, head |
 
 Movement no longer snaps between phases (walk to throw, coil to pounce):
 every style blends over 0.15 s, and a test checks that no joint jumps.
@@ -237,7 +240,9 @@ voxels. Smoothing was compared in the sandbox and removed.
 
 Cut from the template to save build time, easy to add back: the small
 flying charger (template F04), the mini-boss brawler (template F14) and the
-arena-boss role (template F15, folded into the act bosses).
+arena-boss role (template F15, folded into the act bosses). The F14 in the
+roster above is a new elite (GAME-10n), unrelated to the cut template row:
+it teaches spacing and the stagger window, and its name is still Paul's.
 
 **Design notes from the engine (for the looks):**
 - Foamers are blocky voxels, 5 cm each. Painted details such as eyes,

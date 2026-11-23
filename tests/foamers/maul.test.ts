@@ -12,6 +12,8 @@ import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
 import { FoamerSystem, specFor } from "../../src/foamers/foamers";
 import { rigHeight, type RigSpec } from "../../src/foamers/rig";
 import { meleeParryOf, parryableAttack } from "../../src/foamers/combo";
+import { FoamerSounds } from "../../src/audio/foamer-sounds";
+import type { AudioSink, LoopHandle, PlayOptions } from "../../src/audio/sink";
 import { BALL_MATERIAL } from "../../src/foamers/projectiles";
 import { voxelFoamMaterial } from "../../src/render/foam-material";
 import type { Foamer } from "../../src/foamers/foamer";
@@ -308,5 +310,85 @@ describe("the F14 floor slam (GAME-10n stage 3)", () => {
       was = now;
     }
     expect(starts.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the F14 leg break (GAME-10n stage 4)", () => {
+  /** Break a part through the system's own path (the test rig's window on
+   *  the private breakPart, the way the head-off test sets hp to 0 and
+   *  steps). */
+  function breakIt(r: Rig, f: Foamer, id: string) {
+    const part = f.parts.get(id)!;
+    part.hp = 0;
+    (r.foamers as unknown as { breakPart(f: Foamer, p: typeof part): void }).breakPart(f, part);
+  }
+
+  it("15. one leg gone leaves it standing, and it staggers once for that leg", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 4, player);
+    expect(f.spec.handicaps.fallBelowLegs).toBe(1);
+    breakIt(r, f, "legL");
+    expect(f.state).toBe("stagger");
+    expect(f.staggerTime).toBe(2);
+    expect(f.prone).toBe(false);
+    expect(f.legs().length).toBe(1);
+    // The once-per-leg rule: the set remembers the leg, so a repeat is the
+    // plain short stagger.
+    expect([...f.legStaggered]).toEqual(["legL"]);
+    expect(f.speed()).toBeCloseTo(f.rig.speed * 0.5, 6);
+  });
+
+  it("16. both legs gone: it falls, then it crawls, and it cannot slam", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 4, player);
+    breakIt(r, f, "legL");
+    breakIt(r, f, "legR");
+    expect(f.legs().length).toBe(0);
+    expect(f.state === "fall" || f.prone).toBe(true);
+    for (let i = 0; i < 60 * 20; i++) tick(r, player);
+    expect(f.wave.active).toBe(false);
+  });
+
+  it("17. a slam abandoned by a maul break leaves no ring", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 4.5, player);
+    for (let i = 0; i < 60 * 30 && !(f.state === "windup" && f.attack()?.id === "slam"); i++) tick(r, player);
+    expect(f.attack()?.id).toBe("slam");
+    breakIt(r, f, "maulHead");
+    expect(f.parts.has("maulHead")).toBe(false);
+    for (let i = 0; i < 120; i++) tick(r, player);
+    expect(f.wave.active).toBe(false);
+  });
+});
+
+describe("the F14's sounds (GAME-10n stage 4)", () => {
+  class FakeSink implements AudioSink {
+    readonly log: { id: string; opts?: PlayOptions }[] = [];
+    play(id: string, opts?: PlayOptions): void {
+      this.log.push({ id, opts });
+    }
+    loop(_id: string, _opts?: PlayOptions): LoopHandle {
+      return { set() {}, setPosition() {}, stop() {} };
+    }
+  }
+
+  it("18. the smash plays the Seawall's wind-up, the sweeps its swing, the slam F07's landing", () => {
+    const r = rig();
+    const sink = new FakeSink();
+    const sounds = new FoamerSounds(sink, r.foamers);
+    const player = new THREE.Vector3(0, 1.6, 0);
+    mauler(r, 1.8, player);
+    mauler(r, 4.5, player);
+    for (let i = 0; i < 60 * 40; i++) {
+      tick(r, player);
+      sounds.update(DT);
+    }
+    const ids = sink.log.map((e) => e.id);
+    expect(ids, ids.join(",")).toContain("F07-land");
+    expect(ids).toContain("F11-swing");
+    expect(ids).toContain("F11-windup");
   });
 });

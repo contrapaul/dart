@@ -899,6 +899,7 @@ export class FoamerSystem {
         {
           distance: dist, cooldownLeft: f.slamCooldown,
           onFeet: f.legs().length > 0, hasMaul: f.parts.has("maulHead"),
+          inSight: this.lineOfSight(f, player),
         },
         slamOf(f.spec)!,
       )) {
@@ -3155,7 +3156,17 @@ export class FoamerSystem {
     else if (!f.prone) {
       // The part break's stagger is always the short one, even on a
       // finishable Foamer (GAME-07): the long stagger is the weaken's own.
-      this.startStagger(f, false);
+      // GAME-10n stage 4: a type may give a leg break its own stagger, once
+      // per leg (`legsBrokenStagger`), so a brawler that keeps its feet on
+      // one leg still rocks back from the hit and the player can finish it
+      // there. A type without the number gets the short stagger as before.
+      const own = part.spec.kind === "leg"
+        ? (f.spec.handicaps as { legsBrokenStagger?: number }).legsBrokenStagger
+        : undefined;
+      if (own !== undefined && !f.legStaggered.has(part.spec.id)) {
+        f.legStaggered.add(part.spec.id);
+        this.startStagger(f, false, own);
+      } else this.startStagger(f, false);
     }
   }
 
