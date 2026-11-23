@@ -3994,7 +3994,7 @@
           "parent": "body",
           "at": [
             0,
-            0.78,
+            0.95,
             0.3
           ],
           "pivot": [
@@ -4002,7 +4002,7 @@
             -0.8,
             -0.2
           ],
-          "eyes": "slit",
+          "eyes": "round",
           "eyeHeight": -0.12,
           "material": "foam-purple-deep"
         },
@@ -4011,15 +4011,15 @@
           "kind": "detail",
           "shape": "box",
           "size": [
-            16,
+            13,
             3,
             3
           ],
           "parent": "head",
           "at": [
             0,
-            0.75,
-            0.86
+            0.45,
+            0.88
           ],
           "material": "foam-ink"
         },

@@ -864,10 +864,14 @@
       "weakpoint": {
         "parts": [
           "legL",
-          "legR"
+          "shinL",
+          "footL",
+          "legR",
+          "shinR",
+          "footR"
         ],
         "damage": 2,
-        "_note": "GAME-10n: both legs take double damage from a dart that lands on them, the way the Biomechanic's tank does. The feet are painted orange for the same reason."
+        "_note": "GAME-10n: the whole of both legs (thigh, shin and foot, all orange) takes double damage from a dart that lands on it, the way the Biomechanic's tank does."
       },
       "handicaps": {
         "_note": "GAME-11 with GAME-10n stage 4 on top: the card's legBreak numbers. The F14 keeps its feet on one leg (it staggers instead of falling when a leg breaks), so fallBelowLegs is 1: one leg left is still standing, none left and it falls, then crawls as the card says. Every other number is the base's, spelled out because a type's handicaps block replaces the base's whole object. legsBrokenStagger is the card's new hook: each leg breaking staggers it for that long, once per leg, in the stagger state the parry uses, so the player can finish it there.",

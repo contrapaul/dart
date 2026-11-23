@@ -108,11 +108,12 @@ describe("the F14 maul brawler (GAME-10n stage 1)", () => {
     expect(span(RIG)).toBeGreaterThan(span(seawall));
   });
 
-  it("3. both legs carry the weak point and the feet are orange", () => {
+  it("3. every orange leg part is the weak point, and only those", () => {
     const wp = (SPEC as { weakpoint?: { parts: string[]; damage: number } }).weakpoint;
-    expect(wp?.parts).toEqual(["legL", "legR"]);
+    const legs = RIG.parts.filter((q) => q.kind === "leg").map((q) => q.id);
+    expect([...(wp?.parts ?? [])].sort()).toEqual([...legs].sort());
     expect(wp?.damage).toBe(2);
-    for (const id of ["legL", "legR", "footL", "footR"]) {
+    for (const id of legs) {
       const p = RIG.parts.find((q) => q.id === id)!;
       expect(p.material, id).toContain("foam-orange");
     }
