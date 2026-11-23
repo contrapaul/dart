@@ -855,6 +855,119 @@
           "strike": 0.2
         }
       ]
+    },
+    "F14": {
+      "rig": "F14",
+      "_note": "GAME-10n: the elite maul brawler. A broad, low-slung biped, a head shorter than the Seawall but much wider: deep purple body, lime shoulder blocks, chest and back plates and maul, orange legs and feet under it. Health 70 and speed 1.3 come from the rig. It fights with the maul in its right hand on the F01 melee brain, so it walks in and swings. The legs are the weak point (weakpoint): with both broken it can no longer slam, and it crawls. Look (CONTENT-PLAN 3.3): flat-topped head under an ink visor band, two cream eyes, a lime foam maul in the right hand.",
+      "turnRate": 2,
+      "attackRange": 2.2,
+      "weakpoint": {
+        "parts": [
+          "legL",
+          "shinL",
+          "footL",
+          "legR",
+          "shinR",
+          "footR"
+        ],
+        "damage": 2,
+        "_note": "GAME-10n: the whole of both legs (thigh, shin and foot, all orange) takes double damage from a dart that lands on it, the way the Biomechanic's tank does."
+      },
+      "handicaps": {
+        "_note": "GAME-11 with GAME-10n stage 4 on top: the card's legBreak numbers. The F14 keeps its feet on one leg (it staggers instead of falling when a leg breaks), so fallBelowLegs is 1: one leg left is still standing, none left and it falls, then crawls as the card says. Every other number is the base's, spelled out because a type's handicaps block replaces the base's whole object. legsBrokenStagger is the card's new hook: each leg breaking staggers it for that long, once per leg, in the stagger state the parry uses, so the player can finish it there.",
+        "someLegsSpeed": 0.5,
+        "noLegsSpeed": 0.25,
+        "fallBelowLegs": 1,
+        "crawlSpeed": 0.3,
+        "crawlLength": 0.7,
+        "legsBrokenStagger": 2,
+        "fall": {
+          "startTilt": 0.12,
+          "proneTilt": 1.35,
+          "sideShare": 0.35,
+          "bounce": 0.25,
+          "settle": 0.25
+        }
+      },
+      "slam": {
+        "_note": "GAME-10n stage 3: the floor slam. Between minMetres and maxMetres, in sight, off cooldown, on its legs and with the maul head still on the handle, it stops where it stands and rears (windupSeconds, the telegraph: no pink, it is not parryable, the answer is distance), then brings the maul down and the ring goes out from its own feet. cooldownSeconds runs from the start of the rear. The shockwave numbers are the block below, the Brawler's block (GAME-10f): the ring is the same ring, started where it stands instead of where it landed.",
+        "minMetres": 3,
+        "maxMetres": 6,
+        "cooldownSeconds": 5,
+        "windupSeconds": 0.9
+      },
+      "shockwave": {
+        "speed": 7,
+        "radius": 7,
+        "thickness": 0.6,
+        "damage": 14,
+        "tubeMetres": 0.14
+      },
+      "attacks": [
+        {
+          "_note": "GAME-10n stage 3: the slam's strike. Not chosen by chooseAttack for a walking approach: the slam state sets it, and the ring does the damage (damage 14 in the shockwave block), so this attack costs nothing itself. Its windup and strike times are the slam's (windupSeconds), kept out of the combo.",
+          "id": "slam",
+          "damage": 0,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "maulHead"
+          ],
+          "windup": 0.9,
+          "strike": 0.3
+        },
+        {
+          "_note": "GAME-10n stage 2: the wide maul sweep, the opener and the second blow of the combo. Nothing pink: it is the safe one to eat, and the point is that eating two of them puts you in front of the smash.",
+          "id": "sweep",
+          "damage": 12,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "maulHead"
+          ],
+          "windup": 0.5,
+          "strike": 0.2
+        },
+        {
+          "_note": "GAME-10n stage 2: the smash that ends the combo. 30 damage behind a 0.8 s windup and parryable: the maul head turns pink during the windup, and a raised shield inside the parry window turns it whole (the Seawall's finisher, GAME-10k, is the pattern).",
+          "id": "smash",
+          "damage": 30,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "maulHead"
+          ],
+          "windup": 0.8,
+          "strike": 0.25,
+          "parryable": true
+        },
+        {
+          "_note": "GAME-10n stage 2: the fallback. With the maul head broken off (two parries do it) there is nothing to swing, so it bonks with the bare right forearm for 10. chooseAttack only reaches it when every combo attack's needs are gone.",
+          "id": "bonk",
+          "damage": 10,
+          "token": "melee",
+          "needs": [
+            "foreArmR"
+          ],
+          "windup": 0.6,
+          "strike": 0.25
+        }
+      ],
+      "combo": {
+        "attacks": [
+          "sweep",
+          "sweep",
+          "smash"
+        ],
+        "_note": "GAME-10n stage 2: two sweeps then the smash, one per strike that landed (Foamer.comboTurn counts them). The F11 combo, GAME-10k, is the pattern."
+      },
+      "meleeParry": {
+        "part": "maulHead",
+        "tellPart": "maulHead",
+        "staggerSeconds": 2,
+        "parriesToBreak": 2,
+        "_note": "GAME-10n stage 2: a parry of the smash staggers it for 2 s, the window the finisher wants, and puts one parry on the maul head. The second parry breaks the head off as a foam piece: after that it can only bonk with the forearm, and it can no longer slam (stage 3)."
+      }
     }
   },
   "promoted": {

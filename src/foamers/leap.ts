@@ -40,6 +40,27 @@ export interface ShockwaveSpec {
   damage: number;
 }
 
+/** GAME-10n: the standing floor slam. A type with this block and a
+ *  `shockwave` block stops where it stands, rears, and sends the ring out
+ *  from its own feet: no leap, no landing, the maul comes down on the
+ *  floor. */
+export interface SlamSpec {
+  /** It slams when the player is between these distances (metres). Inside
+   *  minMetres the maul itself does the job; past maxMetres the ring would
+   *  fade before it arrived. */
+  minMetres: number;
+  maxMetres: number;
+  /** Seconds before it may slam again (from the start of the rear). */
+  cooldownSeconds: number;
+  /** The rear before the maul comes down, seconds: the telegraph. */
+  windupSeconds: number;
+}
+
+/** The slam numbers of a type, or null when it does not slam the floor. */
+export function slamOf(spec: FoamerSpec): SlamSpec | null {
+  return (spec as { slam?: SlamSpec }).slam ?? null;
+}
+
 /** The leap numbers of a type, or null when it does not leap. */
 export function leapOf(spec: FoamerSpec): LeapSpec | null {
   return (spec as { leap?: LeapSpec }).leap ?? null;

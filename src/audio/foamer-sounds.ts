@@ -180,6 +180,15 @@ export class FoamerSounds {
           this.sink.play(f.attack()?.id === "finisher" ? "F11-windup" : "F11-swing", p);
           break;
         }
+        if (f.spec.rig === "F14") {
+          // GAME-10n: the maul brawler. Its smash is the Seawall's long
+          // high wind-up (and its parry tell), so it plays F11's wind-up;
+          // the sweeps, the fist bonk and the slam's rear are plain swings
+          // (the card: existing IDs only, no new audio). The slam's landing
+          // sound is F07's, played by the Foamer on the ring.
+          this.sink.play(f.attack()?.id === "smash" ? "F11-windup" : "F11-swing", p);
+          break;
+        }
         this.sink.play(
           token === "ranged" ? "F02-windup" : token === "swarm" ? "F03-nibble" : "F01-swing",
           p,

@@ -99,17 +99,27 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [0.2 * e, 0, 1.4 * e]);
     out.turn = 0.25 * e;
     out.pitch = 0.1 * e;
-  } else if (attack === "overhead" || attack === "finisher") {
+  } else if (attack === "overhead" || attack === "finisher" || attack === "smash") {
     // GAME-10k: the Seawall's mace over its head. The finisher is the
     // slow high wind-up (CONTENT-PLAN F11): the same pose held higher and
     // the body coiled further back, and its part is what turns pink (the
-    // system's tell, not the pose).
-    const high = attack === "finisher";
+    // system's tell, not the pose). GAME-10n: the F14's smash is the same
+    // high maul wind-up, its own attack id so it can carry its own numbers.
+    const high = attack === "finisher" || attack === "smash";
     if (rig.parts.some((p) => p.id === "armR"))
       out.rot.set("armR", [(high ? -2.8 : -2.4) * e, 0, 0]);
     if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * e, 0, 0]);
     out.pitch = (high ? -0.25 : -0.1) * e;
     out.y = 0.04 * e;
+  } else if (attack === "slam") {
+    // GAME-10n: the F14 rears with the maul over its head and both arms
+    // up, the floor slam's telegraph. No pink: it is not parryable, the
+    // answer is distance.
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [-2.6 * e, 0, 0]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.5 * e, 0, 0]);
+    if (rig.parts.some((p) => p.id === "armL")) out.rot.set("armL", [-1.9 * e, 0, 0]);
+    out.pitch = -0.3 * e;
+    out.y = 0.06 * e;
   } else if (attack === "sweep") {
     // GAME-10k: the wide horizontal mace strike: the arm drawn back out
     // to the right, the body turning with it, ending where the strike
@@ -182,7 +192,7 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [a, 0, 0]);
     if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * (1 - Math.min(1, k / 0.7)), 0, 0]);
     out.pitch = 0.2 * Math.sin(k * Math.PI);
-  } else if (attack === "finisher") {
+  } else if (attack === "finisher" || attack === "smash") {
     // GAME-10k: the high chop: from the higher windup it comes down the
     // whole strike, slower over the first part (the windup is already
     // 1.2 s), the body straightening with it.
@@ -192,6 +202,17 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * (1 - Math.min(1, k / 0.6)), 0, 0]);
     out.pitch = -0.25 + 0.55 * e;
     out.y = 0.04 * (1 - e);
+  } else if (attack === "slam") {
+    // GAME-10n: the maul comes down on the floor in front of it: both arms
+    // swing down through the first 60%, the body folding with them, then
+    // the follow settles so the recover starts clean.
+    const u = k < 0.6 ? (k / 0.6) ** 1.7 : 1;
+    const back = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+    if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [(-2.6 + 3.3 * u) * back, 0, 0]);
+    if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.5 * (1 - u), 0, 0]);
+    if (rig.parts.some((p) => p.id === "armL")) out.rot.set("armL", [(-1.9 + 2.6 * u) * back, 0, 0]);
+    out.pitch = (-0.3 + 0.75 * u) * back;
+    out.y = 0.06 * (1 - u);
   } else if (attack === "sweep") {
     // GAME-10k: the wide horizontal strike across the body: the drawn-
     // back arm swings over, fast for the first 70%, then the follow
