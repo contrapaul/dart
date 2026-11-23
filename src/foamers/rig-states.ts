@@ -99,12 +99,13 @@ export function windupMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [0.2 * e, 0, 1.4 * e]);
     out.turn = 0.25 * e;
     out.pitch = 0.1 * e;
-  } else if (attack === "overhead" || attack === "finisher") {
+  } else if (attack === "overhead" || attack === "finisher" || attack === "smash") {
     // GAME-10k: the Seawall's mace over its head. The finisher is the
     // slow high wind-up (CONTENT-PLAN F11): the same pose held higher and
     // the body coiled further back, and its part is what turns pink (the
-    // system's tell, not the pose).
-    const high = attack === "finisher";
+    // system's tell, not the pose). GAME-10n: the F14's smash is the same
+    // high maul wind-up, its own attack id so it can carry its own numbers.
+    const high = attack === "finisher" || attack === "smash";
     if (rig.parts.some((p) => p.id === "armR"))
       out.rot.set("armR", [(high ? -2.8 : -2.4) * e, 0, 0]);
     if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * e, 0, 0]);
@@ -182,7 +183,7 @@ export function strikeMotion(rig: RigSpec, attack: string, k: number, out: RigMo
     if (rig.parts.some((p) => p.id === "armR")) out.rot.set("armR", [a, 0, 0]);
     if (rig.parts.some((p) => p.id === "foreArmR")) out.rot.set("foreArmR", [-0.4 * (1 - Math.min(1, k / 0.7)), 0, 0]);
     out.pitch = 0.2 * Math.sin(k * Math.PI);
-  } else if (attack === "finisher") {
+  } else if (attack === "finisher" || attack === "smash") {
     // GAME-10k: the high chop: from the higher windup it comes down the
     // whole strike, slower over the first part (the windup is already
     // 1.2 s), the body straightening with it.

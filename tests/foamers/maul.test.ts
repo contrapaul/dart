@@ -11,6 +11,9 @@ import { DartSystem } from "../../src/weapons/darts";
 import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
 import { FoamerSystem, specFor } from "../../src/foamers/foamers";
 import { rigHeight, type RigSpec } from "../../src/foamers/rig";
+import { meleeParryOf } from "../../src/foamers/combo";
+import { BALL_MATERIAL } from "../../src/foamers/projectiles";
+import { voxelFoamMaterial } from "../../src/render/foam-material";
 import type { Foamer } from "../../src/foamers/foamer";
 
 // GAME-10n: the F14 maul brawler. Stage 1 is the rig and the plain maul
@@ -54,6 +57,18 @@ function tick(r: Rig, player: THREE.Vector3) {
 
 function run(r: Rig, player: THREE.Vector3, done: () => boolean, steps: number) {
   for (let i = 0; i < steps && !done(); i++) tick(r, player);
+}
+
+async function settle(
+  r: Rig, f: Foamer,
+) {
+  for (const p of f.parts.values()) {
+    while (p.mesh.busy) {
+      p.mesh.update();
+      await new Promise((res) => setTimeout(res, 0));
+    }
+  }
+  r.world.step();
 }
 
 function mauler(r: Rig, metres: number, player: THREE.Vector3): Foamer {
@@ -107,7 +122,7 @@ describe("the F14 maul brawler (GAME-10n stage 1)", () => {
     const f = mauler(r, 6, player);
     run(r, player, () => f.state === "windup", 60 * 20);
     expect(f.state).toBe("windup");
-    expect(f.attack()!.id).toBe("bonk");
+    expect(f.attack()!.id).toBe("sweep");
     run(r, player, () => f.state === "recover", 60 * 3);
     expect(f.state).toBe("recover");
   });
@@ -139,5 +154,75 @@ describe("the F14 maul brawler (GAME-10n stage 1)", () => {
     const onLeg = dart(mauler(r, 6, player), "legL");
     expect(onArm).toBeGreaterThan(0);
     expect(onLeg).toBeCloseTo(onArm * 2, 6);
+  });
+});
+
+describe("the F14 combo and parry (GAME-10n stage 2)", () => {
+  it("6. it sweeps twice, then smashes, then loops", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 1.8, player);
+    const bonks: string[] = [];
+    r.foamers.onBonk = (_f, attack) => bonks.push(attack);
+    run(r, player, () => bonks.length >= 4, 60 * 40);
+    expect(bonks.slice(0, 4)).toEqual(["sweep", "sweep", "smash", "sweep"]);
+    expect(f.comboTurn).toBe(4);
+  });
+
+  it("7. the maul head is pink only during the smash windup", async () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 1.8, player);
+    await settle(r, f);
+    const head = f.parts.get("maulHead")!;
+    const headMat = () => (head.mesh.group.children[0] as THREE.Mesh).material as THREE.Material;
+    let pink = false, plainInWindup = false;
+    for (let i = 0; i < 60 * 40 && !(pink && plainInWindup); i++) {
+      tick(r, player);
+      if (f.state !== "windup") continue;
+      if (f.attack()?.id === "smash") {
+        if (headMat() === BALL_MATERIAL) pink = true;
+      } else if (f.attack()?.id === "sweep" && headMat() === voxelFoamMaterial()) plainInWindup = true;
+    }
+    expect(pink, "pink during the smash windup").toBe(true);
+    expect(plainInWindup, "plain during a sweep windup").toBe(true);
+    // Once the windup is over the head is foam again.
+    for (let i = 0; i < 600 && f.state === "windup"; i++) tick(r, player);
+    expect(headMat()).toBe(voxelFoamMaterial());
+  });
+
+  it("8. a parry staggers it for 2 s and the second parry breaks the maul head off", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 1.8, player);
+    expect(meleeParryOf(SPEC)!.staggerSeconds).toBe(2);
+    r.foamers.parryAttack(f);
+    expect(f.parriesTaken).toBe(1);
+    expect(f.parts.has("maulHead")).toBe(true);
+    expect(f.state).toBe("stagger");
+    const start = f.stateTime;
+    tick(r, player);
+    expect(f.state).toBe("stagger");
+    tick(r, player);
+    expect(f.stateTime).toBeGreaterThan(start);
+    r.foamers.parryAttack(f);
+    expect(f.parriesTaken).toBe(2);
+    expect(f.parts.has("maulHead")).toBe(false);
+  });
+
+  it("9. with the maul head gone it bonks with the forearm for 10", () => {
+    const r = rig();
+    const player = new THREE.Vector3(0, 1.6, 0);
+    const f = mauler(r, 1.8, player);
+    r.foamers.parryAttack(f);
+    r.foamers.parryAttack(f);
+    expect(f.parts.has("maulHead")).toBe(false);
+    const bonks: string[] = [];
+    r.foamers.onBonk = (_f, attack) => bonks.push(attack);
+    run(r, player, () => bonks.length >= 2, 60 * 40);
+    expect(bonks.slice(0, 2)).toEqual(["bonk", "bonk"]);
+    const bonk = SPEC.attacks.find((a) => a.id === "bonk")!;
+    expect(bonk.damage).toBe(10);
+    expect(bonk.needs).toEqual(["foreArmR"]);
   });
 });

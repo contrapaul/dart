@@ -871,18 +871,57 @@
       },
       "attacks": [
         {
-          "_note": "GAME-10n stage 1: one maul swing, the plain melee. The combo of sweeps and the parryable smash arrive in stage 2.",
-          "id": "bonk",
+          "_note": "GAME-10n stage 2: the wide maul sweep, the opener and the second blow of the combo. Nothing pink: it is the safe one to eat, and the point is that eating two of them puts you in front of the smash.",
+          "id": "sweep",
           "damage": 12,
           "token": "melee",
           "needs": [
             "foreArmR",
             "maulHead"
           ],
+          "windup": 0.5,
+          "strike": 0.2
+        },
+        {
+          "_note": "GAME-10n stage 2: the smash that ends the combo. 30 damage behind a 0.8 s windup and parryable: the maul head turns pink during the windup, and a raised shield inside the parry window turns it whole (the Seawall's finisher, GAME-10k, is the pattern).",
+          "id": "smash",
+          "damage": 30,
+          "token": "melee",
+          "needs": [
+            "foreArmR",
+            "maulHead"
+          ],
+          "windup": 0.8,
+          "strike": 0.25,
+          "parryable": true
+        },
+        {
+          "_note": "GAME-10n stage 2: the fallback. With the maul head broken off (two parries do it) there is nothing to swing, so it bonks with the bare right forearm for 10. chooseAttack only reaches it when every combo attack's needs are gone.",
+          "id": "bonk",
+          "damage": 10,
+          "token": "melee",
+          "needs": [
+            "foreArmR"
+          ],
           "windup": 0.6,
           "strike": 0.25
         }
-      ]
+      ],
+      "combo": {
+        "attacks": [
+          "sweep",
+          "sweep",
+          "smash"
+        ],
+        "_note": "GAME-10n stage 2: two sweeps then the smash, one per strike that landed (Foamer.comboTurn counts them). The F11 combo, GAME-10k, is the pattern."
+      },
+      "meleeParry": {
+        "part": "maulHead",
+        "tellPart": "maulHead",
+        "staggerSeconds": 2,
+        "parriesToBreak": 2,
+        "_note": "GAME-10n stage 2: a parry of the smash staggers it for 2 s, the window the finisher wants, and puts one parry on the maul head. The second parry breaks the head off as a foam piece: after that it can only bonk with the forearm, and it can no longer slam (stage 3)."
+      }
     }
   },
   "promoted": {
