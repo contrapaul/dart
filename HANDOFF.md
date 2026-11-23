@@ -93,6 +93,36 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-23: B02 is Inkling's redesign; GAME-10n reviewed and merged (Claude Opus 5.5)
+
+- Asked: review `benchmarks/`, replace B02 with Inkling's model, add
+  Inkling's F14 with DeepSeek 1017 via Pi, then push live.
+- `benchmarks/`: the BENCH-01 bake-off (DeepSeek V4.1 Flash on Strata and
+  Inkling-2-Mini, each a review, a B02 redesign and an F14 proposal). Both
+  B02 models pass `check_glb`. Both reviews carry stale claims (DeepSeek:
+  the game still uses B01 for B02 and the slide is not animated; Inkling:
+  the voxel gate still waits on Paul). The folder is left out of git
+  (about 11 MB, untracked) for Paul to decide.
+- B02: `art/blasters/B02/build.py` is Inkling's script pointed at
+  `public/models/blasters/B02.glb`; `DESIGN.md` its brief; NOTES round 2.
+  Seen in the range: held, fires, slide and reload run. Not seen: the mod
+  geometry in play.
+- GAME-10n: DeepSeek built all four stages (entry below). Review fixes in
+  their own commit: the whole orange leg (thigh, shin, foot) is the weak
+  point; the head sits higher, the visor on the brow, round cream eyes
+  under it. The pose renders in `design/foamers/poses/F14-*` predate that
+  head change.
+- Seen in the arena (a stored test level, `?watch`): it walks in, slams
+  the floor at range (ring from its feet, 14 damage), then sweep 12, sweep
+  12, smash 30 with the maul head pink in the wind-up, repeating; no
+  console errors. `npm run check`: 1563 tests, 2 skipped, no em dashes,
+  no remote fetches.
+- Noticed, not changed: the ring starts as the maul begins to fall, not
+  when it reaches the floor; the slam's wind-up is in two places (the
+  `slam` block and the `slam` attack, both 0.9). Not seen: a parry, the
+  maul head breaking off, a leg break stagger, the sounds (all covered by
+  tests only).
+
 ### 2026-11-23: GAME-10n, the F14 maul brawler (DeepSeek V4.1 Flash 1017 via Pi)
 
 - Asked: build the F14 elite from `tasks/GAME-10n.md` in four stages,
