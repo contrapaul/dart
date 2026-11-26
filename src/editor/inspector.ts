@@ -222,4 +222,18 @@ export function buildPrimFields(host: HTMLElement, prims: Prim[], ctx: Inspector
   });
   hiddenLabel.append(document.createTextNode("starts hidden"), hidden);
   host.append(hiddenLabel);
+
+  // ED-30 item 3: the locked checkbox, one selected thing only.
+  if (prims.length === 1) {
+    const lock = document.createElement("label");
+    const lockInput = document.createElement("input");
+    lockInput.type = "checkbox";
+    lockInput.checked = first.locked === true;
+    lockInput.addEventListener("change", () => {
+      const locked = lockInput.checked;
+      ctx.changeOne(first.id, { locked: locked ? true : undefined }, locked ? "lock" : "unlock");
+    });
+    lock.append(document.createTextNode("locked"), lockInput);
+    host.append(lock);
+  }
 }

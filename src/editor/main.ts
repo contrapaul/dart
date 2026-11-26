@@ -29,6 +29,7 @@ import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
 import { ICONS, type IconName } from "./icons";
 import { isFolded, toggleFolded, unfoldGroup } from "./outliner-fold";
+import { isLockableKind, lockButton, lockedIds, movableIds } from "./lock";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -111,6 +112,7 @@ function typing(target: EventTarget | null): boolean {
 
 // The panels that read the document.
 function redraw() {
+  view.setLocked(lockedIds(doc.level));
   view.show(doc.level);
   selectInView();
   buildOutliner();
@@ -323,7 +325,8 @@ function buildOutliner() {
         view.setVisible(prim.id, !mesh);
         eye.classList.toggle("on", mesh);
       });
-      row.append(name, eye);
+      const lock = lockButton(prim.locked === true, () => togglePrimLock(prim));
+      row.append(name, eye, lock);
       rows.append(row);
     }
     host.append(group);
@@ -340,7 +343,12 @@ function buildOutliner() {
       name.className = "name";
       name.textContent = partName(entry.id);
       name.addEventListener("click", (e) => pick(entry.id, e.shiftKey));
-      row.append(name);
+      if (isLockableKind(kind) && "locked" in entry) {
+        const lock = lockButton((entry as { locked?: boolean }).locked === true, () => toggleEntryLock(kind, entry.id));
+        row.append(name, lock);
+      } else {
+        row.append(name);
+      }
       rows.append(row);
     }
     host.append(group);
@@ -379,6 +387,18 @@ function buildOutliner() {
     levelRows.append(row);
   }
   host.append(level);
+}
+
+/** One undo step per lock toggle, for a row in the outliner. */
+function togglePrimLock(prim: Prim) {
+  doc.change("prims", [{ id: prim.id, patch: { locked: prim.locked ? undefined : true } }], prim.locked ? "unlock" : "lock");
+}
+
+function toggleEntryLock(kind: EntryKind, id: string) {
+  const entry = doc.find<{ id: string; locked?: boolean }>(kind, id);
+  if (!entry) return;
+  const locked = entry.locked === true;
+  doc.change(kind, [{ id, patch: { locked: locked ? undefined : true } }], locked ? "unlock" : "lock");
 }
 
 /** The title of the outliner group an id lives in (a behaviour, a part
@@ -984,10 +1004,15 @@ window.addEventListener("pointerup", (e) => {
     if (selectBox) selectBox.hidden = true;
     if (!was.started) return;
     pressUsed = true;
-    // Whole groups come with any member the box catches.
-    const caught = idsInRect(view.screenPoints(), { x0: was.x, y0: was.y, x1: e.clientX, y1: e.clientY });
+    // Whole groups come with any member the box catches. A locked thing is
+    // left out, with the status line saying so.
+    const locked = lockedIds(doc.level);
+    const caught = idsInRect(view.screenPoints(), { x0: was.x, y0: was.y, x1: e.clientX, y1: e.clientY })
+      .filter((id) => !locked.has(id));
     selectMany([...new Set(caught.flatMap((id) => groupMembers(doc.level, id)))], e.shiftKey);
-    status.textContent = `${selected.size} selected.`;
+    const skipped = [...locked].filter((id) => idsInRect(view.screenPoints(), { x0: was.x, y0: was.y, x1: e.clientX, y1: e.clientY }).includes(id));
+    if (skipped.length) status.textContent = `${skipped.join(", ")} is locked.`;
+    else status.textContent = `${selected.size} selected.`;
     return;
   }
   if (was.kind === "place") {
@@ -1298,8 +1323,13 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "Delete" || e.code === "Backspace") {
     e.preventDefault();
     if (selected.size) {
-      doc.remove([...selected]);
-      selected.clear();
+      const locked = lockedIds(doc.level);
+      const { ok, skipped } = movableIds([...selected], locked);
+      if (skipped.length) status.textContent = `${skipped.join(", ")} is locked.`;
+      if (ok.length) {
+        doc.remove(ok);
+        for (const id of ok) selected.delete(id);
+      }
     }
   }
 });
@@ -1390,7 +1420,11 @@ window.addEventListener("keyup", (e) => {
 /** Turns every selected thing that can turn by `deg` about the vertical,
  *  each about its own centre: one undo step per kind. */
 function turnSelection(deg: number) {
-  const ids = [...selected];
+  const locked = lockedIds(doc.level);
+  const { ok, skipped } = movableIds([...selected], locked);
+  if (skipped.length) status.textContent = `${skipped.join(", ")} is locked.`;
+  if (!ok.length) return;
+  const ids = ok;
   const prims = ids.flatMap((id) => {
     const prim = doc.prim(id);
     if (!prim) return [];

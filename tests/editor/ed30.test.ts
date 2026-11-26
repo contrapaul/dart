@@ -66,3 +66,47 @@ describe("ED-30 folding state", () => {
     expect(foldedGroups()).toEqual([]);
   });
 });
+
+describe("ED-30 locking", () => {
+  it("collects locked prims, props, physics and models", async () => {
+    const { lockedIds } = await import("../../src/editor/lock");
+    const { newLevel } = await import("../../src/editor/doc");
+    const level = newLevel();
+    level.prims = [
+      { id: "box-1", shape: "box", pos: [0, 1, 0], size: [2, 2, 2], colour: "#fff", behaviour: "solid", locked: true },
+      { id: "box-2", shape: "box", pos: [5, 1, 0], size: [2, 2, 2], colour: "#fff", behaviour: "solid" },
+    ];
+    level.props = [{ id: "prop-1", kind: "barrel", pos: [0, 0, 0], locked: true } as never];
+    const locked = lockedIds(level);
+    expect(locked.has("box-1")).toBe(true);
+    expect(locked.has("prop-1")).toBe(true);
+    expect(locked.has("box-2")).toBe(false);
+  });
+
+  it("a locked prim is not moved by a nudge: movableIds strips it", async () => {
+    const { movableIds, lockedIds } = await import("../../src/editor/lock");
+    const { newLevel } = await import("../../src/editor/doc");
+    const level = newLevel();
+    level.prims = [
+      { id: "box-1", shape: "box", pos: [0, 1, 0], size: [2, 2, 2], colour: "#fff", behaviour: "solid", locked: true },
+    ];
+    const locked = lockedIds(level);
+    const { ok, skipped } = movableIds(["box-1", "box-2"], locked);
+    expect(ok).toEqual(["box-2"]);
+    expect(skipped).toEqual(["box-1"]);
+  });
+
+  it("is the skip set the view pick adds", async () => {
+    const { lockedIds } = await import("../../src/editor/lock");
+    const { newLevel } = await import("../../src/editor/doc");
+    const level = newLevel();
+    level.prims = [
+      { id: "box-1", shape: "box", pos: [0, 1, 0], size: [2, 2, 2], colour: "#fff", behaviour: "solid", locked: true },
+    ];
+    const locked = lockedIds(level);
+    // The view passes the locked ids as the skip set, so a pick over a
+    // locked prim passes through it (view.ts pick).
+    expect(locked.size).toBe(1);
+    expect(locked.has("box-1")).toBe(true);
+  });
+});

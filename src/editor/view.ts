@@ -246,6 +246,16 @@ export class EditorView {
     this.camera.updateProjectionMatrix();
   }
 
+  /** ED-30 item 3: ids that the pick passes through (a locked thing). The
+   *  page hands the set over each redraw; the pick unions it with its own
+   *  skip parameter. */
+  private lockedSkip = new Set<string>();
+
+  setLocked(ids: Set<string>) {
+    this.lockedSkip = new Set(ids);
+  }
+
+
   /** Draws the level as it is now. The shell and the sky are rebuilt only
    *  when they changed (the editor does not edit them yet, and a typed
    *  number should not rebuild the level), the prims on every change. */
@@ -380,16 +390,41 @@ export class EditorView {
     this.proxy.quaternion.copy(last.quaternion);
     const size: Vec3 = marker ? marker.size ?? [1, 1, 1] : prim ? prim.size : [1, 1, 1];
     this.proxy.scale.set(size[0], size[1], size[2]);
-    this.controls.setMode(marker && !marker.size ? "translate" : mode);
+    const isStart = marker?.kind === "start";
+    // ED-30 item 11: the player start turns by Y only (marquee turns are a
+    // Foamer's), so in rotate mode the X and Z rings are hidden and only the
+    // Y one is left.
+    const rotateOnlyY = isStart && mode === "rotate";
+    this.controls.setMode(marker && !marker.size && !isStart ? "translate" : mode);
+    if (rotateOnlyY) {
+      this.controls.showX = false;
+      this.controls.showZ = false;
+      this.controls.showXY = false;
+      this.controls.showXZ = false;
+      this.controls.showYZ = false;
+    } else {
+      this.controls.showX = true;
+      this.controls.showY = true;
+      this.controls.showZ = true;
+      this.controls.showXY = true;
+      this.controls.showXZ = true;
+      this.controls.showYZ = true;
+    }
+    // ED-30 item 3: a locked thing is drawn, but it is drawn without handles.
     this.controls.attach(this.proxy);
-    this.controls.enabled = true;
+    const locked = this.lockedSkip.has(id);
+    this.controls.enabled = !locked;
+    if (locked) {
+      this.controls.detach();
+      this.controls.enabled = false;
+    }
     // ED-14: one box in scale mode gets a handle on each face, which moves
     // that face alone. The three.js scale handle grows a box from its
     // centre, and stays for a selection of several things.
     const sized = marker ? marker.size : prim ? prim.size : null;
     this.faces.visible = false;
     this.faceTarget = null;
-    if (mode === "scale" && objects.length === 1 && sized) {
+    if (mode === "scale" && objects.length === 1 && sized && !locked) {
       this.controls.detach();
       this.controls.enabled = false;
       this.faceTarget = { id, size: [sized[0], sized[1], sized[2]] };
@@ -585,22 +620,34 @@ export class EditorView {
     // Meshes rebuilt by a change since the last frame have no world matrix
     // yet, so a pick before the next render would see them at the origin.
     this.scene.updateMatrixWorld();
+    // The skip set is what a caller already passes (a selected thing, a
+    // box select); locked ids are added to it so a locked thing passes
+    // through a pick.
+    const skipAll = new Set([...this.lockedSkip, ...(skip ?? [])]);
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
     const hits = this.raycaster.intersectObjects(targets, false);
     const hit = hits.find((h) => {
       const id = h.object.userData.id as string | undefined;
-      if (id && skip?.has(id)) return false;
+      if (id && skipAll.has(id)) return false;
       return this.meshes.get(id ?? "")?.visible !== false;
     });
     // ED-05: a marker is picked in front of the level behind it. A marker is
     // a group or a mesh, so the walk is recursive; its root carries the id.
-    const markerHit = skip ? undefined : this.raycaster.intersectObjects([...this.markers.children], true).find((h) => {
-      for (let node: THREE.Object3D | null = h.object; node; node = node.parent) {
-        if (node.parent === this.markers) return true;
-      }
-      return false;
-    });
+    // A caller passing a skip set means the markers are not in play at all
+    // (a drag sliding over the selection), as before the locks.
+    const markerHit = (skip && skip.size)
+      ? undefined
+      : this.raycaster.intersectObjects([...this.markers.children], true).find((h) => {
+        for (let node: THREE.Object3D | null = h.object; node; node = node.parent) {
+          if (node.parent === this.markers) {
+            const id = node.userData.id as string | undefined;
+            if (id && this.lockedSkip.has(id)) return false;
+            return true;
+          }
+        }
+        return false;
+      });
     if (markerHit) {
       let node: THREE.Object3D | null = markerHit.object;
       while (node && node.parent !== this.markers) node = node.parent;

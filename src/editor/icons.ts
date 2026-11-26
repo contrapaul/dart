@@ -22,6 +22,10 @@ export const ICONS = {
   translate: svg('<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>'),
   rotate: svg('<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/>'),
   scale: svg('<rect x="3" y="11" width="10" height="10"/><path d="M11 13l9-9M14 4h6v6"/>'),
+  lock: svg('<rect x="5" y="10" width="14" height="10" rx="1.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.4"/>'),
+  unlock: svg('<rect x="5" y="10" width="14" height="10" rx="1.5"/><path d="M8 10V7a4 4 0 0 1 7.7-1.5"/>'),
+  fold: svg('<path d="M9 6l6 6-6 6"/>'),
+  unfold: svg('<path d="M6 9l6 6 6-6"/>'),
 } as const;
 
 export type IconName = keyof typeof ICONS;

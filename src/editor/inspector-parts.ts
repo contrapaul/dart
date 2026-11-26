@@ -72,6 +72,11 @@ export function selectField(options: { value: string; label: string }[], current
   return select;
 }
 
+/** ED-30 item 3: the locked checkbox. */
+export function lockedCheckbox(checked: boolean, commit: (on: boolean) => void): HTMLElement {
+  return checkField("locked", checked, commit);
+}
+
 export function checkField(text: string, checked: boolean, commit: (on: boolean) => void): HTMLElement {
   const el = document.createElement("label");
   const input = document.createElement("input");
@@ -195,6 +200,7 @@ export function buildPropFields(host: HTMLElement, p: Prop, ctx: PartContext) {
   )));
   host.append(label("position", vecField(p.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move"))));
   host.append(label("rotation", numberInput(p.rotY ?? 0, ROTATE_STEP, (n) => ctx.change({ rotY: n }, "turn"))));
+  host.append(lockedCheckbox(p.locked === true, (on) => ctx.change({ locked: on || undefined }, on ? "lock" : "unlock")));
   const solid = checkField("solid", propSolid(p), (on) => ctx.change({ solid: on }, on ? "make solid" : "make walk-through"));
   if (p.kind === LEAKING_BARREL) solid.querySelector("input")!.disabled = true;
   host.append(solid);
