@@ -73,3 +73,29 @@ describe("ED-31 buttons in a level", () => {
     expect(linked?.do[0]).toEqual({ kind: "move", ids: ["box-1"], by: [0, 2, 0], seconds: 1 });
   });
 });
+
+describe("ED-31 a button that needs the use key", () => {
+  it("is pressed by the use key, and not by a dart or a second hold", async () => {
+    const RAPIER = (await import("@dimforge/rapier3d-compat")).default;
+    await RAPIER.init();
+    const { createPhysics } = await import("../../src/physics/world");
+    const { buildButton, ButtonSystem } = await import("../../src/level/buttons");
+    const THREE = await import("three");
+    const { rapier, world } = await createPhysics();
+    const group = new THREE.Group();
+    // A wall button facing +z, its cap at z = -5 + 0.1.
+    const handle = buildButton(
+      { id: "b", pos: [0, 1.5, -5], facing: [0, 0, 1], use: true }, group, rapier, world,
+    );
+    const system = new ButtonSystem([handle], () => {});
+    const eye = new THREE.Vector3(0, 1.5, -4.4);
+    const forward = new THREE.Vector3(0, 0, -1);
+    // A dart or a swing leaves it alone.
+    expect(system.pressByCollider(handle.collider)).toBeNull();
+    expect(system.pressNear(eye, forward, 2, 120)).toBeNull();
+    // The use key presses it once: a held key is not one press a step.
+    expect(system.pressWithUse(eye, forward, 2, 120)?.opened).toBe(true);
+    expect(system.isPressed("b")).toBe(true);
+    expect(system.pressWithUse(eye, forward, 2, 120)).toBeNull();
+  });
+});

@@ -182,10 +182,11 @@ export class ButtonSystem {
   }
 
   /** A dart, or a melee line: the collider that stopped it. Returns the
-   *  press when that collider is a cap, null otherwise. */
+   *  press when that collider is a cap, null otherwise. A button set to need
+   *  the use key is not pressed by a dart or a swing (ED-31). */
   pressByCollider(collider: RAPIER.Collider, at?: THREE.Vector3): PressEvent | null {
     const b = this.buttons.find((x) => x.collider === collider);
-    return b ? this.press(b, at) : null;
+    return b && b.spec.use !== true ? this.press(b, at) : null;
   }
 
   /** A melee swing inside reach of a cap and inside its arc, with a clear
@@ -200,6 +201,29 @@ export class ButtonSystem {
     let best: ButtonHandle | null = null;
     let bestD = Infinity;
     for (const b of this.buttons) {
+      if (b.spec.use === true) continue;
+      const d = b.up.distanceTo(eye);
+      if (d > reach || d >= bestD) continue;
+      if (_n.copy(b.up).sub(eye).normalize().dot(forward) < cone) continue;
+      if (!this.inSight(eye, b, d, exclude)) continue;
+      best = b;
+      bestD = d;
+    }
+    return best ? this.press(best, undefined) : null;
+  }
+
+  /** ED-31: the use key, pressed on a button that asks for it: within reach,
+   *  looking at it, with a clear line, and not already pressed (so a held
+   *  key is one press, not one a step). */
+  pressWithUse(
+    eye: THREE.Vector3, forward: THREE.Vector3, reach: number, arcDeg: number,
+    exclude?: RAPIER.Collider,
+  ): PressEvent | null {
+    const cone = Math.cos((arcDeg / 2) * (Math.PI / 180));
+    let best: ButtonHandle | null = null;
+    let bestD = Infinity;
+    for (const b of this.buttons) {
+      if (b.spec.use !== true || b.pressed) continue;
       const d = b.up.distanceTo(eye);
       if (d > reach || d >= bestD) continue;
       if (_n.copy(b.up).sub(eye).normalize().dot(forward) < cone) continue;
@@ -225,6 +249,7 @@ export class ButtonSystem {
    *  footprint, at or just above its top. A wall button is never stepped on. */
   step(feet: THREE.Vector3): PressEvent | null {
     for (const b of this.buttons) {
+      if (b.spec.use === true) continue;
       if (b.spec.facing[1] < 0.5) continue;
       const top = b.up.y + T.cap.height / 2;
       if (feet.y < top - T.cap.height / 2 || feet.y > top + T.stepTolerance) continue;

@@ -358,6 +358,9 @@ export function arenaExtras(
   function playPress(e: PressEvent | null): void {
     if (!e) return;
     audio.play(e.opened ? "ENV-button-press" : "ENV-button-dead", { position: e.pos });
+    // ED-31: a placed button needs no action of its own: its pressed
+    // triggers act. An ENV-02 button keeps its door action as well.
+    triggers.pressed(e.id);
   }
 
   // ED-31: the move action. Every thing a move may name registers an apply
@@ -726,11 +729,20 @@ export function arenaExtras(
   }
   const levelDoorIds = new Set((LEVEL.doors ?? []).map((d) => d.id));
   const levelDoorStart = new Map((LEVEL.doors ?? []).map((d) => [d.id, d.lock === "none" ? "open" as const : "locked" as const]));
+  // ED-31: a button mounted on a thing goes with it.
+  const onButtons = new Map<string, typeof level.buttons>();
+  for (const b of level.buttons) {
+    if (!b.spec.on) continue;
+    const list = onButtons.get(b.spec.on) ?? [];
+    list.push(b);
+    onButtons.set(b.spec.on, list);
+  }
   function setShown(ids: string[], shown: boolean) {
     for (const id of ids) {
       level.prims.get(id)?.setShown(shown);
       breakables.handles.get(id)?.setShown(shown);
       hazards.setShown(id, shown);
+      for (const b of onButtons.get(id) ?? []) b.setShown(shown);
       if (shown) placed.wake([id]);
     }
   }
@@ -769,6 +781,9 @@ export function arenaExtras(
     pendingSpawns.length = 0;
     for (const id of level.prims.keys()) level.prims.get(id)!.setShown(false);
     for (const h of breakables.handles.values()) h.setShown(false);
+    // A button on a thing that starts hidden starts hidden too.
+    const hiddenThings = new Set((LEVEL.prims ?? []).filter((p) => p.hidden).map((p) => p.id));
+    for (const b of level.buttons) if (b.spec.on) b.setShown(!hiddenThings.has(b.spec.on));
     for (const p of LEVEL.prims ?? []) if (p.behaviour === "hazard") hazards.setShown(p.id, !p.hidden);
     for (const [id, state] of levelDoorStart) level.doors.get(id)?.setState(state);
     keys.reset();
@@ -878,8 +893,15 @@ export function arenaExtras(
       // it); a level without stations pays nothing for the call.
       const eye = g.player.eye(1, _stationEye);
       const fwd = g.camera.getWorldDirection(_stationFwd);
+      // ED-31: a button set to need the use key is pressed here, within reach
+      // and looking at it, and it takes the key before a station does.
+      const useKey = g.input.isDown("use");
+      const usedButton = useKey
+        ? buttons.pressWithUse(eye, fwd, melee.reach, melee.arcDeg, player.collider)
+        : null;
+      playPress(usedButton);
       const held = useHeldForStations(
-        { finisher: g.finisher, vacuum: g.vacuum, useHeld: g.input.isDown("use") }, eye, fwd);
+        { finisher: g.finisher, vacuum: g.vacuum, useHeld: useKey && !usedButton }, eye, fwd);
       stations.update(dt, eye, fwd, held, loadout);
     },
     afterWorld(dt: number) {
