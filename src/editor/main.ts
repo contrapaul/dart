@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Level, Button, LevelDoor, LevelLight, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
+import type { Level, Button, LevelDoor, LevelLight, PhysicsObject, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
 import {
   EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
 } from "./doc";
@@ -14,6 +14,7 @@ import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupCol
 import { buildPaintPanel, type PaintSettings } from "./paint-tool";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
+import { PHYSICS_SHAPES, buildPhysicsFields, makePhysicsObject } from "./physics-editor";
 import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
 import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
@@ -56,6 +57,7 @@ const PART_BUTTONS: { kind: PartKind; name: string }[] = [
   { kind: "zones", name: "Zone" },
   { kind: "props", name: "Prop" },
   { kind: "lights", name: "Light" },
+  { kind: "physics", name: "Physics object" },
 ];
 
 /** ED-08: a trigger is not a thing in the world, so it is not placed by a
@@ -74,7 +76,7 @@ const view = new EditorView($<HTMLCanvasElement>("view"));
 /** What the palette will place on the next click in the view: a primitive
  *  shape, or ED-05's other kinds (a Foamer, a pickup, a door, a spawn point,
  *  a zone). Only one is armed at a time. */
-type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "lights" | "buttons";
+type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "lights" | "buttons" | "physics";
 let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
 /** ED-23: the saved asset the next click in the view places, or null. */
@@ -86,6 +88,8 @@ let armedRig = RIGS[0]?.id ?? "F01";
 let armedProp = LEAKING_BARREL;
 /** The light kind the Light tool places. */
 let armedLight: LightKindChoice = "point";
+/** ED-33: the shape the Physics tool places. */
+let armedPhysics: PhysicsObject["shape"] = PHYSICS_SHAPES[0]!.value;
 /** The colour new prims take: the last one picked in the inspector. */
 let placeColour = "#ff7a1a";
 /** ED-36: the Paint tool. `paintSurface` is the surface brushed on a prim,
@@ -298,6 +302,7 @@ const PART_GROUPS: { kind: PartKind; title: string }[] = [
   { kind: "props", title: "Props" },
   { kind: "lights", title: "Lights" },
   { kind: "buttons", title: "Buttons" },
+  { kind: "physics", title: "Physics" },
 ];
 
 /** The name a row shows for a placed thing: its id, and what it is. */
@@ -326,6 +331,10 @@ function partName(id: string): string {
   if (kind === "buttons") {
     const b = doc.find<Button>(kind, id);
     return b?.on ? `${id}  on ${b.on}` : id;
+  }
+  if (kind === "physics") {
+    const o = doc.find<PhysicsObject>(kind, id);
+    return o ? `${id}  ${PHYSICS_SHAPES.find((s) => s.value === o.shape)?.label ?? o.shape}` : id;
   }
   return id;
 }
@@ -570,6 +579,7 @@ function partColour(kind: PartKind): string {
     case "props": return PROP_KINDS[armedProp]?.parts[0]?.colour ?? MARKERS.doorColour;
     case "lights": return "#fff6e8";
     case "buttons": return BUTTON_COLOUR;
+    case "physics": return placeColour;
   }
 }
 
@@ -747,6 +757,18 @@ function partOptions(kind: PartKind): HTMLElement | null {
     });
     return select;
   }
+  if (kind === "physics") {
+    const select = document.createElement("select");
+    select.className = "tool-options";
+    select.title = "Physics object shape";
+    for (const shape of PHYSICS_SHAPES) select.append(new Option(shape.label, shape.value));
+    select.value = armedPhysics;
+    select.addEventListener("change", () => {
+      armedPhysics = select.value as PhysicsObject["shape"];
+      buildPalette();
+    });
+    return select;
+  }
   if (kind !== "pickups" && kind !== "foamers") return null;
   const select = document.createElement("select");
   select.className = "tool-options";
@@ -852,6 +874,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
     shadows: doc.entries("lights").filter((l) => (l as LevelLight).castShadow === true).length,
   });
   else if (kind === "buttons") buildButtonFields(host, doc.find<Button>(kind, id)!, doc.level, ctx);
+  else if (kind === "physics") buildPhysicsFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "triggers") buildTriggerInspector(host, id);
   else buildZoneFields(host, doc.find(kind, id)!, ctx);
 }
@@ -1392,6 +1415,9 @@ function partAt(kind: PartKind, id: string, point: THREE.Vector3, normal: THREE.
   if (kind === "lights") return snapped(makeLight(id, at, armedLight, 0.5, [normal.x, normal.y, normal.z]));
   // ED-31: a button sits at the hit point, facing out of the face clicked.
   if (kind === "buttons") return makeButton(id, at, [normal.x, normal.y, normal.z]);
+  if (kind === "physics") {
+    return snapped(makePhysicsObject(id, armedPhysics, placeColour, at, [normal.x, normal.y, normal.z]));
+  }
   return snapped(makeZone(id, at));
 }
 
@@ -1407,7 +1433,11 @@ function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3, 
     status.textContent = `Light cap: ${LIMITS.lights}.`;
     return;
   }
-  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : kind === "lights" ? "light" : kind === "buttons" ? "button" : "zone";
+  if (kind === "physics" && doc.entries("physics").length >= LIMITS.physics) {
+    status.textContent = `Physics object cap: ${LIMITS.physics}.`;
+    return;
+  }
+  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : kind === "lights" ? "light" : kind === "buttons" ? "button" : kind === "physics" ? "object" : "zone";
   const id = doc.nextId(prefix);
   // ED-31: a button mounts on a thing, not on a marker for a door or a
   // pickup: only the kinds a move can carry count.

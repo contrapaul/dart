@@ -4,7 +4,7 @@ import type { RigSpec } from "../foamers/rig";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 import type {
-  Box, Button, LevelDoor, LevelLight, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
+  Box, Button, LevelDoor, LevelLight, PhysicsObject, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
 } from "../level/format";
 import { buttonMarker } from "./buttons-editor";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
@@ -189,6 +189,20 @@ function propMarker(p: Prop): THREE.Group {
   return group;
 }
 
+/** ED-33: a physics object drawn as its shape in its colour. The editor
+ *  does not simulate, so it stands where it is put. */
+function physicsMarker(o: PhysicsObject): THREE.Mesh {
+  const [x, y] = o.size;
+  const geometry = o.shape === "cylinder" ? new THREE.CylinderGeometry(x / 2, x / 2, y, 20)
+    : o.shape === "sphere" ? new THREE.SphereGeometry(x / 2, 20, 14)
+      : new THREE.BoxGeometry(x, y, o.size[2]);
+  const mesh = new THREE.Mesh(geometry, paint(o.colour));
+  mesh.position.set(...o.pos);
+  const r = o.rot ?? [0, 0, 0];
+  mesh.rotation.set((r[0] * Math.PI) / 180, (r[1] * Math.PI) / 180, (r[2] * Math.PI) / 180);
+  return mesh;
+}
+
 function doorMarker(d: LevelDoor): THREE.Mesh {
   // rotY is degrees in the level file; the mesh turns in radians.
   return ghostBox(d.pos, d.size, doorColour(d), ((d.rotY ?? 0) * Math.PI) / 180);
@@ -259,6 +273,10 @@ export function markerFor(
     case "buttons": {
       const b = entry as Button;
       return { object: buttonMarker(b), pos: b.pos, rot: [0, 0, 0], size: null, kind };
+    }
+    case "physics": {
+      const o = entry as PhysicsObject;
+      return { object: physicsMarker(o), pos: o.pos, rot: o.rot ?? [0, 0, 0], size: o.size, kind: "physics" };
     }
     case "start": {
       const s = entry as PlayerStart;
