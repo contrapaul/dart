@@ -93,6 +93,67 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-27: editor round 2, Paul's 13 items (Claude Opus 5.5 lead, Inkling and DeepSeek builders)
+
+- Asked (Paul, overnight): 13 editor items; plan them, put Inkling on the
+  Spark (INKLING.md, not the V100s) and DeepSeek V4.1 Flash 1017 via Pi to
+  work, monitor them, take the hard parts, hold questions to the morning.
+- Plan and decisions: `design/EDITOR-V2.md` (every decision marked
+  Decided, for Paul to overturn). Contracts first on `main` (`15cfc92`):
+  the new level types, validator rules, caps, entry kinds, a surfaces stub,
+  `AGENTS.md`, `.swarm/preflight.sh` and `.swarm/ownership`, one card per
+  builder in `tasks/ED-30.md` to `ED-37.md`.
+- Item 2 (triggers unselectable) fixed by the lead (`2f24361`): only the
+  name in a trigger's row was clickable and a long summary squeezed it to
+  zero width. The whole row picks now.
+- Built, on branch `editor-v2` (not merged into main, not pushed):
+  - ED-30 (Inkling): outliner groups fold (remembered), lock buttons on
+    prims, props, models, physics objects (pick passes through, handles
+    and keys leave it), the start turns with the handle and `[` `]`, a
+    rotation snap choice in the top bar (off, 1, 5, 15, 45, 90).
+  - ED-31 (DeepSeek): a `move` trigger action (offset and turn, eased) and
+    a Button tool: buttons on any face, mounted on a thing (`on`) and moved
+    with it, optional use key. Item 9's answer: triggers could not move
+    things before.
+  - ED-32 (Inkling): point and spot lights, a level Lighting section,
+    shadow cap 4, show and hide by trigger.
+  - ED-33 (DeepSeek): physics objects (box, cylinder, ball; mass, damage
+    on a fast hit, bounce, breakable, asleep), `data/physics.json`.
+  - ED-34 (Claude): terrain, one heightfield per level, brushes raise,
+    lower, flatten, smooth, roughen and paint (4 layers), one undo step a
+    stroke, a Rapier heightfield collider (the player and nav stand on it).
+  - ED-35 (DeepSeek): Import model (GLB, kept in the level as a data: URL),
+    box, hull or mesh colliders, breakable by hit points or as voxel foam.
+  - ED-36 (Inkling): ten surfaces drawn in code (brick, tiles, planks,
+    metal, concrete, grass, sand, rock, stripes, plain) with world scaled
+    uvs, a Paint tool, prims merge per colour and surface.
+  - ED-37 (DeepSeek): two or more selected things, and an armed asset,
+    turn and scale as one about the middle of their bounds.
+- Lead fixes at merge: conflict resolution in `main.ts`, `view.ts`,
+  `extras.ts`, `markers.ts`, `help.ts`; a button got the `zone` id prefix
+  (fixed); models had no outliner group; a prim a move names lost its
+  surface; moves now carry physics objects and lights; a move on a
+  breakable or hazard prim or a model is refused by the validator (those
+  cannot move yet); prim rotation boxes and door and prop turns follow the
+  snap choice.
+- Seen in the browser (lead): every new tool in the bar; a test level with
+  surfaces, a button on a moving wall, a rising lift, both light kinds, a
+  crate and a ball that fall and settle, the B02 GLB placed, a terrain hill
+  with painted rock; the player stands on the terrain (y 3.02 on a 3 m
+  hill); outliner folding; no console errors. `.swarm/preflight.sh`: 1684
+  tests, 2 skipped, no em dashes.
+- Not seen or not done: a real mouse on any new tool; pressing a button in
+  play; a light's shadow; a physics object hurting the player; a voxel
+  model being carved; a group turn with the handles; terrain texture
+  (terrain shows layer colours, not surface textures yet); moving
+  breakable or hazard prims and models; the tool bar now scrolls (it is
+  taller than the window); a stored test level takes about 10 s to start
+  in the arena before things move. The starter floor shows through a new
+  terrain in thin bands far away (delete the floor when using terrain).
+- Requests the builders wrote are in `docs/requests/`; the ones not done
+  above: ED-35's shared model meshes in markers, and a shared Breakables
+  base for prims and models.
+
 ### 2026-11-23: B02 is Inkling's redesign; GAME-10n reviewed and merged (Claude Opus 5.5)
 
 - Asked: review `benchmarks/`, replace B02 with Inkling's model, add
