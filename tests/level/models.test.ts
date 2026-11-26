@@ -6,6 +6,7 @@ import {
   dataUrlBytes, loadModelAsset, modelBounds, modelObject, placedMatrix, tintModel,
 } from "../../src/level/models";
 import { buildLevel } from "../../src/level/build";
+import { mainColour, modelVoxelVolumes } from "../../src/level/model-voxels";
 import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
@@ -204,5 +205,55 @@ describe("a placed model in the game", () => {
     // A two metre cube on y = 2 reaches from 1 to 3.
     expect(topAt(world, rapier, 3)).toBeCloseTo(3, 1);
     expect(topAt(world, rapier, 0)).toBeNull();
+  });
+});
+
+describe("voxel foam from a model", () => {
+  it("fills a one metre cube with 1000 voxels at 0.1 m", async () => {
+    const asset = await cubeAsset();
+    const scene = await loadModelAsset(asset);
+    const object = modelObject({ id: "m", asset: asset.id, pos: [0, 0, 0], behaviour: "breakable", voxel: true }, scene);
+    const fill = modelVoxelVolumes(object, "foam-orange");
+    expect(fill.capped).toBe(false);
+    expect(fill.count).toBe(1000);
+    // The greedy boxes tile the voxels exactly, never past 3.2 m a side.
+    const voxels = fill.volumes.reduce((n, v) => n + (v.size[0] * v.size[1] * v.size[2]) / 0.001, 0);
+    expect(voxels).toBe(1000);
+    for (const v of fill.volumes) {
+      expect(Math.max(...v.size), `volume ${v.size}`).toBeLessThanOrEqual(3.2 + 1e-9);
+      expect(v.material).toBe("foam-orange");
+    }
+  });
+
+  it("counts a two metre cube as eight thousand", async () => {
+    const asset = await cubeAsset("big", 2);
+    const scene = await loadModelAsset(asset);
+    const object = modelObject({ id: "m", asset: asset.id, pos: [0, 0, 0], behaviour: "breakable", voxel: true }, scene);
+    expect(modelVoxelVolumes(object, "foam-orange").count).toBe(8000);
+  });
+
+  it("refuses a model over the voxel cap, so it can be hit points instead", async () => {
+    const asset = await cubeAsset();
+    const scene = await loadModelAsset(asset);
+    const object = modelObject({ id: "m", asset: asset.id, pos: [0, 0, 0], behaviour: "breakable", voxel: true }, scene);
+    const fill = modelVoxelVolumes(object, "foam-orange", 500);
+    expect(fill.capped).toBe(true);
+    expect(fill.volumes).toEqual([]);
+  });
+
+  it("fills nothing outside a model's bounds", async () => {
+    const asset = await cubeAsset("small", 0.4);
+    const scene = await loadModelAsset(asset);
+    const object = modelObject({ id: "m", asset: asset.id, pos: [0, 0, 0], behaviour: "breakable", voxel: true }, scene);
+    const fill = modelVoxelVolumes(object, "foam-orange");
+    // 0.4 m spans four 0.1 m cells a side; their centres run from -0.15
+    // to 0.15, and nothing outside the model is filled.
+    expect(fill.count).toBe(64);
+  });
+
+  it("reads the model's main colour for its foam", async () => {
+    const asset = await cubeAsset();
+    const scene = await loadModelAsset(asset);
+    expect(mainColour(scene)).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
