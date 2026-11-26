@@ -57,3 +57,50 @@ describe("worldUVs", () => {
     expect(ranges(four)).toBeCloseTo(4, 3);
   });
 });
+
+import { beforeAll, describe as d2, it as i2 } from "vitest";
+import RAPIER from "@dimforge/rapier3d-compat";
+import { buildPrims } from "../../src/level/prims";
+import { createPhysics } from "../../src/physics/world";
+import type { Level, Prim } from "../../src/level/format";
+
+function level(prims: Prim[]): Level {
+  return {
+    meta: { id: "t", name: "t", act: 1, targetSeconds: 60, accent: "#ffffff", setting: "t" },
+    shell: [],
+    prims,
+    playerStart: { pos: [0, 0, 0], yaw: 0 },
+    exit: { pos: [0, 0, 0], size: [1, 1, 1] },
+  } as unknown as Level;
+}
+
+const box = (over: Partial<Prim> = {}): Prim => ({
+  id: "p1", shape: "box", pos: [0, 0, 0], size: [2, 2, 2],
+  colour: "#ff8800", behaviour: "solid", ...over,
+});
+
+beforeAll(async () => { await RAPIER.init(); });
+
+d2("buildPrims with surfaces", () => {
+  i2("gives one mesh per (colour, surface) pair", async () => {
+    const { rapier, world } = await createPhysics();
+    const group = new THREE.Group();
+    const prims = [
+      box({ id: "a", surface: "brick" }),
+      box({ id: "b", surface: "brick", pos: [5, 0, 0] }),
+      box({ id: "c", surface: "tiles", pos: [0, 0, 5] }),
+    ];
+    buildPrims(level(prims), rapier, world, group);
+    expect(group.children.length).toBe(2);
+  });
+
+  i2("a prim with no surface builds as before", async () => {
+    const { rapier, world } = await createPhysics();
+    const group = new THREE.Group();
+    const prims = [box({ id: "a" }), box({ id: "b", pos: [5, 0, 0] })];
+    buildPrims(level(prims), rapier, world, group);
+    expect(group.children.length).toBe(1);
+    expect(group.children[0]?.userData).toBeDefined();
+    expect((group.children[0] as THREE.Mesh).geometry.getAttribute("uv")).toBeUndefined();
+  });
+});

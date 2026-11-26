@@ -4,6 +4,7 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { primColliderParts, primGeometry, primMatrix } from "./prim-geometry";
 import { material } from "../voxel/materials";
+import { SURFACES, surfaceMaterial, worldUVs } from "../render/surfaces";
 import type { Level, Prim } from "./format";
 
 // ED-01: the editor's primitives out of the level file and into the scene
@@ -95,7 +96,7 @@ export function buildPrims(
   level: Level, rapier: Rapier, world: RAPIER.World, group: THREE.Group,
 ): Map<string, PrimHandle> {
   const handles = new Map<string, PrimHandle>();
-  /** Merged geometry per colour, for the prims that never hide. */
+  /** Merged geometry per (colour, surface), for the prims that never hide. */
   const merged = new Map<string, THREE.BufferGeometry[]>();
   const materials = new Map<string, THREE.MeshStandardMaterial>();
 
@@ -122,13 +123,22 @@ export function buildPrims(
     geometry.applyMatrix4(primMatrix(prim));
 
     if (!prim.hidden) {
-      const list = merged.get(prim.colour) ?? [];
+      // ED-36: world-scaled UVs at the surface's scale, so textures are
+      // the same size on a small box and a long wall.
+      if (prim.surface && SURFACES[prim.surface]) {
+        // Drop the baked-in uv so worldUVs is the only one; any other
+        // attribute set mismatch is also cleared below.
+        geometry.deleteAttribute("uv");
+        geometry = worldUVs(geometry, new THREE.Matrix4(), SURFACES[prim.surface]!.scale);
+      }
       // One attribute set for every merged part, or mergeGeometries refuses.
       for (const name of Object.keys(geometry.attributes)) {
-        if (name !== "position" && name !== "normal") geometry.deleteAttribute(name);
+        if (name !== "position" && name !== "normal" && !(prim.surface && name === "uv")) geometry.deleteAttribute(name);
       }
+      const key = `${prim.colour}|${prim.surface ?? "plain"}`;
+      const list = merged.get(key) ?? [];
       list.push(geometry);
-      merged.set(prim.colour, list);
+      merged.set(key, list);
       if (collides) {
         for (const desc of collidersFor(rapier, prim)) world.createCollider(desc);
       }
@@ -136,11 +146,20 @@ export function buildPrims(
     }
 
     // A hidden prim keeps its own mesh and colliders, both off, so a
-    // trigger can show it without rebuilding the level.
-    let material = materials.get(prim.colour);
+    // trigger can show it without rebuilding the level. ED-36: it wears
+    // its surface too.
+    if (prim.surface && SURFACES[prim.surface]) {
+      geometry.deleteAttribute("uv");
+      geometry = worldUVs(geometry, new THREE.Matrix4(), SURFACES[prim.surface]!.scale);
+    }
+    for (const name of Object.keys(geometry.attributes)) {
+      if (name !== "position" && name !== "normal" && !(prim.surface && name === "uv")) geometry.deleteAttribute(name);
+    }
+    const key = `${prim.colour}|${prim.surface ?? "plain"}`;
+    let material = materials.get(key);
     if (!material) {
-      material = materialFor(prim.colour);
-      materials.set(prim.colour, material);
+      material = prim.surface ? surfaceMaterial(prim.surface, prim.colour) : materialFor(prim.colour);
+      materials.set(key, material);
     }
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = mesh.receiveShadow = true;
@@ -158,13 +177,14 @@ export function buildPrims(
     });
   }
 
-  for (const [colour, parts] of merged) {
+  for (const [key, parts] of merged) {
     const geometry = parts.length === 1 ? parts[0] : mergeGeometries(parts);
     if (!geometry) continue;
-    let material = materials.get(colour);
+    let material = materials.get(key);
     if (!material) {
-      material = materialFor(colour);
-      materials.set(colour, material);
+      const [colour, surface] = key.split("|");
+      material = surface !== "plain" && surface ? surfaceMaterial(surface, colour!) : materialFor(colour!);
+      materials.set(key, material);
     }
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = mesh.receiveShadow = true;

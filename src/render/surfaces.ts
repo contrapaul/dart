@@ -281,6 +281,9 @@ export function surfaceTexture(name: string, size = SURFACE_SIZE): THREE.CanvasT
   if (tex) return tex;
   const img = drawSurface(name, size);
   if (!img) return null;
+  // Headless (tests, workers): no canvas. The material falls back to the
+  // plain colour; the game always builds this in a browser.
+  if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
