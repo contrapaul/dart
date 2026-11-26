@@ -1,10 +1,41 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import {
   dataUrlBytes, loadModelAsset, modelBounds, modelObject, placedMatrix, tintModel,
 } from "../../src/level/models";
-import type { ModelAsset } from "../../src/level/format";
+import { buildLevel } from "../../src/level/build";
+import { createPhysics } from "../../src/physics/world";
+import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
+import { linearColorTable } from "../../src/voxel/materials";
+import type { Level, ModelAsset, PlacedModel } from "../../src/level/format";
+
+// Node has no Web Workers; the greedy mesher runs inline.
+const FAKE = {
+  mesh(padded: Uint8Array): Promise<MeshData> {
+    return Promise.resolve(greedyMesh(padded, linearColorTable()));
+  },
+};
+
+/** A level whose only content is one model, for the game side. */
+function levelWith(asset: ModelAsset, model: PlacedModel): Level {
+  return {
+    meta: { id: "t", name: "t", act: 1, targetSeconds: 60, accent: "#ffffff", setting: "t" },
+    shell: [], prims: [], modelAssets: [asset], models: [model],
+    playerStart: { pos: [0, 0, 0], yaw: 0 },
+    exit: { pos: [0, 0, 0], size: [1, 1, 1] },
+  } as unknown as Level;
+}
+
+/** Where a ray straight down at the model stops, or null for nothing hit. */
+function topAt(world: RAPIER.World, rapier: typeof RAPIER, x = 0, z = 0): number | null {
+  // A collider made after the world was built needs one step to be in the
+  // broad phase before a ray finds it.
+  world.step();
+  const hit = world.castRay(new rapier.Ray({ x, y: 5, z }, { x: 0, y: -1, z: 0 }), 10, true);
+  return hit ? 5 - hit.timeOfImpact : null;
+}
 
 // ED-35: the pure half of model import. Node has no FileReader, which the
 // GLTFExporter uses for its binary output, so a tiny one is stood in: the
@@ -22,8 +53,9 @@ class NodeFileReader {
   }
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   (globalThis as unknown as { FileReader: unknown }).FileReader = NodeFileReader;
+  await RAPIER.init();
 });
 
 /** Base64 without Buffer: the tests run in Node but type check as browser code. */
@@ -113,5 +145,64 @@ describe("a GLB model asset", () => {
     expect(plain).not.toBe("2ec4ff");
     tintModel(a, "#ff4fa3");
     expect((meshA.material as THREE.MeshStandardMaterial).color.getHexString()).toBe("ff4fa3");
+  });
+});
+
+describe("a placed model in the game", () => {
+  const model = (over: Partial<PlacedModel> = {}): PlacedModel => ({
+    id: "m1", asset: "cube", pos: [0, 0, 0], behaviour: "solid", ...over,
+  });
+
+  for (const collider of ["box", "hull", "mesh"] as const) {
+    it(`the ${collider} collider sits on the model: a ray stops at its top`, async () => {
+      const asset = await cubeAsset();
+      const { rapier, world } = await createPhysics();
+      const built = buildLevel(levelWith(asset, model({ collider })), rapier, world, FAKE);
+      await built.models.ready;
+      // The cube is one metre, centred on its position: its top is y = 0.5.
+      expect(topAt(world, rapier)).toBeCloseTo(0.5, 1);
+    });
+  }
+
+  it("a solid model with no collider named is a hull", async () => {
+    const asset = await cubeAsset();
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(levelWith(asset, model()), rapier, world, FAKE);
+    await built.models.ready;
+    expect(topAt(world, rapier)).toBeCloseTo(0.5, 1);
+  });
+
+  it("decor is drawn and does not collide", async () => {
+    const asset = await cubeAsset();
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(levelWith(asset, model({ behaviour: "decor" })), rapier, world, FAKE);
+    await built.models.ready;
+    expect(world.colliders.len()).toBe(0);
+    expect(topAt(world, rapier)).toBeNull();
+    expect(built.group.children.some((c) => c.type === "Group" && c.visible && c.children.length > 0)).toBe(true);
+  });
+
+  it("a hidden model is off until a trigger shows it", async () => {
+    const asset = await cubeAsset();
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(levelWith(asset, model({ hidden: true })), rapier, world, FAKE);
+    await built.models.ready;
+    expect(topAt(world, rapier)).toBeNull();
+    built.models.handles.get("m1")!.setShown(true);
+    expect(topAt(world, rapier)).toBeCloseTo(0.5, 1);
+    built.models.handles.get("m1")!.setShown(false);
+    expect(topAt(world, rapier)).toBeNull();
+  });
+
+  it("the model is drawn at its position and scale", async () => {
+    const asset = await cubeAsset();
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(
+      levelWith(asset, model({ pos: [3, 2, 0], scale: [2, 2, 2] })), rapier, world, FAKE,
+    );
+    await built.models.ready;
+    // A two metre cube on y = 2 reaches from 1 to 3.
+    expect(topAt(world, rapier, 3)).toBeCloseTo(3, 1);
+    expect(topAt(world, rapier, 0)).toBeNull();
   });
 });

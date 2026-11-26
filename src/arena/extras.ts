@@ -679,6 +679,7 @@ export function arenaExtras(
     for (const id of ids) {
       level.prims.get(id)?.setShown(shown);
       breakables.handles.get(id)?.setShown(shown);
+      level.models.handles.get(id)?.setShown(shown);
       hazards.setShown(id, shown);
       if (shown) placed.wake([id]);
     }
@@ -717,6 +718,7 @@ export function arenaExtras(
     pendingSpawns.length = 0;
     for (const id of level.prims.keys()) level.prims.get(id)!.setShown(false);
     for (const h of breakables.handles.values()) h.setShown(false);
+    for (const h of level.models.handles.values()) h.setShown(false);
     for (const p of LEVEL.prims ?? []) if (p.behaviour === "hazard") hazards.setShown(p.id, !p.hidden);
     for (const [id, state] of levelDoorStart) level.doors.get(id)?.setState(state);
     keys.reset();
