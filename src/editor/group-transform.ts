@@ -28,8 +28,9 @@ export interface GroupThing {
   /** True for a thing that stands upright: only its yaw turns, and any tilt
    *  the group's turn would give it is left out. */
   upright: boolean;
-  /** The document field its turn is written to. */
-  turnKey: TurnKey;
+  /** The document field its turn is written to, or null for a thing that
+   *  does not turn (the exit, a zone, a pickup). */
+  turnKey: TurnKey | null;
   /** The document field its size is written to, or null when it has none. */
   sizeKey: "size" | "scale" | null;
   size: Vec3 | null;
@@ -52,6 +53,12 @@ function round(n: number, places = 4): number {
 
 function changed(a: Vec3, b: Vec3): boolean {
   return a.some((n, i) => Math.abs(n - b[i]!) > TINY);
+}
+
+/** ED-37: the kinds that stand upright, so a selection holding one turns
+ *  about Y only and they take a yaw and no tilt. */
+export function isUpright(kind: string): boolean {
+  return kind === "foamers" || kind === "doors" || kind === "props" || kind === "start";
 }
 
 /** The yaw of a rotation, in radians, from 0 to 2 pi: the same formula the
@@ -86,7 +93,9 @@ export function transformSelection(
 
     const own = new THREE.Quaternion(thing.quat[0], thing.quat[1], thing.quat[2], thing.quat[3]).normalize();
     const q = turn.clone().multiply(own).normalize();
-    if (thing.upright) {
+    if (!thing.turnKey) {
+      // A zone or the exit has no rotation to write.
+    } else if (thing.upright) {
       // A Foamer, a door, a prop and the start stand upright: take the turn
       // about Y out of the composed rotation and leave the tilt alone.
       const yaw = yawOf(q);
