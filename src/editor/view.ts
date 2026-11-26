@@ -400,7 +400,9 @@ export class EditorView {
     }
     const size: Vec3 = marker ? marker.size ?? [1, 1, 1] : prim ? prim.size : [1, 1, 1];
     this.proxy.scale.set(size[0], size[1], size[2]);
-    this.controls.setMode(marker && !marker.size ? "translate" : mode);
+    // A single thing with no size cannot be scaled; a group of them still
+    // turns and scales as one object.
+    this.controls.setMode(marker && !marker.size && objects.length === 1 ? "translate" : mode);
     this.controls.attach(this.proxy);
     this.controls.enabled = true;
     // ED-14: one box in scale mode gets a handle on each face, which moves
