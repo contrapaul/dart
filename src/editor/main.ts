@@ -28,6 +28,7 @@ import { builtInCopy } from "./builtin";
 import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
 import { ICONS, type IconName } from "./icons";
+import { isFolded, toggleFolded, unfoldGroup } from "./outliner-fold";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -266,6 +267,35 @@ function buildOutliner() {
     list.push(prim);
     groups.set(prim.behaviour, list);
   }
+  const mkTitle = (title: string, count: number): HTMLElement => {
+    const h = document.createElement("h2");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "group-title";
+    btn.setAttribute("aria-expanded", String(!isFolded(title)));
+    const tri = document.createElement("span");
+    tri.className = "tri";
+    tri.textContent = isFolded(title) ? "\u25B8" : "\u25BE";
+    const name = document.createElement("span");
+    name.textContent = isFolded(title) ? `${title} (${count})` : title;
+    btn.append(tri, name);
+    btn.addEventListener("click", () => {
+      toggleFolded(title);
+      buildOutliner();
+    });
+    h.append(btn);
+    return h;
+  };
+  const mkGroup = (title: string, count: number): { group: HTMLElement; rows: HTMLElement } => {
+    const group = document.createElement("div");
+    group.className = "group";
+    group.append(mkTitle(title, count));
+    const rows = document.createElement("div");
+    rows.className = "rows";
+    if (isFolded(title)) rows.hidden = true;
+    group.append(rows);
+    return { group, rows };
+  };
   const empty = !groups.size && PART_GROUPS.every((g) => !doc.entries(g.kind).length)
     && !doc.entries("triggers").length;
   if (empty) {
@@ -276,11 +306,7 @@ function buildOutliner() {
     return;
   }
   for (const [behaviour, prims] of groups) {
-    const group = document.createElement("div");
-    group.className = "group";
-    const title = document.createElement("h2");
-    title.textContent = behaviour;
-    group.append(title);
+    const { group, rows } = mkGroup(behaviour, prims.length);
     for (const prim of prims) {
       const row = document.createElement("div");
       row.className = "row" + (selected.has(prim.id) ? " selected" : "");
@@ -298,7 +324,7 @@ function buildOutliner() {
         eye.classList.toggle("on", mesh);
       });
       row.append(name, eye);
-      group.append(row);
+      rows.append(row);
     }
     host.append(group);
   }
@@ -306,11 +332,7 @@ function buildOutliner() {
   for (const { kind, title: groupTitle } of PART_GROUPS) {
     const list = doc.entries(kind);
     if (!list.length) continue;
-    const group = document.createElement("div");
-    group.className = "group";
-    const title = document.createElement("h2");
-    title.textContent = groupTitle;
-    group.append(title);
+    const { group, rows } = mkGroup(groupTitle, list.length);
     for (const entry of list) {
       const row = document.createElement("div");
       row.className = "row" + (selected.has(entry.id) ? " selected" : "");
@@ -319,18 +341,14 @@ function buildOutliner() {
       name.textContent = partName(entry.id);
       name.addEventListener("click", (e) => pick(entry.id, e.shiftKey));
       row.append(name);
-      group.append(row);
+      rows.append(row);
     }
     host.append(group);
   }
   // ED-08: the Logic group, one row per trigger with what it says in a line.
   const triggers = doc.level.triggers ?? [];
   if (triggers.length) {
-    const group = document.createElement("div");
-    group.className = "group";
-    const title = document.createElement("h2");
-    title.textContent = "Logic";
-    group.append(title);
+    const { group, rows } = mkGroup("Logic", triggers.length);
     for (const trigger of triggers) {
       const row = document.createElement("div");
       row.className = "row" + (selected.has(trigger.id) ? " selected" : "");
@@ -345,15 +363,11 @@ function buildOutliner() {
       summary.className = "hint";
       summary.textContent = triggerSummary(trigger);
       row.append(name, summary);
-      group.append(row);
+      rows.append(row);
     }
     host.append(group);
   }
-  const level = document.createElement("div");
-  level.className = "group";
-  const levelTitle = document.createElement("h2");
-  levelTitle.textContent = "Level";
-  level.append(levelTitle);
+  const { group: level, rows: levelRows } = mkGroup("Level", 2);
   for (const [id, label] of [[START_ID, "Player start"], [EXIT_ID, "Exit"]] as const) {
     const row = document.createElement("div");
     row.className = "row" + (selected.has(id) ? " selected" : "");
@@ -362,9 +376,23 @@ function buildOutliner() {
     name.textContent = label;
     name.addEventListener("click", (e) => pick(id, e.shiftKey));
     row.append(name);
-    level.append(row);
+    levelRows.append(row);
   }
   host.append(level);
+}
+
+/** The title of the outliner group an id lives in (a behaviour, a part
+ *  kind's group, Logic, or Level), or null for an id with no group. */
+function groupTitleFor(id: string): string | null {
+  const kind = doc.kindOf(id);
+  if (kind === "prims") return doc.prim(id)?.behaviour ?? null;
+  if (kind === "triggers") return "Logic";
+  if (kind) {
+    const g = PART_GROUPS.find((g) => g.kind === kind);
+    return g ? g.title : null;
+  }
+  if (id === START_ID || id === EXIT_ID) return "Level";
+  return null;
 }
 
 /** Selects one thing, or adds it to the selection with Shift (design/EDITOR
@@ -375,6 +403,8 @@ function pick(id: string, add = false) {
   if (!add) selected.clear();
   if (add && selected.has(id)) selected.delete(id);
   else selected.add(id);
+  const title = groupTitleFor(id);
+  if (title && selected.has(id)) unfoldGroup(title);
   selectInView();
   buildOutliner();
   buildInspector();
@@ -399,6 +429,14 @@ function selectMany(ids: string[], add = false, remove = false) {
   for (const id of ids) {
     if (remove) selected.delete(id);
     else selected.add(id);
+  }
+  if (!remove) {
+    const titles = new Set<string>();
+    for (const id of ids) {
+      const title = groupTitleFor(id);
+      if (title) titles.add(title);
+    }
+    if (titles.size) for (const t of titles) unfoldGroup(t);
   }
   selectInView();
   buildOutliner();

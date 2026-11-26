@@ -599,3 +599,30 @@ button.on {
   min-height: 1.2em;
   font-size: 12px;
 }
+
+/* ED-30 item 1: the outliner's group titles are buttons that fold their rows. */
+#outliner h2 .group-title {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  opacity: inherit;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+#outliner h2 .group-title .tri {
+  font-size: 10px;
+  line-height: 1;
+}
+
+#outliner .rows[hidden] {
+  display: none;
+}
