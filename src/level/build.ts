@@ -11,6 +11,7 @@ import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
 import { buildPrims, foamMaterialFor, type PrimHandle } from "./prims";
 import { levelPropPrims } from "./props";
+import { buildTerrain, terrainBounds } from "./terrain";
 import { isVoxelBreakable } from "./validate";
 import { Breakables } from "./breakables";
 import { buildModels, type BuiltModels } from "./models";
@@ -325,6 +326,14 @@ function navBoundsOf(level: Level): NavBounds {
     minZ = Math.min(minZ, b.pos[2] - b.size[2] / 2);
     maxZ = Math.max(maxZ, b.pos[2] + b.size[2] / 2);
   }
+  // ED-34: the terrain is ground to walk on too.
+  if (level.terrain) {
+    const b = terrainBounds(level.terrain);
+    minX = Math.min(minX, b.minX);
+    maxX = Math.max(maxX, b.maxX);
+    minZ = Math.min(minZ, b.minZ);
+    maxZ = Math.max(maxZ, b.maxZ);
+  }
   // The walls are what make a cell unwalkable, so the bounds only need to
   // start just inside the outermost shell box.
   const inset = 0.5;
@@ -349,6 +358,8 @@ export function buildLevel(
   // Props (barrels, crates, rubble) are prims too, built and merged with
   // them; the leaking barrels are not, the arena runs those.
   const prims = buildPrims({ ...level, prims: [...(level.prims ?? []), ...levelPropPrims(level)] }, rapier, world, group);
+  // ED-34: the heightfield ground, a mesh and one fixed collider.
+  if (level.terrain) buildTerrain(level.terrain, rapier, world, group);
   // ED-06: the ones that break by hit points get a mesh and colliders of
   // their own, and a handle if they start hidden.
   const breakables = new Breakables(level, rapier, world, group);

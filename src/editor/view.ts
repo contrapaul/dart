@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import hazardData from "../../data/hazards.json";
 import editorData from "../../data/editor.json";
-import type { Level, Prim, Sky, Vec3 } from "../level/format";
+import type { Level, Prim, Sky, Terrain, Vec3 } from "../level/format";
+import { terrainGeometry, terrainMaterial, updateTerrainGeometry } from "../level/terrain";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { SURFACES, surfaceTexture, worldUVs } from "../render/surfaces";
 import { material, materialId } from "../voxel/materials";
@@ -314,6 +315,7 @@ export class EditorView {
     this.refreshPrims(level);
     this.refreshMarkers(level);
     this.refreshLights(level);
+    this.setTerrain(level.terrain);
   }
 
   /** ED-32: draws the level's own lights and lighting, live, from the
@@ -335,6 +337,46 @@ export class EditorView {
       pixelRatioMax: 1, antialias: false, shadows: false,
       shadowMapMax: 512, debrisMax: 60, breakoffMaxPieces: 8,
     });
+  }
+
+  // ED-34: the terrain's mesh. Rebuilt when the grid's size changes, else
+  // its heights and colours are written in place (a brush stroke calls
+  // setTerrain with its working copy many times a second).
+  private terrainMesh: THREE.Mesh | null = null;
+  private shownTerrain: Terrain | null = null;
+
+  setTerrain(t: Terrain | undefined, force = false) {
+    if (!t) {
+      if (this.terrainMesh) {
+        this.scene.remove(this.terrainMesh);
+        disposeTree(this.terrainMesh);
+        this.terrainMesh = null;
+      }
+      this.shownTerrain = null;
+      return;
+    }
+    if (t === this.shownTerrain && !force) return;
+    const old = this.shownTerrain;
+    this.shownTerrain = t;
+    if (this.terrainMesh && old && old.nx === t.nx && old.nz === t.nz) {
+      updateTerrainGeometry(this.terrainMesh.geometry, t);
+      return;
+    }
+    if (this.terrainMesh) {
+      this.scene.remove(this.terrainMesh);
+      disposeTree(this.terrainMesh);
+    }
+    this.terrainMesh = new THREE.Mesh(terrainGeometry(t), terrainMaterial());
+    this.terrainMesh.receiveShadow = true;
+    this.scene.add(this.terrainMesh);
+  }
+
+  /** Where a ray through the screen point meets the terrain, or null. */
+  terrainHit(ndcX: number, ndcY: number): THREE.Vector3 | null {
+    if (!this.terrainMesh) return null;
+    this.terrainMesh.updateMatrixWorld();
+    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    return this.raycaster.intersectObject(this.terrainMesh, false)[0]?.point ?? null;
   }
 
   /** ED-05: rebuilds the markers for every kind of placed thing, the player
@@ -710,7 +752,9 @@ export class EditorView {
   cameraSpot(): { pos: Vec3; yaw: number } {
     const from = this.camera.position.clone();
     this.raycaster.set(from, new THREE.Vector3(0, -1, 0));
+    // ED-34: the terrain is ground: a hit on it has no id, like the floor.
     const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
+    if (this.terrainMesh) targets.push(this.terrainMesh);
     const hits = this.raycaster.intersectObjects(targets, false);
     const hit = hits.find((h) => this.meshes.get(h.object.userData.id as string)?.visible !== false);
     const y = hit ? hit.point.y : 0;
@@ -729,7 +773,9 @@ export class EditorView {
     // through a pick.
     const skipAll = new Set([...this.lockedSkip, ...(skip ?? [])]);
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    // ED-34: the terrain is ground: a hit on it has no id, like the floor.
     const targets: THREE.Object3D[] = [...this.prims.children, ...this.shell.children];
+    if (this.terrainMesh) targets.push(this.terrainMesh);
     const hits = this.raycaster.intersectObjects(targets, false);
     const hit = hits.find((h) => {
       const id = h.object.userData.id as string | undefined;

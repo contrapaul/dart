@@ -686,3 +686,41 @@ button.on {
 #palette .paint-colour.on {
   border-color: #ffd23f;
 }
+
+/* ED-34: the Terrain tool's brush panel. */
+#palette .terrain-options {
+  /* The Ground group sits low in the bar: open upward so it stays on screen. */
+  transform: translateY(calc(-100% + 2.2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 13rem;
+}
+
+#palette .terrain-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.2rem;
+}
+
+#palette .terrain-modes button.on,
+#palette .terrain-layers .swatch.on {
+  outline: 2px solid #ffd23f;
+}
+
+#palette .terrain-slider {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+#palette .terrain-layers {
+  display: flex;
+  gap: 0.3rem;
+}
+
+#palette .terrain-layers .swatch {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+}
