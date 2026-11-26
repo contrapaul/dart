@@ -25,7 +25,7 @@ export const HELP: HelpSection[] = [
       ["Ctrl+G, Ctrl+Shift+G", "Group what is selected, and take a group apart. A click on one selects the group; a double click picks one."],
       ["Drag a thing", "Slide it over the floors and walls under the cursor. A shape is clicked first, so a drag on the floor does not move the floor."],
       ["[ and ]", "Turn what is selected by 15 degrees."],
-      ["W, E, R", "Move, rotate, scale handles."],
+      ["W, E, R", "Move, rotate, scale handles. With two or more things selected they turn and scale as one object about the middle of their box, and a group holding a Foamer, a door or a prop turns about the vertical only."],
       ["R, then drag a face", "With one box selected, each face has a handle. Drag it to pull or push that face; the other side stays put. The size shows by the cursor."],
       ["G", "Grid snap on or off."],
       ["Ctrl+D, Delete", "Duplicate, delete."],

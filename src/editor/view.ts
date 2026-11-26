@@ -9,6 +9,7 @@ import { ENTRY_KINDS, GRID, ROTATE_STEP } from "./doc";
 import { EditorCamera, openCameraSpot } from "./camera";
 import { faceCentre, type Resizable } from "./resize";
 import { EXIT_ID, START_ID, markerFor, type Marker } from "./markers";
+import { isUpright, yawOf } from "./group-transform";
 
 // ED-02 stage 2: everything the editor draws and the camera that flies over
 // it. The page (src/editor/main.ts) owns the document and the panels; this
@@ -25,6 +26,8 @@ interface Look {
 
 const HAZARD_LOOKS = (hazardData as { looks: Record<string, Look> }).looks;
 const DEG = Math.PI / 180;
+/** ED-37: the axis a thing that stands upright turns about. */
+const UP = new THREE.Vector3(0, 1, 0);
 
 /** A gradient or image sky as a big sphere round the camera. A gradient of
  *  three stops is the parent page's default (data/editor.json `sky`); an
@@ -148,7 +151,16 @@ export class EditorView {
   /** The selected meshes and markers, and where each one and the proxy were
    *  when a drag began, so they follow the drag live (`follow`). */
   private selectedObjects: THREE.Object3D[] = [];
-  private followStart: { proxy: THREE.Object3D; objects: { pos: THREE.Vector3; quat: THREE.Quaternion; scale: THREE.Vector3 }[] } | null = null;
+  private followStart: {
+    proxy: THREE.Object3D;
+    /** ED-37: the middle of the selection's bounds, which a group turns and
+     *  scales about. */
+    pivot: THREE.Vector3;
+    objects: { pos: THREE.Vector3; quat: THREE.Quaternion; scale: THREE.Vector3 }[];
+  } | null = null;
+  /** ED-37: true when the selection holds a thing that stands upright, so
+   *  the rotate handle turns about Y only. */
+  private yawOnly = false;
   /** The see-through copy of what the armed tool will place. */
   private ghost = new THREE.Group();
   /** ED-14: six handles, one on each face of the one selected box, shown in
@@ -376,8 +388,16 @@ export class EditorView {
     const id = last.userData.id as string;
     const marker = this.markerData.get(id) ?? null;
     const prim = (this.shownLevel?.prims ?? []).find((p) => p.id === id);
-    this.proxy.position.copy(last.position);
-    this.proxy.quaternion.copy(last.quaternion);
+    if (objects.length >= 2) {
+      // ED-37: the handles of a group sit on the middle of its bounds, the
+      // point it turns and scales about, and start unrotated: only the
+      // drag's change of rotation is used.
+      this.outlineBox.getCenter(this.proxy.position);
+      this.proxy.quaternion.identity();
+    } else {
+      this.proxy.position.copy(last.position);
+      this.proxy.quaternion.copy(last.quaternion);
+    }
     const size: Vec3 = marker ? marker.size ?? [1, 1, 1] : prim ? prim.size : [1, 1, 1];
     this.proxy.scale.set(size[0], size[1], size[2]);
     this.controls.setMode(marker && !marker.size ? "translate" : mode);
@@ -387,6 +407,10 @@ export class EditorView {
     // that face alone. The three.js scale handle grows a box from its
     // centre, and stays for a selection of several things.
     const sized = marker ? marker.size : prim ? prim.size : null;
+    // ED-37: a selection holding a Foamer, a door, a prop or the start turns
+    // about Y only: those stand upright.
+    this.yawOnly = ids.some((id) => isUpright(this.markerData.get(id)?.kind ?? ""));
+    this.applyTurnAxes();
     this.faces.visible = false;
     this.faceTarget = null;
     if (mode === "scale" && objects.length === 1 && sized) {
@@ -483,6 +507,16 @@ export class EditorView {
   /** Sets the transform mode and moves the handles if something is selected. */
   setMode(mode: TransformMode) {
     this.controls.setMode(mode);
+    this.applyTurnAxes();
+  }
+
+  /** ED-37: in rotate mode with a yaw only thing selected, only the Y ring
+   *  is drawn, so a group cannot be tipped over. */
+  private applyTurnAxes() {
+    const lock = this.yawOnly && this.controls.mode === "rotate";
+    this.controls.showX = !lock;
+    this.controls.showZ = !lock;
+    this.controls.showY = true;
   }
 
   get mode(): TransformMode {
@@ -628,8 +662,10 @@ export class EditorView {
     copy.position.copy(this.proxy.position);
     copy.quaternion.copy(this.proxy.quaternion);
     copy.scale.copy(this.proxy.scale);
+    const pivot = this.outlineBox.isEmpty() ? this.proxy.position.clone() : this.outlineBox.getCenter(new THREE.Vector3());
     this.followStart = {
       proxy: copy,
+      pivot,
       objects: this.selectedObjects.map((o) => ({ pos: o.position.clone(), quat: o.quaternion.clone(), scale: o.scale.clone() })),
     };
   }
@@ -647,12 +683,29 @@ export class EditorView {
       this.proxy.scale.y / (start.proxy.scale.y || 1),
       this.proxy.scale.z / (start.proxy.scale.z || 1),
     );
-    this.selectedObjects.forEach((o, i) => {
-      const from = start.objects[i]!;
-      o.position.copy(from.pos).add(move);
-      o.quaternion.copy(turn).multiply(from.quat);
-      o.scale.copy(from.scale).multiply(ratio);
-    });
+    if (this.selectedObjects.length >= 2) {
+      // ED-37: two or more things turn and scale as one object about the
+      // middle of their bounds, and the scale is one number.
+      const s = (ratio.x + ratio.y + ratio.z) / 3;
+      this.selectedObjects.forEach((o, i) => {
+        const from = start.objects[i]!;
+        o.position.copy(from.pos).sub(start.pivot).multiplyScalar(s).applyQuaternion(turn).add(start.pivot).add(move);
+        o.quaternion.copy(turn).multiply(from.quat);
+        o.scale.copy(from.scale).multiplyScalar(s);
+        // A thing that stands upright is drawn upright at every step: only
+        // its yaw turns, as its document patch does when the drag ends.
+        if (isUpright(this.markerData.get(o.userData.id as string)?.kind ?? "")) {
+          o.quaternion.setFromAxisAngle(UP, yawOf(o.quaternion));
+        }
+      });
+    } else {
+      this.selectedObjects.forEach((o, i) => {
+        const from = start.objects[i]!;
+        o.position.copy(from.pos).add(move);
+        o.quaternion.copy(turn).multiply(from.quat);
+        o.scale.copy(from.scale).multiply(ratio);
+      });
+    }
     this.outlineBox.makeEmpty();
     for (const o of this.selectedObjects) this.outlineBox.expandByObject(o);
   }
@@ -665,6 +718,12 @@ export class EditorView {
   /** The handles' proxy position, for a drag of the things themselves. */
   get proxyPosition(): THREE.Vector3 {
     return this.proxy.position;
+  }
+
+  /** The proxy's rotation, for a drag worked out as one quaternion rather
+   *  than three Euler angles. */
+  proxyQuaternion(): THREE.Quaternion {
+    return this.proxy.quaternion.clone();
   }
 
   /** Puts the proxy (and so the selection, through `follow`) at a point. */
