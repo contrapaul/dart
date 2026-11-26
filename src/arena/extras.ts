@@ -18,6 +18,8 @@ import {
 } from "../level/presses";
 import { buildAmbushes } from "../level/ambush";
 import { applySky } from "../render/sky";
+import { buildLights, type BuiltLights } from "../level/lights";
+import { QUALITY } from "../render/quality";
 import { PlacedFoamers } from "../level/placed";
 import { applyStart } from "../level/start";
 import { Hazards } from "../level/hazards";
@@ -85,6 +87,8 @@ export interface ArenaBuilt extends BuiltGame {
   /** ED-03: the level's hazard prims. Built here, before the nav grid is
    *  baked, so Foamers path round them (ED-03b). */
   hazards: Hazards;
+  /** ED-32: the level's lights, built here with the sky. */
+  lights: BuiltLights;
 }
 
 /** Builds the level file's geometry in the shared game's build hook. */
@@ -93,8 +97,12 @@ export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): Ar
   applySky(scene, LEVEL.sky);
   const level = buildLevel(LEVEL, rapier, world, mesherPool, scene);
   const hazards = new Hazards(LEVEL.prims ?? [], scene);
+  // ED-32: the level's lights and lighting, after the sky, before the
+  // geometry goes in.
+  const lights = buildLights(scene, LEVEL, QUALITY.preset);
   return {
     hazards,
+    lights,
     blockedAt: hazards.blocksAt,
     voxels: level.voxels,
     voxelMesh: level.voxelMesh,
@@ -680,6 +688,7 @@ export function arenaExtras(
       level.prims.get(id)?.setShown(shown);
       breakables.handles.get(id)?.setShown(shown);
       hazards.setShown(id, shown);
+      built.lights.handles.get(id)?.setVisible(shown);
       if (shown) placed.wake([id]);
     }
   }
@@ -718,6 +727,7 @@ export function arenaExtras(
     for (const id of level.prims.keys()) level.prims.get(id)!.setShown(false);
     for (const h of breakables.handles.values()) h.setShown(false);
     for (const p of LEVEL.prims ?? []) if (p.behaviour === "hazard") hazards.setShown(p.id, !p.hidden);
+    for (const l of LEVEL.lights ?? []) built.lights.handles.get(l.id)?.setVisible(!l.hidden);
     for (const [id, state] of levelDoorStart) level.doors.get(id)?.setState(state);
     keys.reset();
     showKeys();
