@@ -337,8 +337,10 @@ function buildOutliner() {
       const name = document.createElement("span");
       name.className = "name";
       name.textContent = trigger.id;
-      name.title = triggerSummary(trigger);
-      name.addEventListener("click", (e) => pick(trigger.id, e.shiftKey));
+      row.title = triggerSummary(trigger);
+      // The whole row picks: a long summary used to squeeze the name to
+      // nothing, which left nothing to click (Paul, 2026-11-27).
+      row.addEventListener("click", (e) => pick(trigger.id, e.shiftKey));
       const summary = document.createElement("span");
       summary.className = "hint";
       summary.textContent = triggerSummary(trigger);
