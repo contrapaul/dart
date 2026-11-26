@@ -12,7 +12,7 @@ import {
 import { EXIT_ID, START_ID, markerFor, setMarkerLevel } from "./markers";
 import {
   buildModelFields, modelAssetOf, modelAt, modelFileProblem, modelGhost, removeUnusedAssets,
-  unusedAssetIds,
+  unusedAssetIds, voxelCapProblem,
 } from "./models-editor";
 import { loadModelAsset } from "../level/models";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
@@ -544,9 +544,7 @@ function buildPalette() {
     select.title = "Model";
     for (const asset of assets) select.append(new Option(asset.name, asset.id));
     select.value = armedModel && assets.some((a) => a.id === armedModel) ? armedModel : assets[0]!.id;
-    select.addEventListener("change", () => {
-      if (armedModel) armModel(select.value);
-    });
+    select.addEventListener("change", () => armModel(select.value));
     const place = toolButton("box", "Place model", null, armedModel !== null, () => {
       if (armedModel === select.value) arm(null, null);
       else armModel(select.value);
@@ -1643,6 +1641,14 @@ function load(level: Level, key: string | null) {
   opening = true;
   doc.load(level);
   opening = false;
+  // ED-35: a voxel model already over the cap in the file is a warning as
+  // soon as it opens, the same one the voxel tick gives.
+  for (const m of level.models ?? []) {
+    if (m.behaviour !== "breakable" || !m.voxel) continue;
+    void voxelCapProblem(level, m).then((text) => {
+      if (text) setModelWarning(m.id, text);
+    });
+  }
   syncNameField();
   // ED-12: every level opens looking at the place a run begins.
   view.openOn(level.playerStart);
