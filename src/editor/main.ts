@@ -2,7 +2,9 @@ import * as THREE from "three";
 import type { Level, Button, LevelDoor, LevelLight, PhysicsObject, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
 import {
   EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
+  type IdEntry,
 } from "./doc";
+import { isUpright, transformSelection, type GroupPatch, type GroupThing } from "./group-transform";
 import { exportFileName, readLevelFile, skyImageDataUrl } from "./files";
 import { buildPrimFields } from "./inspector";
 import {
@@ -81,6 +83,9 @@ let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
 /** ED-23: the saved asset the next click in the view places, or null. */
 let armedAsset: Asset | null = null;
+/** ED-37: how far the armed asset is turned, in degrees, before it is
+ *  placed. The ghost shows it turned. */
+let assetTurn = 0;
 /** The kind of pickup and the rig the palette places. */
 let pickupType: Pickup["type"] = "darts-standard";
 let armedRig = RIGS[0]?.id ?? "F01";
@@ -590,6 +595,7 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
   armedPart = part;
   armedAsset = null;
   armedPaint = false;
+  assetTurn = 0;
   view.setGhost(null);
   const name = shape
     ? SHAPES.find((s) => s.shape === shape)!.label
@@ -1234,7 +1240,10 @@ window.addEventListener("pointerup", (e) => {
     pressUsed = true;
     const shift = e.shiftKey;
     if (armedAsset) {
-      const count = pasteAt(armedAsset.clip, [was.point.x, was.point.y, was.point.z], `place ${armedAsset.name}`, true);
+      const count = pasteAt(
+        armedAsset.clip, [was.point.x, was.point.y, was.point.z], `place ${armedAsset.name}`, true,
+        assetTurn ? { deg: assetTurn, centre: view.ghostCentrePoint() } : null,
+      );
       if (count) status.textContent = `Placed ${armedAsset.name}.`;
       if (!shift) arm(null, null);
       return;
@@ -1555,7 +1564,9 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyF") view.frame([...selected]);
   // [ and ] turn the selection about the vertical by one rotate step.
   if ((e.code === "BracketLeft" || e.code === "BracketRight") && !view.isLooking) {
-    turnSelection(e.code === "BracketLeft" ? -ROTATE_STEP : ROTATE_STEP);
+    const deg = e.code === "BracketLeft" ? -ROTATE_STEP : ROTATE_STEP;
+    if (armedAsset) turnAsset(deg);
+    else turnSelection(deg);
   }
   // ED-09 stage 1: P plays from the level's start, Shift+P from the camera.
   // ED-11: Tab and Shift+Tab do the same.
@@ -1646,10 +1657,31 @@ document.addEventListener("paste", (e) => {
   if (count) status.textContent = `Pasted ${count} thing${count === 1 ? "" : "s"}.`;
 });
 
+/** ED-37: turns a clip's things as one object about `pivot`, before they
+ *  are added: the patches of src/editor/group-transform.ts on entries that
+ *  are not in the level yet. */
+function turnMade(
+  made: { kind: EntryKind; entry: IdEntry }[], pivot: Vec3, deg: number,
+): { kind: EntryKind; entry: IdEntry }[] {
+  const things = made.flatMap((m) => {
+    const thing = thingFromEntry(m.kind, m.entry as TurnyEntry);
+    return thing ? [thing] : [];
+  });
+  const R = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), deg * RAD);
+  const byId = new Map(transformSelection(things, pivot, R, 1).map((p) => [p.id, p.patch]));
+  return made.map((m) => {
+    const patch = byId.get(m.entry.id);
+    return patch ? { kind: m.kind, entry: { ...m.entry, ...patch } } : m;
+  });
+}
+
 /** Adds a clip's things to the level at a point as one undo step, selects
  *  them, and returns how many. Over a cap it says why and adds nothing.
  *  ED-23: a placed asset (`oneGroup`) goes in as one group. */
-function pasteAt(clip: Clip, at: Vec3 | null, verb: string, oneGroup = false): number {
+function pasteAt(
+  clip: Clip, at: Vec3 | null, verb: string, oneGroup = false,
+  turned: { deg: number; centre: Vec3 } | null = null,
+): number {
   const problem = capProblem(doc.level, clip);
   if (problem) {
     status.textContent = problem;
@@ -1661,6 +1693,15 @@ function pasteAt(clip: Clip, at: Vec3 | null, verb: string, oneGroup = false): n
   }, at, snapOn ? GRID : 0);
   if (oneGroup) made = asOneGroup(made, doc.nextGroup());
   if (!made.length) return 0;
+  if (turned && Math.abs(turned.deg) > 1e-4) {
+    // ED-37: an asset turned before it was placed turns as one object here,
+    // about the middle its ghost showed, moved to where it lands.
+    const move = pasteMove(clip, at, snapOn ? GRID : 0);
+    const pivot: Vec3 = [
+      turned.centre[0] + move[0], turned.centre[1] + move[1], turned.centre[2] + move[2],
+    ];
+    made = turnMade(made, pivot, turned.deg);
+  }
   doc.addMixed(made, `${verb}, ${made.length} thing${made.length === 1 ? "" : "s"}`);
   selectMany(made.map((m) => m.entry.id));
   return made.length;
@@ -1702,6 +1743,120 @@ function partPatch(part: NonNullable<typeof dragStart>["parts"][number], move: V
   return Object.keys(patch).length ? patch : null;
 }
 
+// ED-37: a selection of two or more turns and scales as one object about the
+// middle of its bounds. These three read what is selected into the entries
+// src/editor/group-transform.ts wants, apply its patches as one undo step,
+// and give the drag a pivot.
+
+const RAD = Math.PI / 180;
+
+function quatEulerDegrees(rot: Vec3): [number, number, number, number] {
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rot[0] * RAD, rot[1] * RAD, rot[2] * RAD, "XYZ"));
+  return [q.x, q.y, q.z, q.w];
+}
+
+function quatYaw(radians: number): [number, number, number, number] {
+  const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), radians);
+  return [q.x, q.y, q.z, q.w];
+}
+
+/** One selected thing as the group transform reads it, or null for a thing
+ *  with no place in the world (a trigger). */
+function groupThing(id: string): GroupThing | null {
+  if (id === START_ID) {
+    const start = doc.level.playerStart;
+    return {
+      id, kind: "start", pos: [...start.pos] as Vec3, quat: quatYaw(start.yaw),
+      upright: true, turnKey: "yaw", sizeKey: null, size: null,
+    };
+  }
+  if (id === EXIT_ID) {
+    const exit = doc.level.exit;
+    return {
+      id, kind: "exit", pos: [...exit.pos] as Vec3, quat: [0, 0, 0, 1],
+      upright: true, turnKey: null, sizeKey: "size", size: [...exit.size] as Vec3,
+    };
+  }
+  const kind = doc.kindOf(id);
+  if (!kind || kind === "triggers") return null;
+  return thingFromEntry(kind, doc.find(kind, id) as TurnyEntry | undefined);
+}
+
+/** The fields the group transform reads off any kind's entry (an asset's
+ *  things are read this way before they are in the level). */
+type TurnyEntry = IdEntry & {
+  rot?: Vec3; size?: Vec3; scale?: Vec3; yaw?: number; rotY?: number;
+};
+
+/** One entry of any kind, as the group transform reads it. */
+function thingFromEntry(kind: EntryKind, entry: TurnyEntry | undefined): GroupThing | null {
+  if (!entry?.pos) return null;
+  // Read the fields the kind's own type has, so a card that adds a kind needs
+  // no line here: `rot` is Euler degrees, `yaw` radians, `rotY` degrees.
+  const upright = isUpright(kind);
+  const quat = entry.rot ? quatEulerDegrees(entry.rot)
+    : kind === "foamers" ? quatYaw(entry.yaw ?? 0)
+      : kind === "doors" || kind === "props" ? quatYaw((entry.rotY ?? 0) * RAD)
+        : [0, 0, 0, 1] as [number, number, number, number];
+  const sizeKey: "size" | "scale" | null = entry.size ? "size" : entry.scale || kind === "models" ? "scale" : null;
+  const size = (entry.size ?? entry.scale ?? (kind === "models" ? [1, 1, 1] : null)) as Vec3 | null;
+  // A prim, a physics object and a model always hold a `rot`, even when it is
+  // omitted (format.ts), so theirs is written on every turn.
+  const euler = kind === "prims" || kind === "physics" || kind === "models";
+  return {
+    id: entry.id, kind, pos: [...entry.pos] as Vec3, quat, upright,
+    turnKey: euler ? "rot" : upright ? (kind === "foamers" ? "yaw" : "rotY") : null,
+    sizeKey, size: size ? [...size] as Vec3 : null,
+  };
+}
+
+/** Every selected thing the group transform can move. */
+function groupThings(ids: string[]): GroupThing[] {
+  return ids.flatMap((id) => {
+    const thing = groupThing(id);
+    return thing ? [thing] : [];
+  });
+}
+
+/** Applies patches of any kinds as one undo step, through the level fields:
+ *  a group drag can span prims, markers and the start. */
+function applyGroupPatches(patches: GroupPatch[], text: string) {
+  if (!patches.length) return;
+  const patch: Partial<Level> = {};
+  const byKind = new Map<EntryKind, Map<string, Record<string, unknown>>>();
+  let start: Record<string, unknown> | null = null;
+  let exit: Record<string, unknown> | null = null;
+  for (const p of patches) {
+    if (p.kind === "start") { start = p.patch; continue; }
+    if (p.kind === "exit") { exit = p.patch; continue; }
+    const map = byKind.get(p.kind) ?? new Map<string, Record<string, unknown>>();
+    map.set(p.id, p.patch);
+    byKind.set(p.kind, map);
+  }
+  for (const [kind, map] of byKind) {
+    const list = doc.entries(kind).map((e) => (map.has(e.id) ? { ...e, ...map.get(e.id) } : e));
+    (patch as Record<string, unknown>)[kind] = list;
+  }
+  if (start) patch.playerStart = { ...doc.level.playerStart, ...start };
+  if (exit) patch.exit = { ...doc.level.exit, ...exit };
+  doc.setFields(patch, text);
+}
+
+/** The middle of the selection's bounds as drawn, which a group turns and
+ *  scales about. */
+function selectionPivot(): Vec3 {
+  const c = view.selectionBox().getCenter(new THREE.Vector3());
+  return [c.x, c.y, c.z];
+}
+
+/** ED-37: turns the armed asset as one object about the middle of its
+ *  bounds, before it is placed. The ghost shows the turn. */
+function turnAsset(deg: number) {
+  assetTurn = (((assetTurn + deg) % 360) + 360) % 360;
+  view.turnGhost(assetTurn);
+  status.textContent = `Asset turned ${Math.round(assetTurn)} degrees. Click to place it.`;
+}
+
 /** Turns every selected thing that can turn by `deg` about the vertical,
  *  each about its own centre: one undo step per kind. */
 function turnSelection(deg: number) {
@@ -1710,6 +1865,14 @@ function turnSelection(deg: number) {
   if (skipped.length) status.textContent = `${skipped.join(", ")} is locked.`;
   if (!ok.length) return;
   const ids = ok;
+  // ED-37: two or more turn as one object about the middle of their bounds.
+  const things = groupThings(ids);
+  if (things.length >= 2) {
+    const R = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), deg * RAD);
+    const patches = transformSelection(things, selectionPivot(), R, 1);
+    applyGroupPatches(patches, `turn ${patches.length} things`);
+    return;
+  }
   const prims = ids.flatMap((id) => {
     const prim = doc.prim(id);
     if (!prim) return [];
@@ -1748,6 +1911,11 @@ let dragStart: {
    *  light also carries its full rot triple (XYZ), which is what the
    *  rotate handle writes. */
   parts: { id: string; kind: EntryKind | "start" | "exit"; pos: Vec3; yawDeg: number; size: Vec3 | null; rot: Vec3 }[];
+  /** ED-37: the group of two or more, the middle it turns about and the
+   *  handles' rotation when the drag began. */
+  things: GroupThing[];
+  pivot: Vec3;
+  quat: THREE.Quaternion;
 } | null = null;
 /** Where each selected placed thing is, its yaw and size, as the drag and
  *  turn code reads them. */
@@ -1787,6 +1955,9 @@ function beginHandleDrag(mode: TransformMode = view.mode) {
     scale: state.scale,
     size: Object.fromEntries(ids.map((id) => [id, doc.prim(id)?.size ?? [1, 1, 1]])),
     parts: partHandles(ids),
+    things: groupThings(ids),
+    pivot: selectionPivot(),
+    quat: view.proxyQuaternion(),
   };
 }
 view.controls.addEventListener("mouseDown", () => beginHandleDrag());
@@ -1808,6 +1979,22 @@ function endHandleDrag() {
   const turned = turn.some((n) => Math.abs(n) > 1e-4);
   const scaled = start.mode === "scale";
   if (!moved && !turned && !scaled) return;
+  // ED-37: two or more things turn and scale as one object about the middle
+  // of their bounds, as one undo step across the kinds a group may span.
+  if (start.things.length >= 2) {
+    const R = view.proxyQuaternion().multiply(start.quat.clone().invert());
+    const s = ((scale[0] / (start.scale[0] || 1)) + (scale[1] / (start.scale[1] || 1)) + (scale[2] / (start.scale[2] || 1))) / 3;
+    let patches = transformSelection(start.things, start.pivot, R, s > 0 ? s : 1, move);
+    // A drag that only moves the group snaps its places to the grid; a turn
+    // or a scale keeps every thing's place relative to the others.
+    if (snapOn && !turned && !scaled) {
+      patches = patches.map((p) => (p.patch.pos
+        ? { ...p, patch: { ...p.patch, pos: snapVec3(p.patch.pos as Vec3, GRID) } }
+        : p));
+    }
+    applyGroupPatches(patches, start.mode === "scale" ? "resize" : start.mode === "rotate" ? "rotate" : "move");
+    return;
+  }
   // ED-05: a drag of a placed thing's handles, one undo step per kind (the
   // start and the exit have their own setters).
   if (start.parts.length) {
