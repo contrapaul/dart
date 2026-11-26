@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type RAPIER from "@dimforge/rapier3d-compat";
 import blastersData from "../../data/blasters.json";
 import { buildLevel, type BuiltLevel } from "../level/build";
 import type { ArenaContext } from "../level/arena";
@@ -23,6 +24,7 @@ import { applyStart } from "../level/start";
 import { Hazards } from "../level/hazards";
 import { Barrels } from "../level/barrels";
 import { leakingBarrels } from "../level/props";
+import { PhysicsObjects, type PhysicsTarget } from "../level/physics-objects";
 import { TriggerRunner } from "../level/triggers";
 import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
@@ -385,6 +387,50 @@ export function arenaExtras(
   // restart's respawnAtEntry below resets the spent flags.
   const stations = new Stations(g.rapier, g.world, scene, LEVEL.stations ?? []);
 
+  // ED-33: the level's physics objects, built here like the barrels. A
+  // dart shoves one and a blast throws it; a fast one that meets the player
+  // or a Foamer hurts it once per contact (the targets below). Breakable
+  // ones burst into chunks through the same debris system as ED-06's.
+  const physics = new PhysicsObjects(g.rapier, g.world, scene, LEVEL.physics ?? []);
+  physics.debris = g.debris;
+  physics.onBreak = (o, at) => {
+    audio.play("FX-chunk", { position: at });
+    g.darts.releaseInSphere(at, Math.hypot(...o.spec.size) / 2);
+  };
+  // A capsule's radius, read off the collider the game already made: the
+  // player's and a Foamer's, so no size is repeated here.
+  const capsuleOf = (c: RAPIER.Collider) => c.shape as unknown as { radius: number; halfHeight: number };
+  const _physPos = new THREE.Vector3();
+  physics.targets = (): PhysicsTarget[] => {
+    const p = capsuleOf(player.collider);
+    const list: PhysicsTarget[] = [{
+      key: "player",
+      position: new THREE.Vector3().copy(player.eye(1, _physPos)).setY(player.feet + p.halfHeight + p.radius),
+      radius: p.radius,
+      hit: (amount) => { health.damage(amount, "physics"); },
+    }];
+    for (const f of foamers.list) {
+      if (f.state === "down") continue;
+      list.push({
+        key: "foamer" + f.root.handle,
+        position: f.centre.clone(),
+        radius: capsuleOf(f.capsule).radius,
+        hit: (amount) => foamers.parryDamage(f, amount),
+      });
+    }
+    return list;
+  };
+  const physicsHit = g.darts.onHit;
+  g.darts.onHit = (hit) => {
+    physicsHit(hit);
+    physics.onDartHit(hit);
+  };
+  const physicsBlast = g.explosion.onBlast;
+  g.explosion.onBlast = (point, profile) => {
+    physicsBlast(point, profile);
+    physics.blast(point, profile);
+  };
+
   // The level's leaking barrels (editor props), run as the Range runs its
   // own (ENV-05): a dart punctures one after the rest of the hit chain, a
   // blast that reaches one sets it off a chainDelay later, and darts stuck
@@ -501,6 +547,8 @@ export function arenaExtras(
     // restart puts them back (the checkpoint rule keeps the level's other
     // damage: a retry inside an arena does not refill the walls).
     if (all) breakables.reset();
+    // ED-33: the physics objects go back where the level put them, whole.
+    if (all) physics.reset();
     setRifts("dim");
   }
 
@@ -680,6 +728,7 @@ export function arenaExtras(
       level.prims.get(id)?.setShown(shown);
       breakables.handles.get(id)?.setShown(shown);
       hazards.setShown(id, shown);
+      physics.setShown(id, shown);
       if (shown) placed.wake([id]);
     }
   }
@@ -815,6 +864,7 @@ export function arenaExtras(
         // which is what the melee reports it swung).
         const dmg = melee.damageOf(melee.lastSwung);
         if (dmg > 0) breakables.swing(eye, fwd, melee.reach, dmg, player.collider);
+        if (dmg > 0) physics.swing(eye, fwd, melee.reach, dmg, player.collider);
       }
       playPress(buttons.step(at));
 
@@ -829,6 +879,9 @@ export function arenaExtras(
       stations.update(dt, eye, fwd, held, loadout);
     },
     afterWorld(dt: number) {
+      // ED-33: after the step, so the meshes and the contact tests read the
+      // bodies' new poses.
+      physics.update(dt);
       if (player.feet < FALL_LIMIT) {
         player.teleport(start);
         foamers.clear();
@@ -838,6 +891,7 @@ export function arenaExtras(
         // ED-06: a fall out of the world is a full restart, so the
         // breakables come back with it.
         breakables.reset();
+        physics.reset();
         runner.resetAll();
         setRifts("dim");
       }
@@ -906,6 +960,9 @@ export function arenaExtras(
       // ED-06: the hit points left in each breakable (0 once broken).
       breakables: Object.fromEntries(
         breakables.list.map((b) => [b.prim.id, b.alive ? b.hp : 0])),
+      // ED-33: the hit points left in each breakable physics object.
+      physicsObjects: Object.fromEntries(
+        physics.list.filter((o) => o.maxHp > 0).map((o) => [o.spec.id, o.alive ? o.hp : 0])),
     }),
   };
 
