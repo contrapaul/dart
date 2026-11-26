@@ -599,3 +599,63 @@ button.on {
   min-height: 1.2em;
   font-size: 12px;
 }
+
+/* ED-36: the Paint tool's option panel: surface swatches and colours. */
+#palette .paint-options {
+  min-width: 14rem;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+#palette .paint-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.65;
+}
+
+#palette .paint-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+#palette .paint-swatch {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 5px;
+  border: 2px solid #4a3f6e;
+  background: none;
+}
+
+#palette .paint-swatch.on {
+  border-color: #ffd23f;
+}
+
+#palette .paint-swatch canvas {
+  display: block;
+  border-radius: 3px;
+}
+
+#palette .paint-colours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+#palette .paint-colour {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 4px;
+  border: 2px solid #4a3f6e;
+  font-size: 13px;
+  color: #fff6e8;
+}
+
+#palette .paint-colour.on {
+  border-color: #ffd23f;
+}

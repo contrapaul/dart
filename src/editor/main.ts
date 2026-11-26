@@ -11,6 +11,7 @@ import {
 } from "./inspector-parts";
 import { EXIT_ID, START_ID, markerFor } from "./markers";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
+import { buildPaintPanel, type PaintSettings } from "./paint-tool";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
@@ -80,6 +81,10 @@ let armedRig = RIGS[0]?.id ?? "F01";
 let armedProp = LEAKING_BARREL;
 /** The colour new prims take: the last one picked in the inspector. */
 let placeColour = "#ff7a1a";
+/** ED-36: the Paint tool. `paintSurface` is the surface brushed on a prim,
+ *  `paintColour` is null (keep the prim's colour) or a hex colour. */
+let armedPaint = false;
+const paintSettings: PaintSettings = { surface: "brick", colour: null };
 const selected = new Set<string>();
 /** ED-08 stage 3: the trigger field Link fills ("enter", "killed", "do:2"),
  *  or null when nothing is linking. Cleared when the selection changes. */
@@ -449,6 +454,7 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
   armed = shape;
   armedPart = part;
   armedAsset = null;
+  armedPaint = false;
   view.setGhost(null);
   const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
   const how = shape ? "Click to place, or drag out its size on a floor." : "Click to place.";
@@ -462,6 +468,7 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
  *  and then moved under the cursor. */
 function armAsset(asset: Asset) {
   arm(null, null);
+  armedPaint = false;
   armedAsset = asset;
   const ghost = new THREE.Group();
   for (const kind of ENTRY_KINDS) {
@@ -475,6 +482,33 @@ function armAsset(asset: Asset) {
   const hint = $("toolHint");
   hint.textContent = `${asset.name}: Click to place. Shift keeps the tool. Esc stops.`;
   hint.hidden = false;
+}
+
+/** ED-36: arms the Paint tool. No ghost (painting is a click or a drag, not a
+ *  placement), and the hint says what a drag does. */
+function armPaint() {
+  armed = null;
+  armedPart = null;
+  armedAsset = null;
+  armedPaint = true;
+  view.setGhost(null);
+  const hint = $("toolHint");
+  hint.textContent = "Paint: click or drag across prims to set their surface. Shift keeps the tool. Esc stops.";
+  hint.hidden = false;
+  buildPalette();
+}
+
+/** Arms or disarms the Paint tool; its settings live in paintSettings. */
+function togglePaint() {
+  if (armedPaint) {
+    armedPaint = false;
+    const hint = $("toolHint");
+    hint.textContent = "";
+    hint.hidden = true;
+    buildPalette();
+  } else {
+    armPaint();
+  }
 }
 
 /** The toolbar down the left: shapes, things, logic and the handle modes.
@@ -502,6 +536,14 @@ function buildPalette() {
       things.append(wrap);
     } else things.append(button);
   }
+  // ED-36: the Paint tool. Its option panel lists the surfaces and palette
+  // colours; the armed state is its own.
+  const paint = toolGroup(host, "Paint");
+  const paintWrap = document.createElement("div");
+  paintWrap.className = "tool-wrap";
+  paintWrap.append(toolButton("paint", "Paint", null, armedPaint, () => togglePaint()));
+  if (armedPaint) paintWrap.append(buildPaintPanel(paintSettings, () => buildPalette()));
+  paint.append(paintWrap);
   const logic = toolGroup(host, "Logic");
   // ED-08: a trigger is not placed by a click, so its button adds one at
   // once and selects it, ready for the inspector.
@@ -736,6 +778,9 @@ let press:
     kind: "resize"; x: number; y: number; id: string; box: Resizable; axis: 0 | 1 | 2; side: 1 | -1;
     origin: THREE.Vector3; dir: THREE.Vector3; grab: number; next: { pos: Vec3; size: Vec3 } | null;
   }
+  // ED-36: the Paint tool. One entry per prim painted this drag, each holding
+  // the prim's before-state (surface and colour).
+  | { kind: "paint"; x: number; y: number; painted: Map<string, { surface: string | undefined; colour: string }> }
   | null = null;
 
 /** ED-14: the size in metres shown by the cursor while a face is dragged or
@@ -787,6 +832,18 @@ let lastPointer: { clientX: number; clientY: number } | null = null;
 /** Set when a press was a place or a drag, so the click after it is not a pick. */
 let pressUsed = false;
 
+/** Paint one prim (the tracked id is recorded once, as a snapshot of before-state). */
+function paintPrim(id: string) {
+  if (!press || press.kind !== "paint") return;
+  const prim = doc.prim(id);
+  if (!prim) return;
+  if (press.painted.has(id)) return;
+  press.painted.set(id, { surface: prim.surface, colour: prim.colour });
+  prim.surface = paintSettings.surface === "plain" ? undefined : paintSettings.surface;
+  if (paintSettings.colour) prim.colour = paintSettings.colour;
+  view.refreshOne(prim);
+}
+
 function ndcOf(e: { clientX: number; clientY: number }): [number, number] {
   const rect = canvas.getBoundingClientRect();
   return [((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1];
@@ -794,7 +851,7 @@ function ndcOf(e: { clientX: number; clientY: number }): [number, number] {
 
 /** The see-through copy of what a click would place, at the cursor. */
 function showGhost(point: THREE.Vector3 | null, normal: THREE.Vector3, corner?: THREE.Vector3) {
-  if (!point || (!armed && !armedPart)) {
+  if (!point || (!armed && !armedPart && !armedPaint)) {
     view.setGhost(null);
     return;
   }
@@ -819,6 +876,15 @@ function floorPoint(e: PointerEvent, y: number): THREE.Vector3 | null {
 canvas.addEventListener("pointerdown", (e) => {
   pressUsed = false;
   if (e.button !== 0 || e.altKey || view.nav.busy || view.overHandle || linkKey) return;
+  // ED-36: the Paint tool paints, it does not move or select.
+  if (armedPaint) {
+    const hit = view.pick(...ndcOf(e));
+    if (hit?.id && doc.kindOf(hit.id) === "prims") {
+      press = { kind: "paint", x: e.clientX, y: e.clientY, painted: new Map() };
+      paintPrim(hit.id);
+    }
+    return;
+  }
   // ED-14: a press on a face handle pulls or pushes that face.
   const face = !armed && !armedPart && !armedAsset && selected.size === 1 ? view.pickFace(...ndcOf(e)) : null;
   const only = face ? [...selected][0]! : null;
@@ -864,6 +930,11 @@ window.addEventListener("pointermove", (e) => {
       const hit = view.pick(...ndcOf(e));
       view.ghostAt(hit ? pasteMove(armedAsset.clip, [hit.point.x, hit.point.y, hit.point.z], snapOn ? GRID : 0) : null);
     }
+    return;
+  }
+  if (press.kind === "paint") {
+    const hit = view.pick(...ndcOf(e));
+    if (hit?.id && doc.kindOf(hit.id) === "prims") paintPrim(hit.id);
     return;
   }
   const far = Math.hypot(e.clientX - press.x, e.clientY - press.y) > DRAG_PIXELS;
@@ -974,6 +1045,37 @@ window.addEventListener("pointerup", (e) => {
     canvas.style.cursor = "";
     endHandleDrag();
   }
+  // ED-36: finish the drag with one undo step for every prim painted.
+  if (was.kind === "paint") {
+    pressUsed = true;
+    const ids = [...was.painted.keys()];
+    if (ids.length) {
+      const edits: { id: string; patch: Record<string, unknown> }[] = [];
+      for (const id of ids) {
+        const prim = doc.prim(id);
+        if (!prim) continue;
+        // Put the before-state back, so doc.change captures the right pair.
+        const before = was.painted.get(id)!;
+        if (before.surface === undefined) delete prim.surface;
+        else prim.surface = before.surface;
+        prim.colour = before.colour;
+        const patch: Record<string, unknown> = {
+          surface: paintSettings.surface === "plain" ? undefined : paintSettings.surface,
+        };
+        if (paintSettings.colour) patch.colour = paintSettings.colour;
+        edits.push({ id, patch });
+      }
+      doc.change("prims", edits, `paint ${ids.length} prim${ids.length === 1 ? "" : "s"}`);
+      status.textContent = `${edits.length} prim${edits.length === 1 ? "" : "s"} painted.`;
+      if (!e.shiftKey) {
+        armedPaint = false;
+        const hint = $("toolHint");
+        hint.textContent = "";
+        hint.hidden = true;
+      }
+      buildPalette();
+    }
+  }
 });
 
 canvas.addEventListener("pointerleave", () => {
@@ -983,7 +1085,7 @@ canvas.addEventListener("pointerleave", () => {
 });
 // ED-13: a double click picks the one thing, out of its group.
 canvas.addEventListener("dblclick", (e) => {
-  if (armed || armedPart || armedAsset || linkKey || e.altKey) return;
+  if (armed || armedPart || armedAsset || armedPaint || linkKey || e.altKey) return;
   const hit = view.pick(...ndcOf(e));
   if (hit?.id) pick(hit.id, false);
 });
@@ -997,6 +1099,7 @@ canvas.addEventListener("click", (e) => {
     return;
   }
   if (e.altKey || view.nav.busy || view.dragging || typing(e.target)) return;
+  if (armedPaint) return;
   const hit = view.pick(...ndcOf(e));
   // ED-08 stage 3: while linking, the click adds the thing to the trigger's
   // field and does not select anything else.
@@ -1251,7 +1354,7 @@ window.addEventListener("keydown", (e) => {
       buildInspector();
     }
   }
-  if (e.code === "Escape" && !linkKey && (armed || armedPart || armedAsset)) arm(null, null);
+  if (e.code === "Escape" && !linkKey && (armed || armedPart || armedAsset || armedPaint)) arm(null, null);
   if (e.code === "Escape" && linkKey) {
     endLink();
     status.textContent = "";

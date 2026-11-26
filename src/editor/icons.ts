@@ -22,6 +22,7 @@ export const ICONS = {
   translate: svg('<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>'),
   rotate: svg('<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/>'),
   scale: svg('<rect x="3" y="11" width="10" height="10"/><path d="M11 13l9-9M14 4h6v6"/>'),
+  paint: svg('<path d="M4 20c-1-3 0-5 3-6l8-8 4 4-8 8c-1 3-3 4-7 2z"/><path d="M13 6l4 4"/><path d="M16 3l4 4"/>'),
 } as const;
 
 export type IconName = keyof typeof ICONS;

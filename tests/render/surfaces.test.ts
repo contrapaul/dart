@@ -104,3 +104,10 @@ d2("buildPrims with surfaces", () => {
     expect((group.children[0] as THREE.Mesh).geometry.getAttribute("uv")).toBeUndefined();
   });
 });
+
+describe("paint state", () => {
+  it("lists every surface in the palette", () => {
+    expect(SURFACE_NAMES.length).toBeGreaterThan(1);
+    expect(SURFACE_NAMES).toContain("plain");
+  });
+});
