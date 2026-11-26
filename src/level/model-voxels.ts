@@ -1,6 +1,20 @@
 import * as THREE from "three";
-import { modelTriangles } from "./models";
-import type { PieceVolume, Vec3 } from "./format";
+import type RAPIER from "@dimforge/rapier3d-compat";
+import editorData from "../../data/editor.json";
+import explosionData from "../../data/explosion.json";
+import tuning from "../../data/destruction.json";
+import type { Rapier } from "../physics/world";
+import { SIGHT_QUERY_GROUPS } from "../physics/world";
+import { materialId } from "../voxel/materials";
+import type { VoxelVolume } from "../voxel/chunk";
+import type { VolumeMesh } from "../voxel/volume-mesh";
+import type { DebrisSystem } from "../voxel/debris";
+import { foamMaterialFor } from "./prims";
+import {
+  assetOf, loadModelAsset, modelColliders, modelObject, modelTriangles,
+} from "./models";
+import type { BlastProfileName } from "./breakables";
+import type { Level, PieceVolume, PlacedModel, Vec3 } from "./format";
 
 // ED-35: a model that breaks as voxel foam. Its inside is found by the
 // standard parity test: a ray from the voxel centre along +X crosses the
@@ -162,4 +176,201 @@ export function modelVoxelVolumes(
     }
   }
   return { count: inside.size, volumes, capped: false };
+}
+
+/** One placed model that breaks by hit points, and what is left of it. */
+export interface ModelBreakable {
+  readonly model: PlacedModel;
+  readonly centre: THREE.Vector3;
+  readonly radius: number;
+  hp: number;
+  readonly maxHp: number;
+  alive: boolean;
+}
+
+interface LiveModel extends ModelBreakable {
+  object: THREE.Group;
+  colliders: RAPIER.Collider[];
+  shown: boolean;
+}
+
+const _hit = new THREE.Vector3();
+const _box = new THREE.Box3();
+
+/** ED-35: the breakable models, the way ED-06's Breakables are the breakable
+ *  prims. The hit point kind is a mesh and colliders of its own; at zero it
+ *  is removed and bursts into foam chunks in its tint or its main colour.
+ *  The voxel kind is filled into the level's voxel volume instead and carves
+ *  like a foam wall. A model over `models.maxVoxels` is built as hit points
+ *  rather than as millions of voxels. */
+export class ModelBreakables {
+  /** A handle for a hidden breakable model, keyed by model id, put in the
+   *  same map the drawn models use so a trigger's show and hide finds it. */
+  readonly handles: Map<string, { setShown(shown: boolean): void }>;
+  /** The level's chunk burst, set by the page once the debris system is
+   *  there (buildLevel runs before it). */
+  debris: DebrisSystem | null = null;
+  onBreak: (b: ModelBreakable, at: THREE.Vector3) => void = () => {};
+  onDamage: (b: ModelBreakable, amount: number, at: THREE.Vector3) => void = () => {};
+  /** Resolves once every breakable model is in the level. */
+  readonly ready: Promise<void>;
+  private readonly live: LiveModel[] = [];
+  private readonly byCollider = new Map<number, LiveModel>();
+  private readonly ray: RAPIER.Ray;
+
+  constructor(
+    level: Level,
+    rapier: Rapier,
+    private world: RAPIER.World,
+    group: THREE.Group,
+    voxels: VoxelVolume,
+    voxelMesh: VolumeMesh,
+    origin: THREE.Vector3,
+    handles: Map<string, { setShown(shown: boolean): void }>,
+  ) {
+    this.handles = handles;
+    this.ray = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
+    const jobs: Promise<void>[] = [];
+    for (const model of level.models ?? []) {
+      if (model.behaviour !== "breakable") continue;
+      const asset = assetOf(level, model.asset);
+      if (!asset) continue;
+      jobs.push(loadModelAsset(asset).then((scene) => {
+        const object = modelObject(model, scene);
+        const colour = model.tint ?? mainColour(object);
+        if (model.voxel && !model.hidden) {
+          const fill = modelVoxelVolumes(object, foamMaterialFor(colour), editorData.models.maxVoxels);
+          if (!fill.capped) {
+            for (const volume of fill.volumes) {
+              const lo: [number, number, number] = [0, 0, 0];
+              const hi: [number, number, number] = [0, 0, 0];
+              for (let a = 0; a < 3; a++) {
+                const centre = volume.pos[a]! - origin.getComponent(a);
+                lo[a] = Math.round((centre - volume.size[a]! / 2) / MODEL_VOXEL);
+                hi[a] = Math.round((centre + volume.size[a]! / 2) / MODEL_VOXEL) - 1;
+              }
+              voxels.fillBox(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2], materialId(volume.material));
+            }
+            voxelMesh.update();
+            return;
+          }
+          // Over the cap: the same model is a hit point breakable instead,
+          // which is what the editor's Problems warning promised.
+        }
+        // A hit point breakable, a hidden voxel one included: it must be
+        // drawn to be shown later, so it is built like the hit point kind.
+        object.visible = !model.hidden;
+        group.add(object);
+        object.updateMatrixWorld(true);
+        _box.setFromObject(object);
+        const colliders = modelColliders(rapier, object, { ...model, behaviour: "solid" })
+          .map((d) => world.createCollider(d));
+        const hp = model.hitPoints ?? tuning.breakables.defaultHitPoints;
+        const size = _box.getSize(new THREE.Vector3());
+        const state: LiveModel = {
+          model,
+          centre: _box.getCenter(new THREE.Vector3()),
+          radius: size.length() / 2,
+          hp,
+          maxHp: hp,
+          alive: true,
+          object,
+          colliders,
+          shown: true,
+        };
+        if (model.hidden) {
+          this.setShown(state, false);
+          this.handles.set(model.id, { setShown: (shown) => this.setShown(state, shown) });
+        }
+        this.live.push(state);
+        for (const c of colliders) this.byCollider.set(c.handle, state);
+      }).catch((e: unknown) => {
+        console.warn((e as Error)?.message ?? e);
+      }));
+    }
+    this.ready = Promise.all(jobs).then(() => undefined);
+  }
+
+  /** Hit points left, or undefined for an id that is not breakable here. */
+  hpOf(id: string): number | undefined {
+    return this.live.find((b) => b.model.id === id)?.hp;
+  }
+
+  get list(): readonly ModelBreakable[] { return this.live; }
+
+  /** A dart's hit, for the damage that dart deals a Foamer. */
+  dartHit(
+    hit: { collider: RAPIER.Collider; point: THREE.Vector3; direction: THREE.Vector3 },
+    amount: number,
+  ): void {
+    const b = this.byCollider.get(hit.collider.handle);
+    if (!b || !b.alive) return;
+    _hit.copy(hit.point).addScaledVector(hit.direction, -0.02);
+    this.damage(b, amount, _hit);
+  }
+
+  /** A blast, in the profile's own falloff, measured to the model's middle:
+   *  a little generous for a long model, never a miss. */
+  blast(point: THREE.Vector3, profile: BlastProfileName = "dart"): void {
+    const T = explosionData.profiles[profile];
+    for (const b of this.live) {
+      if (!b.alive || !b.shown) continue;
+      const d = Math.max(0, point.distanceTo(b.centre) - b.radius);
+      if (d > T.rangeMetres) continue;
+      const amount = T.damageCentre * (1 - d / T.rangeMetres);
+      if (amount > 0) this.damage(b, amount, point);
+    }
+  }
+
+  /** A swing: the first breakable model the line from the eye meets within
+   *  reach takes the swing's damage. */
+  swing(
+    eye: THREE.Vector3, forward: THREE.Vector3, reach: number, damage: number,
+    exclude?: RAPIER.Collider,
+  ): void {
+    this.ray.origin = { x: eye.x, y: eye.y, z: eye.z };
+    this.ray.dir = { x: forward.x, y: forward.y, z: forward.z };
+    const hit = this.world.castRay(this.ray, reach, true, undefined, SIGHT_QUERY_GROUPS, exclude);
+    if (!hit) return;
+    const b = this.byCollider.get(hit.collider.handle);
+    if (!b || !b.alive) return;
+    _hit.copy(eye).addScaledVector(forward, hit.timeOfImpact);
+    this.damage(b, damage, _hit);
+  }
+
+  /** A restart puts every breakable model back, hidden ones hidden again. */
+  reset(): void {
+    for (const b of this.live) {
+      b.hp = b.maxHp;
+      b.alive = true;
+      this.setShown(b, !b.model.hidden);
+    }
+  }
+
+  private damage(b: LiveModel, amount: number, at: THREE.Vector3): void {
+    if (!b.alive) return;
+    b.hp -= amount;
+    if (b.hp > 0) {
+      this.onDamage(b, amount, at);
+      return;
+    }
+    b.hp = 0;
+    b.alive = false;
+    this.setShown(b, false);
+    _box.setFromObject(b.object);
+    const size = _box.getSize(new THREE.Vector3());
+    const count = THREE.MathUtils.clamp(
+      Math.round(size.x * size.y * size.z * tuning.breakables.chunksPerCubicMetre),
+      tuning.breakables.minChunks, tuning.breakables.maxChunks,
+    );
+    const colour = b.model.tint ?? mainColour(b.object);
+    this.debris?.burst(b.centre, count, tuning.breakables.chunkSize, materialId(foamMaterialFor(colour)));
+    this.onBreak(b, b.centre);
+  }
+
+  private setShown(b: LiveModel, shown: boolean): void {
+    b.shown = shown;
+    b.object.visible = shown;
+    for (const c of b.colliders) c.setEnabled(shown);
+  }
 }

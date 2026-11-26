@@ -14,6 +14,7 @@ import { levelPropPrims } from "./props";
 import { isVoxelBreakable } from "./validate";
 import { Breakables } from "./breakables";
 import { buildModels, type BuiltModels } from "./models";
+import { ModelBreakables } from "./model-voxels";
 import type {
   Anchor, Door, DoorState, Level, LevelDoor, Piece, PieceVolume, Prim, ShellBox, Vec3,
 } from "./format";
@@ -83,6 +84,10 @@ export interface BuiltLevel {
    *  so a page adds them as they arrive (`ready`) and a hidden one has a
    *  handle the trigger show and hide can reach. */
   readonly models: BuiltModels;
+  /** ED-35: the breakable models. The hit point kind is a mesh and colliders
+   *  of its own; the voxel kind is filled into `voxels` after its asset
+   *  loads, and carves like a foam wall. `ready` says when both are in. */
+  readonly modelBreakables: ModelBreakables;
   /** The rectangle the nav grid should cover. */
   readonly navBounds: NavBounds;
 }
@@ -375,6 +380,13 @@ export function buildLevel(
   voxelMesh.update();
   group.add(voxelMesh.group);
 
+  // ED-35: the breakable models, after the shared volume exists: the voxel
+  // kind fills into it, the hit point kind builds its own mesh. A hidden
+  // breakable model joins the models' handle map, so show and hide reach it.
+  const modelBreakables = new ModelBreakables(
+    level, rapier, world, group, voxels, voxelMesh, origin, models.handles,
+  );
+
   // Doors: a fixed box that hides and drops its collider when it opens.
   // ED-01: the level's own doors (outside any arena) are built the same
   // way, with lock "none" open and every other lock shut until something
@@ -404,7 +416,7 @@ export function buildLevel(
 
   if (scene) scene.add(group);
   return {
-    group, voxels, voxelMesh, doors, buttons, presses, prims, breakables, models,
+    group, voxels, voxelMesh, doors, buttons, presses, prims, breakables, models, modelBreakables,
     crates: new Crates(voxels, crateBoxes),
     navBounds: navBoundsOf(level),
   };

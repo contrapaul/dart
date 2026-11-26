@@ -257,3 +257,53 @@ describe("voxel foam from a model", () => {
     expect(mainColour(scene)).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
+
+describe("a breakable model in the game", () => {
+  it("with voxel fills the level's volume and is not drawn as a mesh", async () => {
+    const asset = await cubeAsset();
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(levelWith(asset, {
+      id: "m1", asset: "cube", pos: [0, 0, 0], behaviour: "breakable", voxel: true,
+    }), rapier, world, FAKE);
+    await built.modelBreakables.ready;
+    let count = 0;
+    for (const chunk of built.voxels.chunks.values()) count += chunk.count;
+    expect(count).toBe(1000);
+    expect(built.modelBreakables.list.length).toBe(0);
+  });
+
+  it("over the voxel cap falls back to hit points", async () => {
+    const asset = await cubeAsset();
+    const { rapier, world } = await createPhysics();
+    // A four metre cube is 64000 voxels, over data/editor.json's 60000.
+    const built = buildLevel(levelWith(asset, {
+      id: "m1", asset: "cube", pos: [0, 0, 0], scale: [4, 4, 4], behaviour: "breakable",
+      voxel: true, hitPoints: 25,
+    }), rapier, world, FAKE);
+    await built.modelBreakables.ready;
+    expect(built.modelBreakables.hpOf("m1")).toBe(25);
+    let count = 0;
+    for (const chunk of built.voxels.chunks.values()) count += chunk.count;
+    expect(count).toBe(0);
+    expect(topAt(world, rapier)).toBeCloseTo(2, 1);
+  });
+
+  it("with hit points is a mesh that a swing breaks, then it is gone", async () => {
+    const asset = await cubeAsset();
+    const { rapier, world } = await createPhysics();
+    const built = buildLevel(levelWith(asset, {
+      id: "m1", asset: "cube", pos: [0, 0, 0], behaviour: "breakable", hitPoints: 30,
+    }), rapier, world, FAKE);
+    await built.modelBreakables.ready;
+    expect(topAt(world, rapier)).toBeCloseTo(0.5, 1);
+    // A swing from above the model takes 20 off it, then the rest.
+    built.modelBreakables.swing(new THREE.Vector3(0, 5, 0), new THREE.Vector3(0, -1, 0), 10, 20);
+    expect(built.modelBreakables.hpOf("m1")).toBe(10);
+    built.modelBreakables.swing(new THREE.Vector3(0, 5, 0), new THREE.Vector3(0, -1, 0), 10, 20);
+    expect(built.modelBreakables.hpOf("m1")).toBe(0);
+    expect(topAt(world, rapier)).toBeNull();
+    built.modelBreakables.reset();
+    expect(built.modelBreakables.hpOf("m1")).toBe(30);
+    expect(topAt(world, rapier)).toBeCloseTo(0.5, 1);
+  });
+});

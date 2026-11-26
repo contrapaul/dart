@@ -14,7 +14,7 @@
     "stairsMaxSteps": 64
   },
   "lights": { "maxShadows": 4, "_note": "ED-32: at most this many lights cast shadows (each is a shadow map pass)." },
-  "models": { "maxAssetBytes": 3000000, "maxTotalBytes": 12000000, "_note": "ED-35: an imported GLB may be this many bytes, and all of a level's together this many (they live inside the level file)." },
+  "models": { "maxAssetBytes": 3000000, "maxTotalBytes": 12000000, "maxVoxels": 60000, "_note": "ED-35: an imported GLB may be this many bytes, and all of a level's together this many (they live inside the level file). A voxel breakable model with more voxels inside than maxVoxels is built by hit points instead." },
   "terrain": { "maxCells": 256, "_note": "ED-34: the most heightfield cells along a side." },
   "grid": 0.5,
   "rotateStep": 15,
