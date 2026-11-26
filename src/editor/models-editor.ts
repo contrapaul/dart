@@ -319,11 +319,20 @@ export function buildModelFields(
  *  Until the asset loads it is a small box at the point. */
 export function modelGhost(level: Level, assetId: string, point: THREE.Vector3): THREE.Group {
   const group = new THREE.Group();
-  group.position.set(point.x, point.y, point.z);
+  // A small see-through box at the click until the model's own copy is ready,
+  // so a first placement still shows where it will land.
+  const placeholder = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.4, 0.4),
+    new THREE.MeshStandardMaterial({ color: "#ffd23a", transparent: true, opacity: 0.4, depthWrite: false }),
+  );
+  placeholder.position.copy(point);
+  group.add(placeholder);
   const asset = (level.modelAssets ?? []).find((a) => a.id === assetId);
   if (!asset) return group;
   void loadModelAsset(asset).then((scene) => {
     const entry = makeModel("ghost", assetId, modelBounds(scene), point);
+    // The placed copy carries the click point in its own position, so the
+    // group itself stays at the origin (the view resets it every move).
     const copy = ownResources(modelObject(entry, scene));
     group.clear();
     group.add(copy);
