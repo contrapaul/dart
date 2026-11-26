@@ -31,6 +31,32 @@ export function turnAbout(out: Vec3, centre: Vec3, point: Vec3, turn: number): V
   return out;
 }
 
+/** A thing a move may name, and what rides on it. A button mounted on a
+ *  moving prim (`Button.on`) is a movable of its own with an `on` that is
+ *  applied when the prim moves. */
+export interface Movable {
+  id: string;
+  apply: MoverApply;
+  on?: { id: string; apply: MoverApply };
+}
+
+/** Registers each movable, and runs what rides on one when it moves. */
+export function registerMovables(movers: Movers, movables: Movable[]): void {
+  const riders = new Map<string, MoverApply[]>();
+  for (const m of movables) {
+    if (!m.on) continue;
+    const list = riders.get(m.on.id) ?? [];
+    list.push(m.on.apply);
+    riders.set(m.on.id, list);
+  }
+  for (const m of movables) {
+    movers.register(m.id, (x, y, z, turn) => {
+      m.apply(x, y, z, turn);
+      for (const rider of riders.get(m.id) ?? []) rider(x, y, z, turn);
+    });
+  }
+}
+
 /** One thing's current move. Positions and turns are absolute offsets and
  *  angles from the thing's rest transform, so a restart can start there. */
 interface Job {

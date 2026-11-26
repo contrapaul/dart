@@ -4,7 +4,7 @@ import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
 import { primColliderParts, primGeometry, primMatrix } from "./prim-geometry";
 import { material } from "../voxel/materials";
-import type { Level, Prim } from "./format";
+import type { Level, Prim, Vec3 } from "./format";
 
 // ED-01: the editor's primitives out of the level file and into the scene
 // (design/EDITOR.md section 6). A prim that never hides and shares a colour
@@ -22,6 +22,26 @@ import type { Level, Prim } from "./format";
 /** What a level page can do to a prim that a trigger names. */
 export interface PrimHandle {
   setShown(shown: boolean): void;
+  /** ED-31: an offset and a yaw turn about `centre` (its own, when left
+   *  out). Present only on a prim a `move` names: it is built as its own
+   *  mesh with its colliders on a kinematic body, so it can move alone. */
+  move?(by: Vec3, turn: number, centre?: Vec3): void;
+}
+
+const UP = new THREE.Vector3(0, 1, 0);
+
+/** ED-31: the ids a `move` action names. A merged prim cannot move alone,
+ *  so these are built as their own mesh. A prop id covers its `<id>#n`
+ *  parts, which is how props are built (src/level/props.ts). */
+export function movedPrimIds(level: Level): Set<string> {
+  const ids = new Set<string>();
+  for (const t of level.triggers ?? []) {
+    for (const d of t.do ?? []) {
+      if (d.kind !== "move") continue;
+      for (const id of d.ids) ids.add(id);
+    }
+  }
+  return ids;
 }
 
 export function materialFor(colour: string) {
@@ -98,6 +118,7 @@ export function buildPrims(
   /** Merged geometry per colour, for the prims that never hide. */
   const merged = new Map<string, THREE.BufferGeometry[]>();
   const materials = new Map<string, THREE.MeshStandardMaterial>();
+  const moved = movedPrimIds(level);
 
   for (const prim of level.prims ?? []) {
     // ED-03 draws hazards; a hazard is see-through and has no collision.
@@ -119,6 +140,62 @@ export function buildPrims(
       geometry.dispose();
       geometry = flat;
     }
+
+    // ED-31: a prim a move names keeps its own mesh, with its colliders on
+    // a kinematic body so its trigger can shift them each step. A prop id
+    // covers its parts. The geometry stays local here and the mesh carries
+    // the prim's transform, because a turn must go round the prim itself.
+    const hash = prim.id.indexOf("#");
+    if (moved.has(prim.id) || (hash > 0 && moved.has(prim.id.slice(0, hash)))) {
+      let material = materials.get(prim.colour);
+      if (!material) {
+        material = materialFor(prim.colour);
+        materials.set(prim.colour, material);
+      }
+      const restPos = new THREE.Vector3();
+      const restQuat = new THREE.Quaternion();
+      primMatrix(prim).decompose(restPos, restQuat, new THREE.Vector3());
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.copy(restPos);
+      mesh.quaternion.copy(restQuat);
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.visible = !prim.hidden;
+      group.add(mesh);
+      const body = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased());
+      // The descs are world space and the body starts at identity, so they
+      // need no re-placing: the body's own move carries them.
+      const colliders = collides
+        ? collidersFor(rapier, prim).map((d) => world.createCollider(d, body))
+        : [];
+      for (const c of colliders) c.setEnabled(!prim.hidden);
+      const pivot = new THREE.Vector3();
+      const yaw = new THREE.Quaternion();
+      const shift = new THREE.Vector3();
+      handles.set(prim.id, {
+        setShown(shown: boolean) {
+          mesh.visible = shown;
+          for (const c of colliders) c.setEnabled(shown);
+        },
+        move(by: Vec3, turn: number, centre?: Vec3) {
+          pivot.set(...(centre ?? ([restPos.x, restPos.y, restPos.z] as Vec3)));
+          yaw.setFromAxisAngle(UP, turn);
+          mesh.position.copy(restPos).sub(pivot).applyQuaternion(yaw).add(pivot);
+          mesh.position.x += by[0];
+          mesh.position.y += by[1];
+          mesh.position.z += by[2];
+          mesh.quaternion.copy(yaw).multiply(restQuat);
+          // The body turns the colliders about the same pivot.
+          shift.copy(pivot).negate().applyQuaternion(yaw).add(pivot);
+          shift.x += by[0];
+          shift.y += by[1];
+          shift.z += by[2];
+          body.setNextKinematicTranslation(shift);
+          body.setNextKinematicRotation(yaw);
+        },
+      });
+      continue;
+    }
+
     geometry.applyMatrix4(primMatrix(prim));
 
     if (!prim.hidden) {
