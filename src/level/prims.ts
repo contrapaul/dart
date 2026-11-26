@@ -125,7 +125,7 @@ export function buildPrims(
     if (!prim.hidden) {
       // ED-36: world-scaled UVs at the surface's scale, so textures are
       // the same size on a small box and a long wall.
-      if (prim.surface && SURFACES[prim.surface]) {
+      if (prim.surface && prim.surface !== "plain" && SURFACES[prim.surface]) {
         // Drop the baked-in uv so worldUVs is the only one; any other
         // attribute set mismatch is also cleared below.
         geometry.deleteAttribute("uv");
@@ -133,7 +133,7 @@ export function buildPrims(
       }
       // One attribute set for every merged part, or mergeGeometries refuses.
       for (const name of Object.keys(geometry.attributes)) {
-        if (name !== "position" && name !== "normal" && !(prim.surface && name === "uv")) geometry.deleteAttribute(name);
+        if (name !== "position" && name !== "normal" && !(prim.surface && prim.surface !== "plain" && name === "uv")) geometry.deleteAttribute(name);
       }
       const key = `${prim.colour}|${prim.surface ?? "plain"}`;
       const list = merged.get(key) ?? [];
@@ -148,12 +148,12 @@ export function buildPrims(
     // A hidden prim keeps its own mesh and colliders, both off, so a
     // trigger can show it without rebuilding the level. ED-36: it wears
     // its surface too.
-    if (prim.surface && SURFACES[prim.surface]) {
+    if (prim.surface && prim.surface !== "plain" && SURFACES[prim.surface]) {
       geometry.deleteAttribute("uv");
       geometry = worldUVs(geometry, new THREE.Matrix4(), SURFACES[prim.surface]!.scale);
     }
     for (const name of Object.keys(geometry.attributes)) {
-      if (name !== "position" && name !== "normal" && !(prim.surface && name === "uv")) geometry.deleteAttribute(name);
+      if (name !== "position" && name !== "normal" && !(prim.surface && prim.surface !== "plain" && name === "uv")) geometry.deleteAttribute(name);
     }
     const key = `${prim.colour}|${prim.surface ?? "plain"}`;
     let material = materials.get(key);
