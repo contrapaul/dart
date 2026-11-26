@@ -1,0 +1,11 @@
+{
+  "_note": "ED-33: the physics objects an editor level places (design/EDITOR-V2.md, Paul's item 13). A physics object is a Rapier dynamic body: a box, a cylinder or a ball of its own size and mass, drawn in its colour and surface. It rests on the floor, sleeps when still, and can be shoved by a dart or a blast. damageSpeed: the closing speed in metres a second below which a hit hurts nobody, so a nudged crate never hurts. bounce: the default restitution of a collider whose own object names none (0 to 1). friction: the collider friction for every physics object. dartImpulse: the impulse in newton seconds a standard dart gives a free object, scaled by the dart type's damage against a Foamer (data/foamers.json), so a heavier round shoves harder. blastImpulse: the impulse in newton seconds a blast gives at its centre, falling linearly to 0 at the blast profile's reachMetres (data/explosion.json). maxLive: the hard cap on awake bodies, the performance rule; beyond it the extra ones are put to sleep until something wakes them. sleepSeconds: how long a body must rest before it is put to sleep. sleepSpeed: the speed in metres a second at or below which a body counts as resting. Start values for Paul to tune on the range.",
+  "damageSpeed": 4,
+  "bounce": 0.2,
+  "friction": 0.7,
+  "dartImpulse": 1.5,
+  "blastImpulse": 40,
+  "maxLive": 60,
+  "sleepSeconds": 1.2,
+  "sleepSpeed": 0.05
+}
