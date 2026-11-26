@@ -26,6 +26,9 @@ import { Hazards } from "../level/hazards";
 import { Barrels } from "../level/barrels";
 import { leakingBarrels } from "../level/props";
 import { TriggerRunner } from "../level/triggers";
+import { Movers, registerMovables, type Movable } from "../level/movers";
+import type { PrimHandle } from "../level/prims";
+import type { Vec3 } from "../level/format";
 import { KeyPickups } from "../level/key-pickups";
 import type { Foamer } from "../foamers/foamer";
 import { dartDamageOf } from "../level/breakables";
@@ -123,6 +126,9 @@ export interface ArenaExtras {
   /** ED-01: the Foamers the level placed by hand. A trigger waking one
    *  calls `placed.wake(ids)` (ED-07). */
   placed: PlacedFoamers;
+  /** ED-31: the move action's registry. A later kind (a light, a physics
+   *  object, a model) plugs in with `register(id, apply)`. */
+  movers: Movers;
 }
 
 export function arenaExtras(
@@ -360,7 +366,56 @@ export function arenaExtras(
   function playPress(e: PressEvent | null): void {
     if (!e) return;
     audio.play(e.opened ? "ENV-button-press" : "ENV-button-dead", { position: e.pos });
+    // ED-31: a placed button needs no action of its own: its pressed
+    // triggers act. A dead click (the button was already pressed) is not a
+    // press. An ENV-02 button keeps its door action as well.
+    if (e.opened) triggers.pressed(e.id);
   }
+
+  // ED-31: the move action. Every thing a move may name registers an apply
+  // that puts it at its rest transform plus an offset and a turn, so a move
+  // is measured from where the level put it. A button mounted on a thing
+  // (`on`) rides on it.
+  const movers = new Movers();
+  const centreOf = (id: string): Vec3 => {
+    const thing = [...(LEVEL.prims ?? []), ...(LEVEL.props ?? []), ...(LEVEL.buttons ?? [])]
+      .find((t) => t.id === id);
+    return thing ? ([...thing.pos] as Vec3) : [0, 0, 0];
+  };
+  const movables: Movable[] = [];
+  const propParts = new Map<string, PrimHandle[]>();
+  for (const [id, handle] of level.prims) {
+    const move = handle.move;
+    if (!move) continue;
+    // A prop's parts are `<prop id>#<n>`: the prop's id is the thing.
+    const hash = id.indexOf("#");
+    if (hash < 0) {
+      movables.push({ id, apply: (x, y, z, turn) => move([x, y, z], turn) });
+      continue;
+    }
+    const base = id.slice(0, hash);
+    const list = propParts.get(base) ?? [];
+    list.push(handle);
+    propParts.set(base, list);
+  }
+  for (const [id, parts] of propParts) {
+    const centre = centreOf(id);
+    movables.push({ id, apply: (x, y, z, turn) => {
+      for (const part of parts) part.move!([x, y, z], turn, centre);
+    } });
+  }
+  for (const b of level.buttons) {
+    const onId = b.spec.on;
+    movables.push({
+      id: b.id,
+      apply: (x, y, z, turn) => b.move([x, y, z], turn, b.spec.pos),
+      on: onId ? {
+        id: onId,
+        apply: (x, y, z, turn) => b.move([x, y, z], turn, centreOf(onId)),
+      } : undefined,
+    });
+  }
+  registerMovables(movers, movables);
   // The dart's own hit chain ends with this: a cap that stopped the dart is
   // a press. `impacts` and the Foamers wrap `onHit` in front of it, so this
   // runs after them and does not disturb them.
@@ -683,12 +738,21 @@ export function arenaExtras(
   }
   const levelDoorIds = new Set((LEVEL.doors ?? []).map((d) => d.id));
   const levelDoorStart = new Map((LEVEL.doors ?? []).map((d) => [d.id, d.lock === "none" ? "open" as const : "locked" as const]));
+  // ED-31: a button mounted on a thing goes with it.
+  const onButtons = new Map<string, typeof level.buttons>();
+  for (const b of level.buttons) {
+    if (!b.spec.on) continue;
+    const list = onButtons.get(b.spec.on) ?? [];
+    list.push(b);
+    onButtons.set(b.spec.on, list);
+  }
   function setShown(ids: string[], shown: boolean) {
     for (const id of ids) {
       level.prims.get(id)?.setShown(shown);
       breakables.handles.get(id)?.setShown(shown);
       hazards.setShown(id, shown);
       built.lights.handles.get(id)?.setVisible(shown);
+      for (const b of onButtons.get(id) ?? []) b.setShown(shown);
       if (shown) placed.wake([id]);
     }
   }
@@ -699,6 +763,7 @@ export function arenaExtras(
     wake: (ids) => { placed.wake(ids); },
     show: (ids) => setShown(ids, true),
     hide: (ids) => setShown(ids, false),
+    move: (ids, by, turn, seconds) => movers.start(ids, by, turn, seconds),
     open: (door) => events.setDoor(door, "open"),
     close: (door) => events.setDoor(door, "locked"),
     message: (text, seconds) => showBanner(text, seconds),
@@ -726,11 +791,15 @@ export function arenaExtras(
     pendingSpawns.length = 0;
     for (const id of level.prims.keys()) level.prims.get(id)!.setShown(false);
     for (const h of breakables.handles.values()) h.setShown(false);
+    // A button on a thing that starts hidden starts hidden too.
+    const hiddenThings = new Set((LEVEL.prims ?? []).filter((p) => p.hidden).map((p) => p.id));
+    for (const b of level.buttons) if (b.spec.on) b.setShown(!hiddenThings.has(b.spec.on));
     for (const p of LEVEL.prims ?? []) if (p.behaviour === "hazard") hazards.setShown(p.id, !p.hidden);
     for (const l of LEVEL.lights ?? []) built.lights.handles.get(l.id)?.setVisible(!l.hidden);
     for (const [id, state] of levelDoorStart) level.doors.get(id)?.setState(state);
     keys.reset();
     showKeys();
+    movers.reset();
     triggers.reset();
     triggers.start();
   }
@@ -796,6 +865,7 @@ export function arenaExtras(
           triggers.killed(t.tag);
         }
       }
+      movers.update(dt);
       triggers.update(dt, arenaCtx.playerPos);
       const doorLocked = (id: string) => levelDoorIds.has(id) && level.doors.get(id)?.state !== "open";
       for (const k of keys.update(dt, at, doorLocked, (id) => events.setDoor(id, "open"))) {
@@ -834,8 +904,15 @@ export function arenaExtras(
       // it); a level without stations pays nothing for the call.
       const eye = g.player.eye(1, _stationEye);
       const fwd = g.camera.getWorldDirection(_stationFwd);
+      // ED-31: a button set to need the use key is pressed here, within reach
+      // and looking at it, and it takes the key before a station does.
+      const useKey = g.input.isDown("use");
+      const usedButton = useKey
+        ? buttons.pressWithUse(eye, fwd, melee.reach, melee.arcDeg, player.collider)
+        : null;
+      playPress(usedButton);
       const held = useHeldForStations(
-        { finisher: g.finisher, vacuum: g.vacuum, useHeld: g.input.isDown("use") }, eye, fwd);
+        { finisher: g.finisher, vacuum: g.vacuum, useHeld: useKey && !usedButton }, eye, fwd);
       stations.update(dt, eye, fwd, held, loadout);
     },
     afterWorld(dt: number) {
@@ -919,5 +996,5 @@ export function arenaExtras(
     }),
   };
 
-  return { hooks, runner, placed };
+  return { hooks, runner, placed, movers };
 }

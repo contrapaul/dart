@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Level, LevelDoor, LevelLight, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
+import type { Level, Button, LevelDoor, LevelLight, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
 import {
   EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
 } from "./doc";
@@ -33,6 +33,7 @@ import { ICONS, type IconName } from "./icons";
 import { isFolded, toggleFolded, unfoldGroup } from "./outliner-fold";
 import { isLockableKind, lockButton, lockedIds, movableIds } from "./lock";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
+import { BUTTON_COLOUR, buildButtonFields, makeButton } from "./buttons-editor";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -73,7 +74,7 @@ const view = new EditorView($<HTMLCanvasElement>("view"));
 /** What the palette will place on the next click in the view: a primitive
  *  shape, or ED-05's other kinds (a Foamer, a pickup, a door, a spawn point,
  *  a zone). Only one is armed at a time. */
-type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "lights";
+type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "lights" | "buttons";
 let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
 /** ED-23: the saved asset the next click in the view places, or null. */
@@ -296,6 +297,7 @@ const PART_GROUPS: { kind: PartKind; title: string }[] = [
   { kind: "zones", title: "Zones" },
   { kind: "props", title: "Props" },
   { kind: "lights", title: "Lights" },
+  { kind: "buttons", title: "Buttons" },
 ];
 
 /** The name a row shows for a placed thing: its id, and what it is. */
@@ -320,6 +322,10 @@ function partName(id: string): string {
   if (kind === "lights") {
     const l = doc.find<LevelLight>(kind, id);
     return l ? `${id}  ${l.kind}` : id;
+  }
+  if (kind === "buttons") {
+    const b = doc.find<Button>(kind, id);
+    return b?.on ? `${id}  on ${b.on}` : id;
   }
   return id;
 }
@@ -563,6 +569,7 @@ function partColour(kind: PartKind): string {
     case "zones": return MARKERS.zoneColour;
     case "props": return PROP_KINDS[armedProp]?.parts[0]?.colour ?? MARKERS.doorColour;
     case "lights": return "#fff6e8";
+    case "buttons": return BUTTON_COLOUR;
   }
 }
 
@@ -574,8 +581,14 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
   armedAsset = null;
   armedPaint = false;
   view.setGhost(null);
-  const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
-  const how = shape ? "Click to place, or drag out its size on a floor." : "Click to place.";
+  const name = shape
+    ? SHAPES.find((s) => s.shape === shape)!.label
+    : part
+      ? part === "buttons" ? "Button" : PART_BUTTONS.find((b) => b.kind === part)!.name
+      : null;
+  const how = shape
+    ? "Click to place, or drag out its size on a floor."
+    : part === "buttons" ? "Click a surface to mount it on that face." : "Click to place.";
   const hint = $("toolHint");
   hint.textContent = name ? `${name}: ${how} Shift keeps the tool. Esc stops.` : "";
   hint.hidden = !name;
@@ -663,6 +676,9 @@ function buildPalette() {
   if (armedPaint) paintWrap.append(buildPaintPanel(paintSettings, () => buildPalette()));
   paint.append(paintWrap);
   const logic = toolGroup(host, "Logic");
+  // ED-31: placed by clicking a surface, so it mounts on the face clicked.
+  logic.append(toolButton("buttons", "Button", BUTTON_COLOUR, armedPart === "buttons",
+    () => arm(null, armedPart === "buttons" ? null : "buttons")));
   // ED-08: a trigger is not placed by a click, so its button adds one at
   // once and selects it, ready for the inspector.
   logic.append(toolButton("trigger", TRIGGER_BUTTON, null, false, () => {
@@ -835,6 +851,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
     maxShadows: EDITOR.lights.maxShadows,
     shadows: doc.entries("lights").filter((l) => (l as LevelLight).castShadow === true).length,
   });
+  else if (kind === "buttons") buildButtonFields(host, doc.find<Button>(kind, id)!, doc.level, ctx);
   else if (kind === "triggers") buildTriggerInspector(host, id);
   else buildZoneFields(host, doc.find(kind, id)!, ctx);
 }
@@ -933,7 +950,7 @@ const DRAG_PIXELS = 4;
  *  tool (a shape's footprint can be dragged out on a floor), or moving the
  *  thing under the cursor along the surfaces. */
 let press:
-  | { kind: "place"; x: number; y: number; point: THREE.Vector3; normal: THREE.Vector3; corner: THREE.Vector3 | null }
+  | { kind: "place"; x: number; y: number; point: THREE.Vector3; normal: THREE.Vector3; corner: THREE.Vector3 | null; id: string | null }
   | { kind: "move"; x: number; y: number; id: string; grab: THREE.Vector3; started: boolean; offset: THREE.Vector3; lift: number; startY: number }
   | { kind: "box"; x: number; y: number; started: boolean }
   | {
@@ -1063,7 +1080,7 @@ canvas.addEventListener("pointerdown", (e) => {
   }
   const hit = view.pick(...ndcOf(e));
   if (armed || armedPart || armedAsset) {
-    if (hit) press = { kind: "place", x: e.clientX, y: e.clientY, point: hit.point, normal: hit.normal, corner: null };
+    if (hit) press = { kind: "place", x: e.clientX, y: e.clientY, point: hit.point, normal: hit.normal, corner: null, id: hit.id };
     return;
   }
   // A placed thing (a Foamer, a pickup) drags at once; a shape only once it
@@ -1201,7 +1218,7 @@ window.addEventListener("pointerup", (e) => {
     }
     view.setGhost(null);
     if (armed) place(armed, was.point, was.normal, was.corner ?? undefined);
-    else if (armedPart) placePart(armedPart, was.point, was.normal);
+    else if (armedPart) placePart(armedPart, was.point, was.normal, was.id);
     // One thing per pick of the tool; Shift keeps the tool for the next.
     if (!shift) arm(null, null);
     else buildPalette();
@@ -1373,11 +1390,14 @@ function partAt(kind: PartKind, id: string, point: THREE.Vector3, normal: THREE.
   if (kind === "spawnPoints") return snapped(makeSpawn(id, at));
   if (kind === "props") return makeProp(id, armedProp, at);
   if (kind === "lights") return snapped(makeLight(id, at, armedLight, 0.5, [normal.x, normal.y, normal.z]));
+  // ED-31: a button sits at the hit point, facing out of the face clicked.
+  if (kind === "buttons") return makeButton(id, at, [normal.x, normal.y, normal.z]);
   return snapped(makeZone(id, at));
 }
 
-/** Places a part (see `partAt`) and selects it. */
-function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) {
+/** Places a part (see `partAt`) and selects it. `on` is the thing the click
+ *  hit, for a button mounted on it (null on the level's own floor). */
+function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3, on: string | null = null) {
   if (kind === "foamers" && !roomForKind("foamers")) return;
   if (kind === "props" && doc.entries("props").length >= LIMITS.props) {
     status.textContent = `Prop cap: ${LIMITS.props}.`;
@@ -1387,8 +1407,14 @@ function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) 
     status.textContent = `Light cap: ${LIMITS.lights}.`;
     return;
   }
-  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : kind === "lights" ? "light" : "zone";
-  const entry = partAt(kind, doc.nextId(prefix), point, normal);
+  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : kind === "lights" ? "light" : kind === "buttons" ? "button" : "zone";
+  const id = doc.nextId(prefix);
+  // ED-31: a button mounts on a thing, not on a marker for a door or a
+  // pickup: only the kinds a move can carry count.
+  const carrier = on && ["prims", "props", "models", "physics"].includes(doc.kindOf(on) ?? "") ? on : null;
+  const entry = kind === "buttons"
+    ? makeButton(id, [point.x, point.y, point.z], [normal.x, normal.y, normal.z], carrier ?? undefined)
+    : partAt(kind, id, point, normal);
   doc.add(kind, entry as never);
   pick(entry.id);
 }

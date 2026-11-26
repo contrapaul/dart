@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import { SIGHT_QUERY_GROUPS, type Rapier } from "../physics/world";
 import { material, materialId } from "../voxel/materials";
-import type { Button } from "./format";
+import type { Button, Vec3 } from "./format";
 import tuning from "../../data/buttons.json";
 
 // ENV-02 (E08): the toy button. Paul's look is a flat plate with a cylinder
@@ -43,13 +43,22 @@ export type ButtonAction = (open: string) => void;
 export interface ButtonHandle {
   readonly id: string;
   readonly spec: Button;
+  /** The plate mesh, so a hidden or moved button takes it along. */
+  readonly plate: THREE.Mesh;
   /** The cap mesh: squashes and changes colour on the press. */
   readonly cap: THREE.Mesh;
   /** The cap's collider: what a dart or a melee line meets. */
   readonly collider: RAPIER.Collider;
-  /** Cap centre at rest, world space. */
+  /** Cap centre where it is now (a move shifts it), world space. */
   readonly up: THREE.Vector3;
+  /** Outward normal where it is now, after any turn. */
+  readonly normal: THREE.Vector3;
   pressed: boolean;
+  /** ED-31: shift and turn the plate, the cap and the cap's collider about
+   *  `centre`. Its own centre is the button's pos. */
+  move(by: Vec3, turn: number, centre: Vec3): void;
+  /** ED-31: a button on a hidden thing is hidden with it. */
+  setShown(shown: boolean): void;
 }
 
 /** Adds one button's plate and cap to `group`, with a fixed collider on the
@@ -87,7 +96,43 @@ export function buildButton(
       .setTranslation(cap.position.x, cap.position.y, cap.position.z)
       .setRotation({ x: rot.x, y: rot.y, z: rot.z, w: rot.w }),
   );
-  return { id: spec.id, spec, cap, collider, up: cap.position.clone(), pressed: false };
+  // ED-31: the rest transform, so a move is always measured from it and a
+  // turn goes about the button's own centre.
+  const restPlate = plate.position.clone();
+  const restCap = cap.position.clone();
+  const restNormal = facing.clone();
+  const yaw = new THREE.Quaternion();
+  const pivot = new THREE.Vector3();
+  const handle: ButtonHandle = {
+    id: spec.id, spec, plate, cap, collider,
+    up: cap.position.clone(), normal: facing.clone(), pressed: false,
+    move(by: Vec3, turn: number, centre: Vec3) {
+      pivot.set(centre[0], centre[1], centre[2]);
+      yaw.setFromAxisAngle(new THREE.Vector3(0, 1, 0), turn);
+      const put = (out: THREE.Vector3, rest: THREE.Vector3) => {
+        out.copy(rest).sub(pivot).applyQuaternion(yaw).add(pivot);
+        out.x += by[0];
+        out.y += by[1];
+        out.z += by[2];
+      };
+      put(plate.position, restPlate);
+      plate.quaternion.copy(yaw).multiply(rot);
+      put(cap.position, restCap);
+      cap.quaternion.copy(yaw).multiply(rot);
+      handle.normal.copy(restNormal).applyQuaternion(yaw);
+      handle.up.copy(cap.position);
+      if (handle.pressed) cap.position.addScaledVector(handle.normal, -T.cap.pressDepth / 2);
+      collider.setTranslation({ x: cap.position.x, y: cap.position.y, z: cap.position.z });
+      const q = plate.quaternion;
+      collider.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w });
+    },
+    setShown(shown: boolean) {
+      plate.visible = shown;
+      cap.visible = shown;
+      collider.setEnabled(shown);
+    },
+  };
+  return handle;
 }
 
 /** The level's buttons, wired to one action. A level with no buttons gets an
@@ -137,10 +182,11 @@ export class ButtonSystem {
   }
 
   /** A dart, or a melee line: the collider that stopped it. Returns the
-   *  press when that collider is a cap, null otherwise. */
+   *  press when that collider is a cap, null otherwise. A button set to need
+   *  the use key is not pressed by a dart or a swing (ED-31). */
   pressByCollider(collider: RAPIER.Collider, at?: THREE.Vector3): PressEvent | null {
     const b = this.buttons.find((x) => x.collider === collider);
-    return b ? this.press(b, at) : null;
+    return b && b.spec.use !== true ? this.press(b, at) : null;
   }
 
   /** A melee swing inside reach of a cap and inside its arc, with a clear
@@ -155,6 +201,29 @@ export class ButtonSystem {
     let best: ButtonHandle | null = null;
     let bestD = Infinity;
     for (const b of this.buttons) {
+      if (b.spec.use === true) continue;
+      const d = b.up.distanceTo(eye);
+      if (d > reach || d >= bestD) continue;
+      if (_n.copy(b.up).sub(eye).normalize().dot(forward) < cone) continue;
+      if (!this.inSight(eye, b, d, exclude)) continue;
+      best = b;
+      bestD = d;
+    }
+    return best ? this.press(best, undefined) : null;
+  }
+
+  /** ED-31: the use key, pressed on a button that asks for it: within reach,
+   *  looking at it, with a clear line, and not already pressed (so a held
+   *  key is one press, not one a step). */
+  pressWithUse(
+    eye: THREE.Vector3, forward: THREE.Vector3, reach: number, arcDeg: number,
+    exclude?: RAPIER.Collider,
+  ): PressEvent | null {
+    const cone = Math.cos((arcDeg / 2) * (Math.PI / 180));
+    let best: ButtonHandle | null = null;
+    let bestD = Infinity;
+    for (const b of this.buttons) {
+      if (b.spec.use !== true || b.pressed) continue;
       const d = b.up.distanceTo(eye);
       if (d > reach || d >= bestD) continue;
       if (_n.copy(b.up).sub(eye).normalize().dot(forward) < cone) continue;
@@ -180,6 +249,7 @@ export class ButtonSystem {
    *  footprint, at or just above its top. A wall button is never stepped on. */
   step(feet: THREE.Vector3): PressEvent | null {
     for (const b of this.buttons) {
+      if (b.spec.use === true) continue;
       if (b.spec.facing[1] < 0.5) continue;
       const top = b.up.y + T.cap.height / 2;
       if (feet.y < top - T.cap.height / 2 || feet.y > top + T.stepTolerance) continue;
@@ -199,7 +269,7 @@ export class ButtonSystem {
     b.cap.scale.set(1, 1 - T.cap.pressDepth / T.cap.height, 1);
     b.cap.position
       .copy(b.up)
-      .addScaledVector(normalOf(b.spec), -T.cap.pressDepth / 2);
+      .addScaledVector(b.normal, -T.cap.pressDepth / 2);
     b.cap.material = this.lit;
     if (first && b.spec.action) this.action(b.spec.action.open);
     return { id: b.id, pos: at ? at.clone() : b.up.clone(), opened: first };
@@ -209,9 +279,6 @@ export class ButtonSystem {
 const _n = new THREE.Vector3();
 /** A ray-shaped scratch: Rapier reads only origin and dir. */
 const _ray = { origin: { x: 0, y: 0, z: 0 }, dir: { x: 0, y: 0, z: 1 } };
-function normalOf(spec: Button): THREE.Vector3 {
-  return _n.set(spec.facing[0], spec.facing[1], spec.facing[2]).normalize();
-}
 
 function colourOf(name: string): number {
   return material(materialId(name))?.color ?? 0xbdb5cf;

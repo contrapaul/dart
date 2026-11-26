@@ -357,10 +357,11 @@ export function validateLevel(level: Level): ValidationResult {
     if (!isVec3(f)) {
       errors.push(`${what}: facing must be three numbers`);
     } else {
+      // ED-31: a button is placed on any face, so any unit vector will do
+      // (it used to be an axis only, which could not mount one on a slope).
       const len = Math.hypot(f[0], f[1], f[2]);
-      const axes = [Math.abs(f[0]), Math.abs(f[1]), Math.abs(f[2])].filter((n) => n > 1e-3).length;
-      if (Math.abs(len - 1) > 1e-3 || axes !== 1) {
-        errors.push(`${what}: facing must be a unit axis, like [0, 1, 0]`);
+      if (Math.abs(len - 1) > 1e-3 || len < 1e-6) {
+        errors.push(`${what}: facing must be a unit vector, like [0, 1, 0]`);
       }
     }
     // ED-31: an editor button has no action; its pressed triggers act.

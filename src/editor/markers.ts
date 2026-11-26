@@ -4,8 +4,9 @@ import type { RigSpec } from "../foamers/rig";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 import type {
-  Box, LevelDoor, LevelLight, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
+  Box, Button, LevelDoor, LevelLight, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
 } from "../level/format";
+import { buttonMarker } from "./buttons-editor";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { PROP_KINDS } from "../level/props";
 import { BLASTERS, MARKERS, MELEE, doorColour, foamerColour, pickupColour } from "./parts";
@@ -224,7 +225,7 @@ function lightMarker(l: LevelLight): THREE.Group {
 /** Builds the marker for one entry, with the data the handles need. */
 export function markerFor(
   kind: Marker["kind"],
-  entry: PlacedFoamer | Pickup | LevelDoor | Rift | Zone | Prop | PlayerStart | Box,
+  entry: PlacedFoamer | Pickup | LevelDoor | Rift | Zone | Prop | Button | PlayerStart | Box,
 ): Marker {
   switch (kind) {
     case "foamers": {
@@ -254,6 +255,10 @@ export function markerFor(
     case "props": {
       const p = entry as Prop;
       return { object: propMarker(p), pos: p.pos, rot: [0, p.rotY ?? 0, 0], size: null, kind };
+    }
+    case "buttons": {
+      const b = entry as Button;
+      return { object: buttonMarker(b), pos: b.pos, rot: [0, 0, 0], size: null, kind };
     }
     case "start": {
       const s = entry as PlayerStart;

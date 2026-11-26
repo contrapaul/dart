@@ -50,6 +50,7 @@ export const HELP: HelpSection[] = [
       ["Inspector", "The right panel edits what is selected: position, size, colour, surface, behaviour."],
       ["Paint tool", "The brush in the Paint group. Pick a surface and an optional colour, then click or drag across prims to set the surface. Shift keeps the tool."],
       ["Light", "The bulb icon. Pick point or spot beside it, then click a surface, a little off it. A spot shows its cone, angle and range; it turns with the rotate handle. The inspector sets kind, colour, intensity, range, angle, softness, a shadow tick and hidden. No more than four lights cast shadows."],
+      ["Button", "The Logic group's button icon. Click a surface: it mounts on that face, at that point, and on the thing if you clicked a prim, model or physics object. A press fires the trigger whose when is that button. Its inspector sets what it is mounted on and whether a press needs the use key."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
       ["Assets", "The Assets button keeps what is selected under a name, with a picture. Pick a saved asset and click in the view to place it as one group, in this level or another. Assets stay in this browser; export them as a file to move them."],
     ],
