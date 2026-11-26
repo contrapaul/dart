@@ -49,12 +49,14 @@ export const HELP: HelpSection[] = [
       ["Props", "The barrel icon. Pick a barrel, crate, rubble or tank beside it. A prop has a Solid box: off, it is scenery you walk through. The leaking barrel sprays foam when hit and then blows up."],
       ["Inspector", "The right panel edits what is selected: position, size, colour, surface, behaviour."],
       ["Paint tool", "The brush in the Paint group. Pick a surface and an optional colour, then click or drag across prims to set the surface. Shift keeps the tool."],
+      ["Light", "The bulb icon. Pick point or spot beside it, then click a surface, a little off it. A spot shows its cone, angle and range; it turns with the rotate handle. The inspector sets kind, colour, intensity, range, angle, softness, a shadow tick and hidden. No more than four lights cast shadows."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
       ["Assets", "The Assets button keeps what is selected under a name, with a picture. Pick a saved asset and click in the view to place it as one group, in this level or another. Assets stay in this browser; export them as a file to move them."],
     ],
     text: [
       "A prim is set to solid, breakable, hazard or decor in the inspector.",
       "Solid stops the player and the Foamers. Decor is drawn and nothing else.",
+      "With nothing selected, the level's own fields show a Lighting section: ambient colour and intensity, sun colour, intensity, yaw and pitch. Press Default to go back to the arena's own look.",
     ],
   },
   {
