@@ -178,6 +178,19 @@ describe("restart and the awake cap", () => {
     expect(o.body.isSleeping()).toBe(true);
   });
 
+  it("can be moved and turned for a move trigger", async () => {
+    const env = await make([box({ id: "b", pos: [0, 3, 0], asleep: true })]);
+    const o = env.objects.list[0]!;
+    expect(o.body.isSleeping()).toBe(true);
+    env.objects.moveBy("b", new THREE.Vector3(2, 0, 0));
+    expect(o.body.translation().x).toBeCloseTo(2, 5);
+    expect(o.body.isSleeping()).toBe(false);
+    env.objects.turnBy("b", 90);
+    const q = o.body.rotation();
+    const turned = new THREE.Quaternion(q.x, q.y, q.z, q.w);
+    expect(turned.y).toBeCloseTo(Math.SQRT1_2, 4);
+  });
+
   it("holds the awake cap with more objects than it allows", async () => {
     const specs: PhysicsObject[] = [];
     for (let i = 0; i < T.maxLive + 5; i++) {

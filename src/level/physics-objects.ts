@@ -235,6 +235,16 @@ export class PhysicsObjects {
     o.body.setTranslation({ x: _v.x, y: _v.y, z: _v.z }, true);
   }
 
+  /** A move trigger's turn about Y: an angle in degrees, from where it is. */
+  turnBy(id: string, degrees: number): void {
+    const o = this.live.find((l) => l.spec.id === id);
+    if (!o) return;
+    const q = o.body.rotation();
+    const turned = new THREE.Quaternion(q.x, q.y, q.z, q.w)
+      .multiply(new THREE.Quaternion().setFromAxisAngle(UP, degrees * DEG));
+    o.body.setRotation({ x: turned.x, y: turned.y, z: turned.z, w: turned.w }, true);
+  }
+
   /** Show or hide an object: off, it is invisible and out of the simulation,
    *  so a hidden one waits where the level put it. */
   setShown(id: string, shown: boolean): void {
