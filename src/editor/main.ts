@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
 import {
-  EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
+  EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, PALETTE, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
 } from "./doc";
 import { exportFileName, readLevelFile, skyImageDataUrl } from "./files";
 import { buildPrimFields } from "./inspector";
@@ -29,6 +29,7 @@ import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
 import { ICONS, type IconName } from "./icons";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
+import { TerrainTool, TERRAIN_ID, buildTerrainInspector } from "./terrain-editor";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -354,7 +355,9 @@ function buildOutliner() {
   const levelTitle = document.createElement("h2");
   levelTitle.textContent = "Level";
   level.append(levelTitle);
-  for (const [id, label] of [[START_ID, "Player start"], [EXIT_ID, "Exit"]] as const) {
+  const levelRows: [string, string][] = [[START_ID, "Player start"], [EXIT_ID, "Exit"]];
+  if (doc.level.terrain) levelRows.push([TERRAIN_ID, "Terrain"]);
+  for (const [id, label] of levelRows) {
     const row = document.createElement("div");
     row.className = "row" + (selected.has(id) ? " selected" : "");
     const name = document.createElement("span");
@@ -446,6 +449,7 @@ function partColour(kind: PartKind): string {
 /** Arms one shape or part, or disarms it when it is already armed, and says
  *  in the status line what a click will do. */
 function arm(shape: PrimShape | null, part: PartKind | null) {
+  if (shape || part) terrainTool.disarm();
   armed = shape;
   armedPart = part;
   armedAsset = null;
@@ -522,6 +526,15 @@ function buildPalette() {
     }
     arenaDialog(zone);
   }));
+  // ED-34: the ground. The brush panel shows beside the armed button.
+  const ground = toolGroup(host, "Ground");
+  const terrainButton = toolButton("terrain", "Terrain", null, terrainTool.armed, () => terrainTool.toggle());
+  if (terrainTool.armed) {
+    const wrap = document.createElement("div");
+    wrap.className = "tool-wrap";
+    wrap.append(terrainButton, terrainTool.options());
+    ground.append(wrap);
+  } else ground.append(terrainButton);
   const handles = toolGroup(host, "Handles");
   for (const [key, name] of [["translate", "Move (W)"], ["rotate", "Rotate (E)"], ["scale", "Scale (R)"]] as const) {
     handles.append(toolButton(key, name, null, view.mode === key, () => {
@@ -599,6 +612,13 @@ function buildInspector() {
   // mixed selection gets the prim fields (which also covers a start or the
   // exit, since their fields are position and size too, stage 5).
   const only = selected.size === 1 ? [...selected][0]! : null;
+  if (only === TERRAIN_ID) {
+    buildTerrainInspector(host, doc, PALETTE, () => {
+      selected.delete(TERRAIN_ID);
+      terrainTool.disarm();
+    });
+    return;
+  }
   const kind = only ? selectKind(only) ?? doc.kindOf(only) : null;
   if (only && kind && kind !== "prims") {
     buildPartInspector(host, only, kind);
@@ -614,6 +634,7 @@ function selectInView() {
   const picked: string[] = [];
   const named: string[] = [];
   for (const id of selected) {
+    if (id === TERRAIN_ID) continue;
     if (doc.kindOf(id) !== "triggers") {
       picked.push(id);
       continue;
@@ -632,6 +653,7 @@ function selectionName(id: string): string {
   const kind = selectKind(id);
   if (kind === "start") return "Player start";
   if (kind === "exit") return "Exit";
+  if (id === TERRAIN_ID) return "Terrain";
   return partName(id);
 }
 
@@ -721,6 +743,20 @@ function buildPrimInspector(host: HTMLElement) {
 // (wheel, middle and right drags, Alt+left). A plain left click places or
 // selects.
 const canvas = $<HTMLCanvasElement>("view");
+
+// ED-34: the Terrain tool, its brush strokes and the terrain's inspector.
+const terrainTool = new TerrainTool({
+  doc, view, canvas, status,
+  disarmOthers: () => arm(null, null),
+  redrawPalette: () => {
+    buildPalette();
+    const hint = $("toolHint");
+    if (terrainTool.armed) {
+      hint.textContent = "Terrain: drag on it to shape or paint. Shift swaps raise and lower. Esc stops.";
+      hint.hidden = false;
+    } else if (!armed && !armedPart && !armedAsset) hint.hidden = true;
+  },
+});
 
 /** Pixels the cursor must travel before a press becomes a drag. */
 const DRAG_PIXELS = 4;
@@ -1252,6 +1288,7 @@ window.addEventListener("keydown", (e) => {
     }
   }
   if (e.code === "Escape" && !linkKey && (armed || armedPart || armedAsset)) arm(null, null);
+  if (e.code === "Escape" && terrainTool.armed) terrainTool.disarm();
   if (e.code === "Escape" && linkKey) {
     endLink();
     status.textContent = "";

@@ -15,7 +15,21 @@
   },
   "lights": { "maxShadows": 4, "_note": "ED-32: at most this many lights cast shadows (each is a shadow map pass)." },
   "models": { "maxAssetBytes": 3000000, "maxTotalBytes": 12000000, "_note": "ED-35: an imported GLB may be this many bytes, and all of a level's together this many (they live inside the level file)." },
-  "terrain": { "maxCells": 256, "_note": "ED-34: the most heightfield cells along a side." },
+  "terrain": {
+    "_note": "ED-34: maxCells: the most heightfield cells along a side. defaultSize, defaultCell and baseY: the flat terrain the Terrain tool makes, in metres (baseY a little over the new level's floor top at 0, so the two do not flicker). headroom: metres of open sky over the terrain's highest point that still count as inside the level. layers: its four paint layers (a surface from data/surfaces.json and a colour). brush: the brush's starting radius (m) and strength, and the sliders' top ends.",
+    "maxCells": 256,
+    "defaultSize": 64,
+    "defaultCell": 1,
+    "baseY": 0.1,
+    "headroom": 40,
+    "layers": [
+      { "surface": "grass", "colour": "#b6ff3b" },
+      { "surface": "rock", "colour": "#6f6788" },
+      { "surface": "sand", "colour": "#ffd23a" },
+      { "surface": "concrete", "colour": "#f4ecdc" }
+    ],
+    "brush": { "radius": 3, "strength": 2, "maxRadius": 20, "maxStrength": 10 }
+  },
   "grid": 0.5,
   "rotateStep": 15,
   "palette": ["#ff7a1a", "#2ec4ff", "#b6ff3b", "#ff4fa3", "#ffd23a", "#8a5cff", "#f4ecdc", "#6f6788", "#3a3550"],

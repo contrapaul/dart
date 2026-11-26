@@ -4,7 +4,7 @@ import foamerData from "../../data/foamers.json";
 import dartsData from "../../data/darts.json";
 import blastersData from "../../data/blasters.json";
 import meleeData from "../../data/melee.json";
-import type { Arena, Level, Piece, PieceVolume, Prim, ShellBox, TriggerDo } from "./format";
+import type { Arena, Level, Piece, PieceVolume, Prim, ShellBox, Terrain, TriggerDo } from "./format";
 import buttonData from "../../data/buttons.json";
 import surfaceData from "../../data/surfaces.json";
 import pressTuning from "../../data/press.json";
@@ -163,8 +163,8 @@ export function validateLevel(level: Level): ValidationResult {
   if (!level.meta || typeof level.meta.id !== "string") errors.push("meta.id is missing");
   // ED-00: an editor level may be built from prims alone, with no shell.
   if (!Array.isArray(level.shell)) errors.push("shell must be an array");
-  else if (level.shell.length === 0 && !(level.prims ?? []).length) {
-    errors.push("the level needs shell boxes or prims");
+  else if (level.shell.length === 0 && !(level.prims ?? []).length && !level.terrain) {
+    errors.push("the level needs shell boxes, prims or terrain");
   }
   if (!level.playerStart || !isVec3(level.playerStart.pos)) errors.push("playerStart.pos must be three numbers");
   if (!level.exit || !isVec3(level.exit.pos)) errors.push("exit.pos must be three numbers");
@@ -291,7 +291,7 @@ export function validateLevel(level: Level): ValidationResult {
   // solid geometry. The shell bounds are the union of its boxes. A door is
   // allowed to overlap a shell box: it sits in that wall's opening, which
   // the format cannot express separately. Pieces are always solid.
-  const shellBounds = shellUnion(level.shell, level.prims ?? []);
+  const shellBounds = shellUnion(level.shell, level.prims ?? [], level.terrain);
   const outsideShell = (p: Vec3) =>
     p[0] < shellBounds.min[0] - TOUCH || p[0] > shellBounds.max[0] + TOUCH
     || p[1] < shellBounds.min[1] - TOUCH || p[1] > shellBounds.max[1] + TOUCH
@@ -461,7 +461,7 @@ function primBounds(p: Prim): Bounds {
   return turned ? boxBounds(p.pos, [2 * r, 2 * r, 2 * r]) : boxBounds(p.pos, p.size);
 }
 
-function shellUnion(shell: ShellBox[], prims: Prim[]): Bounds {
+function shellUnion(shell: ShellBox[], prims: Prim[], terrain?: Terrain): Bounds {
   const min: Vec3 = [Infinity, Infinity, Infinity];
   const max: Vec3 = [-Infinity, -Infinity, -Infinity];
   const all = [
@@ -469,6 +469,16 @@ function shellUnion(shell: ShellBox[], prims: Prim[]): Bounds {
     ...prims.filter((p) => isVec3(p.pos) && isVec3(p.size) && p.behaviour !== "hazard" && p.behaviour !== "decor")
       .map(primBounds),
   ];
+  // ED-34: the terrain is ground under open sky: its box runs from its
+  // lowest point to `terrain.headroom` metres over its highest.
+  if (terrain && isVec3(terrain.origin) && Array.isArray(terrain.heights) && terrain.heights.length) {
+    const lo = Math.min(...terrain.heights) + terrain.origin[1];
+    const hi = Math.max(...terrain.heights) + terrain.origin[1];
+    all.push({
+      min: [terrain.origin[0], lo, terrain.origin[2]],
+      max: [terrain.origin[0] + terrain.nx * terrain.cell, hi + editorData.terrain.headroom, terrain.origin[2] + terrain.nz * terrain.cell],
+    });
+  }
   for (const b of all) {
     for (let i = 0; i < 3; i++) {
       min[i] = Math.min(min[i], b.min[i]);
