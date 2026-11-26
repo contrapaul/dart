@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Level, Button, LevelDoor, LevelLight, PhysicsObject, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
+import type { Level, Button, LevelDoor, LevelLight, PhysicsObject, Pickup, PlacedFoamer, PlacedModel, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
 import {
   EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, PALETTE, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
   type IdEntry,
@@ -317,7 +317,7 @@ $("problemsBtn").addEventListener("click", () => {
 
 /** The level groups the outliner shows for the placed things, in the order
  *  design/EDITOR.md section 4 lists them. */
-const PART_GROUPS: { kind: PartKind; title: string }[] = [
+const PART_GROUPS: { kind: PartKind | "models"; title: string }[] = [
   { kind: "foamers", title: "Foamers" },
   { kind: "pickups", title: "Pickups" },
   { kind: "doors", title: "Doors" },
@@ -327,6 +327,7 @@ const PART_GROUPS: { kind: PartKind; title: string }[] = [
   { kind: "lights", title: "Lights" },
   { kind: "buttons", title: "Buttons" },
   { kind: "physics", title: "Physics" },
+  { kind: "models", title: "Models" },
 ];
 
 /** The name a row shows for a placed thing: its id, and what it is. */
@@ -351,6 +352,11 @@ function partName(id: string): string {
   if (kind === "lights") {
     const l = doc.find<LevelLight>(kind, id);
     return l ? `${id}  ${l.kind}` : id;
+  }
+  if (kind === "models") {
+    const m = doc.find<PlacedModel>(kind, id);
+    const asset = m && doc.level.modelAssets?.find((a) => a.id === m.asset);
+    return asset ? `${id}  ${asset.name}` : id;
   }
   if (kind === "buttons") {
     const b = doc.find<Button>(kind, id);

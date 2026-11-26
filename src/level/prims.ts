@@ -148,10 +148,18 @@ export function buildPrims(
     // the prim's transform, because a turn must go round the prim itself.
     const hash = prim.id.indexOf("#");
     if (moved.has(prim.id) || (hash > 0 && moved.has(prim.id.slice(0, hash)))) {
-      let material = materials.get(prim.colour);
+      // ED-36 with ED-31: a moving prim wears its surface too, its uvs laid
+      // out where it rests.
+      const surfaced = !!(prim.surface && prim.surface !== "plain" && SURFACES[prim.surface]);
+      if (surfaced) {
+        if (geometry.getAttribute("uv")) geometry.deleteAttribute("uv");
+        geometry = worldUVs(geometry, primMatrix(prim), SURFACES[prim.surface!]!.scale);
+      }
+      const key = `${prim.colour}|${surfaced ? prim.surface : "plain"}`;
+      let material = materials.get(key);
       if (!material) {
-        material = materialFor(prim.colour);
-        materials.set(prim.colour, material);
+        material = surfaced ? surfaceMaterial(prim.surface, prim.colour) : materialFor(prim.colour);
+        materials.set(key, material);
       }
       const restPos = new THREE.Vector3();
       const restQuat = new THREE.Quaternion();
