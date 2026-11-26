@@ -4,6 +4,7 @@ import hazardData from "../../data/hazards.json";
 import editorData from "../../data/editor.json";
 import type { Level, Prim, Sky, Vec3 } from "../level/format";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
+import { SURFACES, surfaceTexture, worldUVs } from "../render/surfaces";
 import { material, materialId } from "../voxel/materials";
 import { ENTRY_KINDS, GRID, ROTATE_STEP } from "./doc";
 import { EditorCamera, openCameraSpot } from "./camera";
@@ -115,12 +116,27 @@ function primMaterial(prim: Prim): THREE.Material {
       depthWrite: false,
     });
   }
+  const spec = prim.surface ? SURFACES[prim.surface] : undefined;
+  const map = spec && prim.surface !== "plain" ? surfaceTexture(prim.surface!) : null;
   return new THREE.MeshStandardMaterial({
     color: prim.colour,
     roughness: 0.85,
     transparent: hidden,
     opacity: hidden ? 0.3 : 1,
+    ...(map ? { map } : {}),
   });
+}
+
+/** ED-36: the geometry for a prim, with world-scaled UVs at the surface's
+ *  scale, so the texture tiles like the game's. A plain prim builds exactly
+ *  as before. */
+export function primGeometryWithSurface(prim: Prim): THREE.BufferGeometry {
+  let geo = primGeometry(prim);
+  const spec = prim.surface ? SURFACES[prim.surface] : undefined;
+  if (!spec || prim.surface === "plain") return geo;
+  geo.deleteAttribute("uv");
+  geo = worldUVs(geo, primMatrix(prim), spec.scale);
+  return geo;
 }
 
 export class EditorView {
@@ -332,8 +348,19 @@ export class EditorView {
     }
   }
 
+  /** ED-36: rebuilds one prim's mesh (a paint changed its surface and colour). */
+  refreshOne(prim: Prim) {
+    const old = this.meshes.get(prim.id);
+    if (old) {
+      this.prims.remove(old);
+      disposeTree(old);
+      this.meshes.delete(prim.id);
+    }
+    this.addPrim(prim);
+  }
+
   private addPrim(prim: Prim) {
-    const geo = primGeometry(prim);
+    const geo = primGeometryWithSurface(prim);
     const mesh = new THREE.Mesh(geo, primMaterial(prim));
     // Review fix: position and rotation, not a fixed matrix. The handles
     // and the link outline read the mesh's own position, which a fixed
@@ -826,7 +853,7 @@ export class EditorView {
 
   /** A mesh for a prim that is not in the level, for the ghost. */
   primObject(prim: Prim): THREE.Object3D {
-    const mesh = new THREE.Mesh(primGeometry(prim), primMaterial(prim));
+    const mesh = new THREE.Mesh(primGeometryWithSurface(prim), primMaterial(prim));
     primMatrix(prim).decompose(mesh.position, mesh.quaternion, mesh.scale);
     return mesh;
   }

@@ -2,6 +2,7 @@ import hazardData from "../../data/hazards.json";
 import type { Prim, PrimBehaviour, PrimShape, Vec3 } from "../level/format";
 import { isVoxelBreakable } from "../level/validate";
 import { GRID, LIMITS, PALETTE, ROTATE_STEP, snapAxis } from "./doc";
+import { SURFACE_NAMES } from "../render/surfaces";
 
 // ED-02 stage 3: the inspector's fields for the selected prims. It reads a
 // prim and calls back with a patch; the page turns the patch into one undo
@@ -145,6 +146,17 @@ export function buildPrimFields(host: HTMLElement, prims: Prim[], ctx: Inspector
     ctx.change({ colour: c }, "colour");
   }));
   host.append(colourLabel);
+
+  // ED-36: the surface the prim wears. "plain" means no texture.
+  const surfaceLabel = label("surface");
+  surfaceLabel.append(selectField(
+    SURFACE_NAMES,
+    same((p) => p.surface ?? "plain") ? (first.surface ?? "plain") : "",
+    (v) => {
+      ctx.change({ surface: v === "plain" ? undefined : v }, `surface ${v}`);
+    },
+  ));
+  host.append(surfaceLabel);
 
   const behaviourLabel = label("behaviour");
   behaviourLabel.append(selectField(

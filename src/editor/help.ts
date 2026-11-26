@@ -47,7 +47,8 @@ export const HELP: HelpSection[] = [
     rows: [
       ["Tool bar", "The icons on the left. Pick a shape or a thing and a see-through copy follows the cursor. Click to place one, or drag on a floor to draw a shape's size. Shift+click keeps the tool. Esc stops."],
       ["Props", "The barrel icon. Pick a barrel, crate, rubble or tank beside it. A prop has a Solid box: off, it is scenery you walk through. The leaking barrel sprays foam when hit and then blows up."],
-      ["Inspector", "The right panel edits what is selected: position, size, colour, behaviour."],
+      ["Inspector", "The right panel edits what is selected: position, size, colour, surface, behaviour."],
+      ["Paint tool", "The brush in the Paint group. Pick a surface and an optional colour, then click or drag across prims to set the surface. Shift keeps the tool."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
       ["Assets", "The Assets button keeps what is selected under a name, with a picture. Pick a saved asset and click in the view to place it as one group, in this level or another. Assets stay in this browser; export them as a file to move them."],
     ],

@@ -1,0 +1,109 @@
+// ED-36: the Paint tool's option panel. It lists the surfaces as small
+// swatches (drawn from the same canvases the textures use) and the palette
+// colours, and is the only thing the paint tool knows: the page (main.ts)
+// owns the state and the painting itself.
+
+import { drawSurface, SURFACES, SURFACE_NAMES } from "../render/surfaces";
+import { PALETTE } from "./doc";
+
+/** The paint tool's settings: the surface to brush on, and the colour to
+ *  brush (null keeps the prim's own colour). */
+export interface PaintSettings {
+  surface: string;
+  colour: string | null;
+}
+
+/** A small canvas of one surface, drawn from the same pixels the texture
+ *  uses (negated? no: the grey pattern, tinted at paint time by the
+ *  prim's colour, so a swatch shows the pattern as greys). */
+export function swatchCanvas(name: string, size = 32): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  const img = drawSurface(name);
+  if (!img) {
+    ctx.fillStyle = "#d9d2c2";
+    ctx.fillRect(0, 0, size, size);
+    return canvas;
+  }
+  const full = document.createElement("canvas");
+  full.width = full.height = img.width;
+  const fullCtx = full.getContext("2d");
+  if (!fullCtx) return canvas;
+  const data = fullCtx.createImageData(img.width, img.height);
+  data.data.set(img.data);
+  fullCtx.putImageData(data, 0, 0);
+  ctx.drawImage(full, 0, 0, img.width, img.height, 0, 0, size, size);
+  return canvas;
+}
+
+/** The option panel beside an armed Paint button: one swatch per surface
+ *  (plain shows a plain swatch), then the palette colours, with a colour
+ *  button that keeps the prim's own colour. Calls onChange after every
+ *  pick, so the page knows the new state. */
+export function buildPaintPanel(state: PaintSettings, onChange: () => void): HTMLElement {
+  const panel = document.createElement("div");
+  panel.className = "tool-options paint-options";
+
+  const surfaceTitle = document.createElement("span");
+  surfaceTitle.className = "paint-title";
+  surfaceTitle.textContent = "Surface";
+  panel.append(surfaceTitle);
+
+  const swatches = document.createElement("div");
+  swatches.className = "paint-swatches";
+  for (const name of SURFACE_NAMES) {
+    const spec = SURFACES[name];
+    if (!spec) continue;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "paint-swatch" + (state.surface === name ? " on" : "");
+    button.title = spec.label;
+    button.setAttribute("aria-label", `Surface ${spec.label}`);
+    button.setAttribute("aria-pressed", String(state.surface === name));
+    button.append(swatchCanvas(name));
+    button.addEventListener("click", () => {
+      state.surface = name;
+      onChange();
+    });
+    swatches.append(button);
+  }
+  panel.append(swatches);
+
+  const colourTitle = document.createElement("span");
+  colourTitle.className = "paint-title";
+  colourTitle.textContent = "Colour";
+  panel.append(colourTitle);
+
+  const colours = document.createElement("div");
+  colours.className = "paint-colours";
+  const keep = document.createElement("button");
+  keep.type = "button";
+  keep.className = "paint-colour" + (state.colour === null ? " on" : "");
+  keep.title = "Keep the prim's own colour";
+  keep.setAttribute("aria-label", "Keep the prim's colour");
+  keep.setAttribute("aria-pressed", String(state.colour === null));
+  keep.append(document.createTextNode("·"));
+  keep.addEventListener("click", () => {
+    state.colour = null;
+    onChange();
+  });
+  colours.append(keep);
+  for (const colour of PALETTE) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "paint-colour" + (state.colour === colour ? " on" : "");
+    button.title = colour;
+    button.setAttribute("aria-label", `Paint ${colour}`);
+    button.setAttribute("aria-pressed", String(state.colour === colour));
+    button.style.background = colour;
+    button.addEventListener("click", () => {
+      state.colour = colour;
+      onChange();
+    });
+    colours.append(button);
+  }
+  panel.append(colours);
+  return panel;
+}

@@ -26,6 +26,7 @@ export const ICONS = {
   unlock: svg('<rect x="5" y="10" width="14" height="10" rx="1.5"/><path d="M8 10V7a4 4 0 0 1 7.7-1.5"/>'),
   fold: svg('<path d="M9 6l6 6-6 6"/>'),
   unfold: svg('<path d="M6 9l6 6 6-6"/>'),
+  paint: svg('<path d="M4 20c-1-3 0-5 3-6l8-8 4 4-8 8c-1 3-3 4-7 2z"/><path d="M13 6l4 4"/><path d="M16 3l4 4"/>'),
 } as const;
 
 export type IconName = keyof typeof ICONS;
