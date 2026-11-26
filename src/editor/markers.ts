@@ -4,7 +4,7 @@ import type { RigSpec } from "../foamers/rig";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 import type {
-  Box, LevelDoor, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
+  Box, LevelDoor, LevelLight, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
 } from "../level/format";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { PROP_KINDS } from "../level/props";
@@ -32,9 +32,9 @@ export interface Marker {
   rot: Vec3;
   /** The entry's size, for the scale handles, or null when it has none. */
   size: Vec3 | null;
-  kind: "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "start" | "exit"
+  kind: "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "start" | "exit" | "lights"
     // ED-31 to ED-35: each card replaces its placeholder case below.
-    | "buttons" | "lights" | "physics" | "models";
+    | "buttons" | "physics" | "models";
 }
 
 const RIGS = rigData.rigs as unknown as RigSpec[];
@@ -193,6 +193,34 @@ function doorMarker(d: LevelDoor): THREE.Mesh {
   return ghostBox(d.pos, d.size, doorColour(d), ((d.rotY ?? 0) * Math.PI) / 180);
 }
 
+/** A light: a glowing sphere in its colour, and for a spot a wireframe cone
+ *  showing its full angle and its range, turned by rot (degrees XYZ). */
+function lightMarker(l: LevelLight): THREE.Group {
+  const group = new THREE.Group();
+  const colour = new THREE.Color(l.colour);
+  const bulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 12, 12),
+    new THREE.MeshStandardMaterial({ color: l.colour, emissive: colour, emissiveIntensity: 1.4, roughness: 0.4 }),
+  );
+  group.add(bulb);
+  if (l.kind === "spot") {
+    const range = Math.max(1, l.range);
+    const radius = Math.tan(Math.min(89, l.angle ?? 45) / 2 * (Math.PI / 180)) * range;
+    // The cone's tip sits at the light and its open end at the range,
+    // pointing down -Y like the real light.
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(radius, range, 24, 1, true),
+      new THREE.MeshBasicMaterial({ color: colour, wireframe: true, transparent: true, opacity: 0.5 }),
+    );
+    cone.position.y = -range / 2;
+    group.add(cone);
+  }
+  const r = l.rot ?? [0, 0, 0];
+  group.rotation.set(r[0] * (Math.PI / 180), r[1] * (Math.PI / 180), r[2] * (Math.PI / 180), "XYZ");
+  group.position.set(l.pos[0], l.pos[1], l.pos[2]);
+  return group;
+}
+
 /** Builds the marker for one entry, with the data the handles need. */
 export function markerFor(
   kind: Marker["kind"],
@@ -210,6 +238,10 @@ export function markerFor(
     case "doors": {
       const d = entry as LevelDoor;
       return { object: doorMarker(d), pos: d.pos, rot: [0, d.rotY ?? 0, 0], size: d.size, kind };
+    }
+    case "lights": {
+      const l = entry as LevelLight;
+      return { object: lightMarker(l), pos: l.pos, rot: l.rot ?? [0, 0, 0], size: null, kind };
     }
     case "spawnPoints": {
       const r = entry as Rift;

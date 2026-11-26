@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Level, LevelDoor, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
+import type { Level, LevelDoor, LevelLight, Pickup, PlacedFoamer, Prim, PrimShape, Prop, Trigger, Vec3 } from "../level/format";
 import {
   EDITOR, ENTRY_KINDS, LevelDoc, GRID, LIMITS, makePrim, newLevel, snapPrim, snapVec3, ROTATE_STEP, type EntryKind,
 } from "./doc";
@@ -26,6 +26,7 @@ import { faceCentre, faceDirection, resizeFace, sizeText, type Resizable } from 
 import { openChoice } from "./open";
 import { builtInCopy } from "./builtin";
 import { buildHelp } from "./help";
+import { buildLightFields, buildLightingSection, makeLight, type LightKindChoice } from "./lights-editor";
 import { EditorView, type TransformMode } from "./view";
 import { ICONS, type IconName } from "./icons";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
@@ -50,6 +51,7 @@ const PART_BUTTONS: { kind: PartKind; name: string }[] = [
   { kind: "spawnPoints", name: "Spawn point" },
   { kind: "zones", name: "Zone" },
   { kind: "props", name: "Prop" },
+  { kind: "lights", name: "Light" },
 ];
 
 /** ED-08: a trigger is not a thing in the world, so it is not placed by a
@@ -68,7 +70,7 @@ const view = new EditorView($<HTMLCanvasElement>("view"));
 /** What the palette will place on the next click in the view: a primitive
  *  shape, or ED-05's other kinds (a Foamer, a pickup, a door, a spawn point,
  *  a zone). Only one is armed at a time. */
-type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props";
+type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "lights";
 let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
 /** ED-23: the saved asset the next click in the view places, or null. */
@@ -78,6 +80,8 @@ let pickupType: Pickup["type"] = "darts-standard";
 let armedRig = RIGS[0]?.id ?? "F01";
 /** The prop kind the Prop tool places (data/props.json or the leaking barrel). */
 let armedProp = LEAKING_BARREL;
+/** The light kind the Light tool places. */
+let armedLight: LightKindChoice = "point";
 /** The colour new prims take: the last one picked in the inspector. */
 let placeColour = "#ff7a1a";
 const selected = new Set<string>();
@@ -138,6 +142,7 @@ function countText(level: Level): string {
     `${level.prims?.length ?? 0} of ${LIMITS.prims} prims`,
     `${level.foamers?.length ?? 0} of ${LIMITS.foamers} foamers`,
     `${level.triggers?.length ?? 0} of ${LIMITS.triggers} triggers`,
+    `${level.lights?.length ?? 0} of ${LIMITS.lights} lights`,
   ];
   return parts.join(", ");
 }
@@ -152,6 +157,8 @@ function overCaps(level: Level): string[] {
   if (prims > LIMITS.prims) over.push(`${prims} prims, over ${LIMITS.prims}`);
   if (foamers > LIMITS.foamers) over.push(`${foamers} foamers, over ${LIMITS.foamers}`);
   if (triggers > LIMITS.triggers) over.push(`${triggers} triggers, over ${LIMITS.triggers}`);
+  const lights = level.lights?.length ?? 0;
+  if (lights > LIMITS.lights) over.push(`${lights} lights, over ${LIMITS.lights}`);
   return over;
 }
 
@@ -233,6 +240,7 @@ const PART_GROUPS: { kind: PartKind; title: string }[] = [
   { kind: "spawnPoints", title: "Spawn points" },
   { kind: "zones", title: "Zones" },
   { kind: "props", title: "Props" },
+  { kind: "lights", title: "Lights" },
 ];
 
 /** The name a row shows for a placed thing: its id, and what it is. */
@@ -253,6 +261,10 @@ function partName(id: string): string {
   if (kind === "props") {
     const p = doc.find<Prop>(kind, id);
     return p ? `${id}  ${PROP_KINDS[p.kind]?.label ?? p.kind}` : id;
+  }
+  if (kind === "lights") {
+    const l = doc.find<LevelLight>(kind, id);
+    return l ? `${id}  ${l.kind}` : id;
   }
   return id;
 }
@@ -440,6 +452,7 @@ function partColour(kind: PartKind): string {
     case "spawnPoints": return MARKERS.spawnColour;
     case "zones": return MARKERS.zoneColour;
     case "props": return PROP_KINDS[armedProp]?.parts[0]?.colour ?? MARKERS.doorColour;
+    case "lights": return "#fff6e8";
   }
 }
 
@@ -557,6 +570,20 @@ function partOptions(kind: PartKind): HTMLElement | null {
     });
     return select;
   }
+  if (kind === "lights") {
+    const select = document.createElement("select");
+    select.className = "tool-options";
+    select.title = "Light";
+    for (const [value, label] of [["point", "Point"], ["spot", "Spot"]] as const) {
+      select.append(new Option(label, value));
+    }
+    select.value = armedLight;
+    select.addEventListener("change", () => {
+      armedLight = select.value as LightKindChoice;
+      buildPalette();
+    });
+    return select;
+  }
   if (kind !== "pickups" && kind !== "foamers") return null;
   const select = document.createElement("select");
   select.className = "tool-options";
@@ -653,6 +680,13 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
   else if (kind === "doors") buildDoorFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "spawnPoints") buildSpawnFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "props") buildPropFields(host, doc.find(kind, id)!, ctx);
+  else if (kind === "lights") buildLightFields(host, doc.find<LevelLight>(kind, id)!, {
+    change: ctx.change,
+    redraw: ctx.redraw,
+    refused: (text) => { status.textContent = text; },
+    maxShadows: EDITOR.lights.maxShadows,
+    shadows: doc.entries("lights").filter((l) => (l as LevelLight).castShadow === true).length,
+  });
   else if (kind === "triggers") buildTriggerInspector(host, id);
   else buildZoneFields(host, doc.find(kind, id)!, ctx);
 }
@@ -691,6 +725,10 @@ function buildSkyInspector(host: HTMLElement) {
       syncNameField();
     },
     uploadSky,
+    redraw: buildInspector,
+  });
+  buildLightingSection(host, doc.level, {
+    change: (patch, text) => doc.setFields(patch, text),
     redraw: buildInspector,
   });
 }
@@ -1102,6 +1140,7 @@ function partAt(kind: PartKind, id: string, point: THREE.Vector3, normal: THREE.
   }
   if (kind === "spawnPoints") return snapped(makeSpawn(id, at));
   if (kind === "props") return makeProp(id, armedProp, at);
+  if (kind === "lights") return snapped(makeLight(id, at, armedLight, 0.5, [normal.x, normal.y, normal.z]));
   return snapped(makeZone(id, at));
 }
 
@@ -1112,7 +1151,11 @@ function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) 
     status.textContent = `Prop cap: ${LIMITS.props}.`;
     return;
   }
-  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : "zone";
+  if (kind === "lights" && doc.entries("lights").length >= LIMITS.lights) {
+    status.textContent = `Light cap: ${LIMITS.lights}.`;
+    return;
+  }
+  const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : kind === "lights" ? "light" : "zone";
   const entry = partAt(kind, doc.nextId(prefix), point, normal);
   doc.add(kind, entry as never);
   pick(entry.id);
@@ -1349,6 +1392,23 @@ window.addEventListener("keyup", (e) => {
   view.nav.keyUp(e.code);
 });
 
+/** The document patch for one part (the handles' readback), one undo step.
+ *  A light's patch writes its own XYZ rot; every other kind goes through
+ *  the shared dragPatch. */
+function partPatch(part: NonNullable<typeof dragStart>["parts"][number], move: Vec3, turnY: number, ratio: Vec3): Record<string, unknown> | null {
+  if (part.kind !== "lights") return dragPatch(part, move, turnY, ratio, snapOn ? GRID : 0);
+  const patch: Record<string, unknown> = {};
+  if (move.some((n) => Math.abs(n) > 1e-4)) {
+    const pos: Vec3 = [part.pos[0] + move[0], part.pos[1] + move[1], part.pos[2] + move[2]];
+    patch.pos = snapOn ? snapVec3(pos, GRID) : pos;
+  }
+  if (Math.abs(turnY) > 1e-4) {
+    const y = (((part.rot[1] + turnY) % 360) + 360) % 360;
+    patch.rot = [part.rot[0], y, part.rot[2]];
+  }
+  return Object.keys(patch).length ? patch : null;
+}
+
 /** Turns every selected thing that can turn by `deg` about the vertical,
  *  each about its own centre: one undo step per kind. */
 function turnSelection(deg: number) {
@@ -1363,7 +1423,7 @@ function turnSelection(deg: number) {
   if (prims.length) doc.change("prims", prims, "turn");
   const byKind = new Map<EntryKind, { id: string; patch: Record<string, unknown> }[]>();
   for (const part of partHandles(ids)) {
-    const patch = dragPatch(part, [0, 0, 0], deg, [1, 1, 1], snapOn ? GRID : 0);
+    const patch = partPatch(part, [0, 0, 0], deg, [1, 1, 1]);
     if (!patch) continue;
     if (part.kind === "start") doc.setStart(patch as never, "turn the start");
     else if (part.kind !== "exit") {
@@ -1387,8 +1447,10 @@ let dragStart: {
   mode: TransformMode; ids: string[]; pos: Vec3; rot: Vec3;
   scale: Vec3; size: Record<string, Vec3>;
   /** ED-05: the placed things the drag moves, their position, yaw and size
-   *  at the start, so a marker's patch is worked out from what it was. */
-  parts: { id: string; kind: EntryKind | "start" | "exit"; pos: Vec3; yawDeg: number; size: Vec3 | null }[];
+   *  at the start, so a marker's patch is worked out from what it was. A
+   *  light also carries its full rot triple (XYZ), which is what the
+   *  rotate handle writes. */
+  parts: { id: string; kind: EntryKind | "start" | "exit"; pos: Vec3; yawDeg: number; size: Vec3 | null; rot: Vec3 }[];
 } | null = null;
 /** Where each selected placed thing is, its yaw and size, as the drag and
  *  turn code reads them. */
@@ -1411,7 +1473,7 @@ function partHandles(ids: string[]): NonNullable<typeof dragStart>["parts"] {
       const entry = doc.find(kind, id);
       if (!entry) return [];
     }
-    return [{ id, kind, pos: [...pos] as Vec3, yawDeg, size: size ? [...size] as Vec3 : null }];
+    return [{ id, kind, pos: [...pos] as Vec3, yawDeg, size: size ? [...size] as Vec3 : null, rot: [...(marker.rot ?? [0, 0, 0])] as Vec3 }];
   });
 }
 
@@ -1456,7 +1518,7 @@ function endHandleDrag() {
     const ratio: Vec3 = [scale[0] / (start.scale[0] || 1), scale[1] / (start.scale[1] || 1), scale[2] / (start.scale[2] || 1)];
     const byKind = new Map<EntryKind, { id: string; patch: Record<string, unknown> }[]>();
     for (const part of start.parts) {
-      const patch = dragPatch({ ...part, yawDeg: part.yawDeg }, move, turn[1], ratio, snapOn ? GRID : 0);
+      const patch = partPatch(part, move, turn[1], ratio);
       if (!patch) continue;
       if (part.kind === "start") doc.setStart(patch as never, "move the start");
       else if (part.kind === "exit") doc.setExit(patch as never, "move the exit");

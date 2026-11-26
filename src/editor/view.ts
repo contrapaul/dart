@@ -9,6 +9,7 @@ import { ENTRY_KINDS, GRID, ROTATE_STEP } from "./doc";
 import { EditorCamera, openCameraSpot } from "./camera";
 import { faceCentre, type Resizable } from "./resize";
 import { EXIT_ID, START_ID, markerFor, type Marker } from "./markers";
+import { buildLights, sceneLights, type BuiltLights } from "../level/lights";
 
 // ED-02 stage 2: everything the editor draws and the camera that flies over
 // it. The page (src/editor/main.ts) owns the document and the panels; this
@@ -167,6 +168,9 @@ export class EditorView {
   private shownShell: unknown = null;
   private shownSky: unknown = null;
   private shownPieces: unknown = null;
+  /** ED-32: the real lights the level has, rebuilt with the markers. The
+   *  editor has no shadows, so the preset passed is the low one. */
+  private realLights: BuiltLights | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -271,6 +275,28 @@ export class EditorView {
     }
     this.refreshPrims(level);
     this.refreshMarkers(level);
+    this.refreshLights(level);
+  }
+
+  /** ED-32: draws the level's own lights and lighting, live, from the
+   *  level as it is now. The scene's ambient and sun are reset to the
+   *  editor's own defaults first, then the level's lighting replaces them. */
+  private refreshLights(level: Level) {
+    const { ambient, sun } = sceneLights(this.scene);
+    if (ambient) {
+      ambient.color.set("#fff0e0");
+      ambient.intensity = 1.2;
+    }
+    if (sun) {
+      sun.color.set("#ffffff");
+      sun.intensity = 2;
+      sun.position.set(6, 12, 4);
+    }
+    this.realLights?.dispose();
+    this.realLights = buildLights(this.scene, level, {
+      pixelRatioMax: 1, antialias: false, shadows: false,
+      shadowMapMax: 512, debrisMax: 60, breakoffMaxPieces: 8,
+    });
   }
 
   /** ED-05: rebuilds the markers for every kind of placed thing, the player

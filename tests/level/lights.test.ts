@@ -4,6 +4,8 @@ import { buildLights, targetDirection } from "../../src/level/lights";
 import type { Level, LevelLight } from "../../src/level/format";
 import type { QualityPreset } from "../../src/render/quality";
 import editorData from "../../data/editor.json";
+import ed01 from "../../data/levels/ed-01.json";
+import { validateLevel } from "../../src/level/validate";
 
 const HIGH: QualityPreset = { pixelRatioMax: 2, antialias: true, shadows: true, shadowMapMax: 2048, debrisMax: 150, breakoffMaxPieces: 16 };
 const LOW: QualityPreset = { ...HIGH, shadows: false };
@@ -108,5 +110,22 @@ describe("ED-32 buildLights", () => {
     scene.add(hemi);
     buildLights(scene, level([]), HIGH);
     expect((hemi.color as THREE.Color).getHexString()).toBe("ffffff");
+  });
+});
+
+describe("the validator takes a placed light", () => {
+  it("accepts a placed light and refuses a bad one", () => {
+    const base = ed01 as unknown as Level;
+    const ok = validateLevel({ ...base, lights: [
+      { id: "light-1", kind: "point", pos: [0, 2, 0], colour: "#ffffff", intensity: 20, range: 8 },
+      { id: "light-2", kind: "spot", pos: [0, 2, 0], colour: "#ffffff", intensity: 20, range: 8, angle: 45, softness: 0.3, castShadow: true },
+    ] });
+    expect(ok.errors).toEqual([]);
+    const bad = validateLevel({ ...base, lights: [{ id: "light-1", kind: "spot", pos: [0, 2, 0], colour: "#ffffff", intensity: 20, range: 0 }] });
+    expect(bad.errors.some((e) => e.includes("range must be positive"))).toBe(true);
+    const over = validateLevel({ ...base, lights: Array.from({ length: 5 }, (_, i) => ({
+      id: `l${i}`, kind: "point", pos: [i, 2, 0], colour: "#ffffff", intensity: 1, range: 8, castShadow: true,
+    })) });
+    expect(over.errors.some((e) => e.includes("cast shadows"))).toBe(true);
   });
 });
