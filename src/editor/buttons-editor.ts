@@ -60,6 +60,7 @@ export function buttonOnChoices(level: Level): { value: string; label: string }[
   return [
     { value: "", label: "the level's own floor" },
     ...(level.prims ?? []).map((p) => ({ value: p.id, label: `${p.id} (prim)` })),
+    ...(level.props ?? []).map((p) => ({ value: p.id, label: `${p.id} (prop)` })),
     ...(level.models ?? []).map((m) => ({ value: m.id, label: `${m.id} (model)` })),
     ...(level.physics ?? []).map((o) => ({ value: o.id, label: `${o.id} (physics object)` })),
   ];

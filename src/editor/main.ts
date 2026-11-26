@@ -1134,8 +1134,11 @@ function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3, 
   }
   const prefix = kind === "foamers" ? "foamer" : kind === "pickups" ? pickupPrefix() : kind === "doors" ? "door" : kind === "spawnPoints" ? "spawn" : kind === "props" ? "prop" : "zone";
   const id = doc.nextId(prefix);
+  // ED-31: a button mounts on a thing, not on a marker for a door or a
+  // pickup: only the kinds a move can carry count.
+  const carrier = on && ["prims", "props", "models", "physics"].includes(doc.kindOf(on) ?? "") ? on : null;
   const entry = kind === "buttons"
-    ? makeButton(id, [point.x, point.y, point.z], [normal.x, normal.y, normal.z], on ?? undefined)
+    ? makeButton(id, [point.x, point.y, point.z], [normal.x, normal.y, normal.z], carrier ?? undefined)
     : partAt(kind, id, point, normal);
   doc.add(kind, entry as never);
   pick(entry.id);
