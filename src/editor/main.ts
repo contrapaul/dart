@@ -75,6 +75,9 @@ let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
 /** ED-23: the saved asset the next click in the view places, or null. */
 let armedAsset: Asset | null = null;
+/** ED-37: how far the armed asset is turned, in degrees, before it is
+ *  placed. The ghost shows it turned. */
+let assetTurn = 0;
 /** The kind of pickup and the rig the palette places. */
 let pickupType: Pickup["type"] = "darts-standard";
 let armedRig = RIGS[0]?.id ?? "F01";
@@ -451,6 +454,7 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
   armed = shape;
   armedPart = part;
   armedAsset = null;
+  assetTurn = 0;
   view.setGhost(null);
   const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
   const how = shape ? "Click to place, or drag out its size on a floor." : "Click to place.";
@@ -958,7 +962,10 @@ window.addEventListener("pointerup", (e) => {
     pressUsed = true;
     const shift = e.shiftKey;
     if (armedAsset) {
-      const count = pasteAt(armedAsset.clip, [was.point.x, was.point.y, was.point.z], `place ${armedAsset.name}`, true);
+      const count = pasteAt(
+        armedAsset.clip, [was.point.x, was.point.y, was.point.z], `place ${armedAsset.name}`, true,
+        assetTurn ? { deg: assetTurn, centre: view.ghostCentrePoint() } : null,
+      );
       if (count) status.textContent = `Placed ${armedAsset.name}.`;
       if (!shift) arm(null, null);
       return;
@@ -1226,7 +1233,9 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyF") view.frame([...selected]);
   // [ and ] turn the selection about the vertical by one rotate step.
   if ((e.code === "BracketLeft" || e.code === "BracketRight") && !view.isLooking) {
-    turnSelection(e.code === "BracketLeft" ? -ROTATE_STEP : ROTATE_STEP);
+    const deg = e.code === "BracketLeft" ? -ROTATE_STEP : ROTATE_STEP;
+    if (armedAsset) turnAsset(deg);
+    else turnSelection(deg);
   }
   // ED-09 stage 1: P plays from the level's start, Shift+P from the camera.
   // ED-11: Tab and Shift+Tab do the same.
@@ -1312,10 +1321,31 @@ document.addEventListener("paste", (e) => {
   if (count) status.textContent = `Pasted ${count} thing${count === 1 ? "" : "s"}.`;
 });
 
+/** ED-37: turns a clip's things as one object about `pivot`, before they
+ *  are added: the patches of src/editor/group-transform.ts on entries that
+ *  are not in the level yet. */
+function turnMade(
+  made: { kind: EntryKind; entry: IdEntry }[], pivot: Vec3, deg: number,
+): { kind: EntryKind; entry: IdEntry }[] {
+  const things = made.flatMap((m) => {
+    const thing = thingFromEntry(m.kind, m.entry as TurnyEntry);
+    return thing ? [thing] : [];
+  });
+  const R = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), deg * RAD);
+  const byId = new Map(transformSelection(things, pivot, R, 1).map((p) => [p.id, p.patch]));
+  return made.map((m) => {
+    const patch = byId.get(m.entry.id);
+    return patch ? { kind: m.kind, entry: { ...m.entry, ...patch } } : m;
+  });
+}
+
 /** Adds a clip's things to the level at a point as one undo step, selects
  *  them, and returns how many. Over a cap it says why and adds nothing.
  *  ED-23: a placed asset (`oneGroup`) goes in as one group. */
-function pasteAt(clip: Clip, at: Vec3 | null, verb: string, oneGroup = false): number {
+function pasteAt(
+  clip: Clip, at: Vec3 | null, verb: string, oneGroup = false,
+  turned: { deg: number; centre: Vec3 } | null = null,
+): number {
   const problem = capProblem(doc.level, clip);
   if (problem) {
     status.textContent = problem;
@@ -1327,6 +1357,15 @@ function pasteAt(clip: Clip, at: Vec3 | null, verb: string, oneGroup = false): n
   }, at, snapOn ? GRID : 0);
   if (oneGroup) made = asOneGroup(made, doc.nextGroup());
   if (!made.length) return 0;
+  if (turned && Math.abs(turned.deg) > 1e-4) {
+    // ED-37: an asset turned before it was placed turns as one object here,
+    // about the middle its ghost showed, moved to where it lands.
+    const move = pasteMove(clip, at, snapOn ? GRID : 0);
+    const pivot: Vec3 = [
+      turned.centre[0] + move[0], turned.centre[1] + move[1], turned.centre[2] + move[2],
+    ];
+    made = turnMade(made, pivot, turned.deg);
+  }
   doc.addMixed(made, `${verb}, ${made.length} thing${made.length === 1 ? "" : "s"}`);
   selectMany(made.map((m) => m.entry.id));
   return made.length;
@@ -1387,12 +1426,20 @@ function groupThing(id: string): GroupThing | null {
   }
   const kind = doc.kindOf(id);
   if (!kind || kind === "triggers") return null;
+  return thingFromEntry(kind, doc.find(kind, id) as TurnyEntry | undefined);
+}
+
+/** The fields the group transform reads off any kind's entry (an asset's
+ *  things are read this way before they are in the level). */
+type TurnyEntry = IdEntry & {
+  rot?: Vec3; size?: Vec3; scale?: Vec3; yaw?: number; rotY?: number;
+};
+
+/** One entry of any kind, as the group transform reads it. */
+function thingFromEntry(kind: EntryKind, entry: TurnyEntry | undefined): GroupThing | null {
+  if (!entry?.pos) return null;
   // Read the fields the kind's own type has, so a card that adds a kind needs
   // no line here: `rot` is Euler degrees, `yaw` radians, `rotY` degrees.
-  const entry = doc.find(kind, id) as (IdEntry & {
-    rot?: Vec3; size?: Vec3; scale?: Vec3; yaw?: number; rotY?: number;
-  }) | undefined;
-  if (!entry?.pos) return null;
   const upright = isUpright(kind);
   const quat = entry.rot ? quatEulerDegrees(entry.rot)
     : kind === "foamers" ? quatYaw(entry.yaw ?? 0)
@@ -1404,7 +1451,7 @@ function groupThing(id: string): GroupThing | null {
   // omitted (format.ts), so theirs is written on every turn.
   const euler = kind === "prims" || kind === "physics" || kind === "models";
   return {
-    id, kind, pos: [...entry.pos] as Vec3, quat, upright,
+    id: entry.id, kind, pos: [...entry.pos] as Vec3, quat, upright,
     turnKey: euler ? "rot" : upright ? (kind === "foamers" ? "yaw" : "rotY") : null,
     sizeKey, size: size ? [...size] as Vec3 : null,
   };
@@ -1447,6 +1494,14 @@ function applyGroupPatches(patches: GroupPatch[], text: string) {
 function selectionPivot(): Vec3 {
   const c = view.selectionBox().getCenter(new THREE.Vector3());
   return [c.x, c.y, c.z];
+}
+
+/** ED-37: turns the armed asset as one object about the middle of its
+ *  bounds, before it is placed. The ghost shows the turn. */
+function turnAsset(deg: number) {
+  assetTurn = (((assetTurn + deg) % 360) + 360) % 360;
+  view.turnGhost(assetTurn);
+  status.textContent = `Asset turned ${Math.round(assetTurn)} degrees. Click to place it.`;
 }
 
 /** Turns every selected thing that can turn by `deg` about the vertical,

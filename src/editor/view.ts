@@ -748,6 +748,12 @@ export class EditorView {
     this.controls.enabled = !on && this.controls.object !== undefined;
   }
 
+  /** ED-37: the middle of an armed asset's own bounds, before it is moved,
+   *  the point `[` and `]` turn it about and the point it is placed about. */
+  private ghostCentre = new THREE.Vector3();
+  /** Where the ghost is placed, or null while it is hidden. */
+  private ghostMove: THREE.Vector3 | null = null;
+
   /** Shows a see-through copy of what the armed tool will place, or nothing. */
   setGhost(object: THREE.Object3D | null) {
     for (const child of [...this.ghost.children]) {
@@ -755,6 +761,8 @@ export class EditorView {
       disposeTree(child);
     }
     this.ghost.position.set(0, 0, 0);
+    this.ghost.quaternion.identity();
+    this.ghostMove = null;
     this.ghost.visible = true;
     if (!object) return;
     object.traverse((child) => {
@@ -768,13 +776,36 @@ export class EditorView {
       }
     });
     this.ghost.add(object);
+    this.ghostCentre.copy(new THREE.Box3().setFromObject(this.ghost).getCenter(new THREE.Vector3()));
   }
 
   /** ED-23: moves the ghost as a whole, or hides it (`null`). An asset's
    *  ghost is many things, so it is built once and moved, not rebuilt. */
   ghostAt(move: Vec3 | null) {
     this.ghost.visible = !!move;
-    if (move) this.ghost.position.set(move[0], move[1], move[2]);
+    this.ghostMove = move ? new THREE.Vector3(move[0], move[1], move[2]) : null;
+    this.placeGhost();
+  }
+
+  /** ED-37: turns the armed asset's ghost about the middle of its own bounds,
+   *  so it is placed the way it is shown. */
+  turnGhost(deg: number) {
+    this.ghost.quaternion.setFromAxisAngle(UP, deg * DEG);
+    this.placeGhost();
+  }
+
+  /** ED-37: the middle of the armed asset's bounds, which the page turns the
+   *  placed things about. */
+  ghostCentrePoint(): Vec3 {
+    return [this.ghostCentre.x, this.ghostCentre.y, this.ghostCentre.z];
+  }
+
+  /** Puts the ghost where the cursor is with its turn applied about its own
+   *  middle: P + move + R (p - P) for the whole ghost. */
+  private placeGhost() {
+    if (!this.ghostMove) return;
+    const turned = this.ghostCentre.clone().applyQuaternion(this.ghost.quaternion);
+    this.ghost.position.copy(this.ghostMove).add(this.ghostCentre).sub(turned);
   }
 
   /** ED-23: a small square picture of just these things, as a JPEG data:

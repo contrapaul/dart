@@ -96,6 +96,29 @@ describe("ED-37 a group turns and scales as one object", () => {
     expect(patchOf(patches, "f").yaw).toBeCloseTo(45 * DEG, 5);
   });
 
+  it("turns a prim and a Foamer in one group: the prim turns, the Foamer stands", () => {
+    const a = box("a", [1, 0, 0]);
+    const f = foamer("f", [1, 0, 2]);
+    const patches = transformSelection([a, f], [0, 0, 0], turnY(90), 1);
+    expect(rotOf(patches, "a")[1]).toBeCloseTo(90, 3);
+    expect(patchOf(patches, "f").rot).toBeUndefined();
+    expect(patchOf(patches, "f").yaw).toBeCloseTo(90 * DEG, 5);
+    expect(posOf(patches, "f")).toEqual([2, 0, -1]);
+  });
+
+  it("a door takes the group's turn in degrees about Y, on top of its own", () => {
+    const q = turnY(10);
+    const door: GroupThing = {
+      id: "d", kind: "doors", pos: [2, 1.5, 0], quat: [q.x, q.y, q.z, q.w],
+      upright: true, turnKey: "rotY", sizeKey: "size", size: [2, 3, 0.4],
+    };
+    const patches = transformSelection([door], [0, 0, 0], turnY(45), 1);
+    const patch = patchOf(patches, "d");
+    expect(patch.rotY).toBeCloseTo(55, 4);
+    expect(patch.rot).toBeUndefined();
+    expect(posOf(patches, "d")[0]).toBeCloseTo(Math.SQRT2, 3);
+  });
+
   it("writes nothing when the handles did not move, turn or scale", () => {
     const a = box("a", [1, 2, 3], [0, 20, 0]);
     const patches = transformSelection([a], [1, 2, 3], new THREE.Quaternion(), 1);
