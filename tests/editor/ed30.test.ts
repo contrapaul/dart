@@ -110,3 +110,18 @@ describe("ED-30 locking", () => {
     expect(locked.has("box-1")).toBe(true);
   });
 });
+
+describe("ED-30 the start turns", () => {
+  it("a handle turn writes the start's yaw in radians", async () => {
+    const { dragPatch } = await import("../../src/editor/parts");
+    // The marker's proxy turn is written as radians, 0 faces -z.
+    const patch = dragPatch({ kind: "start", pos: [0, 0, 8], yawDeg: 30, size: null }, [0, 0, 0], 15, [1, 1, 1], 0);
+    expect(patch?.yaw).toBeCloseTo((45 * Math.PI) / 180, 6);
+  });
+
+  it("a handle turn wraps past 360 degrees", async () => {
+    const { dragPatch } = await import("../../src/editor/parts");
+    const patch = dragPatch({ kind: "start", pos: [0, 0, 8], yawDeg: 350, size: null }, [0, 0, 0], 30, [1, 1, 1], 0);
+    expect(patch?.yaw).toBeCloseTo((20 * Math.PI) / 180, 6);
+  });
+});
