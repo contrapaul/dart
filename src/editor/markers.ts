@@ -4,18 +4,27 @@ import type { RigSpec } from "../foamers/rig";
 import foamerData from "../../data/foamers.json";
 import rigData from "../../data/foamer-rigs.json";
 import type {
-  Box, Button, LevelDoor, LevelLight, PhysicsObject, Pickup, PlacedFoamer, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
+  Box, Button, Level, LevelDoor, LevelLight, PhysicsObject, Pickup, PlacedFoamer, PlacedModel, PlayerStart, Prim, Prop, Rift, Vec3, Zone,
 } from "../level/format";
 import { buttonMarker } from "./buttons-editor";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { PROP_KINDS } from "../level/props";
 import { BLASTERS, MARKERS, MELEE, doorColour, foamerColour, pickupColour } from "./parts";
+import { modelMarker } from "./models-editor";
 
 // ED-05 stage 2: one simple marker per placed thing, built in code. No model
 // is loaded: a Foamer is a capsule its rig's height with a nose, a pickup is
 // a box, and the rest are rings, arrows and see-through boxes. The marker is
 // what the view raycasts and what the handles move, so placing and dragging
 // work exactly as they do for a prim.
+
+/** The level whose models the markers draw. The view calls markerFor without
+ *  one (its signature is shared with every other card), so the page sets it
+ *  before each rebuild; an unset level draws a model's placeholder box. */
+let markerLevel: Level | null = null;
+export function setMarkerLevel(level: Level) {
+  markerLevel = level;
+}
 
 /** The pseudo ids the start and the exit are selected by. They are not level
  *  ids (the page keeps them out of the document's id space). The exit's id
@@ -239,7 +248,7 @@ function lightMarker(l: LevelLight): THREE.Group {
 /** Builds the marker for one entry, with the data the handles need. */
 export function markerFor(
   kind: Marker["kind"],
-  entry: PlacedFoamer | Pickup | LevelDoor | Rift | Zone | Prop | Button | PlayerStart | Box,
+  entry: PlacedFoamer | Pickup | LevelDoor | Rift | Zone | Prop | Button | PlayerStart | Box | PlacedModel,
 ): Marker {
   switch (kind) {
     case "foamers": {
@@ -285,6 +294,14 @@ export function markerFor(
     case "exit": {
       const b = entry as Box;
       return { object: ghostBox(b.pos, b.size, MARKERS.exitColour), pos: b.pos, rot: [0, 0, 0], size: b.size, kind };
+    }
+    case "models": {
+      // ED-35: the marker is the model itself, drawn at its own transform.
+      // Its size is null until it loads, so the handles move and turn it and
+      // its scale is typed in the inspector.
+      const m = entry as unknown as PlacedModel;
+      const object = markerLevel ? modelMarker(markerLevel, m) : ghostBox(m.pos, [0.6, 0.6, 0.6], MARKERS.linkedColour);
+      return { object, pos: m.pos, rot: m.rot ?? [0, 0, 0], size: null, kind };
     }
     default: {
       // ED-31 to ED-35 placeholders: a small box where the thing is, until

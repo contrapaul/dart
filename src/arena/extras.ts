@@ -145,6 +145,9 @@ export function arenaExtras(
   const { level } = built;
   // ED-06: the prims that break by hit points, built with the level.
   const breakables = level.breakables;
+  // ED-35: the imported models that break by hit points (a voxel one that
+  // went over the cap falls back to this).
+  const modelBreakables = level.modelBreakables;
 
   // LVL-02a: the level file's ammo boxes: they refill the loadout's
   // blasters in place, and they respawn on every restart (respawnAtEntry)
@@ -428,6 +431,7 @@ export function arenaExtras(
     // ED-06: a breakable takes the damage that dart deals a Foamer, and a
     // dart stuck in one is freed when it breaks (the barrel's own rule).
     breakables.dartHit(hit, dartDamageOf(hit.type));
+    modelBreakables.dartHit(hit, dartDamageOf(hit.type));
   };
 
   // ED-06: the hit point breakables. They are built with the level; here
@@ -439,7 +443,16 @@ export function arenaExtras(
     audio.play("FX-chunk", { position: at });
     g.darts.releaseInSphere(at, b.radius);
   };
-  g.explosion.onBlast = (point, profile) => breakables.blast(point, profile);
+  modelBreakables.debris = g.debris;
+  modelBreakables.onDamage = (_b, _amount, at) => audio.play("DT-hit-wood", { position: at });
+  modelBreakables.onBreak = (b, at) => {
+    audio.play("FX-chunk", { position: at });
+    g.darts.releaseInSphere(at, b.radius);
+  };
+  g.explosion.onBlast = (point, profile) => {
+    breakables.blast(point, profile);
+    modelBreakables.blast(point, profile);
+  };
 
   // ENV-03: the mod stations (E13). A level with none builds an empty set
   // and the page never reads the use key for them, so a level without
@@ -609,9 +622,13 @@ export function arenaExtras(
     // ED-06: every breakable comes back, hit points and all. Only a full
     // restart puts them back (the checkpoint rule keeps the level's other
     // damage: a retry inside an arena does not refill the walls).
-    if (all) breakables.reset();
-    // ED-33: the physics objects go back where the level put them, whole.
-    if (all) physics.reset();
+    // ED-33 and ED-35: the physics objects and the breakable models go back
+    // where the level put them, whole.
+    if (all) {
+      breakables.reset();
+      modelBreakables.reset();
+      physics.reset();
+    }
     setRifts("dim");
   }
 
@@ -798,6 +815,7 @@ export function arenaExtras(
     for (const id of ids) {
       level.prims.get(id)?.setShown(shown);
       breakables.handles.get(id)?.setShown(shown);
+      level.models.handles.get(id)?.setShown(shown);
       hazards.setShown(id, shown);
       built.lights.handles.get(id)?.setVisible(shown);
       for (const b of onButtons.get(id) ?? []) b.setShown(shown);
@@ -843,6 +861,7 @@ export function arenaExtras(
     // A button on a thing that starts hidden starts hidden too.
     const hiddenThings = new Set((LEVEL.prims ?? []).filter((p) => p.hidden).map((p) => p.id));
     for (const b of level.buttons) if (b.spec.on) b.setShown(!hiddenThings.has(b.spec.on));
+    for (const h of level.models.handles.values()) h.setShown(false);
     for (const p of LEVEL.prims ?? []) if (p.behaviour === "hazard") hazards.setShown(p.id, !p.hidden);
     for (const l of LEVEL.lights ?? []) built.lights.handles.get(l.id)?.setVisible(!l.hidden);
     for (const [id, state] of levelDoorStart) level.doors.get(id)?.setState(state);
@@ -943,8 +962,11 @@ export function arenaExtras(
         // first breakable it reaches (the bash's own weaker number included,
         // which is what the melee reports it swung).
         const dmg = melee.damageOf(melee.lastSwung);
-        if (dmg > 0) breakables.swing(eye, fwd, melee.reach, dmg, player.collider);
-        if (dmg > 0) physics.swing(eye, fwd, melee.reach, dmg, player.collider);
+        if (dmg > 0) {
+          breakables.swing(eye, fwd, melee.reach, dmg, player.collider);
+          modelBreakables.swing(eye, fwd, melee.reach, dmg, player.collider);
+          physics.swing(eye, fwd, melee.reach, dmg, player.collider);
+        }
       }
       playPress(buttons.step(at));
 
@@ -979,6 +1001,7 @@ export function arenaExtras(
         // breakables come back with it.
         breakables.reset();
         physics.reset();
+        modelBreakables.reset();
         runner.resetAll();
         setRifts("dim");
       }
@@ -1050,6 +1073,9 @@ export function arenaExtras(
       // ED-33: the hit points left in each breakable physics object.
       physicsObjects: Object.fromEntries(
         physics.list.filter((o) => o.maxHp > 0).map((o) => [o.spec.id, o.alive ? o.hp : 0])),
+      // ED-35: the same for the imported breakable models.
+      models: Object.fromEntries(
+        modelBreakables.list.map((b) => [b.model.id, b.alive ? b.hp : 0])),
     }),
   };
 

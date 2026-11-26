@@ -53,6 +53,8 @@ export const HELP: HelpSection[] = [
       ["Button", "The Logic group's button icon. Click a surface: it mounts on that face, at that point, and on the thing if you clicked a prim, model or physics object. A press fires the trigger whose when is that button. Its inspector sets what it is mounted on and whether a press needs the use key."],
       ["Physics objects", "The falling object icon. Pick a box, cylinder or ball beside it, then click to place one. The inspector sets its size, colour, surface, mass, damage, bounce and breakable hit points, and whether it starts asleep or hidden. The editor does not simulate: press Play for the drop test, and watch it fall."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
+      ["Import model", "The top bar's Import model button reads a .glb file into the level file (3 MB a model). Pick it in the Models section of the tool bar and click in the view. A model is solid, decor or breakable; a solid one collides as its box, one hull, or its exact mesh."],
+      ["Breakable model", "A breakable model takes hit points and bursts into foam. With voxel ticked its inside becomes foam that carves like a wall; a model with more voxels inside than data/editor.json allows is built by hit points instead, and Problems says so."],
       ["Assets", "The Assets button keeps what is selected under a name, with a picture. Pick a saved asset and click in the view to place it as one group, in this level or another. Assets stay in this browser; export them as a file to move them."],
     ],
     text: [
