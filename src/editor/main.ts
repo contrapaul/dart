@@ -102,6 +102,38 @@ function remember(colour: string) {
 /** Grid snap on or off (G): the handles' snap, and the placing snap. */
 let snapOn = true;
 
+/** ED-30 item 12: the rotation snap choice (degrees, 0 = off), remembered in
+ *  localStorage. The rotate handle, snapPrim's rotation and the inspector's
+ *  rotation boxes' step use it; a rotation typed into the inspector is kept
+ *  exactly as typed. */
+const ROTATE_SNAP_KEY = "dart-editor-rotate-snap";
+const ROTATE_SNAP_CHOICES = [0, 1, 5, 15, 45, 90];
+
+function readRotateSnap(fallback: number): number {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(ROTATE_SNAP_KEY) : null;
+    if (raw === null) return fallback;
+    const n = Number(raw);
+    return ROTATE_SNAP_CHOICES.includes(n) ? n : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+let rotateSnap = readRotateSnap(ROTATE_STEP);
+
+function saveRotateSnap() {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(ROTATE_SNAP_KEY, String(rotateSnap));
+  } catch {
+    // Storage blocked: the choice still works for this session.
+  }
+}
+
+function rotateStep(): number {
+  return rotateSnap > 0 ? rotateSnap : 1;
+}
+
 /** True while the keyboard belongs to a text field (typing a name, a
  *  number), so the editor's single letter keys are not taken. */
 function typing(target: EventTarget | null): boolean {
@@ -187,6 +219,21 @@ $("hiddenBtn").addEventListener("click", () => {
     ? `Not drawing ${count} prim${count === 1 ? "" : "s"} that start hidden.`
     : `Drawing the prims that start hidden see-through again (${count}).`;
   selectInView();
+});
+
+// ED-30 item 12: the rotation snap choice, remembered in localStorage.
+const rotateSnapSelect = $<HTMLSelectElement>("rotateSnap");
+rotateSnapSelect.value = String(rotateSnap);
+view.setRotationSnap(rotateSnap);
+rotateSnapSelect.addEventListener("change", () => {
+  const n = Number(rotateSnapSelect.value);
+  if (ROTATE_SNAP_CHOICES.includes(n)) {
+    rotateSnap = n;
+    view.setRotationSnap(rotateSnap);
+    saveRotateSnap();
+    status.textContent = rotateSnap ? `Rotation snaps to ${rotateSnap} degrees.` : "Rotation snap off.";
+    buildInspector();
+  }
 });
 
 $("helpBtn").addEventListener("click", () => {
@@ -703,6 +750,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
       else doc.change(kind, [{ id, patch }], text);
     },
     redraw: buildInspector,
+    rotateStep: rotateStep(),
   };
   if (kind === "start") buildStartFields(host, doc.level, ctx);
   else if (kind === "exit") buildExitFields(host, doc.level, ctx);
@@ -773,6 +821,24 @@ function buildPrimInspector(host: HTMLElement) {
     recent,
     remember,
   });
+  // A prim's fields live in inspector.ts (not my file), so the locked
+  // checkbox is appended here, one selected prim only.
+  const only = selected.size === 1 ? [...selected][0]! : null;
+  if (only) {
+    const prim = doc.prim(only);
+    if (prim) {
+      const lock = document.createElement("label");
+      const lockInput = document.createElement("input");
+      lockInput.type = "checkbox";
+      lockInput.checked = prim.locked === true;
+      lockInput.addEventListener("change", () => {
+        const locked = lockInput.checked;
+        doc.change("prims", [{ id: prim.id, patch: { locked: locked ? true : undefined } }], locked ? "lock" : "unlock");
+      });
+      lock.append(document.createTextNode("locked"), lockInput);
+      host.append(lock);
+    }
+  }
 }
 
 // The view: the camera's own mouse controls are in src/editor/camera.ts
@@ -1127,7 +1193,7 @@ function primAt(shape: PrimShape, id: string, point: THREE.Vector3, normal: THRE
     const cx = a[0]! + Math.sign(b[0]! - a[0]! || 1) * size[0] / 2;
     const cz = a[2]! + Math.sign(b[2]! - a[2]! || 1) * size[2] / 2;
     const made: Prim = { ...base, id, size, pos: [cx, point.y + size[1] / 2, cz] };
-    return snapOn ? { ...snapPrim(made), pos: made.pos } : made;
+    return snapOn ? { ...snapPrim(made, GRID, rotateSnap), pos: made.pos } : made;
   }
   const pos: Vec3 = [
     point.x + normal.x * base.size[0] / 2,
@@ -1135,7 +1201,7 @@ function primAt(shape: PrimShape, id: string, point: THREE.Vector3, normal: THRE
     point.z + normal.z * base.size[2] / 2,
   ];
   const made: Prim = { ...base, id, pos };
-  return snapOn ? snapPrim(made) : made;
+  return snapOn ? snapPrim(made, GRID, rotateSnap) : made;
 }
 
 /** Places a prim (see `primAt`) and selects it. */
@@ -1430,7 +1496,7 @@ function turnSelection(deg: number) {
     if (!prim) return [];
     const r = prim.rot ?? [0, 0, 0];
     const rot: Vec3 = [r[0], (((r[1] + deg) % 360) + 360) % 360, r[2]];
-    return [{ id, patch: { rot: snapOn ? snapVec3(rot, ROTATE_STEP) : rot } }];
+    return [{ id, patch: { rot: snapOn ? snapVec3(rot, rotateSnap) : rot } }];
   });
   if (prims.length) doc.change("prims", prims, "turn");
   const byKind = new Map<EntryKind, { id: string; patch: Record<string, unknown> }[]>();
@@ -1562,7 +1628,7 @@ function endHandleDrag() {
       // snapped. A move used to snap the turn as well, which bent a prim
       // at an off-step angle (a converted ramp) the first time it was moved.
       if (moved) patch.pos = snapOn ? snapVec3(pos, GRID) : pos;
-      if (turned) patch.rot = snapOn ? snapVec3(rot, ROTATE_STEP) : rot;
+      if (turned) patch.rot = snapOn ? snapVec3(rot, rotateSnap) : rot;
     }
     return { id, patch };
   }).filter((e) => Object.keys(e.patch).length);

@@ -125,3 +125,30 @@ describe("ED-30 the start turns", () => {
     expect(patch?.yaw).toBeCloseTo((20 * Math.PI) / 180, 6);
   });
 });
+
+describe("ED-30 rotation snap", () => {
+  it.each([1, 5, 15, 45, 90])("snapPrim snaps rotation to %d degrees", async (step) => {
+    const { snapPrim } = await import("../../src/editor/doc");
+    const prim = { id: "box-1", shape: "box" as const, pos: [1.2, 1, 1.3] as [number, number, number], size: [2, 2, 2] as [number, number, number], colour: "#fff", behaviour: "solid" as const, rot: [0, 7.3, 33.2] as [number, number, number] };
+    const snapped = snapPrim(prim, 0.5, step);
+    expect(snapped.rot?.[1]).toBeCloseTo(Math.round(7.3 / step) * step, 6);
+    expect(snapped.rot?.[2]).toBeCloseTo(Math.round(33.2 / step) * step, 6);
+  });
+
+  it("snapPrim with step 0 keeps the rotation exactly as typed", async () => {
+    const { snapPrim } = await import("../../src/editor/doc");
+    const prim = { id: "box-1", shape: "box" as const, pos: [1.2, 1, 1.3] as [number, number, number], size: [2, 2, 2] as [number, number, number], colour: "#fff", behaviour: "solid" as const, rot: [0, 7.3, 33.2] as [number, number, number] };
+    const snapped = snapPrim(prim, 0.5, 0);
+    expect(snapped.rot?.[1]).toBeCloseTo(7.3, 6);
+    expect(snapped.rot?.[2]).toBeCloseTo(33.2, 6);
+  });
+
+  it("off: rotation typed into the inspector is kept exactly as typed", async () => {
+    const { snapPrim } = await import("../../src/editor/doc");
+    const prim = { id: "box-1", shape: "box" as const, pos: [1.2, 1, 1.3] as [number, number, number], size: [2, 2, 2] as [number, number, number], colour: "#fff", behaviour: "solid" as const, rot: [0, 7.3, 33.2] as [number, number, number] };
+    const snapped = snapPrim(prim, 0.5, 0);
+    expect(snapped.rot?.[0]).toBeCloseTo(0, 6);
+    expect(snapped.rot?.[1]).toBeCloseTo(7.3, 6);
+    expect(snapped.rot?.[2]).toBeCloseTo(33.2, 6);
+  });
+});

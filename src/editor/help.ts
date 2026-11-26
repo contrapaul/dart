@@ -36,6 +36,10 @@ export const HELP: HelpSection[] = [
       ["Shift+P", "Play from the camera, the same as Shift+Tab."],
       ["Esc, while playing", "Back to the editor, as you left it."],
       ["L, Esc", "Link a trigger's field, then stop linking."],
+      ["Rotation snap", "The top bar's choice: degrees the rotate handle and grid snap snap to, or Snap off. G turns every snap off and on."],
+      ["Lock", "The padlock button on a row (prims, props, physics, models), or the checkbox in the inspector for one thing. A locked thing is drawn, listed and readable, but is never picked in the view, never box selected, never moved, deleted or turned."],
+      ["Outliner folds", "Click a group title (solid, Foamers, Logic, Level) to fold it. The count shows while it is folded. Selecting a thing in the view unfolds its group."],
+      ["Player start", "The start can be turned by the rotate handle (Y only) and by the [ and ] keys, like a Foamer."],
     ],
   },
   {

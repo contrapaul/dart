@@ -217,6 +217,7 @@ export class EditorView {
     this.controls.setTranslationSnap(GRID);
     this.controls.setRotationSnap(ROTATE_STEP * DEG);
     this.controls.setScaleSnap(GRID);
+    this.rotationSnapDeg = ROTATE_STEP;
     this.controls.setSize(editorData.camera.handleSize);
     this.controls.enabled = false;
     this.scene.add(this.controls.getHelper());
@@ -524,11 +525,28 @@ export class EditorView {
     return this.controls.mode as TransformMode;
   }
 
+  /** ED-30 item 12: degrees the rotate handle snaps to (0 = off for the
+   *  handle, the grid and size snap are unaffected). G still turns every
+   *  snap off and on. */
+  private rotationSnapDeg = ROTATE_STEP;
+
+  setRotationSnap(deg: number) {
+    this.rotationSnapDeg = deg;
+    this.applyRotationSnap();
+  }
+
+  private applyRotationSnap() {
+    this.controls.setRotationSnap(this.snapOn && this.rotationSnapDeg > 0 ? this.rotationSnapDeg * DEG : null);
+  }
+
+  private snapOn = true;
+
   /** Grid snap on or off (G). */
   setSnap(on: boolean) {
+    this.snapOn = on;
     this.controls.setTranslationSnap(on ? GRID : null);
-    this.controls.setRotationSnap(on ? ROTATE_STEP * DEG : null);
     this.controls.setScaleSnap(on ? GRID : null);
+    this.applyRotationSnap();
   }
 
   /** The proxy's position, rotation in degrees and scale, for the page to
