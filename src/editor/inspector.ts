@@ -21,6 +21,9 @@ export interface InspectorContext {
   redraw(): void;
   /** The last colours used, newest first. */
   recent: string[];
+  /** ED-30: the rotation boxes' arrow step, the top bar's rotation snap.
+   *  A typed rotation is kept exactly as typed. Omitted: data's rotateStep. */
+  rotateStep?: number;
   remember(colour: string): void;
 }
 
@@ -137,7 +140,7 @@ export function buildPrimFields(host: HTMLElement, prims: Prim[], ctx: Inspector
   host.append(sizeLabel);
 
   const rotLabel = label("rotation");
-  rotLabel.append(vecField(first.rot ?? [0, 0, 0], ROTATE_STEP, ROTATE_STEP, (v) => ctx.change({ rot: v }, "rotate")));
+  rotLabel.append(vecField(first.rot ?? [0, 0, 0], ctx.rotateStep ?? ROTATE_STEP, 0, (v) => ctx.change({ rot: v }, "rotate")));
   host.append(rotLabel);
 
   const colourLabel = label("colour");

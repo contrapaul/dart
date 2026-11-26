@@ -159,6 +159,8 @@ function resizes(kind: Handles["kind"]): boolean {
  *  and so does a prim (which has its own path). */
 export function dragPatch(
   h: Handles, move: Vec3, turnDeg: number, ratio: Vec3, snap: number,
+  /** ED-30: the top bar's rotation snap (0 is off). */
+  rotateSnap: number = EDITOR.rotateStep,
 ): Record<string, unknown> | null {
   const patch: Record<string, unknown> = {};
   const pos: Vec3 = [h.pos[0] + move[0], h.pos[1] + move[1], h.pos[2] + move[2]];
@@ -168,7 +170,7 @@ export function dragPatch(
     // A door's rotY and a Foamer's and the start's yaw are all "0 faces -z"
     // (format.ts), so a turn of the handles is the same number in degrees
     // for a door and the same angle in radians for the other two.
-    if (h.kind === "doors" || h.kind === "props") patch.rotY = snap > 0 ? snapValue(deg, EDITOR.rotateStep) : deg;
+    if (h.kind === "doors" || h.kind === "props") patch.rotY = snap > 0 ? snapValue(deg, rotateSnap) : deg;
     else patch.yaw = (deg * Math.PI) / 180;
   }
   if (resizes(h.kind) && h.size) {

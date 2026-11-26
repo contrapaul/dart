@@ -718,9 +718,12 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
   const showable = new Set([
     ...primIds, ...foamerIds, ...lights.map((l) => l.id), ...models.map((m) => m.id), ...physics.map((o) => o.id),
   ]);
-  // ED-31: what a move may carry.
+  // ED-31: what a move may carry. Breakable and hazard prims and models
+  // are built by systems that cannot move yet, so a move on one is refused
+  // rather than doing nothing in play.
   const movable = new Set([
-    ...primIds, ...props.map((p) => p.id), ...lights.map((l) => l.id), ...models.map((m) => m.id),
+    ...prims.filter((p) => p.behaviour === "solid" || p.behaviour === "decor").map((p) => p.id),
+    ...props.map((p) => p.id), ...lights.map((l) => l.id),
     ...physics.map((o) => o.id), ...(level.buttons ?? []).map((b) => b.id),
   ]);
   for (const t of triggers) {
@@ -779,7 +782,7 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
           break;
         case "move":
           need(Array.isArray(d.ids) && d.ids.length > 0, "move names nothing");
-          for (const id of d.ids ?? []) need(movable.has(id), `move names unknown thing ${id}`);
+          for (const id of d.ids ?? []) need(movable.has(id), `move names ${id}, which is unknown or cannot move (breakable and hazard prims and models cannot yet)`);
           need(isVec3(d.by), "move needs by, three numbers");
           need(typeof d.seconds === "number" && d.seconds > 0, "move seconds must be positive");
           need(d.turn === undefined || Number.isFinite(d.turn), "move turn must be a number");

@@ -1049,6 +1049,7 @@ function buildPrimInspector(host: HTMLElement) {
     },
     recent,
     remember,
+    rotateStep: rotateStep(),
   });
   // A prim's fields live in inspector.ts (not my file), so the locked
   // checkbox is appended here, one selected prim only.
@@ -1878,7 +1879,7 @@ window.addEventListener("keyup", (e) => {
  *  A light's patch writes its own XYZ rot; every other kind goes through
  *  the shared dragPatch. */
 function partPatch(part: NonNullable<typeof dragStart>["parts"][number], move: Vec3, turnY: number, ratio: Vec3): Record<string, unknown> | null {
-  if (part.kind !== "lights") return dragPatch(part, move, turnY, ratio, snapOn ? GRID : 0);
+  if (part.kind !== "lights") return dragPatch(part, move, turnY, ratio, snapOn ? GRID : 0, rotateSnap);
   const patch: Record<string, unknown> = {};
   if (move.some((n) => Math.abs(n) > 1e-4)) {
     const pos: Vec3 = [part.pos[0] + move[0], part.pos[1] + move[1], part.pos[2] + move[2]];

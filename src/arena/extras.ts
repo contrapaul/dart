@@ -469,6 +469,29 @@ export function arenaExtras(
   // ones burst into chunks through the same debris system as ED-06's.
   const physics = new PhysicsObjects(g.rapier, g.world, scene, LEVEL.physics ?? []);
   physics.debris = g.debris;
+  // ED-31 with ED-33 and ED-32 (the lead, at merge): a move carries physics
+  // objects and lights too. A mover hands each apply the offset and turn
+  // from rest; a physics object moves by the step since its last one, so
+  // where it has rolled to since is kept.
+  for (const o of LEVEL.physics ?? []) {
+    const last = { x: 0, y: 0, z: 0, turn: 0 };
+    movers.register(o.id, (x, y, z, turn) => {
+      physics.moveBy(o.id, new THREE.Vector3(x - last.x, y - last.y, z - last.z));
+      if (turn !== last.turn) physics.turnBy(o.id, turn - last.turn);
+      Object.assign(last, { x, y, z, turn });
+    });
+  }
+  for (const l of LEVEL.lights ?? []) {
+    const handle = built.lights.handles.get(l.id);
+    if (!handle) continue;
+    const rest = new THREE.Vector3(...l.pos);
+    const target = handle.light instanceof THREE.SpotLight ? handle.light.target : null;
+    const restTarget = target ? target.position.clone() : null;
+    movers.register(l.id, (x, y, z) => {
+      handle.light.position.set(rest.x + x, rest.y + y, rest.z + z);
+      if (target && restTarget) target.position.set(restTarget.x + x, restTarget.y + y, restTarget.z + z);
+    });
+  }
   physics.onBreak = (o, at) => {
     audio.play("FX-chunk", { position: at });
     g.darts.releaseInSphere(at, Math.hypot(...o.spec.size) / 2);

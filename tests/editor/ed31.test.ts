@@ -41,7 +41,14 @@ describe("ED-31 buttons in a level", () => {
       ...base, buttons: [button()],
       triggers: [{ ...trigger, do: [{ kind: "move", ids: ["nope"], by: [0, 1, 0], seconds: 1 }] }],
     });
-    expect(unknown.errors.some((e) => e.includes("move names unknown thing nope"))).toBe(true);
+    expect(unknown.errors.some((e) => e.includes("move names nope, which is unknown or cannot move"))).toBe(true);
+  });
+
+  it("the validator refuses a move on a breakable prim, which cannot move yet (lead, at merge)", () => {
+    const wall = { id: "wall-1", shape: "box" as const, pos: [0, 1, -4] as [number, number, number], size: [2, 2, 1] as [number, number, number], colour: "#ff7a1a", behaviour: "breakable" as const };
+    const trigger: Trigger = { id: "move-it", when: { kind: "start" }, do: [{ kind: "move", ids: ["wall-1"], by: [0, 1, 0], seconds: 1 }] };
+    const report = validateLevel({ ...base, prims: [...(base.prims ?? []), wall], triggers: [trigger] });
+    expect(report.errors.some((e) => e.includes("move names wall-1"))).toBe(true);
   });
 
   it("a button placed on a face keeps the point and the unit normal", () => {
