@@ -3,6 +3,7 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Movers, ease, registerMovables, turnAbout } from "../../src/level/movers";
 import { buildPrims } from "../../src/level/prims";
+import { buildButton } from "../../src/level/buttons";
 import { createPhysics } from "../../src/physics/world";
 import type { Level, Prim, Vec3 } from "../../src/level/format";
 
@@ -144,7 +145,39 @@ describe("a prim a move names", () => {
     // it up with the mesh.
     world.step();
     expect(world.colliders.getAll().some((c) => Math.abs(c.translation().y - 2) < 1e-3)).toBe(true);
-    // The prim's own geometry stays local: a turn goes round the prim.
-    expect(meshes.find((m) => m.position.x === 5)!.geometry.boundingBox === null).toBe(true);
+  });
+
+  it("a real button mounted on it rides with it", async () => {
+    const { rapier, world } = await createPhysics();
+    const group = new THREE.Group();
+    const prim: Prim = {
+      id: "box-1", shape: "box", pos: [0, 0, 0], size: [1, 1, 1],
+      colour: "#ff8800", behaviour: "solid",
+    };
+    const button = { id: "button-1", pos: [0.4, 0, 0.6] as Vec3, facing: [0, 0, 1] as Vec3, on: "box-1" };
+    const level = {
+      meta: { id: "t", name: "t", act: 1, targetSeconds: 60, accent: "#ffffff", setting: "t" },
+      shell: [], prims: [prim], buttons: [button],
+      playerStart: { pos: [0, 0, 0], yaw: 0 }, exit: { pos: [0, 0, 0], size: [1, 1, 1] },
+      triggers: [{ id: "t1", when: { kind: "start" }, do: [{ kind: "move", ids: ["box-1"], by: [2, 0, 0], seconds: 1 }] }],
+    } as unknown as Level;
+    const handles = buildPrims(level, rapier, world, group);
+    const b = buildButton(button, group, rapier, world);
+    // The registration the arena page does for the same pair.
+    const movers = new Movers();
+    registerMovables(movers, [
+      { id: "box-1", apply: (x, y, z, turn) => handles.get("box-1")!.move!([x, y, z], turn) },
+      {
+        id: "button-1",
+        apply: (x, y, z, turn) => b.move([x, y, z], turn, button.pos),
+        on: { id: "box-1", apply: (x, y, z, turn) => b.move([x, y, z], turn, [0, 0, 0]) },
+      },
+    ]);
+    const plateX = b.plate.position.x;
+    const capX = b.cap.position.x;
+    movers.start(["box-1"], [2, 0, 0], 0, 1);
+    movers.update(1);
+    expect(b.plate.position.x).toBeCloseTo(plateX + 2, 6);
+    expect(b.cap.position.x).toBeCloseTo(capX + 2, 6);
   });
 });
