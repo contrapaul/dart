@@ -101,6 +101,19 @@ describe("movers", () => {
     expect(buttonAt[1]).toBeCloseTo(1, 6);
   });
 
+  it("a later kind registers directly and a rider still follows", () => {
+    const movers = new Movers();
+    let light = 0;
+    let button = 0;
+    // ED-32's shape: one register call, and a button mounted on the light.
+    movers.register("light-1", (x) => { light = x; });
+    movers.ride("light-1", (x) => { button = x; });
+    movers.start(["light-1"], [3, 0, 0], 0, 1);
+    movers.update(1);
+    expect(light).toBe(3);
+    expect(button).toBe(3);
+  });
+
   it("a thing it does not know is ignored, and reset puts it back", () => {
     const movers = new Movers();
     let at: Vec3 = [1, 2, 3];

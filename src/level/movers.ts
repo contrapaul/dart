@@ -40,20 +40,11 @@ export interface Movable {
   on?: { id: string; apply: MoverApply };
 }
 
-/** Registers each movable, and runs what rides on one when it moves. */
+/** Registers each movable, and puts what rides on one on its owner. */
 export function registerMovables(movers: Movers, movables: Movable[]): void {
-  const riders = new Map<string, MoverApply[]>();
   for (const m of movables) {
-    if (!m.on) continue;
-    const list = riders.get(m.on.id) ?? [];
-    list.push(m.on.apply);
-    riders.set(m.on.id, list);
-  }
-  for (const m of movables) {
-    movers.register(m.id, (x, y, z, turn) => {
-      m.apply(x, y, z, turn);
-      for (const rider of riders.get(m.id) ?? []) rider(x, y, z, turn);
-    });
+    movers.register(m.id, m.apply);
+    if (m.on) movers.ride(m.on.id, m.on.apply);
   }
 }
 
@@ -75,6 +66,7 @@ interface Job {
 
 export class Movers {
   private readonly applies = new Map<string, MoverApply>();
+  private readonly riders = new Map<string, MoverApply[]>();
   private readonly jobOf = new Map<string, Job>();
   /** Every job ever started, so `update` loops an array: no allocation. */
   private readonly jobs: Job[] = [];
@@ -82,6 +74,21 @@ export class Movers {
   /** A thing a move may name. A later card's kind plugs in here. */
   register(id: string, apply: MoverApply): void {
     this.applies.set(id, apply);
+  }
+
+  /** ED-31: a thing mounted on another (a button on a prim), applied with
+   *  the same offset and turn whenever its owner moves. */
+  ride(id: string, apply: MoverApply): void {
+    const list = this.riders.get(id) ?? [];
+    list.push(apply);
+    this.riders.set(id, list);
+  }
+
+  /** A thing and what rides on it. */
+  private run(id: string, x: number, y: number, z: number, turn: number): void {
+    this.applies.get(id)?.(x, y, z, turn);
+    const list = this.riders.get(id);
+    if (list) for (const rider of list) rider(x, y, z, turn);
   }
 
   has(id: string): boolean {
@@ -130,7 +137,7 @@ export class Movers {
       job.at[1] = job.from[1] + (job.to[1] - job.from[1]) * k;
       job.at[2] = job.from[2] + (job.to[2] - job.from[2]) * k;
       job.turn = job.fromTurn + (job.toTurn - job.fromTurn) * k;
-      this.applies.get(job.id)?.(job.at[0], job.at[1], job.at[2], job.turn);
+      this.run(job.id, job.at[0], job.at[1], job.at[2], job.turn);
       if (u >= 1) job.running = false;
     }
   }
@@ -142,7 +149,7 @@ export class Movers {
       job.at[0] = job.at[1] = job.at[2] = 0;
       job.turn = 0;
       job.running = false;
-      this.applies.get(job.id)?.(0, 0, 0, 0);
+      this.run(job.id, 0, 0, 0, 0);
     }
   }
 
