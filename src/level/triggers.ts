@@ -24,6 +24,9 @@ export interface TriggerHost {
   close(door: string): void;
   message(text: string, seconds: number): void;
   checkpoint(pos: Vec3, yaw: number): void;
+  /** ED-31: move things by an offset and a turn about Y over seconds. A
+   *  host without it (an older page) ignores the action. */
+  move?(ids: string[], by: Vec3, turn: number, seconds: number): void;
 }
 
 /** One in-flight `spawn` do: round robin over `at`, `hold` seconds apart,
@@ -304,6 +307,7 @@ export class TriggerRunner {
       case "close": h.close(d.door); break;
       case "message": h.message(d.text, d.seconds ?? T.triggerDefaults.messageSeconds); break;
       case "checkpoint": h.checkpoint(d.pos, d.yaw); break;
+      case "move": h.move?.(d.ids, d.by, d.turn ?? 0, d.seconds); break;
       default: break;
     }
   }

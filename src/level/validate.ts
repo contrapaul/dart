@@ -6,6 +6,7 @@ import blastersData from "../../data/blasters.json";
 import meleeData from "../../data/melee.json";
 import type { Arena, Level, Piece, PieceVolume, Prim, ShellBox, TriggerDo } from "./format";
 import buttonData from "../../data/buttons.json";
+import surfaceData from "../../data/surfaces.json";
 import pressTuning from "../../data/press.json";
 import hazardData from "../../data/hazards.json";
 import editorData from "../../data/editor.json";
@@ -362,7 +363,10 @@ export function validateLevel(level: Level): ValidationResult {
         errors.push(`${what}: facing must be a unit axis, like [0, 1, 0]`);
       }
     }
-    if (!b.action || typeof b.action.open !== "string") {
+    // ED-31: an editor button has no action; its pressed triggers act.
+    if (b.action === undefined) {
+      // nothing to check
+    } else if (typeof b.action.open !== "string") {
       errors.push(`${what}: action.open must name a door`);
     } else if (!doorIds.has(b.action.open)) {
       errors.push(`${what}: action.open names unknown door ${b.action.open}`);
@@ -519,6 +523,86 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
     if (p.rotY !== undefined && !Number.isFinite(p.rotY)) errors.push(`${what}: rotY must be a number`);
     if (p.solid !== undefined && typeof p.solid !== "boolean") errors.push(`${what}: solid must be true or false`);
   }
+  // ED-30 to ED-37 (design/EDITOR-V2.md): lights, physics objects, models
+  // and the terrain. Each kind's own module may add finer checks; these are
+  // the shapes every page relies on.
+  const lights = level.lights ?? [];
+  if (lights.length > LIMITS.lights) errors.push(`${lights.length} lights, over the limit of ${LIMITS.lights}`);
+  for (const l of lights) {
+    const what = `light ${l.id}`;
+    claim(l.id, what);
+    if (l.kind !== "point" && l.kind !== "spot") errors.push(`${what}: kind must be point or spot`);
+    if (!isVec3(l.pos)) errors.push(`${what}: pos must be three numbers`);
+    if (l.rot !== undefined && !isVec3(l.rot)) errors.push(`${what}: rot must be three numbers`);
+    if (!isColour(l.colour)) errors.push(`${what}: colour must be #rrggbb`);
+    if (!(typeof l.intensity === "number" && l.intensity >= 0)) errors.push(`${what}: intensity must be 0 or more`);
+    if (!(typeof l.range === "number" && l.range > 0)) errors.push(`${what}: range must be positive`);
+    if (l.angle !== undefined && !(l.angle > 0 && l.angle < 180)) errors.push(`${what}: angle must be between 0 and 180`);
+  }
+  const shadows = lights.filter((l) => l.castShadow).length;
+  if (shadows > editorData.lights.maxShadows) errors.push(`${shadows} lights cast shadows, over the limit of ${editorData.lights.maxShadows}`);
+  const physics = level.physics ?? [];
+  if (physics.length > LIMITS.physics) errors.push(`${physics.length} physics objects, over the limit of ${LIMITS.physics}`);
+  for (const o of physics) {
+    const what = `physics object ${o.id}`;
+    claim(o.id, what);
+    if (!["box", "cylinder", "sphere"].includes(o.shape)) errors.push(`${what}: unknown shape ${o.shape}`);
+    if (!isVec3(o.pos)) errors.push(`${what}: pos must be three numbers`);
+    if (!isVec3(o.size) || o.size.some((n) => n <= 0)) errors.push(`${what}: size must be three positive numbers`);
+    if (o.rot !== undefined && !isVec3(o.rot)) errors.push(`${what}: rot must be three numbers`);
+    if (!isColour(o.colour)) errors.push(`${what}: colour must be #rrggbb`);
+    if (!(typeof o.mass === "number" && o.mass > 0)) errors.push(`${what}: mass must be positive`);
+    if (!(typeof o.damage === "number" && o.damage >= 0)) errors.push(`${what}: damage must be 0 or more`);
+    if (o.breakable && !(typeof o.hitPoints === "number" && o.hitPoints > 0)) errors.push(`${what}: a breakable one needs hitPoints`);
+  }
+  const assets = level.modelAssets ?? [];
+  const assetIds = new Set<string>();
+  let assetBytes = 0;
+  for (const a of assets) {
+    if (typeof a.id !== "string" || !a.id || assetIds.has(a.id)) errors.push(`model asset ${a.id}: id missing or used twice`);
+    assetIds.add(a.id);
+    if (typeof a.data !== "string" || !a.data.startsWith("data:")) errors.push(`model asset ${a.id}: data must be a data: URL`);
+    else assetBytes += a.data.length * 0.75;
+  }
+  if (assetBytes > editorData.models.maxTotalBytes) {
+    errors.push(`models take ${(assetBytes / 1e6).toFixed(1)} MB, over the limit of ${(editorData.models.maxTotalBytes / 1e6).toFixed(0)} MB`);
+  }
+  const models = level.models ?? [];
+  if (models.length > LIMITS.models) errors.push(`${models.length} models, over the limit of ${LIMITS.models}`);
+  for (const m of models) {
+    const what = `model ${m.id}`;
+    claim(m.id, what);
+    if (!assetIds.has(m.asset)) errors.push(`${what}: unknown asset ${m.asset}`);
+    if (!isVec3(m.pos)) errors.push(`${what}: pos must be three numbers`);
+    if (m.rot !== undefined && !isVec3(m.rot)) errors.push(`${what}: rot must be three numbers`);
+    if (m.scale !== undefined && (!isVec3(m.scale) || m.scale.some((n) => n <= 0))) errors.push(`${what}: scale must be three positive numbers`);
+    if (!["solid", "decor", "breakable"].includes(m.behaviour)) errors.push(`${what}: unknown behaviour ${m.behaviour}`);
+    if (m.collider !== undefined && !["box", "hull", "mesh"].includes(m.collider)) errors.push(`${what}: unknown collider ${m.collider}`);
+    if (m.behaviour === "breakable" && !m.voxel && !(typeof m.hitPoints === "number" && m.hitPoints > 0)) {
+      errors.push(`${what}: a breakable model needs hitPoints or voxel`);
+    }
+    if (m.tint !== undefined && !isColour(m.tint)) errors.push(`${what}: tint must be #rrggbb`);
+  }
+  const terrain = level.terrain;
+  if (terrain) {
+    const t = terrain;
+    const what = "terrain";
+    if (!isVec3(t.origin)) errors.push(`${what}: origin must be three numbers`);
+    if (!(t.cell > 0)) errors.push(`${what}: cell must be positive`);
+    if (!(Number.isInteger(t.nx) && Number.isInteger(t.nz) && t.nx >= 1 && t.nz >= 1)) errors.push(`${what}: nx and nz must be whole numbers, 1 or more`);
+    else if (t.nx > editorData.terrain.maxCells || t.nz > editorData.terrain.maxCells) errors.push(`${what}: over ${editorData.terrain.maxCells} cells along a side`);
+    const verts = (t.nx + 1) * (t.nz + 1);
+    if (!Array.isArray(t.heights) || t.heights.length !== verts || t.heights.some((h) => !Number.isFinite(h))) {
+      errors.push(`${what}: heights must be ${verts} numbers`);
+    }
+    if (!Array.isArray(t.layers) || t.layers.length < 1 || t.layers.length > 4) errors.push(`${what}: 1 to 4 layers`);
+    else {
+      for (const l of t.layers) if (!isColour(l.colour)) errors.push(`${what}: a layer colour must be #rrggbb`);
+      if (t.paint !== undefined && (!Array.isArray(t.paint) || t.paint.length !== verts * t.layers.length)) {
+        errors.push(`${what}: paint must be ${verts * t.layers.length} numbers`);
+      }
+    }
+  }
   for (let k = 0; k < 3; k++) {
     if (shell.max[k] - shell.min[k] > LIMITS.levelSize) {
       errors.push(`the level is ${(shell.max[k] - shell.min[k]).toFixed(1)} m along ${"xyz"[k]}, over the limit of ${LIMITS.levelSize}`);
@@ -537,6 +621,7 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
     if (isVec3(p.size) && p.size.some((n) => n <= 0)) errors.push(`${what}: size must be positive`);
     if (p.rot !== undefined && !isVec3(p.rot)) errors.push(`${what}: rot must be three numbers`);
     if (!isColour(p.colour)) errors.push(`${what}: colour must be #rrggbb`);
+    if (p.surface !== undefined && !(p.surface in surfaceData.surfaces)) errors.push(`${what}: unknown surface ${p.surface}`);
     if (p.shape === "stairs" && !(Number.isInteger(p.steps) && p.steps! >= 2 && p.steps! <= LIMITS.stairsMaxSteps)) {
       errors.push(`${what}: stairs need 2 to ${LIMITS.stairsMaxSteps} steps`);
     }
@@ -619,7 +704,14 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
   const pickupIds = new Set((level.pickups ?? []).map((p) => p.id));
   const spawnActions = new Set<string>();
   for (const t of triggers) for (const d of t.do ?? []) if (d.kind === "spawn") spawnActions.add(d.id);
-  const showable = new Set([...primIds, ...foamerIds]);
+  const showable = new Set([
+    ...primIds, ...foamerIds, ...lights.map((l) => l.id), ...models.map((m) => m.id), ...physics.map((o) => o.id),
+  ]);
+  // ED-31: what a move may carry.
+  const movable = new Set([
+    ...primIds, ...props.map((p) => p.id), ...lights.map((l) => l.id), ...models.map((m) => m.id),
+    ...physics.map((o) => o.id), ...(level.buttons ?? []).map((b) => b.id),
+  ]);
   for (const t of triggers) {
     const what = `trigger ${t.id}`;
     claim(t.id, what);
@@ -673,6 +765,13 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
           break;
         case "checkpoint":
           need(isVec3(d.pos) && Number.isFinite(d.yaw), "checkpoint needs pos and yaw");
+          break;
+        case "move":
+          need(Array.isArray(d.ids) && d.ids.length > 0, "move names nothing");
+          for (const id of d.ids ?? []) need(movable.has(id), `move names unknown thing ${id}`);
+          need(isVec3(d.by), "move needs by, three numbers");
+          need(typeof d.seconds === "number" && d.seconds > 0, "move seconds must be positive");
+          need(d.turn === undefined || Number.isFinite(d.turn), "move turn must be a number");
           break;
         default: errors.push(`${what}: unknown do ${(d as { kind?: string }).kind}`);
       }

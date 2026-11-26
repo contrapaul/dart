@@ -1,0 +1,10 @@
+# role: paths only that role may write. Shared files are not listed: any
+# role may make small hook edits there, and the lead merges them.
+ed30: src/editor/outliner-fold.ts, src/editor/lock.ts, tests/editor/ed30.test.ts, tasks/ED-30.md
+ed31: src/level/movers.ts, src/editor/buttons-editor.ts, tests/level/movers.test.ts, tests/editor/ed31.test.ts, tasks/ED-31.md
+ed32: src/level/lights.ts, src/editor/lights-editor.ts, tests/level/lights.test.ts, tests/editor/ed32.test.ts, tasks/ED-32.md
+ed33: src/level/physics-objects.ts, data/physics.json, src/editor/physics-editor.ts, tests/level/physics-objects.test.ts, tests/editor/ed33.test.ts, tasks/ED-33.md
+ed35: src/level/models.ts, src/level/model-voxels.ts, src/editor/models-editor.ts, tests/level/models.test.ts, tests/editor/ed35.test.ts, tests/fixtures/, tasks/ED-35.md
+ed36: src/render/surfaces.ts, data/surfaces.json, src/editor/paint-tool.ts, tests/render/surfaces.test.ts, tests/editor/ed36.test.ts, tasks/ED-36.md
+ed37: src/editor/group-transform.ts, tests/editor/ed37.test.ts, tasks/ED-37.md
+lead: src/level/terrain.ts, src/editor/terrain-editor.ts, design/EDITOR-V2.md, HANDOFF.md, PLAN.md

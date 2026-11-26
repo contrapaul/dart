@@ -1,0 +1,15 @@
+{
+  "_note": "ED-36: the surfaces a prim, a physics object or a terrain layer can wear. Each is a texture drawn in code (src/render/surfaces.ts, no image files), tinted by the thing's own colour. scale: metres one repeat of the texture covers. The list is the editor's paint palette, in this order. The looks are start values, [Paul] to restyle.",
+  "surfaces": {
+    "plain": { "label": "Plain foam", "scale": 1 },
+    "brick": { "label": "Brick", "scale": 1 },
+    "tiles": { "label": "Tiles", "scale": 1 },
+    "planks": { "label": "Planks", "scale": 2 },
+    "metal": { "label": "Metal plate", "scale": 2 },
+    "concrete": { "label": "Concrete", "scale": 2 },
+    "grass": { "label": "Grass", "scale": 2 },
+    "sand": { "label": "Sand", "scale": 2 },
+    "rock": { "label": "Rock", "scale": 3 },
+    "stripes": { "label": "Hazard stripes", "scale": 1 }
+  }
+}

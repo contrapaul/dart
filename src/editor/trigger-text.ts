@@ -35,6 +35,7 @@ export function doText(d: TriggerDo): string {
     case "close": return `close ${d.door}`;
     case "message": return "message";
     case "checkpoint": return "checkpoint";
+    case "move": return `move ${d.ids.join(", ")}`;
     default: return "unknown do";
   }
 }

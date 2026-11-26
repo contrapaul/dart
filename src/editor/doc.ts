@@ -28,9 +28,15 @@ const HISTORY_CAP = 200;
 /** The level's arrays of things with an id, one per kind the editor places
  *  (ED-05). The player start and the exit are single objects changed
  *  through the level fields, like the sky and the name. */
-export type EntryKind = "prims" | "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "triggers" | "props";
+export type EntryKind =
+  | "prims" | "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "triggers" | "props"
+  // ED-31 to ED-35 (design/EDITOR-V2.md).
+  | "buttons" | "lights" | "physics" | "models";
 
-export const ENTRY_KINDS: readonly EntryKind[] = ["prims", "foamers", "pickups", "doors", "spawnPoints", "zones", "triggers", "props"];
+export const ENTRY_KINDS: readonly EntryKind[] = [
+  "prims", "foamers", "pickups", "doors", "spawnPoints", "zones", "triggers", "props",
+  "buttons", "lights", "physics", "models",
+];
 
 /** The id prefix a kind's new ids take, and the name the outliner and the
  *  status line use for it. */
@@ -43,6 +49,10 @@ export const KIND_PREFIX: Record<EntryKind, string> = {
   zones: "zone",
   triggers: "trigger",
   props: "prop",
+  buttons: "button",
+  lights: "light",
+  physics: "object",
+  models: "model",
 };
 
 /** Anything the editor's arrays hold: it has an id, and that is all the

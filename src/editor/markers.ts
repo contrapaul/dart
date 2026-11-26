@@ -32,7 +32,9 @@ export interface Marker {
   rot: Vec3;
   /** The entry's size, for the scale handles, or null when it has none. */
   size: Vec3 | null;
-  kind: "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "start" | "exit";
+  kind: "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "start" | "exit"
+    // ED-31 to ED-35: each card replaces its placeholder case below.
+    | "buttons" | "lights" | "physics" | "models";
 }
 
 const RIGS = rigData.rigs as unknown as RigSpec[];
@@ -228,6 +230,13 @@ export function markerFor(
     case "exit": {
       const b = entry as Box;
       return { object: ghostBox(b.pos, b.size, MARKERS.exitColour), pos: b.pos, rot: [0, 0, 0], size: b.size, kind };
+    }
+    default: {
+      // ED-31 to ED-35 placeholders: a small box where the thing is, until
+      // its card draws it properly.
+      const e = entry as unknown as { pos: Vec3; size?: Vec3; rot?: Vec3 };
+      const size: Vec3 = e.size ?? [0.4, 0.4, 0.4];
+      return { object: ghostBox(e.pos, size, MARKERS.linkedColour), pos: e.pos, rot: e.rot ?? [0, 0, 0], size: e.size ?? null, kind };
     }
   }
 }

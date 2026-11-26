@@ -53,6 +53,7 @@ export function emptyDo(kind: TriggerDo["kind"]): TriggerDo {
     case "close": return { kind: "close", door: "" };
     case "message": return { kind: "message", text: "", seconds: 2 };
     case "checkpoint": return { kind: "checkpoint", pos: [0, 0, 0], yaw: 0 };
+    case "move": return { kind: "move", ids: [], by: [0, 2, 0], seconds: 1 };
   }
 }
 

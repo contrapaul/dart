@@ -234,11 +234,22 @@ export interface ButtonAction {
  *  same for every button and live in data/buttons.json. */
 export interface Button {
   id: string;
+  /** ED-13: an editor group. The game ignores it. */
+  group?: string;
   pos: Vec3;
   /** Outward normal of the face it is mounted on. [0, 1, 0] is a floor
    *  button, pressed by the player stepping on it. */
   facing: Vec3;
-  action: ButtonAction;
+  /** ED-31: optional. A button placed in the editor has none: its `pressed`
+   *  triggers do the work. An Act 1 button opens its door here. */
+  action?: ButtonAction;
+  /** ED-31: the id of the thing it is mounted on (a prim, a model, a
+   *  physics object). A `move` trigger on that thing carries the button,
+   *  and hiding it hides the button. */
+  on?: string;
+  /** ED-31: a press needs the use key while looking at it, not a step or a
+   *  dart. Omitted: false (the ENV-02 behaviour). */
+  use?: boolean;
 }
 
 // ED-00 (design/EDITOR.md): the parts the level editor places. All are
@@ -293,6 +304,13 @@ export interface Prim {
   /** Starts hidden: not drawn, no collision, no damage, until a trigger
    *  shows it. This is how a blocker works. */
   hidden?: boolean;
+  /** ED-30: locked in the editor: drawn, but a click in the view passes
+   *  through it and nothing moves it until it is unlocked in the outliner.
+   *  The game ignores it. */
+  locked?: boolean;
+  /** ED-36: a surface from data/surfaces.json (a texture tinted by
+   *  `colour`). Omitted: plain foam, as before. */
+  surface?: string;
 }
 
 /** A Foamer placed by hand. It stands where it is put until it sees the
@@ -324,6 +342,8 @@ export interface Prop {
   pos: Vec3;
   rotY?: number;
   solid?: boolean;
+  /** ED-30: locked in the editor (see Prim.locked). */
+  locked?: boolean;
 }
 
 /** An invisible box a trigger listens to. */
@@ -371,7 +391,130 @@ export type TriggerDo =
   | { kind: "open"; door: string }
   | { kind: "close"; door: string }
   | { kind: "message"; text: string; seconds?: number }
-  | { kind: "checkpoint"; pos: Vec3; yaw: number };
+  | { kind: "checkpoint"; pos: Vec3; yaw: number }
+  /** ED-31: move things (prims, props, models, physics objects, buttons,
+   *  lights) by `by` metres and turn them `turn` degrees about Y round
+   *  their own centre, over `seconds` (eased in and out). A repeat trigger
+   *  moves them again from where they are. Things that collide carry their
+   *  colliders with them. */
+  | { kind: "move"; ids: string[]; by: Vec3; turn?: number; seconds: number };
+
+/** ED-32: a light placed in the level. A point light shines every way; a
+ *  spot light shines down its own -Y, turned by `rot` (degrees, XYZ). The
+ *  number of lights and of shadow casters is capped in data/editor.json
+ *  (`limits.lights`, `lights.maxShadows`). A trigger's show and hide turn a
+ *  light on and off. */
+export interface LevelLight {
+  id: string;
+  group?: string;
+  kind: "point" | "spot";
+  pos: Vec3;
+  rot?: Vec3;
+  colour: string;
+  /** Candela, three.js physical units. */
+  intensity: number;
+  /** Metres to where the light reaches zero. */
+  range: number;
+  /** spot only: the cone's full angle, degrees. */
+  angle?: number;
+  /** spot only: 0 hard edge to 1 soft. */
+  softness?: number;
+  castShadow?: boolean;
+  /** Starts off until a trigger shows it. */
+  hidden?: boolean;
+}
+
+/** ED-32: the level's overall light. Omitted: the arena's defaults. */
+export interface LevelLighting {
+  ambient: string;
+  ambientIntensity: number;
+  sun: string;
+  sunIntensity: number;
+  /** Degrees: the sun's direction as yaw about Y and pitch down from level. */
+  sunYaw: number;
+  sunPitch: number;
+}
+
+/** ED-33: a loose object the world pushes about: darts and blasts shove it,
+ *  it falls and tumbles, and hitting the player or a Foamer hard hurts. */
+export interface PhysicsObject {
+  id: string;
+  group?: string;
+  shape: "box" | "cylinder" | "sphere";
+  pos: Vec3;
+  /** Full size; a sphere uses size[0] as its diameter, a cylinder size[0]
+   *  and size[1]. */
+  size: Vec3;
+  rot?: Vec3;
+  colour: string;
+  surface?: string;
+  /** Kilograms. */
+  mass: number;
+  /** Damage dealt per metre a second of closing speed past the threshold
+   *  in data/physics.json. 0 never hurts. */
+  damage: number;
+  /** With hit points it shatters into foam chunks when they run out. */
+  breakable?: boolean;
+  hitPoints?: number;
+  /** Bounciness, 0 to 1. Omitted: data/physics.json's default. */
+  bounce?: number;
+  /** Sleeps where it is put until something touches it. */
+  asleep?: boolean;
+  locked?: boolean;
+  hidden?: boolean;
+}
+
+/** ED-35: an imported 3D model, a GLB kept inside the level file as a data:
+ *  URL so nothing is fetched. One asset can be placed many times. */
+export interface ModelAsset {
+  id: string;
+  name: string;
+  /** "data:model/gltf-binary;base64,...". */
+  data: string;
+}
+
+export interface PlacedModel {
+  id: string;
+  group?: string;
+  /** A ModelAsset id. */
+  asset: string;
+  pos: Vec3;
+  rot?: Vec3;
+  /** Per axis. Omitted: [1, 1, 1]. */
+  scale?: Vec3;
+  /** solid: collides by its `collider`. decor: drawn only. breakable:
+   *  `hitPoints`, then it shatters into foam chunks; with `voxel` it is
+   *  filled with voxel foam and carves like any foam wall instead. */
+  behaviour: "solid" | "decor" | "breakable";
+  /** box: its bounding box. hull: one convex hull. mesh: the exact
+   *  triangles (static only). Omitted: hull. */
+  collider?: "box" | "hull" | "mesh";
+  hitPoints?: number;
+  voxel?: boolean;
+  /** Paints the whole model one foam colour; omitted keeps its own colours. */
+  tint?: string;
+  locked?: boolean;
+  hidden?: boolean;
+}
+
+/** ED-34: one heightfield ground for the level. A grid of `nx` by `nz`
+ *  cells of `cell` metres from `origin` (the -x, -z corner; heights are
+ *  added to origin[1]). `heights` has (nx + 1) * (nz + 1) values, row by
+ *  row along +x, rows along +z. `paint` blends up to four surfaces from
+ *  data/surfaces.json, one weight per vertex per layer, 0 to 255. */
+export interface Terrain {
+  origin: Vec3;
+  cell: number;
+  nx: number;
+  nz: number;
+  heights: number[];
+  /** The colour each layer is tinted, and its surface. */
+  layers: { surface: string; colour: string }[];
+  /** layers.length weights per vertex, vertex by vertex. Omitted: all
+   *  layer 0. */
+  paint?: number[];
+  locked?: boolean;
+}
 
 export interface Trigger {
   id: string;
@@ -429,4 +572,14 @@ export interface Level {
   /** Props: barrels, crates, rubble, tanks (data/props.json, and the
    *  Range's leaking barrel). */
   props?: Prop[];
+  /** ED-32. */
+  lights?: LevelLight[];
+  lighting?: LevelLighting;
+  /** ED-33. */
+  physics?: PhysicsObject[];
+  /** ED-35. */
+  modelAssets?: ModelAsset[];
+  models?: PlacedModel[];
+  /** ED-34. */
+  terrain?: Terrain;
 }

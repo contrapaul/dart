@@ -68,7 +68,7 @@ describe("the env-02 button test level", () => {
     const doors = level.arenas!.flatMap((a) => a.doors);
     expect(doors.map((d) => d.id)).toEqual([DOOR]);
     expect(doors[0]!.state).toBe("locked");
-    expect(level.buttons!.map((b) => b.action.open)).toEqual([DOOR, DOOR]);
+    expect(level.buttons!.map((b) => b.action!.open)).toEqual([DOOR, DOOR]);
   });
 
   it("2. the door is shut on the first frame, so the exit cannot be walked to", async () => {

@@ -11,3 +11,6 @@ reference/
 design/referenceimages/
 # Raw blaster recordings. Only edited sound files in assets/audio are published.
 audio-raw/
+.swarm/*
+!.swarm/preflight.sh
+!.swarm/ownership

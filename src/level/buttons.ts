@@ -201,7 +201,7 @@ export class ButtonSystem {
       .copy(b.up)
       .addScaledVector(normalOf(b.spec), -T.cap.pressDepth / 2);
     b.cap.material = this.lit;
-    if (first) this.action(b.spec.action.open);
+    if (first && b.spec.action) this.action(b.spec.action.open);
     return { id: b.id, pos: at ? at.clone() : b.up.clone(), opened: first };
   }
 }

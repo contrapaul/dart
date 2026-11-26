@@ -211,7 +211,7 @@ describe("the toy button", () => {
 
   it("a button naming a door that does not exist is a validation error", async () => {
     const level = room(true);
-    level.buttons![0]!.action.open = "nope";
+    level.buttons![0]!.action!.open = "nope";
     expect(validateLevel(level).errors.some((e) => e.includes("unknown door nope"))).toBe(true);
   });
 });
