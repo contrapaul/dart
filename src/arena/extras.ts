@@ -359,8 +359,9 @@ export function arenaExtras(
     if (!e) return;
     audio.play(e.opened ? "ENV-button-press" : "ENV-button-dead", { position: e.pos });
     // ED-31: a placed button needs no action of its own: its pressed
-    // triggers act. An ENV-02 button keeps its door action as well.
-    triggers.pressed(e.id);
+    // triggers act. A dead click (the button was already pressed) is not a
+    // press. An ENV-02 button keeps its door action as well.
+    if (e.opened) triggers.pressed(e.id);
   }
 
   // ED-31: the move action. Every thing a move may name registers an apply

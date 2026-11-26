@@ -140,6 +140,10 @@ describe("a prim a move names", () => {
     const own = meshes.find((m) => m.position.x === 5)!;
     mover.move!([0, 2, 0], 0);
     expect(own.position.y).toBeCloseTo(2, 6);
+    // Its collider rides on the kinematic body: the next physics step puts
+    // it up with the mesh.
+    world.step();
+    expect(world.colliders.getAll().some((c) => Math.abs(c.translation().y - 2) < 1e-3)).toBe(true);
     // The prim's own geometry stays local: a turn goes round the prim.
     expect(meshes.find((m) => m.position.x === 5)!.geometry.boundingBox === null).toBe(true);
   });
