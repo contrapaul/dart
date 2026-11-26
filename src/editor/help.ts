@@ -45,6 +45,8 @@ export const HELP: HelpSection[] = [
       ["Props", "The barrel icon. Pick a barrel, crate, rubble or tank beside it. A prop has a Solid box: off, it is scenery you walk through. The leaking barrel sprays foam when hit and then blows up."],
       ["Inspector", "The right panel edits what is selected: position, size, colour, behaviour."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
+      ["Import model", "The top bar's Import model button reads a .glb file into the level file (3 MB a model). Pick it in the Models section of the tool bar and click in the view. A model is solid, decor or breakable; a solid one collides as its box, one hull, or its exact mesh."],
+      ["Breakable model", "A breakable model takes hit points and bursts into foam. With voxel ticked its inside becomes foam that carves like a wall; a model with more voxels inside than data/editor.json allows is built by hit points instead, and Problems says so."],
       ["Assets", "The Assets button keeps what is selected under a name, with a picture. Pick a saved asset and click in the view to place it as one group, in this level or another. Assets stay in this browser; export them as a file to move them."],
     ],
     text: [

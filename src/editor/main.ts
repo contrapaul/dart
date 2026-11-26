@@ -9,7 +9,12 @@ import {
   buildDoorFields, buildExitFields, buildFoamerFields, buildPickupFields, buildPropFields, buildSpawnFields,
   buildStartFields, buildZoneFields, numberInput, selectField, selectKind,
 } from "./inspector-parts";
-import { EXIT_ID, START_ID, markerFor } from "./markers";
+import { EXIT_ID, START_ID, markerFor, setMarkerLevel } from "./markers";
+import {
+  buildModelFields, modelAssetOf, modelAt, modelFileProblem, modelGhost, removeUnusedAssets,
+  unusedAssetIds,
+} from "./models-editor";
+import { loadModelAsset } from "../level/models";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
@@ -73,6 +78,8 @@ let armed: PrimShape | null = null;
 let armedPart: PartKind | null = null;
 /** ED-23: the saved asset the next click in the view places, or null. */
 let armedAsset: Asset | null = null;
+/** ED-35: the model asset id the next click places, or null. */
+let armedModel: string | null = null;
 /** The kind of pickup and the rig the palette places. */
 let pickupType: Pickup["type"] = "darts-standard";
 let armedRig = RIGS[0]?.id ?? "F01";
@@ -110,6 +117,7 @@ function typing(target: EventTarget | null): boolean {
 
 // The panels that read the document.
 function redraw() {
+  setMarkerLevel(doc.level);
   view.show(doc.level);
   selectInView();
   buildOutliner();
@@ -124,7 +132,8 @@ function updateTopBar() {
   counts.textContent = countText(doc.level);
   // ED-05 stage 5: the validator runs on every change, and the top bar says
   // how many problems it found.
-  problems = [...extraProblems, ...problemsFor(doc.level, allIds(), START_ID, EXIT_ID)];
+  const modelProblems = [...modelWarnings].map(([id, text]): Problem => ({ text, severity: "warning", id }));
+  problems = [...extraProblems, ...modelProblems, ...problemsFor(doc.level, allIds(), START_ID, EXIT_ID)];
   const button = $<HTMLButtonElement>("problemsBtn");
   button.textContent = problemsLabel(problems);
   button.classList.toggle("over", problems.some((p) => p.severity === "error"));
@@ -171,6 +180,15 @@ let problems: Problem[] = [];
  *  Problems list. Opening a built in level as a copy puts the conversion's
  *  warnings here; the next level opened clears them. */
 let extraProblems: Problem[] = [];
+
+/** ED-35: the Problems warning a model's voxel fill earned (the cap), by
+ *  model id. Cleared with the level, set when the tick or the scale changes. */
+const modelWarnings = new Map<string, string>();
+function setModelWarning(id: string, text: string | null) {
+  if (text) modelWarnings.set(id, text);
+  else modelWarnings.delete(id);
+  updateTopBar();
+}
 
 // ED-08 stage 5: a blocker starts hidden so it is out of the way until the
 // fight brings it in. In the editor it is drawn see-through so it can be seen
@@ -449,6 +467,7 @@ function arm(shape: PrimShape | null, part: PartKind | null) {
   armed = shape;
   armedPart = part;
   armedAsset = null;
+  armedModel = null;
   view.setGhost(null);
   const name = shape ? SHAPES.find((s) => s.shape === shape)!.label : part ? PART_BUTTONS.find((b) => b.kind === part)!.name : null;
   const how = shape ? "Click to place, or drag out its size on a floor." : "Click to place.";
@@ -477,6 +496,18 @@ function armAsset(asset: Asset) {
   hint.hidden = false;
 }
 
+/** ED-35: arms a model asset. A click places a copy sitting on the surface
+ *  under the cursor, the way a prim does. */
+function armModel(assetId: string) {
+  arm(null, null);
+  armedModel = assetId;
+  const asset = doc.level.modelAssets?.find((a) => a.id === assetId);
+  const hint = $("toolHint");
+  hint.textContent = `${asset?.name ?? assetId}: click to place. Shift keeps the tool. Esc stops.`;
+  hint.hidden = false;
+  buildPalette();
+}
+
 /** The toolbar down the left: shapes, things, logic and the handle modes.
  *  The armed button is lit, and a Foamer or a pickup shows its type picker
  *  beside it. */
@@ -501,6 +532,26 @@ function buildPalette() {
       wrap.append(button, options);
       things.append(wrap);
     } else things.append(button);
+  }
+  // ED-35: the level's imported models, each by its own name. The button
+  // arms the one the picker shows; with none imported the section is not
+  // drawn at all.
+  const assets = doc.level.modelAssets ?? [];
+  if (assets.length) {
+    const models = toolGroup(host, "Models");
+    const select = document.createElement("select");
+    select.className = "tool-options";
+    select.title = "Model";
+    for (const asset of assets) select.append(new Option(asset.name, asset.id));
+    select.value = armedModel && assets.some((a) => a.id === armedModel) ? armedModel : assets[0]!.id;
+    select.addEventListener("change", () => {
+      if (armedModel) armModel(select.value);
+    });
+    const place = toolButton("box", "Place model", null, armedModel !== null, () => {
+      if (armedModel === select.value) arm(null, null);
+      else armModel(select.value);
+    });
+    models.append(place, select);
   }
   const logic = toolGroup(host, "Logic");
   // ED-08: a trigger is not placed by a click, so its button adds one at
@@ -653,6 +704,13 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
   else if (kind === "doors") buildDoorFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "spawnPoints") buildSpawnFields(host, doc.find(kind, id)!, ctx);
   else if (kind === "props") buildPropFields(host, doc.find(kind, id)!, ctx);
+  else if (kind === "models") {
+    buildModelFields(host, doc.find(kind, id)!, doc.level, {
+      change: (patch, text) => doc.change("models", [{ id, patch }], text),
+      redraw: buildInspector,
+      warn: (text) => setModelWarning(id, text),
+    });
+  }
   else if (kind === "triggers") buildTriggerInspector(host, id);
   else buildZoneFields(host, doc.find(kind, id)!, ctx);
 }
@@ -693,6 +751,23 @@ function buildSkyInspector(host: HTMLElement) {
     uploadSky,
     redraw: buildInspector,
   });
+  // ED-35: an asset stays in the file after its last copy is deleted, until
+  // this drops it. Only assets no placed model uses go.
+  const unused = unusedAssetIds(doc.level);
+  if (unused.length) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "wide";
+    button.textContent = `Remove unused models (${unused.length})`;
+    button.addEventListener("click", () => {
+      const patch = removeUnusedAssets(doc.level);
+      if (!patch) return;
+      doc.setFields(patch, "remove unused models");
+      status.textContent = `Removed ${unused.length} unused model${unused.length === 1 ? "" : "s"}.`;
+      buildInspector();
+    });
+    host.append(button);
+  }
 }
 
 /** The top bar's name field follows the document's name, so an undo of a
@@ -794,12 +869,16 @@ function ndcOf(e: { clientX: number; clientY: number }): [number, number] {
 
 /** The see-through copy of what a click would place, at the cursor. */
 function showGhost(point: THREE.Vector3 | null, normal: THREE.Vector3, corner?: THREE.Vector3) {
-  if (!point || (!armed && !armedPart)) {
+  if (!point || (!armed && !armedPart && !armedModel)) {
     view.setGhost(null);
     return;
   }
   if (armed) {
     view.setGhost(view.primObject(primAt(armed, "ghost", point, normal, corner)));
+    return;
+  }
+  if (armedModel) {
+    view.setGhost(modelGhost(doc.level, armedModel, point));
     return;
   }
   const entry = partAt(armedPart!, "ghost", point, normal);
@@ -834,7 +913,7 @@ canvas.addEventListener("pointerdown", (e) => {
     return;
   }
   const hit = view.pick(...ndcOf(e));
-  if (armed || armedPart || armedAsset) {
+  if (armed || armedPart || armedAsset || armedModel) {
     if (hit) press = { kind: "place", x: e.clientX, y: e.clientY, point: hit.point, normal: hit.normal, corner: null };
     return;
   }
@@ -856,7 +935,7 @@ canvas.addEventListener("pointerdown", (e) => {
 window.addEventListener("pointermove", (e) => {
   lastPointer = e.target === canvas ? { clientX: e.clientX, clientY: e.clientY } : null;
   if (!press) {
-    if ((armed || armedPart) && e.target === canvas && !view.nav.busy) {
+    if ((armed || armedPart || armedModel) && e.target === canvas && !view.nav.busy) {
       const hit = view.pick(...ndcOf(e));
       showGhost(hit?.point ?? null, hit?.normal ?? new THREE.Vector3(0, 1, 0));
     }
@@ -955,6 +1034,12 @@ window.addEventListener("pointerup", (e) => {
   if (was.kind === "place") {
     pressUsed = true;
     const shift = e.shiftKey;
+    if (armedModel) {
+      placeModel(armedModel, was.point);
+      if (!shift) arm(null, null);
+      else buildPalette();
+      return;
+    }
     if (armedAsset) {
       const count = pasteAt(armedAsset.clip, [was.point.x, was.point.y, was.point.z], `place ${armedAsset.name}`, true);
       if (count) status.textContent = `Placed ${armedAsset.name}.`;
@@ -983,7 +1068,7 @@ canvas.addEventListener("pointerleave", () => {
 });
 // ED-13: a double click picks the one thing, out of its group.
 canvas.addEventListener("dblclick", (e) => {
-  if (armed || armedPart || armedAsset || linkKey || e.altKey) return;
+  if (armed || armedPart || armedAsset || armedModel || linkKey || e.altKey) return;
   const hit = view.pick(...ndcOf(e));
   if (hit?.id) pick(hit.id, false);
 });
@@ -1005,7 +1090,7 @@ canvas.addEventListener("click", (e) => {
     return;
   }
   // Placing happens when the button comes up (above), not on the click.
-  if (armed || armedPart || armedAsset) return;
+  if (armed || armedPart || armedAsset || armedModel) return;
   if (hit?.id) pickGroup(hit.id, e.shiftKey);
   else if (!e.shiftKey) {
     selected.clear();
@@ -1116,6 +1201,26 @@ function placePart(kind: PartKind, point: THREE.Vector3, normal: THREE.Vector3) 
   const entry = partAt(kind, doc.nextId(prefix), point, normal);
   doc.add(kind, entry as never);
   pick(entry.id);
+}
+
+/** ED-35: places a model of an asset where the click landed, once its
+ *  bounds are known (the asset loads off the main path). It sits on the
+ *  surface: its own bounds' bottom at the hit point. */
+function placeModel(assetId: string, point: THREE.Vector3) {
+  if (doc.entries("models").length >= LIMITS.models) {
+    status.textContent = `Model cap: ${LIMITS.models}.`;
+    return;
+  }
+  const id = doc.nextId("model");
+  void modelAt(doc.level, id, assetId, point).then((entry) => {
+    if (!entry) {
+      status.textContent = `${assetId} is not an asset of this level.`;
+      return;
+    }
+    doc.add("models", entry);
+    pick(entry.id);
+    status.textContent = `Placed ${entry.id}.`;
+  });
 }
 
 /** The id prefix a pickup takes: a key is `key`, everything else `pickup`. */
@@ -1534,6 +1639,7 @@ function load(level: Level, key: string | null) {
   selected.clear();
   savedKey = key;
   extraProblems = [];
+  modelWarnings.clear();
   opening = true;
   doc.load(level);
   opening = false;
@@ -1811,6 +1917,52 @@ $<HTMLInputElement>("importFile").addEventListener("change", () => {
     status.textContent = "Imported";
   });
 });
+
+// ED-35: a GLB becomes a model asset in the level file. It is checked by
+// size and by loading it once, so a file the loader cannot read (Draco,
+// say) is refused with the loader's own plain words rather than saved.
+$("importModelBtn").addEventListener("click", () => $<HTMLInputElement>("importModelFile").click());
+$<HTMLInputElement>("importModelFile").addEventListener("change", () => {
+  const input = $<HTMLInputElement>("importModelFile");
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  void file.arrayBuffer().then((buffer) => {
+    const problem = modelFileProblem(file.name, buffer.byteLength);
+    if (problem) {
+      void dialog("That model will not load", (body) => {
+        const line = document.createElement("p");
+        line.textContent = problem;
+        body.append(line);
+      });
+      return;
+    }
+    const taken = (doc.level.modelAssets ?? []).map((a) => a.id);
+    const asset = modelAssetOf(file.name, new Uint8Array(buffer), taken);
+    void importAsset(asset);
+  });
+});
+
+/** Adds an imported asset to the level once the loader has taken it, arms
+ *  it, and says so. A failed load removes nothing, since nothing was added. */
+async function importAsset(asset: { id: string; name: string; data: string }) {
+  try {
+    await loadModelAsset(asset);
+  } catch (e) {
+    void dialog("That model will not load", (body) => {
+      const line = document.createElement("p");
+      line.textContent = (e as Error).message;
+      body.append(line);
+    });
+    return;
+  }
+  if (doc.level.modelAssets?.some((a) => a.id === asset.id)) return;
+  doc.setFields({
+    modelAssets: [...(doc.level.modelAssets ?? []), asset],
+  }, `import ${asset.name}`);
+  armModel(asset.id);
+  status.textContent = `Imported ${asset.name}. Click in the view to place it.`;
+}
 
 $("playBtn").addEventListener("click", () => playFrom(null));
 
