@@ -217,7 +217,6 @@ export class EditorView {
     this.controls.setTranslationSnap(GRID);
     this.controls.setRotationSnap(ROTATE_STEP * DEG);
     this.controls.setScaleSnap(GRID);
-    this.rotationSnapDeg = ROTATE_STEP;
     this.controls.setSize(editorData.camera.handleSize);
     this.controls.enabled = false;
     this.scene.add(this.controls.getHelper());
