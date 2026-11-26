@@ -1,6 +1,6 @@
 import type { Level, LevelDoor, Pickup, PlacedFoamer, Prop, Rift, Vec3, Zone } from "../level/format";
 import { LEAKING_BARREL, PROP_KINDS, propSolid } from "../level/props";
-import { GRID, ROTATE_STEP, snapAxis, type EntryKind } from "./doc";
+import { GRID, snapAxis, type EntryKind } from "./doc";
 import { EXIT_ID, START_ID } from "./markers";
 import { BLASTERS, MELEE, makePickup } from "./parts";
 
@@ -23,6 +23,8 @@ export interface PartContext {
   change(patch: Record<string, unknown>, text: string): void;
   /** Rebuilds the panel (a kind's fields differ by what is chosen). */
   redraw(): void;
+  /** The rotation snap choice: the rotation boxes' step, not their snap. */
+  rotateStep: number;
 }
 
 export function label(text: string, input: HTMLElement): HTMLElement {
@@ -72,6 +74,11 @@ export function selectField(options: { value: string; label: string }[], current
   return select;
 }
 
+/** ED-30 item 3: the locked checkbox. */
+export function lockedCheckbox(checked: boolean, commit: (on: boolean) => void): HTMLElement {
+  return checkField("locked", checked, commit);
+}
+
 export function checkField(text: string, checked: boolean, commit: (on: boolean) => void): HTMLElement {
   const el = document.createElement("label");
   const input = document.createElement("input");
@@ -102,7 +109,7 @@ export function buildFoamerFields(host: HTMLElement, f: PlacedFoamer, rigs: { id
     (v) => ctx.change({ foamer: v }, `type ${v}`),
   )));
   host.append(label("position", vecField(f.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move"))));
-  host.append(label("yaw", numberInput(f.yaw, ROTATE_STEP, (n) => ctx.change({ yaw: n }, "turn"))));
+  host.append(label("yaw", numberInput(f.yaw, ctx.rotateStep, (n) => ctx.change({ yaw: n }, "turn"))));
   host.append(checkField("promoted", f.promoted === true, (on) => ctx.change({ promoted: on || undefined }, on ? "promote" : "demote")));
   host.append(label("wake", selectField(
     [{ value: "sight", label: "sight" }, { value: "trigger", label: "trigger" }],
@@ -178,7 +185,7 @@ export function buildDoorFields(host: HTMLElement, d: LevelDoor, ctx: PartContex
   ], d.lock, (v) => ctx.change({ lock: v as LevelDoor["lock"] }, `lock ${v}`))));
   host.append(label("position", vecField(d.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move"))));
   host.append(label("size", vecField(d.size, GRID, GRID, (v) => ctx.change({ size: v.map((n) => Math.max(GRID, n)) as Vec3 }, "size"))));
-  host.append(label("rotation", numberInput(d.rotY ?? 0, ROTATE_STEP, (n) => ctx.change({ rotY: n }, "turn"))));
+  host.append(label("rotation", numberInput(d.rotY ?? 0, ctx.rotateStep, (n) => ctx.change({ rotY: n }, "turn"))));
   const colour = document.createElement("input");
   colour.type = "color";
   colour.value = d.colour ?? "#c89a5b";
@@ -194,7 +201,8 @@ export function buildPropFields(host: HTMLElement, p: Prop, ctx: PartContext) {
     p.kind, (v) => ctx.change({ kind: v, solid: undefined }, `make it a ${PROP_KINDS[v]?.label ?? v}`),
   )));
   host.append(label("position", vecField(p.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move"))));
-  host.append(label("rotation", numberInput(p.rotY ?? 0, ROTATE_STEP, (n) => ctx.change({ rotY: n }, "turn"))));
+  host.append(label("rotation", numberInput(p.rotY ?? 0, ctx.rotateStep, (n) => ctx.change({ rotY: n }, "turn"))));
+  host.append(lockedCheckbox(p.locked === true, (on) => ctx.change({ locked: on || undefined }, on ? "lock" : "unlock")));
   const solid = checkField("solid", propSolid(p), (on) => ctx.change({ solid: on }, on ? "make solid" : "make walk-through"));
   if (p.kind === LEAKING_BARREL) solid.querySelector("input")!.disabled = true;
   host.append(solid);
@@ -219,7 +227,7 @@ export function buildZoneFields(host: HTMLElement, z: Zone, ctx: PartContext) {
 export function buildStartFields(host: HTMLElement, level: Level, ctx: PartContext) {
   const s = level.playerStart;
   host.append(label("position", vecField(s.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move the start"))));
-  host.append(label("yaw", numberInput(s.yaw, ROTATE_STEP, (n) => ctx.change({ yaw: n }, "turn the start"))));
+  host.append(label("yaw", numberInput(s.yaw, ctx.rotateStep, (n) => ctx.change({ yaw: n }, "turn the start"))));
 }
 
 /** The exit pad: where it is and how big. */

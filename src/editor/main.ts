@@ -28,6 +28,8 @@ import { builtInCopy } from "./builtin";
 import { buildHelp } from "./help";
 import { EditorView, type TransformMode } from "./view";
 import { ICONS, type IconName } from "./icons";
+import { isFolded, toggleFolded, unfoldGroup } from "./outliner-fold";
+import { isLockableKind, lockButton, lockedIds, movableIds } from "./lock";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
@@ -100,6 +102,38 @@ function remember(colour: string) {
 /** Grid snap on or off (G): the handles' snap, and the placing snap. */
 let snapOn = true;
 
+/** ED-30 item 12: the rotation snap choice (degrees, 0 = off), remembered in
+ *  localStorage. The rotate handle, snapPrim's rotation and the inspector's
+ *  rotation boxes' step use it; a rotation typed into the inspector is kept
+ *  exactly as typed. */
+const ROTATE_SNAP_KEY = "dart-editor-rotate-snap";
+const ROTATE_SNAP_CHOICES = [0, 1, 5, 15, 45, 90];
+
+function readRotateSnap(fallback: number): number {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(ROTATE_SNAP_KEY) : null;
+    if (raw === null) return fallback;
+    const n = Number(raw);
+    return ROTATE_SNAP_CHOICES.includes(n) ? n : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+let rotateSnap = readRotateSnap(ROTATE_STEP);
+
+function saveRotateSnap() {
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(ROTATE_SNAP_KEY, String(rotateSnap));
+  } catch {
+    // Storage blocked: the choice still works for this session.
+  }
+}
+
+function rotateStep(): number {
+  return rotateSnap > 0 ? rotateSnap : 1;
+}
+
 /** True while the keyboard belongs to a text field (typing a name, a
  *  number), so the editor's single letter keys are not taken. */
 function typing(target: EventTarget | null): boolean {
@@ -110,6 +144,7 @@ function typing(target: EventTarget | null): boolean {
 
 // The panels that read the document.
 function redraw() {
+  view.setLocked(lockedIds(doc.level));
   view.show(doc.level);
   selectInView();
   buildOutliner();
@@ -184,6 +219,21 @@ $("hiddenBtn").addEventListener("click", () => {
     ? `Not drawing ${count} prim${count === 1 ? "" : "s"} that start hidden.`
     : `Drawing the prims that start hidden see-through again (${count}).`;
   selectInView();
+});
+
+// ED-30 item 12: the rotation snap choice, remembered in localStorage.
+const rotateSnapSelect = $<HTMLSelectElement>("rotateSnap");
+rotateSnapSelect.value = String(rotateSnap);
+view.setRotationSnap(rotateSnap);
+rotateSnapSelect.addEventListener("change", () => {
+  const n = Number(rotateSnapSelect.value);
+  if (ROTATE_SNAP_CHOICES.includes(n)) {
+    rotateSnap = n;
+    view.setRotationSnap(rotateSnap);
+    saveRotateSnap();
+    status.textContent = rotateSnap ? `Rotation snaps to ${rotateSnap} degrees.` : "Rotation snap off.";
+    buildInspector();
+  }
 });
 
 $("helpBtn").addEventListener("click", () => {
@@ -266,6 +316,35 @@ function buildOutliner() {
     list.push(prim);
     groups.set(prim.behaviour, list);
   }
+  const mkTitle = (title: string, count: number): HTMLElement => {
+    const h = document.createElement("h2");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "group-title";
+    btn.setAttribute("aria-expanded", String(!isFolded(title)));
+    const tri = document.createElement("span");
+    tri.className = "tri";
+    tri.textContent = isFolded(title) ? "\u25B8" : "\u25BE";
+    const name = document.createElement("span");
+    name.textContent = isFolded(title) ? `${title} (${count})` : title;
+    btn.append(tri, name);
+    btn.addEventListener("click", () => {
+      toggleFolded(title);
+      buildOutliner();
+    });
+    h.append(btn);
+    return h;
+  };
+  const mkGroup = (title: string, count: number): { group: HTMLElement; rows: HTMLElement } => {
+    const group = document.createElement("div");
+    group.className = "group";
+    group.append(mkTitle(title, count));
+    const rows = document.createElement("div");
+    rows.className = "rows";
+    if (isFolded(title)) rows.hidden = true;
+    group.append(rows);
+    return { group, rows };
+  };
   const empty = !groups.size && PART_GROUPS.every((g) => !doc.entries(g.kind).length)
     && !doc.entries("triggers").length;
   if (empty) {
@@ -276,11 +355,7 @@ function buildOutliner() {
     return;
   }
   for (const [behaviour, prims] of groups) {
-    const group = document.createElement("div");
-    group.className = "group";
-    const title = document.createElement("h2");
-    title.textContent = behaviour;
-    group.append(title);
+    const { group, rows } = mkGroup(behaviour, prims.length);
     for (const prim of prims) {
       const row = document.createElement("div");
       row.className = "row" + (selected.has(prim.id) ? " selected" : "");
@@ -297,8 +372,9 @@ function buildOutliner() {
         view.setVisible(prim.id, !mesh);
         eye.classList.toggle("on", mesh);
       });
-      row.append(name, eye);
-      group.append(row);
+      const lock = lockButton(prim.locked === true, () => togglePrimLock(prim));
+      row.append(name, eye, lock);
+      rows.append(row);
     }
     host.append(group);
   }
@@ -306,11 +382,7 @@ function buildOutliner() {
   for (const { kind, title: groupTitle } of PART_GROUPS) {
     const list = doc.entries(kind);
     if (!list.length) continue;
-    const group = document.createElement("div");
-    group.className = "group";
-    const title = document.createElement("h2");
-    title.textContent = groupTitle;
-    group.append(title);
+    const { group, rows } = mkGroup(groupTitle, list.length);
     for (const entry of list) {
       const row = document.createElement("div");
       row.className = "row" + (selected.has(entry.id) ? " selected" : "");
@@ -318,19 +390,20 @@ function buildOutliner() {
       name.className = "name";
       name.textContent = partName(entry.id);
       name.addEventListener("click", (e) => pick(entry.id, e.shiftKey));
-      row.append(name);
-      group.append(row);
+      if (isLockableKind(kind) && "locked" in entry) {
+        const lock = lockButton((entry as { locked?: boolean }).locked === true, () => toggleEntryLock(kind, entry.id));
+        row.append(name, lock);
+      } else {
+        row.append(name);
+      }
+      rows.append(row);
     }
     host.append(group);
   }
   // ED-08: the Logic group, one row per trigger with what it says in a line.
   const triggers = doc.level.triggers ?? [];
   if (triggers.length) {
-    const group = document.createElement("div");
-    group.className = "group";
-    const title = document.createElement("h2");
-    title.textContent = "Logic";
-    group.append(title);
+    const { group, rows } = mkGroup("Logic", triggers.length);
     for (const trigger of triggers) {
       const row = document.createElement("div");
       row.className = "row" + (selected.has(trigger.id) ? " selected" : "");
@@ -345,15 +418,11 @@ function buildOutliner() {
       summary.className = "hint";
       summary.textContent = triggerSummary(trigger);
       row.append(name, summary);
-      group.append(row);
+      rows.append(row);
     }
     host.append(group);
   }
-  const level = document.createElement("div");
-  level.className = "group";
-  const levelTitle = document.createElement("h2");
-  levelTitle.textContent = "Level";
-  level.append(levelTitle);
+  const { group: level, rows: levelRows } = mkGroup("Level", 2);
   for (const [id, label] of [[START_ID, "Player start"], [EXIT_ID, "Exit"]] as const) {
     const row = document.createElement("div");
     row.className = "row" + (selected.has(id) ? " selected" : "");
@@ -362,9 +431,35 @@ function buildOutliner() {
     name.textContent = label;
     name.addEventListener("click", (e) => pick(id, e.shiftKey));
     row.append(name);
-    level.append(row);
+    levelRows.append(row);
   }
   host.append(level);
+}
+
+/** One undo step per lock toggle, for a row in the outliner. */
+function togglePrimLock(prim: Prim) {
+  doc.change("prims", [{ id: prim.id, patch: { locked: prim.locked ? undefined : true } }], prim.locked ? "unlock" : "lock");
+}
+
+function toggleEntryLock(kind: EntryKind, id: string) {
+  const entry = doc.find<{ id: string; locked?: boolean }>(kind, id);
+  if (!entry) return;
+  const locked = entry.locked === true;
+  doc.change(kind, [{ id, patch: { locked: locked ? undefined : true } }], locked ? "unlock" : "lock");
+}
+
+/** The title of the outliner group an id lives in (a behaviour, a part
+ *  kind's group, Logic, or Level), or null for an id with no group. */
+function groupTitleFor(id: string): string | null {
+  const kind = doc.kindOf(id);
+  if (kind === "prims") return doc.prim(id)?.behaviour ?? null;
+  if (kind === "triggers") return "Logic";
+  if (kind) {
+    const g = PART_GROUPS.find((g) => g.kind === kind);
+    return g ? g.title : null;
+  }
+  if (id === START_ID || id === EXIT_ID) return "Level";
+  return null;
 }
 
 /** Selects one thing, or adds it to the selection with Shift (design/EDITOR
@@ -375,6 +470,8 @@ function pick(id: string, add = false) {
   if (!add) selected.clear();
   if (add && selected.has(id)) selected.delete(id);
   else selected.add(id);
+  const title = groupTitleFor(id);
+  if (title && selected.has(id)) unfoldGroup(title);
   selectInView();
   buildOutliner();
   buildInspector();
@@ -399,6 +496,14 @@ function selectMany(ids: string[], add = false, remove = false) {
   for (const id of ids) {
     if (remove) selected.delete(id);
     else selected.add(id);
+  }
+  if (!remove) {
+    const titles = new Set<string>();
+    for (const id of ids) {
+      const title = groupTitleFor(id);
+      if (title) titles.add(title);
+    }
+    if (titles.size) for (const t of titles) unfoldGroup(t);
   }
   selectInView();
   buildOutliner();
@@ -645,6 +750,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
       else doc.change(kind, [{ id, patch }], text);
     },
     redraw: buildInspector,
+    rotateStep: rotateStep(),
   };
   if (kind === "start") buildStartFields(host, doc.level, ctx);
   else if (kind === "exit") buildExitFields(host, doc.level, ctx);
@@ -715,6 +821,24 @@ function buildPrimInspector(host: HTMLElement) {
     recent,
     remember,
   });
+  // A prim's fields live in inspector.ts (not my file), so the locked
+  // checkbox is appended here, one selected prim only.
+  const only = selected.size === 1 ? [...selected][0]! : null;
+  if (only) {
+    const prim = doc.prim(only);
+    if (prim) {
+      const lock = document.createElement("label");
+      const lockInput = document.createElement("input");
+      lockInput.type = "checkbox";
+      lockInput.checked = prim.locked === true;
+      lockInput.addEventListener("change", () => {
+        const locked = lockInput.checked;
+        doc.change("prims", [{ id: prim.id, patch: { locked: locked ? true : undefined } }], locked ? "lock" : "unlock");
+      });
+      lock.append(document.createTextNode("locked"), lockInput);
+      host.append(lock);
+    }
+  }
 }
 
 // The view: the camera's own mouse controls are in src/editor/camera.ts
@@ -946,10 +1070,15 @@ window.addEventListener("pointerup", (e) => {
     if (selectBox) selectBox.hidden = true;
     if (!was.started) return;
     pressUsed = true;
-    // Whole groups come with any member the box catches.
-    const caught = idsInRect(view.screenPoints(), { x0: was.x, y0: was.y, x1: e.clientX, y1: e.clientY });
+    // Whole groups come with any member the box catches. A locked thing is
+    // left out, with the status line saying so.
+    const locked = lockedIds(doc.level);
+    const caught = idsInRect(view.screenPoints(), { x0: was.x, y0: was.y, x1: e.clientX, y1: e.clientY })
+      .filter((id) => !locked.has(id));
     selectMany([...new Set(caught.flatMap((id) => groupMembers(doc.level, id)))], e.shiftKey);
-    status.textContent = `${selected.size} selected.`;
+    const skipped = [...locked].filter((id) => idsInRect(view.screenPoints(), { x0: was.x, y0: was.y, x1: e.clientX, y1: e.clientY }).includes(id));
+    if (skipped.length) status.textContent = `${skipped.join(", ")} is locked.`;
+    else status.textContent = `${selected.size} selected.`;
     return;
   }
   if (was.kind === "place") {
@@ -1064,7 +1193,7 @@ function primAt(shape: PrimShape, id: string, point: THREE.Vector3, normal: THRE
     const cx = a[0]! + Math.sign(b[0]! - a[0]! || 1) * size[0] / 2;
     const cz = a[2]! + Math.sign(b[2]! - a[2]! || 1) * size[2] / 2;
     const made: Prim = { ...base, id, size, pos: [cx, point.y + size[1] / 2, cz] };
-    return snapOn ? { ...snapPrim(made), pos: made.pos } : made;
+    return snapOn ? { ...snapPrim(made, GRID, rotateSnap), pos: made.pos } : made;
   }
   const pos: Vec3 = [
     point.x + normal.x * base.size[0] / 2,
@@ -1072,7 +1201,7 @@ function primAt(shape: PrimShape, id: string, point: THREE.Vector3, normal: THRE
     point.z + normal.z * base.size[2] / 2,
   ];
   const made: Prim = { ...base, id, pos };
-  return snapOn ? snapPrim(made) : made;
+  return snapOn ? snapPrim(made, GRID, rotateSnap) : made;
 }
 
 /** Places a prim (see `primAt`) and selects it. */
@@ -1260,8 +1389,13 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "Delete" || e.code === "Backspace") {
     e.preventDefault();
     if (selected.size) {
-      doc.remove([...selected]);
-      selected.clear();
+      const locked = lockedIds(doc.level);
+      const { ok, skipped } = movableIds([...selected], locked);
+      if (skipped.length) status.textContent = `${skipped.join(", ")} is locked.`;
+      if (ok.length) {
+        doc.remove(ok);
+        for (const id of ok) selected.delete(id);
+      }
     }
   }
 });
@@ -1352,13 +1486,17 @@ window.addEventListener("keyup", (e) => {
 /** Turns every selected thing that can turn by `deg` about the vertical,
  *  each about its own centre: one undo step per kind. */
 function turnSelection(deg: number) {
-  const ids = [...selected];
+  const locked = lockedIds(doc.level);
+  const { ok, skipped } = movableIds([...selected], locked);
+  if (skipped.length) status.textContent = `${skipped.join(", ")} is locked.`;
+  if (!ok.length) return;
+  const ids = ok;
   const prims = ids.flatMap((id) => {
     const prim = doc.prim(id);
     if (!prim) return [];
     const r = prim.rot ?? [0, 0, 0];
     const rot: Vec3 = [r[0], (((r[1] + deg) % 360) + 360) % 360, r[2]];
-    return [{ id, patch: { rot: snapOn ? snapVec3(rot, ROTATE_STEP) : rot } }];
+    return [{ id, patch: { rot: snapOn ? snapVec3(rot, rotateSnap) : rot } }];
   });
   if (prims.length) doc.change("prims", prims, "turn");
   const byKind = new Map<EntryKind, { id: string; patch: Record<string, unknown> }[]>();
@@ -1490,7 +1628,7 @@ function endHandleDrag() {
       // snapped. A move used to snap the turn as well, which bent a prim
       // at an off-step angle (a converted ramp) the first time it was moved.
       if (moved) patch.pos = snapOn ? snapVec3(pos, GRID) : pos;
-      if (turned) patch.rot = snapOn ? snapVec3(rot, ROTATE_STEP) : rot;
+      if (turned) patch.rot = snapOn ? snapVec3(rot, rotateSnap) : rot;
     }
     return { id, patch };
   }).filter((e) => Object.keys(e.patch).length);

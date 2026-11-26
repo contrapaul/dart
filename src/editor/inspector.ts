@@ -222,4 +222,5 @@ export function buildPrimFields(host: HTMLElement, prims: Prim[], ctx: Inspector
   });
   hiddenLabel.append(document.createTextNode("starts hidden"), hidden);
   host.append(hiddenLabel);
+
 }
