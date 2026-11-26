@@ -43,6 +43,7 @@ export const HELP: HelpSection[] = [
     rows: [
       ["Tool bar", "The icons on the left. Pick a shape or a thing and a see-through copy follows the cursor. Click to place one, or drag on a floor to draw a shape's size. Shift+click keeps the tool. Esc stops."],
       ["Props", "The barrel icon. Pick a barrel, crate, rubble or tank beside it. A prop has a Solid box: off, it is scenery you walk through. The leaking barrel sprays foam when hit and then blows up."],
+      ["Button", "The Logic group's button icon. Click a surface: it mounts on that face, at that point, and on the thing if you clicked a prim, model or physics object. A press fires the trigger whose when is that button. Its inspector sets what it is mounted on and whether a press needs the use key."],
       ["Inspector", "The right panel edits what is selected: position, size, colour, behaviour."],
       ["Outliner", "The panel beside the tool bar lists everything. Click a row to select it."],
       ["Assets", "The Assets button keeps what is selected under a name, with a picture. Pick a saved asset and click in the view to place it as one group, in this level or another. Assets stay in this browser; export them as a file to move them."],
