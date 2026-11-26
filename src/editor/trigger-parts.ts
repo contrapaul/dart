@@ -25,6 +25,7 @@ export const DO_KINDS: { kind: TriggerDo["kind"]; label: string }[] = [
   { kind: "close", label: "close a door" },
   { kind: "message", label: "show a message" },
   { kind: "checkpoint", label: "set the checkpoint" },
+  { kind: "move", label: "move" },
 ];
 
 /** A when of a kind, with the fields the validator needs to accept it as
@@ -89,6 +90,19 @@ export function wakeableIds(level: Level): string[] {
   return (level.foamers ?? []).map((f) => f.id);
 }
 
+/** ED-31: what a move may name, in the same order the validator allows
+ *  (prims, props, lights, models, physics objects, buttons). */
+export function movableIds(level: Level): string[] {
+  return [
+    ...(level.prims ?? []).map((p) => p.id),
+    ...(level.props ?? []).map((p) => p.id),
+    ...(level.lights ?? []).map((l) => l.id),
+    ...(level.models ?? []).map((m) => m.id),
+    ...(level.physics ?? []).map((o) => o.id),
+    ...(level.buttons ?? []).map((b) => b.id),
+  ];
+}
+
 /** The ids a field of a trigger takes, for the field's list and for Link:
  *  the kind of thing it names. Null when the field takes no level id (a
  *  message, a checkpoint). */
@@ -102,6 +116,7 @@ export function fieldIds(level: Level, field: { kind: string }): string[] | null
     case "wake": return wakeableIds(level);
     case "show":
     case "hide": return showableIds(level);
+    case "move": return movableIds(level);
     case "open":
     case "close": return (level.doors ?? []).map((d) => d.id);
     default: return null;
@@ -121,8 +136,9 @@ export function triggerIds(t: Trigger): string[] {
   if (w?.kind === "taken") ids.push(w.pickup);
   for (const d of t.do ?? []) {
     if (d.kind === "spawn") ids.push(...d.at);
-    else if (d.kind === "wake" || d.kind === "show" || d.kind === "hide") ids.push(...(d.ids ?? []));
-    else if (d.kind === "open" || d.kind === "close") ids.push(d.door);
+    else if (d.kind === "wake" || d.kind === "show" || d.kind === "hide" || d.kind === "move") {
+      ids.push(...(d.ids ?? []));
+    } else if (d.kind === "open" || d.kind === "close") ids.push(d.door);
   }
   return [...new Set(ids.filter(Boolean))];
 }
@@ -138,6 +154,7 @@ const LINK_KINDS: Record<string, string[]> = {
   hide: ["prims", "foamers"],
   open: ["doors"],
   close: ["doors"],
+  move: ["prims", "props", "buttons", "lights", "physics", "models"],
 };
 
 /** The link key of a do row, or null when the row takes no click from the
@@ -179,7 +196,7 @@ export function applyLink(t: Trigger, key: string, id: string, kind: string): Tr
   if (!d) return null;
   if (!(LINK_KINDS[d.kind] ?? []).includes(kind)) return null;
   let next: TriggerDo;
-  if (d.kind === "wake" || d.kind === "show" || d.kind === "hide") {
+  if (d.kind === "wake" || d.kind === "show" || d.kind === "hide" || d.kind === "move") {
     if ((d.ids ?? []).includes(id)) return null;
     next = { ...d, ids: [...(d.ids ?? []), id] };
   } else if (d.kind === "open" || d.kind === "close") {

@@ -223,6 +223,23 @@ function doRow(
         })));
       }
       break;
+    case "move":
+      host.append(label("move", idField(ctx, d, "", (id) => {
+        if (!id || d.ids.includes(id)) return;
+        setRow({ ...d, ids: [...d.ids, id] }, `move ${id}`);
+        ctx.redraw();
+      }, `do:${row}`)));
+      for (const id of d.ids) {
+        host.append(label("", nameRow(id, () => {
+          setRow({ ...d, ids: d.ids.filter((x) => x !== id) }, `move ${id}`);
+          ctx.redraw();
+        })));
+      }
+      host.append(label("by", vecField(d.by, GRID, GRID, (v) => setRow({ ...d, by: v }, "move by"))));
+      host.append(label("turn", numberInput(d.turn ?? 0, ROTATE_STEP, (n) => setRow({ ...d, turn: n === 0 ? undefined : n }, "move turn"))));
+      host.append(label("seconds", numberInput(d.seconds, 0.5, (n) => setRow({ ...d, seconds: Math.max(0.1, n) }, "move seconds"))));
+      host.append(label("", hint("degrees about the thing's own centre")));
+      break;
     case "open":
     case "close":
       host.append(label("door", idField(ctx, d, d.door, (id) => {
