@@ -262,7 +262,7 @@ describe("structural errors", () => {
     const level = broken((l) => {
       l.shell = [];
     });
-    expect(errorsOf(level).join(" ")).toMatch(/the level needs shell boxes or prims/);
+    expect(errorsOf(level).join(" ")).toMatch(/the level needs shell boxes, prims or terrain/);
   });
 
   it("catches a zero or negative size", () => {

@@ -23,7 +23,7 @@ describe("ED-00 validator", () => {
   });
 
   it("refuses a level with no shell and no prims", () => {
-    expect(errs(level({ prims: [] }))).toContain("the level needs shell boxes or prims");
+    expect(errs(level({ prims: [] }))).toContain("the level needs shell boxes, prims or terrain");
   });
 
   it("checks shapes, colours, stairs, hazards and breakables", () => {
