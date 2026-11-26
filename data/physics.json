@@ -7,5 +7,17 @@
   "blastImpulse": 40,
   "maxLive": 60,
   "sleepSeconds": 1.2,
-  "sleepSpeed": 0.05
+  "sleepSpeed": 0.05,
+  "defaults": {
+    "shape": "box",
+    "size": [
+      0.8,
+      0.8,
+      0.8
+    ],
+    "mass": 10,
+    "damage": 2,
+    "hitPoints": 20,
+    "_note": "ED-33: what the Physics tool places before the inspector is used. size is full metres (a sphere uses size[0] as its diameter, a cylinder size[0] and size[1]); mass is kilograms; damage is health per metre a second past damageSpeed; hitPoints is what a breakable one gets when it is ticked. The colour is the editor palette's first entry (data/editor.json)."
+  }
 }
