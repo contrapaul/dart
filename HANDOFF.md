@@ -93,6 +93,21 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-27: the shapes fold into one tool bar button (Claude Opus 5.5)
+
+- Asked (Paul): collapse the shapes into a menu that expands on hover, to
+  see more of the tool bar.
+- Built: the Shapes group is one button showing the last shape used, with
+  a corner mark; the five shapes fly out in a row beside it on hover, and
+  on keyboard focus or a tap (CLAUDE.md: nothing important needs hover). A
+  strip over the gap keeps the row open while the pointer crosses to it.
+  The bar went from 1102 to 864 px tall at a 768 px window.
+- Seen in the browser: the row opens on hover and on focus, closes when
+  the pointer leaves, the ramp picked from it is armed and becomes the
+  button's shape; no console errors.
+- Not done: at a 768 px window the bar still scrolls a little (the Handles
+  group is the last 130 px).
+
 ### 2026-11-27: painting the ground (Claude Opus 5.5)
 
 - Asked (Paul): "I can't change the color of the ground, or paint on it."

@@ -88,6 +88,8 @@ const view = new EditorView($<HTMLCanvasElement>("view"));
  *  a zone). Only one is armed at a time. */
 type PartKind = "foamers" | "pickups" | "doors" | "spawnPoints" | "zones" | "props" | "lights" | "buttons" | "physics";
 let armed: PrimShape | null = null;
+/** The shape the folded Shapes button shows: the last one armed. */
+let lastShape: PrimShape = "box";
 let armedPart: PartKind | null = null;
 /** ED-23: the saved asset the next click in the view places, or null. */
 let armedAsset: Asset | null = null;
@@ -620,6 +622,7 @@ function partColour(kind: PartKind): string {
 /** Arms one shape or part, or disarms it when it is already armed, and says
  *  in the status line what a click will do. */
 function arm(shape: PrimShape | null, part: PartKind | null) {
+  if (shape) lastShape = shape;
   terrainTool.disarm();
   armed = shape;
   armedPart = part;
@@ -709,11 +712,26 @@ function togglePaint() {
 function buildPalette() {
   const host = $("palette");
   host.replaceChildren();
+  // The shapes fold into one button, the last shape used (Paul,
+  // 2026-11-27), so the bar has room. The rest fly out to the right on
+  // hover, and on keyboard focus or a tap, since nothing may need hover.
   const shapes = toolGroup(host, "Shapes");
+  const current = SHAPES.find((s) => s.shape === (armed ?? lastShape)) ?? SHAPES[0]!;
+  const fly = document.createElement("div");
+  fly.className = "tool-wrap flyout-wrap";
+  const main = toolButton(current.shape, `${current.label} (more shapes beside it)`, placeColour, armed === current.shape,
+    () => arm(armed === current.shape ? null : current.shape, null));
+  main.setAttribute("aria-haspopup", "true");
+  const flyout = document.createElement("div");
+  flyout.className = "tool-flyout";
+  flyout.setAttribute("role", "group");
+  flyout.setAttribute("aria-label", "Shapes");
   for (const { shape, label: name } of SHAPES) {
-    shapes.append(toolButton(shape, name, placeColour, armed === shape,
+    flyout.append(toolButton(shape, name, placeColour, armed === shape,
       () => arm(armed === shape ? null : shape, null)));
   }
+  fly.append(main, flyout);
+  shapes.append(fly);
   // ED-05: the other kinds. A prim armed and a part armed are exclusive, so
   // a click in the view is never ambiguous.
   const things = toolGroup(host, "Things");

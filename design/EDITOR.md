@@ -96,7 +96,7 @@ key, and the HUD shows the keys held. Keys are lost at the level exit.
 - **Right**: the inspector for what is selected: position, size,
   rotation, colour, behaviour (solid, breakable, hazard, decor), the
   hazard's damage, a trigger's when and do.
-- **Left edge**: the tool bar, icon buttons for the shapes, the things to place, triggers and the handle modes, each drawn in the colour of what it places.
+- **Left edge**: the tool bar, icon buttons for the shapes, the things to place, triggers and the handle modes, each drawn in the colour of what it places. The shapes fold into one button showing the last shape used; the five fly out beside it on hover or keyboard focus (Paul, 2026-11-27, to fit more of the bar).
 - **Top**: New, Open, Save, Export, Import, Undo, Redo, Play, the problems
   count.
 

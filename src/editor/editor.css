@@ -726,3 +726,50 @@ button.on {
   height: 1.6rem;
   padding: 0;
 }
+
+/* The Shapes flyout: one button in the bar, the five shapes in a row out to
+   the right while the button is hovered or has focus. Fixed, like the
+   option panels, so the bar's own scrolling does not clip it. */
+#palette .flyout-wrap > .tool::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  border-left: 5px solid transparent;
+  border-bottom: 5px solid currentColor;
+  opacity: 0.7;
+}
+
+#palette .flyout-wrap > .tool {
+  position: relative;
+}
+
+#palette .tool-flyout {
+  position: fixed;
+  left: 3.6rem;
+  margin-top: -2.5rem;
+  z-index: 3;
+  display: none;
+  flex-direction: row;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: #140c28;
+  border: 1px solid #ffd23f;
+  border-radius: 4px;
+}
+
+/* A strip over the gap, so the pointer can cross from the button to the
+   row without the row closing. */
+#palette .tool-flyout::before {
+  content: "";
+  position: absolute;
+  left: -0.9rem;
+  top: 0;
+  bottom: 0;
+  width: 0.9rem;
+}
+
+#palette .flyout-wrap:hover .tool-flyout,
+#palette .flyout-wrap:focus-within .tool-flyout {
+  display: flex;
+}
