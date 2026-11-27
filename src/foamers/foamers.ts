@@ -185,17 +185,15 @@ function tokenKindOf(spec: FoamerSpec): TokenKind {
 
 /** SPAWN-01: colliders off while the arrival runs (darts pass through, it
  *  takes no damage), on once it is active. Re-applied each step, so a
- *  collider a remesh just built is caught too. The parts are kinematic, so
- *  the root and every part body is queried the same way. */
-function setTeleportColliders(world: RAPIER.World, f: Foamer, enabled: boolean): void {
+ *  collider a remesh just built is caught too. Each part's own body lists
+ *  its colliders (the lead's review: not a walk over every collider in the
+ *  world, which on a voxel level is thousands a frame). */
+function setTeleportColliders(f: Foamer, enabled: boolean): void {
   f.capsule.setEnabled(enabled);
-  world.forEachCollider((c) => {
-    const parent = c.parent();
-    if (!parent || parent.handle === f.root.handle) return; // the capsule, done above
-    for (const part of f.parts.values()) {
-      if (parent.handle === part.body.handle) c.setEnabled(enabled);
-    }
-  });
+  for (const part of f.parts.values()) {
+    const body = part.body;
+    for (let i = 0; i < body.numColliders(); i++) body.collider(i).setEnabled(enabled);
+  }
 }
 
 /** One fallen piece: a part and its children. One dynamic body carries one
@@ -597,7 +595,7 @@ export class FoamerSystem {
     // with its colliders off, and the effect is drawn at its feet.
     if (teleport) {
       f.spawnLeft = SPAWN_IN.seconds;
-      setTeleportColliders(this.world, f, false);
+      setTeleportColliders(f, false);
       f.applyPose();
       f.poseParts(0, false, false);
       f.applySpawnScale(spawnInPose(0, SPAWN_IN).scale);
@@ -739,8 +737,8 @@ export class FoamerSystem {
         f.poseParts(dt, false, false);
         f.applySpawnScale(pose.scale);
         for (const part of f.parts.values()) part.mesh.update();
-        setTeleportColliders(this.world, f, false);
-        if (f.spawnLeft === 0) setTeleportColliders(this.world, f, true);
+        setTeleportColliders(f, false);
+        if (f.spawnLeft === 0) setTeleportColliders(f, true);
         continue;
       }
       // Downed Foamers keep stepping (lie, sink) but no longer walk.

@@ -28,7 +28,6 @@ function hashSeed(feet: THREE.Vector3, height: number, colour: number): number {
   return h >>> 0;
 }
 
-const GRAVITY = 9.8; // metres per second squared, [Paul] to tune
 
 interface Chunk {
   mesh: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
@@ -183,7 +182,7 @@ export class SpawnFx {
       for (const c of slot.chunks) {
         const x = c.vel.x * t;
         const z = c.vel.z * t;
-        const y = 0.05 + c.vel.y * t - 0.5 * GRAVITY * t * t;
+        const y = 0.05 + c.vel.y * t - 0.5 * look.gravity * t * t;
         c.mesh.position.set(x, Math.max(0.02, y), z);
         c.mesh.scale.setScalar(Math.max(0.001, c.size * fade));
         c.mesh.material.opacity = fade;

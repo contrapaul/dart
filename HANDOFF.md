@@ -93,6 +93,33 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-27: SPAWN-01, Foamers teleport in (Inkling-2-Mini swarm on the Spark, Claude Opus 5.5 lead)
+
+- Asked (Paul): a teleport in or spawn animation for Foamers instead of
+  simply appearing, built by the Inkling 2 Mini swarm on the Spark.
+- Lead: the contract (`data/spawn.json`, `src/foamers/spawn-in.ts` and
+  `src/foamers/spawn-fx.ts` as stubs) and two cards, `tasks/SPAWN-01a.md`
+  (role `spawn-core`, 21 min) and `tasks/SPAWN-01b.md` (role `spawn-fx`,
+  6 min), both Inkling-2-Mini at low thinking, through `swarm`. The `spark`
+  ssh alias points at a LAN address that was not reachable; the vLLM server
+  answered over Tailscale, so it did not matter.
+- Built: a Foamer from a wave rift or a trigger spawn arrives over 1.1 s:
+  a foam ring opens at its feet, a soft foam column rises, the body grows
+  from 0.1 to 1.12 and settles at 1, a puff of foam chunks is thrown out.
+  Until it lands it does not think, move, attack or take hits (its
+  colliders are off). Up to 12 arrivals are drawn at once; past that a
+  Foamer still arrives, without the effect. Placed Foamers, ambushes and
+  the range line up stay instant.
+- Lead review fixes at merge: the colliders were switched by walking every
+  collider in the world each step for each arriving Foamer; it now walks
+  only that Foamer's own bodies. Two literals (the grow share, gravity)
+  moved into `data/spawn.json`.
+- Seen in the browser: a trigger wave of F01s at two spawn points, each
+  arriving with the column, the growing body and the chunk puff; no
+  console errors. Preflight 1707 tests.
+- Not seen: the ring on the floor up close (it is faint from a distance),
+  a rift wave in an Act 1 arena, the effect at the 12 cap.
+
 ### 2026-11-27: the floor moves and scales, the terrain resizes (Claude Opus 5.5)
 
 - Asked (Paul): the ground or floor does not seem movable or scalable,

@@ -9,6 +9,9 @@ export interface SpawnInSpec {
   seconds: number;
   portalShare: number;
   growFrom: number;
+  /** The share of the time after the portal spent growing to the
+   *  overshoot; the rest settles back to 1. */
+  growShare: number;
   overshoot: number;
   maxLive: number;
   look: {
@@ -18,6 +21,8 @@ export interface SpawnInSpec {
     columnHeight: number;
     chunks: number;
     chunkSpeed: number;
+    /** Metres a second squared pulling the chunks down. */
+    gravity: number;
   };
 }
 
@@ -35,7 +40,7 @@ export interface SpawnInPose {
 export function spawnInPose(t: number, spec: SpawnInSpec = SPAWN_IN): SpawnInPose {
   const portal = spec.portalShare * spec.seconds;
   if (t < portal) return { scale: spec.growFrom, active: false };
-  const growEnd = portal + (spec.seconds - portal) * 0.55;
+  const growEnd = portal + (spec.seconds - portal) * spec.growShare;
   if (t < growEnd) {
     // The grow: eased out, from growFrom to the overshoot.
     const u = (t - portal) / (growEnd - portal);

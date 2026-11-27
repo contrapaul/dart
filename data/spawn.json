@@ -1,8 +1,9 @@
 {
-  "_note": "SPAWN-01: how a Foamer from a wave or a trigger teleports in, instead of popping into being. seconds: the whole arrival; the Foamer cannot move, attack or be hit until it ends. portalShare: the share of that time the foam ring spends opening before the body starts to grow. growFrom: the body's starting scale. overshoot: the scale it swells to just before it settles at 1 (a foam squash). look: the effect drawn at the feet (src/foamers/spawn-fx.ts), its colours in the foam palette, sizes in metres. maxLive: the hard cap on arrivals drawn at once; past it a Foamer still arrives, without the effect. Start values, [Paul] to tune.",
+  "_note": "SPAWN-01: how a Foamer from a wave or a trigger teleports in, instead of popping into being. seconds: the whole arrival; the Foamer cannot move, attack or be hit until it ends. portalShare: the share of that time the foam ring spends opening before the body starts to grow. growFrom: the body's starting scale. growShare: the share of the time after the portal spent growing to the overshoot; the rest settles back to 1. overshoot: the scale it swells to just before it settles at 1 (a foam squash). look: the effect drawn at the feet (src/foamers/spawn-fx.ts), its colours in the foam palette, sizes in metres. maxLive: the hard cap on arrivals drawn at once; past it a Foamer still arrives, without the effect. Start values, [Paul] to tune.",
   "seconds": 1.1,
   "portalShare": 0.35,
   "growFrom": 0.1,
+  "growShare": 0.55,
   "overshoot": 1.12,
   "maxLive": 12,
   "look": {
@@ -11,6 +12,7 @@
     "ringRadius": 1.2,
     "columnHeight": 2.6,
     "chunks": 14,
-    "chunkSpeed": 3.5
+    "chunkSpeed": 3.5,
+    "gravity": 9.8
   }
 }
