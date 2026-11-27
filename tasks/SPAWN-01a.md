@@ -58,3 +58,41 @@ this card. Not yours: `src/foamers/spawn-fx.ts` and `data/spawn.json`
 
 `.swarm/preflight.sh` green before each commit. No browser: say what to
 look at. Add `## Result` at the end of this card when done.
+
+## Result
+
+Done. The timeline (`spawnInPose(t)`) and the game side both landed.
+
+- `spawnInPose(t)`: before `portalShare * seconds` the scale is `growFrom`
+  (inactive); then it grows to `overshoot` (ease out), settles to
+  exactly 1 by `seconds`, and is active and at scale 1 past it.
+- `spawn(feet, facing, type, promoted, teleport = false)` and the same
+  last argument on `spawnPack`, passed through.
+- A teleporting Foamer gets `spawnLeft` (seconds) on `Foamer`. While it is
+  above 0 it does not brain or move (it is skipped in the update loop, the
+  way the held range lineup is), it does not wear, and its colliders are
+  off (capsule and every part). The pose scale is applied to the part
+  matrices (about the feet; the group origin is the scene origin, so each
+  part's pose is premultiplied by the feet-centred scale). Turned on when
+  it becomes active.
+- The system owns one `SpawnFx` (`readonly spawnFx = new SpawnFx()`), adds
+  `spawnFx.group` to its group on a teleport spawn (the effect group is
+  out of the scene group again after `clear()`; that is what the range-api
+  test expects), calls `spawnFx.update(dt)` every update, and
+  `spawnFx.clear()` in `clear()`. A teleporting spawn calls
+  `spawnFx.start(feet, f.height, mainColour)`.
+- The two arena calls in `src/arena/extras.ts` (a rift's wave and a
+  trigger's spawn) pass `teleport: true`. Placed Foamers, ambushes and the
+  range lineup stay instant.
+
+Checks: `.swarm/preflight.sh` is green (215 test files, 1701 passed, 2
+skipped; type check and no-em-dash pass too).
+
+To look at in a browser (spawn-fx agent draws the effect; this side only
+wires the call): the arena's rift/wave Foamers should grow out of the
+ground as they arrive (a small scale to 1.12 to 1), frozen and
+damageless, while the effect draws at their feet; placed Foamers,
+ambushes and the range lineup should arrive at full size at once.
+
+Not verified: the SpawnFx effect itself (that is the spawn-fx card), and
+the arena pages with a live player (several tests cover the mechanics).
