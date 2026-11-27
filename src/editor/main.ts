@@ -804,13 +804,24 @@ function buildPalette() {
     wrap.append(terrainButton, terrainTool.options());
     ground.append(wrap);
   } else ground.append(terrainButton);
-  const handles = toolGroup(host, "Handles");
-  for (const [key, name] of [["translate", "Move (1)"], ["rotate", "Rotate (2)"], ["scale", "Scale (3)"]] as const) {
-    handles.append(toolButton(key, name, null, view.mode === key, () => {
-      view.setMode(key);
-      selectInView();
-      buildPalette();
-    }));
+  buildHandleBar();
+}
+
+/** The move, rotate and scale buttons, in a bar at the top of the view
+ *  under the header, shown only while something with handles is selected
+ *  (Paul, 2026-11-27). A trigger or the terrain alone has none. */
+function buildHandleBar() {
+  const bar = $("handleBar");
+  bar.replaceChildren();
+  const handled = [...selected].some((id) => id !== TERRAIN_ID && doc.kindOf(id) !== "triggers");
+  bar.hidden = !handled;
+  if (!handled) return;
+  for (const [key, name, label] of [["translate", "Move (1)", "Move"], ["rotate", "Rotate (2)", "Rotate"], ["scale", "Scale (3)", "Scale"]] as const) {
+    const button = toolButton(key, name, null, view.mode === key, () => setMode(key));
+    const text = document.createElement("span");
+    text.textContent = label;
+    button.append(text);
+    bar.append(button);
   }
 }
 
@@ -894,6 +905,7 @@ function partOptions(kind: PartKind): HTMLElement | null {
 /** The inspector for what is selected, or the level's sky and name when
  *  nothing is (stage 4 fills the sky in). */
 function buildInspector() {
+  buildHandleBar();
   const host = $("inspector");
   host.replaceChildren();
   const heading = document.createElement("h2");

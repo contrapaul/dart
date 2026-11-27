@@ -773,3 +773,44 @@ button.on {
 #palette .flyout-wrap:focus-within .tool-flyout {
   display: flex;
 }
+
+/* The handle modes: a bar at the top of the view, centred between the
+   outliner and the inspector, shown only while something is selected. */
+#handleBar {
+  position: absolute;
+  top: 2.8rem;
+  left: calc(18.4rem + (100% - 18.4rem - 17rem) / 2);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+  background: rgba(20, 12, 40, 0.9);
+  border: 1px solid rgba(255, 210, 63, 0.35);
+  z-index: 2;
+}
+
+#handleBar[hidden] {
+  display: none;
+}
+
+#handleBar .tool {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.2rem;
+  padding: 0 0.6rem 0 0.4rem;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+}
+
+#handleBar .tool svg {
+  width: 20px;
+  height: 20px;
+}
+
+#handleBar .tool.armed {
+  border-color: #ffd23f;
+  background: rgba(255, 210, 63, 0.28);
+}

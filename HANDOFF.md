@@ -93,6 +93,20 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-27: Move, Rotate and Scale at the top of the view (Claude Opus 5.5)
+
+- Asked (Paul): move the move, rotate and scale buttons to the top of the
+  screen under the header, shown only when something is selected.
+- Built: `#handleBar`, a small bar centred at the top of the view between
+  the outliner and the inspector, with Move, Rotate and Scale (icon and
+  word), the armed one lit. Shown while anything with handles is selected
+  (not a trigger or the terrain alone), redrawn on every selection and
+  mode change. The Handles group left the tool bar, which now fits a
+  768 px window with no scrolling.
+- Seen in the browser: hidden on a new level, shown when the floor is
+  clicked, Rotate switches the handles to rings, hidden again after a
+  click on the sky; no console errors.
+
 ### 2026-11-27: the shapes fold into one tool bar button (Claude Opus 5.5)
 
 - Asked (Paul): collapse the shapes into a menu that expands on hover, to

@@ -27,7 +27,7 @@ export const HELP: HelpSection[] = [
       ["Drag a thing", "Slide it over the floors and walls under the cursor. A shape is clicked first, so a drag on the floor does not move the floor."],
       ["[ and ]", "Turn what is selected by 15 degrees. An armed asset turns the same way, as one object about its middle, before it is placed."],
       ["Arrow keys", "Nudge what is selected one grid step: Up away from the camera, Down toward it, Left and Right across. PageUp and PageDown move it up and down. Shift moves four steps; with snap off a step is 0.1 m."],
-      ["1, 2, 3", "Move, rotate, scale handles. With two or more things selected they turn and scale as one object about the middle of their box, and a group holding a Foamer, a door or a prop turns about the vertical only."],
+      ["1, 2, 3", "Move, rotate, scale handles, also the buttons at the top of the view while something is selected. With two or more things selected they turn and scale as one object about the middle of their box, and a group holding a Foamer, a door or a prop turns about the vertical only."],
       ["3, then drag a face", "With one box selected, each face has a handle. Drag it to pull or push that face; the other side stays put. The size shows by the cursor."],
       ["G", "Grid snap on or off."],
       ["Ctrl+D, Delete", "Duplicate, delete."],
