@@ -8,3 +8,5 @@ ed35: src/level/models.ts, src/level/model-voxels.ts, src/editor/models-editor.t
 ed36: src/render/surfaces.ts, data/surfaces.json, src/editor/paint-tool.ts, tests/render/surfaces.test.ts, tests/editor/ed36.test.ts, tasks/ED-36.md
 ed37: src/editor/group-transform.ts, tests/editor/ed37.test.ts, tasks/ED-37.md
 lead: src/level/terrain.ts, src/editor/terrain-editor.ts, design/EDITOR-V2.md, HANDOFF.md, PLAN.md
+spawn-core: src/foamers/spawn-in.ts, src/foamers/foamers.ts, src/foamers/foamer.ts, src/arena/extras.ts, tests/foamers/spawn-in.test.ts, tests/foamers/spawn-in-game.test.ts, tasks/SPAWN-01a.md
+spawn-fx: src/foamers/spawn-fx.ts, data/spawn.json, tests/foamers/spawn-fx.test.ts, tasks/SPAWN-01b.md
