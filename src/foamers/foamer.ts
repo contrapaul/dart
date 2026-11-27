@@ -41,6 +41,9 @@ export type GameRig = RigSpec & { health: number };
 
 // Scratch, shared by every Foamer; only written during the system's
 // sequential update or render.
+const _t = new THREE.Matrix4();
+const _s = new THREE.Matrix4();
+const _n = new THREE.Matrix4();
 const _poses = new Map<string, THREE.Matrix4>();
 const _target = restMotion();
 const _attack = restMotion(); // a prone attack's own motion, laid over the crawl
@@ -229,6 +232,11 @@ export class Foamer {
   readonly glow = new THREE.Mesh(GLOW_GEO, new THREE.MeshBasicMaterial({
     color: 0xb6ff3b, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending,
   }));
+
+  /** SPAWN-01: seconds until the arrival ends. While above 0 the Foamer is
+   *  growing to full size, skipping everything else, with its colliders
+   *  off. 0 means it is already active. */
+  spawnLeft = 0;
 
   private poseBlend: number;
   /** The upright capsule's radius, kept for the lying capsule (GAME-11). */
@@ -438,6 +446,20 @@ export class Foamer {
     return this.rig.parts
       .filter((p) => p.kind === "leg" && (p.parent === null || kind.get(p.parent) !== "leg"))
       .map((p) => p.id);
+  }
+
+  /** SPAWN-01: scale the drawn body about its feet. The part groups are
+   *  world matrices, so the scale is applied to the part poses (this is
+   *  the only copy that draws). */
+  applySpawnScale(s: number) {
+    if (s === 1) return;
+    _t.makeTranslation(this.centre.x, this.centre.y, this.centre.z);
+    _t.multiply(_s.makeScale(s, s, s));
+    _t.multiply(_n.makeTranslation(-this.centre.x, -this.centre.y, -this.centre.z));
+    for (const part of this.parts.values()) {
+      part.pose.premultiply(_t);
+      part.prevPose.premultiply(_t);
+    }
   }
 
   /** Report a bonk that connects, and count it. */

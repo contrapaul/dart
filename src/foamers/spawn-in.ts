@@ -33,7 +33,20 @@ export interface SpawnInPose {
 
 /** The pose `t` seconds after the teleport began. */
 export function spawnInPose(t: number, spec: SpawnInSpec = SPAWN_IN): SpawnInPose {
-  void t;
-  void spec;
+  const portal = spec.portalShare * spec.seconds;
+  if (t < portal) return { scale: spec.growFrom, active: false };
+  const growEnd = portal + (spec.seconds - portal) * 0.55;
+  if (t < growEnd) {
+    // The grow: eased out, from growFrom to the overshoot.
+    const u = (t - portal) / (growEnd - portal);
+    const e = 1 - Math.pow(1 - u, 3);
+    return { scale: spec.growFrom + (spec.overshoot - spec.growFrom) * e, active: false };
+  }
+  if (t < spec.seconds) {
+    // The settle: eased back from the overshoot to 1.
+    const u = (t - growEnd) / (spec.seconds - growEnd);
+    const e = 1 - Math.pow(1 - u, 2);
+    return { scale: spec.overshoot + (1 - spec.overshoot) * e, active: false };
+  }
   return { scale: 1, active: true };
 }
