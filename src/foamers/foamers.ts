@@ -8,12 +8,14 @@ import type { DebrisSystem } from "../voxel/debris";
 import type { DartSystem, DartHit } from "../weapons/darts";
 import type { VoxelTarget } from "../weapons/impacts";
 import dartTuning from "../../data/darts.json";
-import { materialId, EMPTY, linearColorTable } from "../voxel/materials";
+import { materialId, material, EMPTY, linearColorTable } from "../voxel/materials";
 import { CHUNK_SIZE } from "../voxel/chunk";
 import { carveSphere } from "../voxel/carve";
 import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import { armourOf, plateFaces } from "./armour";
+import { SpawnFx } from "./spawn-fx";
+import { SPAWN_IN, spawnInPose } from "./spawn-in";
 import { SPURT, spurtsFoam } from "./spurt";
 import { coneDirection } from "../voxel/spray";
 import { addShotDamage, shotSummary, chunkRadius } from "./chunk";
@@ -179,6 +181,21 @@ function packSizeOf(spec: FoamerSpec): number {
 function tokenKindOf(spec: FoamerSpec): TokenKind {
   const t = spec.attacks.find((a) => a.token)?.token;
   return t === "ranged" || t === "swarm" ? t : "melee";
+}
+
+/** SPAWN-01: colliders off while the arrival runs (darts pass through, it
+ *  takes no damage), on once it is active. Re-applied each step, so a
+ *  collider a remesh just built is caught too. The parts are kinematic, so
+ *  the root and every part body is queried the same way. */
+function setTeleportColliders(world: RAPIER.World, f: Foamer, enabled: boolean): void {
+  f.capsule.setEnabled(enabled);
+  world.forEachCollider((c) => {
+    const parent = c.parent();
+    if (!parent || parent.handle === f.root.handle) return; // the capsule, done above
+    for (const part of f.parts.values()) {
+      if (parent.handle === part.body.handle) c.setEnabled(enabled);
+    }
+  });
 }
 
 /** One fallen piece: a part and its children. One dynamic body carries one
@@ -347,6 +364,9 @@ export class FoamerSystem {
   /** How many Foamers the spawner keeps alive. Default is the data file's
    *  count; the range page sets its own (0 until the panel adds them). */
   spawnCount = SPAWNER.count;
+  /** SPAWN-01: the effect drawn at a teleporting Foamer's feet. Owned by this
+   *  system; the spawn-fx card draws it. */
+  readonly spawnFx = new SpawnFx();
   /** PT-01: the hard cap on live Foamers, the data's spawner.max. The range
    *  lineup raises it to its own type count so one of every type fits in the
    *  line (13 today, over the arena's 12). */
@@ -489,7 +509,7 @@ export class FoamerSystem {
   /** Spawn at a feet position. Returns null at the `max` cap. With
    *  `facing` (a world point), it starts turned toward that point.
    *  `promoted` (LVL-04b) gives it the mini-boss health and plates. */
-  spawn(feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01", promoted = false): Foamer | null {
+  spawn(feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01", promoted = false, teleport = false): Foamer | null {
     if (this.list.length >= this.spawnCap) return null;
     const spec = specFor(type);
     const f = new Foamer(this.rapier, this.world, this.mesher, spec, rigForSpawn(spec, promoted), feet);
@@ -573,6 +593,17 @@ export class FoamerSystem {
     for (const part of f.parts.values()) this.targets.push(part);
     this.stats.spawned++;
     sound(this, "spawn", f, f.centre);
+    // SPAWN-01: a teleporting Foamer grows in over the spawn spec's seconds,
+    // with its colliders off, and the effect is drawn at its feet.
+    if (teleport) {
+      f.spawnLeft = SPAWN_IN.seconds;
+      setTeleportColliders(this.world, f, false);
+      f.applyPose();
+      f.poseParts(0, false, false);
+      f.applySpawnScale(spawnInPose(0, SPAWN_IN).scale);
+      if (!this.spawnFx.group.parent) this.group.add(this.spawnFx.group);
+      this.spawnFx.start(feet, f.height, material(materialId(f.rig.material))?.color ?? 0xffffff);
+    }
     return f;
   }
 
@@ -587,7 +618,7 @@ export class FoamerSystem {
    *  spawned nor counted. Without a grid (the range, tests without one)
    *  placement is as before. Returns the ones that were made. */
   spawnPack(
-    feet: THREE.Vector3, facing?: THREE.Vector3, count?: number, type = "F03",
+    feet: THREE.Vector3, facing?: THREE.Vector3, count?: number, type = "F03", teleport = false,
   ): Foamer[] {
     const n = count ?? packSizeOf(specFor(type));
     const out: Foamer[] = [];
@@ -613,7 +644,7 @@ export class FoamerSystem {
         placed = grid.canStandAt(_packFeet.x, _packFeet.z, _packFeet.y);
       }
       if (!placed) continue; // the member is skipped, not spawned
-      const f = this.spawn(_packFeet, facing ?? feet, type);
+      const f = this.spawn(_packFeet, facing ?? feet, type, false, teleport);
       if (!f) break; // the system-wide Foamer cap
       out.push(f);
       live++;
@@ -684,7 +715,7 @@ export class FoamerSystem {
       // the same slots this step.
       this.assignSlots(player);
       for (const f of this.list)
-        if (f.state !== "down" && f.state !== "finish" && !this.held.has(f)) this.bidAgent(f, player);
+        if (f.state !== "down" && f.state !== "finish" && f.spawnLeft <= 0 && !this.held.has(f)) this.bidAgent(f, player);
       this.director.update(dt);
     }
     // BUG-01: every Foamer body once per frame, not once per Foamer. The
@@ -692,12 +723,26 @@ export class FoamerSystem {
     // per-Foamer loop made it n squared times the parts, every frame.
     this.allBodies.clear();
     for (const o of this.list) {
-      if (o.state === "down") continue;
+      if (o.state === "down" || o.spawnLeft > 0) continue;
       this.allBodies.add(o.root.handle);
       for (const p of o.parts.values()) this.allBodies.add(p.body.handle);
     }
     for (let i = this.list.length - 1; i >= 0; i--) {
       const f = this.list[i]!;
+      // SPAWN-01: a teleporting Foamer grows in, then is active. It cannot
+      // brain, walk, attack or be hit while the arrival runs: no state
+      // changes, no bid, no wear, colliders off the whole time.
+      if (f.spawnLeft > 0) {
+        f.spawnLeft = Math.max(0, f.spawnLeft - dt);
+        const pose = spawnInPose(SPAWN_IN.seconds - f.spawnLeft, SPAWN_IN);
+        f.applyPose();
+        f.poseParts(dt, false, false);
+        f.applySpawnScale(pose.scale);
+        for (const part of f.parts.values()) part.mesh.update();
+        setTeleportColliders(this.world, f, false);
+        if (f.spawnLeft === 0) setTeleportColliders(this.world, f, true);
+        continue;
+      }
       // Downed Foamers keep stepping (lie, sink) but no longer walk.
       // GAME-09b: a dying Foamer (its kill held for the rest of its shot)
       // keeps its colliders and its pose, and does nothing else.
@@ -738,6 +783,7 @@ export class FoamerSystem {
       }
     }
     this.stepBroken(dt);
+    this.spawnFx.update(dt);
     this.enforceDownCap();
     // Spawner: keep spawnCount alive; a downed Foamer is gone for it
     // (it will not get up again), so it repspawns while still sinking.
@@ -3235,6 +3281,10 @@ export class FoamerSystem {
    *  stuck to one of them drops when its body is disposed (darts.ts). The
    *  spawner count is not touched, so it respawns if it wants to. */
   clear(): void {
+    this.spawnFx.clear();
+    // Nothing is drawn after a restart, so the effect group leaves the
+    // system's scene group too (it returns on the next teleport spawn).
+    if (this.spawnFx.group.parent) this.group.remove(this.spawnFx.group);
     for (let i = this.downed.length - 1; i >= 0; i--) this.removeFoamer(this.downed[i]!);
     for (let i = this.list.length - 1; i >= 0; i--) this.removeFoamer(this.list[i]!);
     for (let i = this.broken.length - 1; i >= 0; i--) this.removeBroken(i);

@@ -274,7 +274,7 @@ export function arenaExtras(
       // LVL-04b: a promoted spawn gets the mini-boss health and plates.
       _riftFeet.set(rift.pos[0], rift.pos[1], rift.pos[2]);
       _riftFacing.copy(player.eye(1, _playerPos));
-      const f = foamers.spawn(_riftFeet, _riftFacing, foamerId, promoted);
+      const f = foamers.spawn(_riftFeet, _riftFacing, foamerId, promoted, true);
       if (!f) return false;
       audio.play("FX-spawn", { position: _riftFeet });
       return true;
@@ -818,7 +818,7 @@ export function arenaExtras(
     const r = spawnPoints.get(at);
     if (!r) return true; // the validator rejects a file naming no such point
     _spawnFeet.set(r.pos[0], r.pos[1], r.pos[2]);
-    const f = foamers.spawn(_spawnFeet, player.eye(1, _riftFacing), foamer, promoted);
+    const f = foamers.spawn(_spawnFeet, player.eye(1, _riftFacing), foamer, promoted, true);
     if (!f) return false;
     tagged.push({ f, tag });
     audio.play("FX-spawn", { position: _spawnFeet });
