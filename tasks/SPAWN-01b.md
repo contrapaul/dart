@@ -52,3 +52,22 @@ card. Not yours: `src/foamers/spawn-in.ts`, `foamers.ts` (requests go in
 
 `.swarm/preflight.sh` green before each commit. No browser: say what to
 look at. Add `## Result` at the end of this card when done.
+
+## Result
+
+Built and tested in one commit (`feat(SPAWN-01b)`). `SpawnFx` fills in the
+ring (flat additive foam disc, opens over `portalShare`, then shrinks and
+fades out), the column (open-ended foam cylinder to `max(look.columnHeight,
+height)`, fading as the body grows) and the puff (`look.chunks` foam cubes
+thrown up and out at `look.chunkSpeed`, falling under gravity 9.8 m/s^2 and
+shrinking away; directions from a mulberry32 PRNG seeded by feet/height/
+colour, so the same start gives the same directions). Pool of `maxLive`
+arrivals built once; `start` returns false past the cap; `update` allocates
+nothing; `clear` hides every arrival. Gravity is a code constant (9.8) since
+the `look` block in `data/spawn.json` has no gravity key and the `look`
+block is already complete; the comment in the file notes it is [Paul] to tune.
+`data/spawn.json` kept as-is (look block and maxLive were already set).
+Tests: `npx vitest run tests/foamers/spawn-fx.test.ts` (6 passing), full
+preflight green. What a person should look at in the browser: start a
+teleporting Foamer and watch the ring open, the column rise and the foam
+chunks fall; confirm the colours read as foam (not fire).
