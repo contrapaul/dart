@@ -93,6 +93,29 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-27: the floor moves and scales, the terrain resizes (Claude Opus 5.5)
+
+- Asked (Paul): the ground or floor does not seem movable or scalable,
+  and his map is bigger than the default ground.
+- Found three bugs: (1) dragging the selected floor box stood it on the
+  empty ground plane, so it jumped up by its own thickness (and over other
+  shapes it was stood on top of them); (2) in scale mode one box showed
+  only its face handles, which on a 32 m floor sit 16 m off, out of view,
+  so a big floor could not be scaled by mouse; (3) the terrain had no size
+  or position control at all, and any change to it dropped it from the
+  selection, so two edits in a row were impossible.
+- Fixed: over the bare ground plane a dragged thing keeps its height; the
+  three.js scale handle stays at a single box's middle beside its face
+  handles; the terrain inspector sets the size in metres (`resizeTerrain`:
+  about its middle, every shaped and painted vertex kept, new ground flat
+  and layer 1, capped at 256 cells a side) and the middle x, z and base
+  height; the terrain stays selected through its own changes.
+- Seen in the browser (real mouse drags): the floor slid to x 1.5 with y
+  kept at -0.5; the centre scale handle widened it from 32 to 76.5 m; the
+  terrain resized to 120 by 64 m and moved to x 10, staying selected; no
+  console errors. Tests for the resize.
+- Not seen: Paul's own larger map (it is in his browser's storage).
+
 ### 2026-11-27: Move, Rotate and Scale at the top of the view (Claude Opus 5.5)
 
 - Asked (Paul): move the move, rotate and scale buttons to the top of the

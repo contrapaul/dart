@@ -2,7 +2,7 @@ import * as THREE from "three";
 import editorData from "../../data/editor.json";
 import type { Terrain } from "../level/format";
 import {
-  applyBrush, flatTerrain, heightAt, terrainBounds, tidyTerrain, type Brush, type BrushMode,
+  applyBrush, flatTerrain, heightAt, resizeTerrain, terrainBounds, tidyTerrain, type Brush, type BrushMode,
 } from "../level/terrain";
 import { SURFACES, SURFACE_NAMES } from "../render/surfaces";
 import type { LevelDoc } from "./doc";
@@ -286,6 +286,43 @@ export function buildTerrainInspector(host: HTMLElement, doc: LevelDoc, palette:
   info.textContent = `${t.nx} by ${t.nz} cells of ${t.cell} m: ${(b.maxX - b.minX).toFixed(0)} by ${(b.maxZ - b.minZ).toFixed(0)} m. Drag with the Terrain tool to shape and paint it.`;
   host.append(info);
   const change = (patch: Partial<Terrain>, text: string) => doc.setFields({ terrain: { ...t, ...patch } }, text);
+  // Size and place (Paul, 2026-11-27): a map can outgrow its ground. A
+  // resize keeps everything shaped and painted, centred; a move shifts the
+  // whole grid, its middle and its base height.
+  const number = (value: number, step: number, set: (n: number) => void) => {
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = String(step);
+    input.value = String(Math.round(value * 100) / 100);
+    input.addEventListener("change", () => {
+      const n = Number(input.value);
+      if (Number.isFinite(n)) set(n);
+    });
+    return input;
+  };
+  const row = (name: string, ...inputs: HTMLElement[]) => {
+    const r = document.createElement("div");
+    r.className = "field";
+    const label = document.createElement("span");
+    label.textContent = name;
+    const vec = document.createElement("div");
+    vec.className = "vec";
+    vec.append(...inputs);
+    r.append(label, vec);
+    host.append(r);
+  };
+  const width = b.maxX - b.minX;
+  const depth = b.maxZ - b.minZ;
+  row("size (m)",
+    number(width, t.cell, (n) => doc.setFields({ terrain: resizeTerrain(t, n, depth, T.maxCells) }, "resize terrain")),
+    number(depth, t.cell, (n) => doc.setFields({ terrain: resizeTerrain(t, width, n, T.maxCells) }, "resize terrain")));
+  const mid = [(b.minX + b.maxX) / 2, t.origin[1], (b.minZ + b.maxZ) / 2];
+  const moveTo = (x: number, y: number, z: number) =>
+    change({ origin: [t.origin[0] + (x - mid[0]!), y, t.origin[2] + (z - mid[2]!)] }, "move terrain");
+  row("middle x, base y, z",
+    number(mid[0]!, t.cell, (n) => moveTo(n, mid[1]!, mid[2]!)),
+    number(mid[1]!, 0.1, (n) => moveTo(mid[0]!, n, mid[2]!)),
+    number(mid[2]!, t.cell, (n) => moveTo(mid[0]!, mid[1]!, n)));
   t.layers.forEach((layer, i) => {
     const row = document.createElement("div");
     row.className = "field";

@@ -1355,11 +1355,15 @@ window.addEventListener("pointermove", (e) => {
     canvas.style.cursor = "grabbing";
   }
   // The selection slides over whatever is under the cursor, itself not
-  // counted, and stands on a floor; over a wall it keeps its height.
+  // counted, and stands on a floor; over a wall it keeps its height. Over
+  // nothing but the empty ground plane it keeps its height too: the level's
+  // floor box stands on that plane, so it used to jump up by its own
+  // thickness when dragged (Paul, 2026-11-27).
   const hit = view.pick(...ndcOf(e), new Set(selected));
   if (!hit) return;
   const to = hit.point.clone().add(press.offset);
-  to.y = hit.normal.y > 0.5 ? hit.point.y + press.lift : press.startY;
+  const bare = !hit.id && !onTerrain(e, hit);
+  to.y = hit.normal.y > 0.5 && !bare ? hit.point.y + press.lift : press.startY;
   if (snapOn) {
     to.x = Math.round(to.x / GRID) * GRID;
     to.z = Math.round(to.z / GRID) * GRID;
@@ -2709,6 +2713,9 @@ doc.onChange(() => {
   // The selection drops prims that are gone (an undo of an add, a delete).
   for (const id of [...selected]) {
     if (id === START_ID || id === EXIT_ID) continue;
+    // The terrain is not an entry: it stays selected while there is one,
+    // so its fields can be changed one after another.
+    if (id === TERRAIN_ID && doc.level.terrain) continue;
     if (!doc.kindOf(id)) selected.delete(id);
   }
   redraw();

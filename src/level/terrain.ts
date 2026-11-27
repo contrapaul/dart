@@ -393,3 +393,36 @@ export function layerForPaint(
   const layers = t.layers.map((l, i) => (i === least ? { surface, colour: colour ?? l.colour } : l));
   return { layers, index: least };
 }
+
+/**
+ * The terrain grown or shrunk to `sizeX` by `sizeZ` metres about its middle,
+ * in its own cells. Every vertex the old and new grids share keeps its
+ * height and paint exactly; new ground is flat at the base height and wears
+ * layer 1. Paul, 2026-11-27: a map can outgrow the ground it started with.
+ */
+export function resizeTerrain(t: Terrain, sizeX: number, sizeZ: number, maxCells: number): Terrain {
+  const nx = Math.min(maxCells, Math.max(1, Math.round(sizeX / t.cell)));
+  const nz = Math.min(maxCells, Math.max(1, Math.round(sizeZ / t.cell)));
+  // Whole cells either side, so old vertices land on new ones exactly.
+  const di = Math.round((nx - t.nx) / 2);
+  const dj = Math.round((nz - t.nz) / 2);
+  const origin: Vec3 = [t.origin[0] - di * t.cell, t.origin[1], t.origin[2] - dj * t.cell];
+  const L = t.layers.length;
+  const heights = new Array((nx + 1) * (nz + 1)).fill(0);
+  const paint = t.paint ? new Array((nx + 1) * (nz + 1) * L).fill(0) : undefined;
+  for (let j = 0; j <= nz; j++) {
+    for (let i = 0; i <= nx; i++) {
+      const v = j * (nx + 1) + i;
+      const oi = i - di;
+      const oj = j - dj;
+      const inside = oi >= 0 && oj >= 0 && oi <= t.nx && oj <= t.nz;
+      const ov = oj * (t.nx + 1) + oi;
+      if (inside) heights[v] = t.heights[ov]!;
+      if (paint) {
+        if (inside) for (let l = 0; l < L; l++) paint[v * L + l] = t.paint![ov * L + l]!;
+        else paint[v * L] = 255;
+      }
+    }
+  }
+  return { ...t, origin, nx, nz, heights, ...(paint ? { paint } : {}) };
+}

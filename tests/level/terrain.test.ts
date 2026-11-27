@@ -3,7 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import { createPhysics } from "../../src/physics/world";
 import {
-  applyBrush, buildTerrain, falloff, flatTerrain, heightAt, layerForPaint, terrainGeometry, tidyTerrain, vertexCount,
+  applyBrush, buildTerrain, falloff, flatTerrain, heightAt, layerForPaint, resizeTerrain, terrainGeometry, tidyTerrain, vertexCount,
 } from "../../src/level/terrain";
 import type { Terrain } from "../../src/level/format";
 import { validateLevel } from "../../src/level/validate";
@@ -168,5 +168,31 @@ describe("ED-34 terrain surfaces in the mesh", () => {
     // No paint yet: all layer 1.
     const plain = terrainGeometry(flatTerrain([0, 0], 0, 4, 4, 1, LAYERS)).getAttribute("aTerrainW");
     expect([plain.getX(0), plain.getY(0)]).toEqual([1, 0]);
+  });
+});
+
+describe("ED-34 terrain resize (Paul, 2026-11-27)", () => {
+  it("grows about its middle and keeps every shaped and painted vertex", () => {
+    const t = flatTerrain([0, 0], 0.5, 10, 10, 1, LAYERS);
+    applyBrush(t, 2, -1, { mode: "raise", radius: 2, strength: 1 }, 1);
+    applyBrush(t, 2, -1, { mode: "paint", radius: 2, strength: 5, layer: 1 }, 1);
+    const big = resizeTerrain(t, 30, 20, 256);
+    expect([big.nx, big.nz]).toEqual([30, 20]);
+    expect(big.origin).toEqual([-15, 0.5, -10]);
+    for (const [x, z] of [[2, -1], [3, -1], [-5, 5], [0, 0]] as const) {
+      expect(heightAt(big, x, z)).toBeCloseTo(heightAt(t, x, z)!);
+    }
+    // New ground is flat at the base and wears layer 1.
+    expect(heightAt(big, 14, 9)).toBeCloseTo(0.5);
+    const v = 20 * 31 + 30;
+    expect([big.paint![v * 2], big.paint![v * 2 + 1]]).toEqual([255, 0]);
+    expect(validateLevel({ ...newLevel(), terrain: tidyTerrain(big) }).errors).toEqual([]);
+  });
+
+  it("shrinks, and keeps to the cell cap", () => {
+    const t = flatTerrain([0, 0], 0, 20, 20, 1, LAYERS);
+    const small = resizeTerrain(t, 8, 8, 256);
+    expect([small.nx, small.nz, small.origin[0]]).toEqual([8, 8, -4]);
+    expect(resizeTerrain(t, 900, 10, 256).nx).toBe(256);
   });
 });

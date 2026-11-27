@@ -535,8 +535,9 @@ export class EditorView {
       this.controls.enabled = false;
     }
     // ED-14: one box in scale mode gets a handle on each face, which moves
-    // that face alone. The three.js scale handle grows a box from its
-    // centre, and stays for a selection of several things.
+    // that face alone. The three.js scale handle stays at the centre as
+    // well, growing the box from its middle: on a big floor the faces are
+    // far off screen (Paul, 2026-11-27).
     const sized = marker ? marker.size : prim ? prim.size : null;
     // ED-37: a selection holding a Foamer, a door, a prop or the start turns
     // about Y only: those stand upright.
@@ -545,8 +546,6 @@ export class EditorView {
     this.faces.visible = false;
     this.faceTarget = null;
     if (mode === "scale" && objects.length === 1 && sized && !locked) {
-      this.controls.detach();
-      this.controls.enabled = false;
       this.faceTarget = { id, size: [sized[0], sized[1], sized[2]] };
       this.placeFaces({ pos: [last.position.x, last.position.y, last.position.z], size: sized, rot: this.proxyState().rot });
       this.faces.visible = true;

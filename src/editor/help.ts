@@ -28,6 +28,8 @@ export const HELP: HelpSection[] = [
       ["[ and ]", "Turn what is selected by 15 degrees. An armed asset turns the same way, as one object about its middle, before it is placed."],
       ["Arrow keys", "Nudge what is selected one grid step: Up away from the camera, Down toward it, Left and Right across. PageUp and PageDown move it up and down. Shift moves four steps; with snap off a step is 0.1 m."],
       ["1, 2, 3", "Move, rotate, scale handles, also the buttons at the top of the view while something is selected. With two or more things selected they turn and scale as one object about the middle of their box, and a group holding a Foamer, a door or a prop turns about the vertical only."],
+      ["Scale a big box", "In scale mode the three.js handle at the box's middle grows it from the centre, beside the face handles, so a floor whose faces are off screen can still be scaled."],
+      ["Terrain size", "Select the terrain (click it, or its row in the outliner). Its inspector sets its size in metres, keeping everything shaped and painted, and moves its middle and base height."],
       ["3, then drag a face", "With one box selected, each face has a handle. Drag it to pull or push that face; the other side stays put. The size shows by the cursor."],
       ["G", "Grid snap on or off."],
       ["Ctrl+D, Delete", "Duplicate, delete."],
