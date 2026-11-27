@@ -30,6 +30,8 @@
     ],
     "brush": { "radius": 3, "strength": 2, "maxRadius": 20, "maxStrength": 10 }
   },
+  "nudgeFine": 0.1,
+  "_nudgeNote": "The arrow keys nudge the selection one grid step, or nudgeFine metres with snap off.",
   "grid": 0.5,
   "rotateStep": 15,
   "palette": ["#ff7a1a", "#2ec4ff", "#b6ff3b", "#ff4fa3", "#ffd23a", "#8a5cff", "#f4ecdc", "#6f6788", "#3a3550"],

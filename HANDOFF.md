@@ -93,6 +93,26 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-27: editor keys, WASD flies the camera and the arrows nudge (Claude Opus 5.5)
+
+- Asked (Paul): camera movement with WASD, and nudging objects with the
+  arrow keys.
+- Built: WASD, Q and E fly the camera any time (before, only while the
+  right button was held), Shift faster. The arrow keys nudge the selection
+  one grid step (0.1 m with snap off, `data/editor.json` `nudgeFine`),
+  Shift four steps: Up away from the camera, Down toward it, Left and
+  Right across, on the grid axis nearest the camera's heading; PageUp and
+  PageDown move it up and down. One undo step per press; locked things
+  stay put. Pure maths in `src/editor/nudge.ts`, tested.
+- Decided (Paul can overturn): the handle modes moved from W, E, R to 1, 2
+  and 3, because W and E are now camera keys. Help, the tool bar titles and
+  `design/EDITOR.md` say so.
+- Seen in the browser: the lift nudged right, away and (Shift+PageUp) 2 m
+  up, Undo stepping back one nudge; W and E flying the camera with no
+  mouse button held; no console errors.
+- Not done: a held arrow key makes one undo step per repeat, not one per
+  hold.
+
 ### 2026-11-27: editor round 2, Paul's 13 items (Claude Opus 5.5 lead, Inkling and DeepSeek builders)
 
 - Asked (Paul, overnight): 13 editor items; plan them, put Inkling on the

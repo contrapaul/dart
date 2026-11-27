@@ -107,11 +107,13 @@ Roblox Studio), so nothing is invented:
 |---|---|
 | Mouse wheel | Zoom toward the point under the cursor |
 | Middle mouse drag | Pan |
-| Right mouse drag, + WASD, Q/E | Look round, and fly while held (no pointer lock) |
+| W, A, S, D, Q, E | Fly the camera, any time; Shift faster (Paul, 2026-11-27) |
+| Right mouse drag | Look round (no pointer lock) |
 | Alt + left drag | Orbit round the point under the cursor |
 | F | Frame the selection |
 | Click, Shift+click | Select, add to the selection |
-| W, E, R | Move, rotate, scale handles (three.js `TransformControls`, bundled) |
+| 1, 2, 3 | Move, rotate, scale handles (three.js `TransformControls`, bundled); they were W, E, R until WASD became the camera |
+| Arrow keys, PageUp, PageDown | Nudge the selection a grid step, relative to the camera; Shift four steps |
 | G | Grid snap on or off (default 0.5 m, 15 degrees) |
 | Ctrl+D, Delete | Duplicate, delete |
 | Ctrl+Z, Ctrl+Y | Undo, redo (every change goes through one command list) |

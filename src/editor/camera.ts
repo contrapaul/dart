@@ -5,7 +5,8 @@ import editorData from "../../data/editor.json";
 // cursor left alone (no pointer lock):
 //   wheel           zoom toward the point under the cursor
 //   middle drag     pan, the point grabbed stays under the cursor
-//   right drag      look round; WASD, Q/E fly while it is held, Shift faster
+//   right drag      look round
+//   WASD, Q/E       fly, any time (Paul, 2026-11-27), Shift faster
 //   Alt + left drag orbit round the point under the cursor
 // The numbers are in data/editor.json `camera`. The maths is in plain
 // functions so it can be tested without a page.
@@ -72,7 +73,10 @@ export class EditorCamera {
     canvas.addEventListener("pointerdown", (e) => this.down(e));
     window.addEventListener("pointermove", (e) => this.move(e));
     window.addEventListener("pointerup", (e) => this.up(e));
-    window.addEventListener("blur", () => this.stop());
+    window.addEventListener("blur", () => {
+      this.stop();
+      this.keys.clear();
+    });
     canvas.addEventListener("wheel", (e) => this.wheel(e), { passive: false });
   }
 
@@ -94,9 +98,8 @@ export class EditorCamera {
     this.keys.delete(code);
   }
 
-  /** Flies while the right button is held. */
+  /** Flies while WASD, Q or E are held, with or without the right button. */
   update(dt: number) {
-    if (!this.looking) return;
     const k = this.keys;
     const speed = (k.has("ShiftLeft") || k.has("ShiftRight") ? CAM.fastSpeed : CAM.flySpeed) * dt;
     const forward = new THREE.Vector3();
@@ -175,7 +178,6 @@ export class EditorCamera {
 
   private stop() {
     this.drag = null;
-    this.keys.clear();
     this.canvas.style.cursor = "";
   }
 

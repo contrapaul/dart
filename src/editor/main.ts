@@ -43,6 +43,7 @@ import { isLockableKind, lockButton, lockedIds, movableIds } from "./lock";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
 import { BUTTON_COLOUR, buildButtonFields, makeButton } from "./buttons-editor";
 import { TerrainTool, TERRAIN_ID, buildTerrainInspector } from "./terrain-editor";
+import { isNudgeKey, nudgeOffset } from "./nudge";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -785,7 +786,7 @@ function buildPalette() {
     ground.append(wrap);
   } else ground.append(terrainButton);
   const handles = toolGroup(host, "Handles");
-  for (const [key, name] of [["translate", "Move (W)"], ["rotate", "Rotate (E)"], ["scale", "Scale (R)"]] as const) {
+  for (const [key, name] of [["translate", "Move (1)"], ["rotate", "Rotate (2)"], ["scale", "Scale (3)"]] as const) {
     handles.append(toolButton(key, name, null, view.mode === key, () => {
       view.setMode(key);
       selectInView();
@@ -1726,9 +1727,19 @@ window.addEventListener("keydown", (e) => {
     snapOn = !snapOn;
     view.setSnap(snapOn);
   }
-  if (e.code === "KeyW" && !view.isLooking) setMode("translate");
-  if (e.code === "KeyE" && !view.isLooking) setMode("rotate");
-  if (e.code === "KeyR" && !view.isLooking) setMode("scale");
+  // W, A, S, D, Q and E fly the camera (Paul, 2026-11-27), so the handle
+  // modes are on 1, 2 and 3.
+  if (e.code === "Digit1") setMode("translate");
+  if (e.code === "Digit2") setMode("rotate");
+  if (e.code === "Digit3") setMode("scale");
+  // The arrow keys nudge the selection one grid step (0.1 m with snap
+  // off), Shift four times as far; PageUp and PageDown move it up and down.
+  if (isNudgeKey(e.code) && selected.size) {
+    e.preventDefault();
+    const step = (snapOn ? GRID : EDITOR.nudgeFine) * (e.shiftKey ? 4 : 1);
+    const forward = view.camera.getWorldDirection(new THREE.Vector3());
+    nudgeSelection(nudgeOffset(e.code, forward.x, forward.z, step));
+  }
   // ED-08 stage 3: L links the selected trigger's first field, Esc stops.
   if (e.code === "KeyL" && !view.isLooking) {
     const trigger = [...selected].map((id) => doc.find<Trigger>("triggers", id)).find((t): t is Trigger => !!t);
@@ -1996,6 +2007,21 @@ function applyGroupPatches(patches: GroupPatch[], text: string) {
 function selectionPivot(): Vec3 {
   const c = view.selectionBox().getCenter(new THREE.Vector3());
   return [c.x, c.y, c.z];
+}
+
+/** Moves every selected thing that can move by one offset, as one undo
+ *  step. Locked things stay put and the status line says so. */
+function nudgeSelection(by: Vec3) {
+  const locked = lockedIds(doc.level);
+  const { ok, skipped } = movableIds([...selected], locked);
+  const things = groupThings(ok);
+  status.textContent = skipped.length ? `${skipped.join(", ")} is locked.` : "";
+  if (!things.length) return;
+  const round = (n: number) => Math.round(n * 1e4) / 1e4;
+  applyGroupPatches(things.map((t) => ({
+    id: t.id, kind: t.kind,
+    patch: { pos: [round(t.pos[0] + by[0]), round(t.pos[1] + by[1]), round(t.pos[2] + by[2])] },
+  })), `nudge ${things.length} thing${things.length === 1 ? "" : "s"}`);
 }
 
 /** ED-37: turns the armed asset as one object about the middle of its
