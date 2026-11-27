@@ -93,6 +93,30 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-27: painting the ground (Claude Opus 5.5)
+
+- Asked (Paul): "I can't change the color of the ground, or paint on it."
+- Found: the starter floor box could be recoloured and painted, but the
+  terrain could not: a click on it selected nothing (so its layer colours
+  were only reachable from the outliner), the Paint tool only painted
+  prims, and the terrain drew colours with no surface pattern. The Paint
+  tool's panel also opened downward off the bottom of the screen, hiding
+  its colour row.
+- Fixed: a click on the terrain selects it (its four layers' surface and
+  colour in the inspector). The Paint tool paints the terrain with a drag:
+  the chosen surface and colour go into a layer that already wears them,
+  or else take over the least painted layer (`layerForPaint`), one undo
+  step per stroke, the Terrain tool's brush size, `paintToolStrength` 8 in
+  `data/editor.json`; it stays armed for the next stroke. The terrain
+  shader now blends each layer's surface pattern by its paint weight, in
+  the editor and in the game. The Paint panel opens upward.
+- Seen: grass pattern on a new terrain, an orange brick stroke painted
+  with the Paint tool, the inspector after a click on the terrain, and the
+  same ground in the arena (grass, brick patch, rock hill); no console
+  errors. Check 1691 tests, smoke ok.
+- Not done: the brush ring is not shown while the Paint tool hovers the
+  terrain (only during a stroke).
+
 ### 2026-11-27: editor keys, WASD flies the camera and the arrows nudge (Claude Opus 5.5)
 
 - Asked (Paul): camera movement with WASD, and nudging objects with the

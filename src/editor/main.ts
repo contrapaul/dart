@@ -44,6 +44,7 @@ import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
 import { BUTTON_COLOUR, buildButtonFields, makeButton } from "./buttons-editor";
 import { TerrainTool, TERRAIN_ID, buildTerrainInspector } from "./terrain-editor";
 import { isNudgeKey, nudgeOffset } from "./nudge";
+import { layerForPaint } from "../level/terrain";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -672,7 +673,7 @@ function armPaint() {
   terrainTool.disarm();
   view.setGhost(null);
   const hint = $("toolHint");
-  hint.textContent = "Paint: click or drag across prims to set their surface. Shift keeps the tool. Esc stops.";
+  hint.textContent = "Paint: click or drag across prims to set their surface, or drag on the terrain to paint it. Shift keeps the tool. Esc stops.";
   hint.hidden = false;
   buildPalette();
 }
@@ -1213,6 +1214,22 @@ canvas.addEventListener("pointerdown", (e) => {
     if (hit?.id && doc.kindOf(hit.id) === "prims") {
       press = { kind: "paint", x: e.clientX, y: e.clientY, painted: new Map() };
       paintPrim(hit.id);
+      return;
+    }
+    // The ground too (Paul, 2026-11-27): a drag on the terrain paints the
+    // chosen surface and colour into one of its layers, with the Terrain
+    // tool's brush size. The tool stays armed: ground takes many strokes.
+    const t = doc.level.terrain;
+    if (t && onTerrain(e, hit)) {
+      if (t.locked) {
+        status.textContent = "The terrain is locked. Unlock it in its inspector to paint it.";
+        return;
+      }
+      const { layers, index } = layerForPaint(t, paintSettings.surface, paintSettings.colour);
+      const brush = { mode: "paint" as const, radius: terrainTool.brush.radius, strength: EDITOR.terrain.brush.paintToolStrength, layer: index };
+      if (terrainTool.beginStroke(e, brush, layers === t.layers ? undefined : layers, () => {
+        status.textContent = "Painted the terrain.";
+      })) pressUsed = true;
     }
     return;
   }
@@ -1455,6 +1472,8 @@ canvas.addEventListener("click", (e) => {
   // Placing happens when the button comes up (above), not on the click.
   if (armed || armedPart || armedAsset || armedModel) return;
   if (hit?.id) pickGroup(hit.id, e.shiftKey);
+  // A click on the terrain selects it, so its colours are one click away.
+  else if (doc.level.terrain && onTerrain(e, hit)) pick(TERRAIN_ID, e.shiftKey);
   else if (!e.shiftKey) {
     selected.clear();
     selectInView();
@@ -2007,6 +2026,13 @@ function applyGroupPatches(patches: GroupPatch[], text: string) {
 function selectionPivot(): Vec3 {
   const c = view.selectionBox().getCenter(new THREE.Vector3());
   return [c.x, c.y, c.z];
+}
+
+/** True when the pointer is over the terrain and nothing stands in front of
+ *  it (the view's pick gives the terrain no id, as it does the floor). */
+function onTerrain(e: { clientX: number; clientY: number }, hit: { point: THREE.Vector3; id: string | null } | null): boolean {
+  const on = view.terrainHit(...ndcOf(e));
+  return !!(on && hit && !hit.id && on.distanceTo(hit.point) < 0.01);
 }
 
 /** Moves every selected thing that can move by one offset, as one undo

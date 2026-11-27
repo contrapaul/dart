@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import type { Rapier } from "../physics/world";
-import { SURFACES } from "../render/surfaces";
+import { SURFACES, surfaceTexture } from "../render/surfaces";
 import type { Terrain, Vec3 } from "./format";
 
 // ED-34 (design/EDITOR-V2.md): the level's heightfield ground. One grid of
@@ -222,6 +222,8 @@ export function terrainGeometry(t: Terrain): THREE.BufferGeometry {
   geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+  // Each layer's paint weight, 0 to 1, for the material's texture blend.
+  geo.setAttribute("aTerrainW", new THREE.BufferAttribute(new Float32Array(n * 4), 4));
   const index: number[] = [];
   const W = t.nx + 1;
   for (let j = 0; j < t.nz; j++) {
@@ -245,6 +247,8 @@ export function updateTerrainGeometry(geo: THREE.BufferGeometry, t: Terrain): vo
   const pos = geo.getAttribute("position") as THREE.BufferAttribute;
   const col = geo.getAttribute("color") as THREE.BufferAttribute;
   const uv = geo.getAttribute("uv") as THREE.BufferAttribute;
+  const weights = geo.getAttribute("aTerrainW") as THREE.BufferAttribute | undefined;
+  const L = t.layers.length;
   const W = t.nx + 1;
   const colours = t.layers.map((l) => new THREE.Color(l.colour));
   const scale = SURFACES[t.layers[0]?.surface ?? "plain"]?.scale ?? 1;
@@ -257,17 +261,83 @@ export function updateTerrainGeometry(geo: THREE.BufferGeometry, t: Terrain): vo
       blendColour(t, v, colours, _c);
       col.setXYZ(v, _c.r, _c.g, _c.b);
       uv.setXY(v, x / scale, z / scale);
+      if (weights) {
+        for (let l = 0; l < 4; l++) {
+          const w = l >= L ? 0 : t.paint ? t.paint[v * L + l]! / 255 : l === 0 ? 1 : 0;
+          weights.setComponent(v, l, w);
+        }
+      }
     }
   }
   pos.needsUpdate = col.needsUpdate = uv.needsUpdate = true;
+  if (weights) weights.needsUpdate = true;
   geo.computeVertexNormals();
   geo.computeBoundingBox();
   geo.computeBoundingSphere();
 }
 
-/** The terrain's material: vertex colours, matte foam. */
-export function terrainMaterial(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+const WHITE = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+WHITE.needsUpdate = true;
+
+/** The terrain's material: the layer colours blended per vertex (the
+ *  vertex colours), times each layer's surface pattern blended by the same
+ *  weights, so painting brick onto grass shows bricks (Paul, 2026-11-27).
+ *  The patterns tile in world metres at each surface's scale. */
+export function terrainMaterial(layers: Terrain["layers"] = []): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+  const uniforms = {
+    tTex0: { value: WHITE as THREE.Texture }, tTex1: { value: WHITE as THREE.Texture },
+    tTex2: { value: WHITE as THREE.Texture }, tTex3: { value: WHITE as THREE.Texture },
+    tScale: { value: new THREE.Vector4(1, 1, 1, 1) },
+    tHas: { value: new THREE.Vector4(0, 0, 0, 0) },
+  };
+  m.userData.terrainUniforms = uniforms;
+  setTerrainLayers(m, layers);
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec4 aTerrainW;\nvarying vec4 vTerrainW;\nvarying vec2 vTerrainXZ;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvTerrainW = aTerrainW;\nvTerrainXZ = (modelMatrix * vec4(transformed, 1.0)).xz;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", [
+        "#include <common>",
+        "uniform sampler2D tTex0; uniform sampler2D tTex1; uniform sampler2D tTex2; uniform sampler2D tTex3;",
+        "uniform vec4 tScale; uniform vec4 tHas;",
+        "varying vec4 vTerrainW; varying vec2 vTerrainXZ;",
+      ].join("\n"))
+      .replace("#include <map_fragment>", [
+        "#include <map_fragment>",
+        "{",
+        "  vec4 p = vec4(",
+        "    mix(1.0, texture2D(tTex0, vTerrainXZ / tScale.x).r, tHas.x),",
+        "    mix(1.0, texture2D(tTex1, vTerrainXZ / tScale.y).r, tHas.y),",
+        "    mix(1.0, texture2D(tTex2, vTerrainXZ / tScale.z).r, tHas.z),",
+        "    mix(1.0, texture2D(tTex3, vTerrainXZ / tScale.w).r, tHas.w));",
+        "  float total = dot(vTerrainW, vec4(1.0));",
+        "  diffuseColor.rgb *= dot(vTerrainW, p) + max(0.0, 1.0 - total);",
+        "}",
+      ].join("\n"));
+  };
+  return m;
+}
+
+/** Points the material at the layers' surfaces: their patterns and scales.
+ *  The editor calls it when a layer's surface changes. */
+export function setTerrainLayers(m: THREE.MeshStandardMaterial, layers: Terrain["layers"]): void {
+  const u = m.userData.terrainUniforms as {
+    tTex0: { value: THREE.Texture }; tTex1: { value: THREE.Texture };
+    tTex2: { value: THREE.Texture }; tTex3: { value: THREE.Texture };
+    tScale: { value: THREE.Vector4 }; tHas: { value: THREE.Vector4 };
+  } | undefined;
+  if (!u) return;
+  const texs = [u.tTex0, u.tTex1, u.tTex2, u.tTex3];
+  for (let l = 0; l < 4; l++) {
+    const layer = layers[l];
+    const tex = layer ? surfaceTexture(layer.surface) : null;
+    texs[l]!.value = tex ?? WHITE;
+    u.tHas.value.setComponent(l, tex ? 1 : 0);
+    u.tScale.value.setComponent(l, (layer && SURFACES[layer.surface]?.scale) || 1);
+  }
 }
 
 /** The Rapier heightfield for the terrain, placed at its middle. Rapier
@@ -292,7 +362,7 @@ export function terrainCollider(rapier: Rapier, t: Terrain): RAPIER.ColliderDesc
 export function buildTerrain(
   t: Terrain, rapier: Rapier, world: RAPIER.World, group: THREE.Group,
 ): { mesh: THREE.Mesh; collider: RAPIER.Collider } {
-  const mesh = new THREE.Mesh(terrainGeometry(t), terrainMaterial());
+  const mesh = new THREE.Mesh(terrainGeometry(t), terrainMaterial(t.layers));
   mesh.receiveShadow = true;
   mesh.castShadow = true;
   mesh.name = "terrain";
@@ -300,4 +370,26 @@ export function buildTerrain(
   const body = world.createRigidBody(rapier.RigidBodyDesc.fixed());
   const collider = world.createCollider(terrainCollider(rapier, t), body);
   return { mesh, collider };
+}
+
+/**
+ * The layer a paint of (surface, colour) goes into: one that already wears
+ * that surface (and that colour, when one is given), or else the least
+ * painted layer, which is given the new look. Returns the layers to use
+ * (unchanged when one matched) and the index to paint. Paul, 2026-11-27:
+ * the Paint tool paints the ground as it paints a wall.
+ */
+export function layerForPaint(
+  t: Terrain, surface: string, colour: string | null,
+): { layers: Terrain["layers"]; index: number } {
+  const match = t.layers.findIndex((l) => l.surface === surface && (colour === null || l.colour === colour));
+  if (match >= 0) return { layers: t.layers, index: match };
+  const L = t.layers.length;
+  const totals = new Array(L).fill(0);
+  if (t.paint) for (let k = 0; k < t.paint.length; k++) totals[k % L] += t.paint[k]!;
+  else totals[0] = 1;
+  let least = 0;
+  for (let l = 1; l < L; l++) if (totals[l]! < totals[least]!) least = l;
+  const layers = t.layers.map((l, i) => (i === least ? { surface, colour: colour ?? l.colour } : l));
+  return { layers, index: least };
 }

@@ -629,6 +629,8 @@ button.on {
 
 /* ED-36: the Paint tool's option panel: surface swatches and colours. */
 #palette .paint-options {
+  /* The Paint group sits low in the bar: open upward so it stays on screen. */
+  transform: translateY(calc(-100% + 2.2rem));
   min-width: 14rem;
   max-width: 22rem;
   display: flex;

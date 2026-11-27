@@ -52,7 +52,13 @@ export interface TerrainHost {
 export class TerrainTool {
   armed = false;
   readonly brush: Brush = { mode: "raise", radius: T.brush.radius, strength: T.brush.strength, layer: 1 };
-  private stroke: { work: Terrain; last: number; x: number; z: number; shift: boolean } | null = null;
+  private stroke: {
+    work: Terrain; last: number; x: number; z: number; shift: boolean;
+    /** The brush this stroke runs: the tool's own, or the Paint tool's. */
+    brush: Brush;
+    /** Called once the stroke is written back (the Paint tool redraws). */
+    done?: () => void;
+  } | null = null;
   private cursor: { x: number; z: number } | null = null;
   private seed = 1;
   private readonly ring: THREE.LineLoop;
@@ -172,22 +178,40 @@ export class TerrainTool {
 
   private down(e: PointerEvent) {
     if (!this.armed || e.target !== this.host.canvas || e.button !== 0 || e.altKey) return;
+    if (this.beginStroke(e, this.brush)) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  }
+
+  /**
+   * Starts a stroke under the pointer with `brush`, on a working copy of the
+   * terrain (given `layers` first, so a paint that brings a new look is one
+   * undo step with its stroke). False when the pointer is not over the
+   * terrain or it is locked. The Paint tool calls this for the ground.
+   */
+  beginStroke(e: PointerEvent, brush: Brush, layers?: Terrain["layers"], done?: () => void): boolean {
     const t = this.host.doc.level.terrain;
-    if (!t) return;
+    if (!t || t.locked) return false;
     const hit = this.host.view.terrainHit(...this.ndc(e));
-    if (!hit) return;
-    e.stopImmediatePropagation();
-    e.preventDefault();
+    if (!hit) return false;
     const work = structuredClone(t);
-    if (this.brush.mode === "flatten") this.brush.target = heightAt(work, hit.x, hit.z) ?? hit.y;
-    this.brush.seed = this.seed++;
-    this.stroke = { work, last: performance.now(), x: hit.x, z: hit.z, shift: e.shiftKey };
+    if (layers) work.layers = layers.map((l) => ({ ...l }));
+    if (brush.mode === "flatten") brush.target = heightAt(work, hit.x, hit.z) ?? hit.y;
+    brush.seed = this.seed++;
+    this.stroke = { work, last: performance.now(), x: hit.x, z: hit.z, shift: e.shiftKey, brush, done };
     this.cursor = { x: hit.x, z: hit.z };
     requestAnimationFrame(() => this.tick());
+    return true;
+  }
+
+  /** True while a stroke is running (the Paint tool's own included). */
+  get stroking(): boolean {
+    return this.stroke !== null;
   }
 
   private move(e: PointerEvent) {
-    if (!this.armed) return;
+    if (!this.armed && !this.stroke) return;
     const hit = this.host.view.terrainHit(...this.ndc(e));
     this.cursor = hit ? { x: hit.x, z: hit.z } : null;
     if (this.stroke && hit) {
@@ -205,7 +229,7 @@ export class TerrainTool {
     const now = performance.now();
     const dt = Math.min(0.1, (now - s.last) / 1000);
     s.last = now;
-    const brush: Brush = { ...this.brush };
+    const brush: Brush = { ...s.brush };
     if (s.shift && brush.mode === "raise") brush.mode = "lower";
     else if (s.shift && brush.mode === "lower") brush.mode = "raise";
     if (applyBrush(s.work, s.x, s.z, brush, dt)) this.host.view.setTerrain(s.work, true);
@@ -217,14 +241,16 @@ export class TerrainTool {
     const s = this.stroke;
     if (!s) return;
     this.stroke = null;
-    this.host.doc.setFields({ terrain: tidyTerrain(s.work) }, `terrain: ${this.brush.mode}`);
+    this.host.doc.setFields({ terrain: tidyTerrain(s.work) }, `terrain: ${s.brush.mode}`);
+    this.drawRing();
+    s.done?.();
   }
 
   /** The brush's rim, laid on the ground under the cursor. */
   private drawRing() {
     const t = this.stroke?.work ?? this.host.doc.level.terrain;
     const c = this.cursor;
-    this.ring.visible = !!(this.armed && t && c);
+    this.ring.visible = !!((this.armed || this.stroke) && t && c);
     if (!this.ring.visible || !t || !c) return;
     const pos = this.ring.geometry.getAttribute("position") as THREE.BufferAttribute;
     for (let k = 0; k < pos.count; k++) {

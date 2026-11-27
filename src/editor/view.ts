@@ -3,7 +3,7 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 import hazardData from "../../data/hazards.json";
 import editorData from "../../data/editor.json";
 import type { Level, Prim, Sky, Terrain, Vec3 } from "../level/format";
-import { terrainGeometry, terrainMaterial, updateTerrainGeometry } from "../level/terrain";
+import { setTerrainLayers, terrainGeometry, terrainMaterial, updateTerrainGeometry } from "../level/terrain";
 import { primGeometry, primMatrix } from "../level/prim-geometry";
 import { SURFACES, surfaceTexture, worldUVs } from "../render/surfaces";
 import { material, materialId } from "../voxel/materials";
@@ -360,13 +360,14 @@ export class EditorView {
     this.shownTerrain = t;
     if (this.terrainMesh && old && old.nx === t.nx && old.nz === t.nz) {
       updateTerrainGeometry(this.terrainMesh.geometry, t);
+      if (!old || old.layers !== t.layers) setTerrainLayers(this.terrainMesh.material as THREE.MeshStandardMaterial, t.layers);
       return;
     }
     if (this.terrainMesh) {
       this.scene.remove(this.terrainMesh);
       disposeTree(this.terrainMesh);
     }
-    this.terrainMesh = new THREE.Mesh(terrainGeometry(t), terrainMaterial());
+    this.terrainMesh = new THREE.Mesh(terrainGeometry(t), terrainMaterial(t.layers));
     this.terrainMesh.receiveShadow = true;
     this.scene.add(this.terrainMesh);
   }

@@ -3,7 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import { createPhysics } from "../../src/physics/world";
 import {
-  applyBrush, buildTerrain, falloff, flatTerrain, heightAt, terrainGeometry, tidyTerrain, vertexCount,
+  applyBrush, buildTerrain, falloff, flatTerrain, heightAt, layerForPaint, terrainGeometry, tidyTerrain, vertexCount,
 } from "../../src/level/terrain";
 import type { Terrain } from "../../src/level/format";
 import { validateLevel } from "../../src/level/validate";
@@ -126,5 +126,47 @@ describe("ED-34 terrain", () => {
     expect(validateLevel(level).errors).toEqual([]);
     level.terrain.heights.pop();
     expect(validateLevel(level).errors.some((e) => e.includes("heights must be"))).toBe(true);
+  });
+});
+
+describe("ED-34 terrain and the Paint tool", () => {
+  const FOUR: Terrain["layers"] = [
+    { surface: "grass", colour: "#b6ff3b" },
+    { surface: "rock", colour: "#6f6788" },
+    { surface: "sand", colour: "#ffd23a" },
+    { surface: "concrete", colour: "#f4ecdc" },
+  ];
+
+  it("paints into a layer that already wears the surface and colour", () => {
+    const t = flatTerrain([0, 0], 0, 4, 4, 1, FOUR);
+    expect(layerForPaint(t, "sand", "#ffd23a")).toEqual({ layers: t.layers, index: 2 });
+    // No colour chosen: any layer with that surface.
+    expect(layerForPaint(t, "rock", null).index).toBe(1);
+  });
+
+  it("a new look takes over the least painted layer", () => {
+    const t = flatTerrain([0, 0], 0, 4, 4, 1, FOUR);
+    applyBrush(t, 0, 0, { mode: "paint", radius: 3, strength: 5, layer: 1 }, 1);
+    applyBrush(t, 0, 0, { mode: "paint", radius: 1, strength: 5, layer: 2 }, 1);
+    const { layers, index } = layerForPaint(t, "brick", "#ff7a1a");
+    expect(index).toBe(3);
+    expect(layers[3]).toEqual({ surface: "brick", colour: "#ff7a1a" });
+    expect(layers.slice(0, 3)).toEqual(FOUR.slice(0, 3));
+  });
+});
+
+describe("ED-34 terrain surfaces in the mesh", () => {
+  it("carries each layer's paint weight per vertex for the texture blend", () => {
+    const t = flatTerrain([0, 0], 0, 4, 4, 1, LAYERS);
+    applyBrush(t, 0, 0, { mode: "paint", radius: 3, strength: 1000, layer: 1 }, 1);
+    const tidy = tidyTerrain(t);
+    const w = terrainGeometry(tidy).getAttribute("aTerrainW");
+    const centre = 2 * 5 + 2;
+    expect(w.getX(centre)).toBeCloseTo(tidy.paint![centre * 2]! / 255);
+    expect(w.getY(centre)).toBeCloseTo(tidy.paint![centre * 2 + 1]! / 255);
+    expect(w.getZ(centre)).toBe(0);
+    // No paint yet: all layer 1.
+    const plain = terrainGeometry(flatTerrain([0, 0], 0, 4, 4, 1, LAYERS)).getAttribute("aTerrainW");
+    expect([plain.getX(0), plain.getY(0)]).toEqual([1, 0]);
   });
 });
