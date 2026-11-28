@@ -158,3 +158,27 @@ describe("setLevelTextures", () => {
     setLevelTextures([]);
   });
 });
+
+describe("textures-editor helpers", () => {
+  it("textureIdFromName slugs and dedupes", async () => {
+    const { textureIdFromName } = await import("../../src/editor/textures-editor");
+    expect(textureIdFromName("My Rough Set")).toBe("my-rough-set");
+    expect(textureIdFromName("My Rough Set", ["my-rough-set"])).toBe("my-rough-set-2");
+    expect(textureIdFromName("***")).toBe("texture");
+  });
+
+  it("capScale keeps a side at or under the cap, scales small images to 1px floor", async () => {
+    const { capScale } = await import("../../src/editor/textures-editor");
+    expect(capScale(512, 256)).toEqual({ width: 512, height: 256 });
+    expect(capScale(1024, 512)).toEqual({ width: 512, height: 256 });
+    expect(capScale(1, 1)).toEqual({ width: 1, height: 1 });
+  });
+
+  it("textureFileProblem refuses other formats and over-bytes files", async () => {
+    const { textureFileProblem } = await import("../../src/editor/textures-editor");
+    expect(textureFileProblem("a.png", 1000)).toBeNull();
+    expect(textureFileProblem("a.jpg", 1000)).toBeNull();
+    expect(textureFileProblem("a.webp", 1000)).toMatch(/only png or jpg/);
+    expect(textureFileProblem("a.png", 300_001)).toMatch(/over the 300 KB limit/);
+  });
+});
