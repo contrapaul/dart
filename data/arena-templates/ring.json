@@ -1,0 +1,63 @@
+{
+  "dart": "dart-assets",
+  "version": 1,
+  "_note": "Ring: a 26 m floor with a central block, the ring corridor around it, walls with a gap at the south and north ends, two covers in the side corridors, a zone over the floor, four spawn points and the fight triggers (two waves, F01 then F02). Labels describe the shape; Paul may rename them. [Paul]",
+  "assets": [
+    {
+      "name": "Ring",
+      "clip": {
+        "dart": "dart-clip",
+        "version": 1,
+        "entries": {
+          "prims": [
+            { "id": "floor", "shape": "box", "pos": [0, -0.5, 0], "size": [26, 1, 26], "colour": "#6f6788", "behaviour": "solid" },
+            { "id": "wall-s-l", "shape": "box", "pos": [-7.75, 2, 12.75], "size": [10.5, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+            { "id": "wall-s-r", "shape": "box", "pos": [7.75, 2, 12.75], "size": [10.5, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+            { "id": "wall-n-l", "shape": "box", "pos": [-7.75, 2, -12.75], "size": [10.5, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+            { "id": "wall-n-r", "shape": "box", "pos": [7.75, 2, -12.75], "size": [10.5, 4, 0.5], "colour": "#3a3550", "behaviour": "solid" },
+            { "id": "wall-w", "shape": "box", "pos": [-12.75, 2, 0], "size": [0.5, 4, 26], "colour": "#3a3550", "behaviour": "solid" },
+            { "id": "wall-e", "shape": "box", "pos": [12.75, 2, 0], "size": [0.5, 4, 26], "colour": "#3a3550", "behaviour": "solid" },
+            { "id": "block", "shape": "box", "pos": [0, 1.75, 0], "size": [8, 3.5, 8], "colour": "#8a5cff", "behaviour": "solid" },
+            { "id": "cover-w", "shape": "box", "pos": [-9, 0.6, 0], "size": [1.5, 1.2, 3], "colour": "#2ec4ff", "behaviour": "solid" },
+            { "id": "cover-e", "shape": "box", "pos": [9, 0.6, 0], "size": [1.5, 1.2, 3], "colour": "#2ec4ff", "behaviour": "solid" },
+            { "id": "blocker", "shape": "box", "pos": [0, 1.5, -12.75], "size": [3.5, 3, 0.5], "colour": "#ff4fa3", "behaviour": "solid", "hidden": true }
+          ],
+          "zones": [
+            { "id": "arena-zone", "pos": [0, 1.25, 0], "size": [24, 2.5, 24] }
+          ],
+          "spawnPoints": [
+            { "id": "sp-1", "pos": [-9, 0, -9], "facing": [0, 1, 0] },
+            { "id": "sp-2", "pos": [9, 0, -9], "facing": [0, 1, 0] },
+            { "id": "sp-3", "pos": [-9, 0, 9], "facing": [0, 1, 0] },
+            { "id": "sp-4", "pos": [9, 0, 9], "facing": [0, 1, 0] }
+          ],
+          "triggers": [
+            {
+              "id": "arena-lock",
+              "when": { "kind": "enter", "zone": "arena-zone" },
+              "do": [
+                { "kind": "show", "ids": ["blocker"] },
+                { "kind": "spawn", "id": "wave-1-spawn", "foamer": "F01", "count": 3, "at": ["sp-1", "sp-2", "sp-3", "sp-4"], "holdSeconds": 0.5 }
+              ]
+            },
+            {
+              "id": "arena-wave-2",
+              "when": { "kind": "killed", "ids": ["wave-1-spawn"] },
+              "do": [
+                { "kind": "spawn", "id": "wave-2-spawn", "foamer": "F02", "count": 2, "at": ["sp-1", "sp-2", "sp-3", "sp-4"], "holdSeconds": 0.5 }
+              ]
+            },
+            {
+              "id": "arena-clear",
+              "when": { "kind": "killed", "ids": ["wave-1-spawn", "wave-2-spawn"] },
+              "do": [
+                { "kind": "hide", "ids": ["blocker"] }
+              ]
+            }
+          ]
+        }
+      },
+      "picture": ""
+    }
+  ]
+}
