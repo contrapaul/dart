@@ -821,12 +821,12 @@ button.on {
   font-size: 12px;
 }
 
-/* Reset camera: in the view's top-left corner, always on screen (the top
+/* Reset camera: in the view's top-right corner, always on screen (the top
    bar is already wider than a laptop screen). */
 #resetCameraBtn {
   position: absolute;
   top: 2.8rem;
-  left: 19rem;
+  right: 17.6rem;
   z-index: 2;
   font-size: 12px;
   padding: 0.25rem 0.6rem;
