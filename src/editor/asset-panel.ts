@@ -3,6 +3,7 @@ import {
   readAssetsFile, tidyName, type Asset, type AssetBody,
 } from "./assets";
 import type { Clip } from "./clipboard";
+import { TEMPLATES, TEMPLATE_ERRORS } from "./arena-templates";
 
 // ED-23: the Assets panel, built into the page's dialog. It saves the
 // selection as an asset, lists the saved ones as pictures, and exports and
@@ -161,6 +162,33 @@ export function buildAssetPanel(body: HTMLElement, host: AssetPanelHost) {
     }
   }
 
-  body.append(save, note, files, grid);
+  const templates = document.createElement("div");
+  templates.className = "template-section";
+  const heading = document.createElement("h3");
+  heading.textContent = "Templates";
+  const templateRows = document.createElement("div");
+  templateRows.className = "template-grid";
+  for (const template of TEMPLATES) {
+    const row = document.createElement("div");
+    row.className = "template-row";
+    const label = document.createElement("span");
+    label.className = "template-name";
+    label.textContent = template.name;
+    const place = button("Place", () => host.place({
+      name: template.name, clip: template.clip, picture: template.picture,
+      key: `template-${template.name}`, saved: 0,
+    }));
+    row.append(label, place);
+    templateRows.append(row);
+  }
+  templates.append(heading, templateRows);
+  if (TEMPLATE_ERRORS.length) {
+    const broken = document.createElement("p");
+    broken.className = "hint";
+    broken.textContent = `Some templates could not be read: ${TEMPLATE_ERRORS.map((e) => `${e.file} (${e.error})`).join("; ")}`;
+    templates.append(broken);
+  }
+
+  body.append(save, note, files, templates, grid);
   void refresh().catch(fail);
 }

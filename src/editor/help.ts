@@ -62,6 +62,7 @@ export const HELP: HelpSection[] = [
       ["Import model", "The top bar's Import model button reads a .glb file into the level file (3 MB a model). Pick it in the Models section of the tool bar and click in the view. A model is solid, decor or breakable; a solid one collides as its box, one hull, or its exact mesh."],
       ["Breakable model", "A breakable model takes hit points and bursts into foam. With voxel ticked its inside becomes foam that carves like a wall; a model with more voxels inside than data/editor.json allows is built by hit points instead, and Problems says so."],
       ["Assets", "The Assets button keeps what is selected under a name, with a picture. Pick a saved asset and click in the view to place it as one group, in this level or another. Assets stay in this browser; export them as a file to move them."],
+      ["Templates", "The Assets dialog opens a Templates section above the saved ones. A template is a ready arena (a floor, walls, cover, a zone, spawn points and the fight triggers). Click Place and click in the view to place it under the cursor, in the same way as a saved asset."],
     ],
     text: [
       "A prim is set to solid, breakable, hazard or decor in the inspector.",
