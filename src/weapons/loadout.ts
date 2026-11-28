@@ -224,6 +224,25 @@ export class Loadout {
     this.viewmodels[i].setMods(spec.show, spec.hide);
   }
 
+  /** R3-14: re-resolve one blaster after a tuning change, keeping as much
+   *  ammo as the new spec allows (reserve and magazine). */
+  rebuild(i: number): void {
+    const spec = resolveSpec(this.ids[i], this.mods[i]);
+    const old = this.blasters[i];
+    const fresh = new Blaster(
+      spec,
+      this.darts,
+      (j) => Loadout.muzzleToWorld(this.viewmodels[i].muzzleCameraPoint(j, Loadout._scratch), Loadout._world),
+    );
+    fresh.reserve = Math.min(old.reserve, spec.reserveMax);
+    fresh.mag = Math.min(old.mag, spec.magSize);
+    fresh.dartType = old.dartType;
+    fresh.shots = old.shots;
+    fresh.onShot = (n) => { this.viewmodels[i].onShot(n); };
+    this.blasters[i] = fresh;
+    this.viewmodels[i].setMods(spec.show, spec.hide);
+  }
+
   /** The mods turned on for a blaster, in the order added. */
   modsOf(i: number): string[] { return this.mods[i]; }
 
