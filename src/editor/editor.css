@@ -833,3 +833,32 @@ button.on {
   background: rgba(20, 12, 40, 0.9);
   border: 1px solid rgba(255, 210, 63, 0.35);
 }
+
+/* R3-08: the Arena dialog's formula row. */
+#dialogs .formula-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--panel-border, rgba(255, 255, 255, 0.12));
+  padding-top: 0.5rem;
+}
+
+#dialogs .formula-row select {
+  width: 100%;
+  padding: 0.15rem;
+}
+
+#dialogs .formula-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+#dialogs .formula-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 13px;
+  margin-top: 0.3rem;
+}

@@ -92,6 +92,7 @@ export const HELP: HelpSection[] = [
     ],
     text: [
       "It writes ordinary triggers: enter the zone, show the blockers, spawn wave 1, then one trigger per further wave, then hide the blockers and open the doors.",
+      "Each wave can be promoted, hold seconds apart, and wait a delay after the previous wave clears. The formula row saves the waves, the lock and the clear behaviour as a named recipe: pick one and the dialog fills with it, or save the current one.",
       "Every trigger can be changed afterwards in the inspector. The message words are yours to write.",
     ],
   },
