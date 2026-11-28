@@ -83,3 +83,11 @@ describe("R3-08 saved arena formulas", () => {
     expect(fitImport([formula], full).left).toBe(1);
   });
 });
+
+describe("review fixes (GPU0)", () => {
+  it("a file that leaves unlockOnClear out opens the doors at clear, as the dialog does", () => {
+    const text = JSON.stringify({ dart: "dart-arena-formulas", version: 1, formulas: [{ name: "x", waves: [{ foamer: "F01", count: 2 }], lockDoors: false }] });
+    const read = readFormulasFile(text);
+    expect(read.formulas[0]?.unlockOnClear).toBe(true);
+  });
+});

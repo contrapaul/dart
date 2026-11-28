@@ -138,7 +138,8 @@ export function readFormulasFile(text: string): { formulas: ArenaFormula[]; erro
       name,
       waves: read as ArenaFormulaWave[],
       lockDoors: Boolean((raw as { lockDoors?: unknown }).lockDoors),
-      unlockOnClear: Boolean((raw as { unlockOnClear?: unknown }).unlockOnClear),
+      // Omitted means true, as in the dialog and buildArena (review, GPU0).
+      unlockOnClear: (raw as { unlockOnClear?: unknown }).unlockOnClear !== false,
     };
     formulas.push(f);
   }

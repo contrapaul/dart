@@ -2694,7 +2694,7 @@ function arenaDialog(zone: string) {
         hold.title = "seconds between arrivals";
         const delay = numberInput(wave.delaySeconds ?? 0, 0.5, (n) => { wave.delaySeconds = Math.max(0, n); say(); });
         delay.className = "wave-num";
-        delay.title = "seconds after the previous wave";
+        delay.title = "seconds to wait: after the fight starts for the first wave, after the previous wave for the others";
         const up = document.createElement("button");
         up.type = "button";
         up.textContent = "Up";
@@ -2837,6 +2837,8 @@ function arenaDialog(zone: string) {
     formulaSelect.addEventListener("change", () => {
       const picked = formulas.find((f) => f.name === formulaSelect.value);
       if (picked) applyFormula(picked);
+      // Review (GPU0): Delete follows the pick.
+      deleteBtn.disabled = !formulaSelect.value;
     });
 
     save.addEventListener("click", () => {
@@ -2848,6 +2850,7 @@ function arenaDialog(zone: string) {
         formulas = [...formulas.filter((f) => f.name !== name), formula];
         refreshFormulas();
         formulaSelect.value = name;
+        deleteBtn.disabled = !formulaSelect.value;
         formulaNote.textContent = `Saved "${name}".`;
       }).catch(() => { formulaNote.textContent = "The browser would not store that."; });
     });

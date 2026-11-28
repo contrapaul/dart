@@ -22,7 +22,7 @@
             { "id": "cover-3", "shape": "box", "pos": [10, 0.6, -8], "size": [1.2, 1.2, 2.4], "colour": "#2ec4ff", "behaviour": "solid" },
             { "id": "cover-4", "shape": "box", "pos": [-5, 0.6, 7], "size": [2.4, 1.2, 1.2], "colour": "#2ec4ff", "behaviour": "solid" },
             { "id": "cover-5", "shape": "box", "pos": [8, 0.6, 6], "size": [1.2, 1.2, 2.4], "colour": "#2ec4ff", "behaviour": "solid" },
-            { "id": "blocker", "shape": "box", "pos": [0, 1.5, -13.75], "size": [3.5, 3, 0.5], "colour": "#ff4fa3", "behaviour": "solid", "hidden": true }
+            { "id": "blocker", "shape": "box", "pos": [0, 1.5, -13.75], "size": [3, 3, 0.5], "colour": "#ff4fa3", "behaviour": "solid", "hidden": true }
           ],
           "zones": [
             { "id": "arena-zone", "pos": [0, 1.25, 0], "size": [34, 2.5, 26] }
