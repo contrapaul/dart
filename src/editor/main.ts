@@ -2498,6 +2498,10 @@ function arenaDialog(zone: string) {
   });
 
   void dialog(`Arena in ${zone}`, (body) => {
+    // R3-17: the formula row sits under the title, since picking one fills
+    // everything below the line.
+    const formulaSlot = document.createElement("div");
+    body.append(formulaSlot);
     const state = document.createElement("p");
     state.className = "hint";
     body.append(state);
@@ -2770,7 +2774,7 @@ function arenaDialog(zone: string) {
 
     formulaButtons.append(save, deleteBtn, exportBtn, importBtn);
     formulaBox.append(formulaHeading, formulaSelect, formulaButtons, formulaNote, importFile);
-    body.append(formulaBox);
+    formulaSlot.append(formulaBox);
     void loadFormulas();
 
     const build = document.createElement("button");
