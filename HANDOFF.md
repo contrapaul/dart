@@ -93,6 +93,31 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
 
 ## Log
 
+### 2026-11-28: editor round 3 (Claude Opus 5.5 lead; Inkling-2-Mini on the Spark and both V100s)
+
+- Asked (Paul): light spread bug, separate paint brush, paint bucket,
+  texture uploads and more surfaces, GI options, arena templates and
+  formulas, renaming, a maps screen, reset camera, Foamer and weapon
+  tuning (one or every one of a type), settings shared across workspaces
+  with reset, export to the live game. Plans by two V100 planners in
+  `docs/plan/`; cards `tasks/R3-03` to `R3-17`; reviews in `docs/reviews/`.
+- Lead: light output now scales with range squared (range sets spread;
+  8 m looks as before), paint brush sliders, Reset camera, the top bar
+  fits 1024 px (File menu), the tuning core (`src/core/tuning.ts`,
+  `data/tuning.json`: commit an exported tuning.json there to update the
+  live game for everyone), GI wired into the game with defaults that keep
+  the old look, merges, and fixes from browser checks and both reviews.
+- All merged on local main (not pushed). Preflight 1829 tests green.
+- Seen in the browser: every card. Not seen: real mouse use of most new
+  panels, an IndexedDB formula round trip, GI options by eye in play.
+- Model notes: V100 planners (Q4, 160k) wrote solid plans in 17 to 19 min
+  and found the light cause independently; V100 builders were fastest (4 to
+  12 min a card) and honest about gaps; V100 read-only reviewers found 12
+  real bugs in 7 to 13 min. Spark builders (vLLM) took 25 to 43 min a card
+  and handled the broader cards (uploads, templates, rename, surfaces) well;
+  R3-05 used PNGs to judge its own textures. Weak spots: layout (fixed by a
+  fixer card), and a stale ownership line of mine blocked R3-05.
+
 ### 2026-11-27: SPAWN-01, Foamers teleport in (Inkling-2-Mini swarm on the Spark, Claude Opus 5.5 lead)
 
 - Asked (Paul): a teleport in or spawn animation for Foamers instead of

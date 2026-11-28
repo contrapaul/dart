@@ -359,8 +359,6 @@ function renderModRow() {
       loadout.setMod(i, mod, !on);
       applyInfiniteAmmoHooks();
       renderModRow();
-      // A mod can set a field the Tune panel shows (the GPU1 reviewer).
-      tunePanel.render();
     });
     modRow.appendChild(b);
   }
@@ -389,6 +387,13 @@ const tunePanel = new TunePanel(document.querySelector<HTMLDivElement>("#tunePan
 onTuningChange(() => {
   for (let i = 0; i < loadout.ids.length; i++) loadout.rebuild(i);
 });
+// Any mod change (the menu's or the bench row's) redraws the Tune panel,
+// since a mod can set a field it shows (the GPU1 reviewer).
+const setModRaw = loadout.setMod.bind(loadout);
+loadout.setMod = (i, mod, on) => {
+  setModRaw(i, mod, on);
+  tunePanel.render();
+};
 // The bench tools stay on the page for performance work, hidden until
 // range.html?bench asks for them.
 document.querySelector<HTMLDivElement>("#benchTools")!.hidden =
