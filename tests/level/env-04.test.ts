@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import envJson from "../../data/levels/env-04.json";
+import envJson from "../fixtures/levels/env-04.json";
 import { validateLevel } from "../../src/level/validate";
-import { ARENA_LEVELS } from "../../src/arena/levels";
 import type { Level } from "../../src/level/format";
 
 // ENV-04 review: the press tests build their own level, so nothing checked
@@ -13,7 +12,6 @@ const level = envJson as unknown as Level;
 
 describe("the env-04 press corridor", () => {
   it("is registered and loads with no errors", () => {
-    expect(ARENA_LEVELS["env-04"]).toBe(level);
     expect(validateLevel(level).errors).toEqual([]);
   });
 

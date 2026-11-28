@@ -1,4 +1,4 @@
-import { ARENA_LEVELS } from "../../src/arena/levels";
+import { FIXTURE_LEVELS as ARENA_LEVELS } from "../fixtures/levels";
 // ED-07c: the arena to triggers converter. The Ring (one wave) converts
 // to parts that pass the validator; the Pit (two waves) runs end to end
 // through the real TriggerRunner with a fake host (enter, wave 1 after
@@ -7,9 +7,9 @@ import { ARENA_LEVELS } from "../../src/arena/levels";
 // stay shut nothing and the escape warning.
 
 import { describe, expect, it } from "vitest";
-import ringJson from "../../data/levels/1-4-ring.json";
-import pitJson from "../../data/levels/1-1-pit.json";
-import hallJson from "../../data/levels/1-3.json";
+import ringJson from "../fixtures/levels/1-4-ring.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
+import hallJson from "../fixtures/levels/1-3.json";
 import { arenaToTriggers } from "../../src/level/arena-to-triggers";
 import { validateLevel } from "../../src/level/validate";
 import { TriggerRunner, type TriggerHost } from "../../src/level/triggers";

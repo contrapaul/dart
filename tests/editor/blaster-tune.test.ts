@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   FIELDS, committedValue, fieldsFor, isChanged, patchFor, valueInForce,
-} from "../../src/range/blaster-fields";
+} from "../../src/editor/blaster-fields";
 import { tuneBlaster, resetTuning, setLocalTuningForTest } from "../../src/core/tuning";
 
 afterEach(() => setLocalTuningForTest({ version: 1, foamers: {}, blasters: {} }));

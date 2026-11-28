@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import pitJson from "../../data/levels/1-1-pit.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
 import { LevelRunner, type LevelEvents } from "../../src/level/level-runner";
 import type { Arena, DoorState, Level } from "../../src/level/format";
 

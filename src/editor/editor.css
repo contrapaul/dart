@@ -1161,3 +1161,25 @@ button.on {
 #dialogs .template-place {
   flex: 0 0 auto;
 }
+
+/* MENU-01: the Tune blasters dialog (the range's Tune panel until the
+   range left the game). */
+.blaster-tune { --muted: rgb(255 246 232 / 65%); display: flex; flex-direction: column; gap: 4px; min-width: min(520px, 80vw); }
+.blaster-tune .tuneGroup {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.blaster-tune .tuneRow {
+  display: grid;
+  grid-template-columns: minmax(90px, 170px) 1fr 42px auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.blaster-tune .tuneVal { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.blaster-tune .tuneRow input[type="range"] { width: 100%; }
+.blaster-tune .tuneReset { min-width: 44px; }
+.blaster-tune .tuneButtons { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }

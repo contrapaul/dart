@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
-import pitJson from "../../data/levels/1-1-pit.json";
-import level12 from "../../data/levels/1-2.json";
-import level13 from "../../data/levels/1-3.json";
-import level14 from "../../data/levels/1-4.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
+import level12 from "../fixtures/levels/1-2.json";
+import level13 from "../fixtures/levels/1-3.json";
+import level14 from "../fixtures/levels/1-4.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { createPhysics } from "../../src/physics/world";

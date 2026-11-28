@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import pitJson from "../../data/levels/1-1-pit.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
 import { buildLevel } from "../../src/level/build";
 import { PlayerController } from "../../src/player/controller";
 import { Shield } from "../../src/player/shield";

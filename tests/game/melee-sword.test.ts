@@ -19,8 +19,8 @@ import {
 } from "../../src/game/campaign";
 import type { Shield } from "../../src/player/shield";
 import meleeJson from "../../data/melee.json";
-import pitJson from "../../data/levels/1-1-pit.json";
-import envThreeJson from "../../data/levels/env-03.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
+import envThreeJson from "../fixtures/levels/env-03.json";
 import pickupData from "../../data/pickups.json";
 import playerJson from "../../data/player.json";
 

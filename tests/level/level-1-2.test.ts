@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { World } from "@dimforge/rapier3d-compat";
-import levelJson from "../../data/levels/1-2.json";
+import levelJson from "../fixtures/levels/1-2.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { makeLevelAI } from "../../src/ai/level";
@@ -14,7 +14,6 @@ import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
 import type { Level } from "../../src/level/format";
-import { chosenLevel } from "../../src/arena/levels";
 
 // LVL-02b: Level 1-2 beats 1 to 4 (open corridor, parry corridor, the Ring
 // arena, breather store) as the arena page loads it with `?level=1-2`. It is
@@ -313,9 +312,4 @@ describe("Level 1-2 loads (LVL-02b)", () => {
       .toBeCloseTo(9.2, 3);
   });
 
-  it("6. the level choice plays 1-2 by name", () => {
-    expect(chosenLevel("?level=1-2").level.meta.id).toBe("1-2");
-    expect(chosenLevel("?level=1-2").unknownLevel).toBe(null);
-    expect(chosenLevel("").level.meta.id).toBe("1-1");
-  });
 });

@@ -13,6 +13,8 @@ import playerJson from "../../data/player.json";
 // because that is what the page and the order both name.
 
 interface CampaignData {
+  /** MENU-01: false greys New game out on the title menu. */
+  ready: boolean;
   order: string[];
   startBlasters: string[];
   found: Record<string, string>;
@@ -49,6 +51,9 @@ function stats(id: string): BlasterStats {
     reserveInfinite: raw.reserveInfinite ?? false,
   };
 }
+
+/** MENU-01: whether the title menu offers New game and Continue. */
+export const CAMPAIGN_READY: boolean = DATA.ready;
 
 /** The levels in play order. Act 1 only: 1-1 is just the Pit for now. */
 export const CAMPAIGN_ORDER: readonly string[] = DATA.order;

@@ -1,15 +1,12 @@
 import type { Level } from "../level/format";
-import { LOCAL_PREFIX, listLevels, putLevel } from "../editor/store";
+import { LOCAL_PREFIX, putLevel } from "../editor/store";
 import type { StoredLevel } from "../editor/store";
 import { validateLevel } from "../level/validate";
 
-// ED-10a: the title menu's My levels panel. It reads the browser store, lists
-// stored levels newest first, and opens either the arena or the editor. An
+// ED-10a: the stored levels' list, file and URL logic, as plain functions
+// with no DOM. The title menu's My levels panel used them until MENU-01
+// (2026-11-29); the Levels page (src/menu/levels-page.ts) uses them now. An
 // imported file is checked with the game's validator before it is stored.
-// The editor's `?open=<key>` parameter is wired by another card.
-//
-// The list, file and URL logic are plain functions: no DOM, so they can be
-// tested without a browser. `wireMyLevels` is the only DOM part.
 
 export const EMPTY_TEXT = "No levels yet. Make a level first.";
 export const STORE_ERROR = "This browser will not open its level store.";
@@ -98,129 +95,4 @@ export async function storeLevelFile(
   } catch {
     return { ok: false, errors: [SAVE_ERROR] };
   }
-}
-
-export function wireMyLevels(root: ParentNode = document): void {
-  const panel = root.querySelector<HTMLDivElement>("#myLevels");
-  const list = root.querySelector<HTMLDivElement>("#myLevelsList");
-  const empty = root.querySelector<HTMLParagraphElement>("#myLevelsEmpty");
-  const error = root.querySelector<HTMLParagraphElement>("#myLevelsError");
-  const problems = root.querySelector<HTMLDivElement>("#myLevelsProblems");
-  const fileInput = root.querySelector<HTMLInputElement>("#myLevelFile");
-  const openFile = root.querySelector<HTMLButtonElement>("#openLevelFile");
-  const playLevel = root.querySelector<HTMLButtonElement>("#playLevel");
-  const back = root.querySelector<HTMLButtonElement>("#myLevelsBack");
-
-  if (!panel || !list) return;
-  const levelsList = list;
-
-  const close = () => {
-    panel.hidden = true;
-  };
-
-  const open = () => {
-    panel.hidden = false;
-    void refresh();
-  };
-
-  playLevel?.addEventListener("click", open);
-  back?.addEventListener("click", close);
-  (root as Document).addEventListener("keydown", (event) => {
-    if ((event as KeyboardEvent).key === "Escape" && !panel.hidden) close();
-  });
-
-  function button(label: string, on: () => void): HTMLButtonElement {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = label;
-    b.addEventListener("click", on);
-    return b;
-  }
-
-  function showProblems(errors: string[]): void {
-    if (!problems) return;
-    problems.replaceChildren();
-    for (const message of errors.slice(0, MAX_FILE_ERRORS)) {
-      const line = document.createElement("div");
-      line.textContent = message;
-      problems.append(line);
-    }
-    problems.hidden = false;
-  }
-
-  function render(levels: StoredLevel[]): void {
-    levelsList.replaceChildren();
-    error!.hidden = true;
-    const view = levelsView(levels);
-    if (view.empty) {
-      empty!.textContent = view.empty;
-      empty!.hidden = false;
-      return;
-    }
-    empty!.hidden = true;
-    for (const row of view.rows) {
-      const line = document.createElement("div");
-      line.className = "level-row";
-
-      const name = document.createElement("span");
-      name.className = "name";
-      name.textContent = row.name;
-
-      const when = document.createElement("span");
-      when.className = "when";
-      when.textContent = row.when;
-
-      const actions = document.createElement("span");
-      actions.className = "actions";
-      actions.append(
-        button("Play", () => {
-          location.href = row.playUrl;
-        }),
-        button("Edit", () => {
-          location.href = row.editUrl;
-        }),
-      );
-
-      line.append(name, when, actions);
-      levelsList.append(line);
-    }
-  }
-
-  async function refresh(): Promise<void> {
-    levelsList.replaceChildren();
-    empty!.hidden = true;
-    error!.hidden = true;
-    let levels: StoredLevel[];
-    try {
-      levels = await listLevels();
-    } catch {
-      error!.textContent = STORE_ERROR;
-      error!.hidden = false;
-      return;
-    }
-    render(levels);
-  }
-
-  async function importFile(file: File): Promise<void> {
-    problems!.hidden = true;
-    error!.hidden = true;
-    const result = await storeLevelFile(await file.text());
-    if (!result.ok) {
-      if (result.errors.length === 1 && result.errors[0] === SAVE_ERROR) {
-        error!.textContent = SAVE_ERROR;
-        error!.hidden = false;
-      } else {
-        showProblems(result.errors);
-      }
-      return;
-    }
-    location.href = result.url!;
-  }
-
-  openFile?.addEventListener("click", () => fileInput?.click());
-  fileInput?.addEventListener("change", () => {
-    const file = fileInput.files?.[0];
-    fileInput.value = "";
-    if (file) void importFile(file);
-  });
 }

@@ -36,6 +36,18 @@ export function buildLevelFields(host: HTMLElement, level: Level, ctx: LevelCont
   nameLabel.append(name);
   host.append(nameLabel);
 
+  // MENU-01: the author, shown on the Levels page.
+  const authorLabel = document.createElement("label");
+  authorLabel.textContent = "author";
+  const author = document.createElement("input");
+  author.type = "text";
+  author.value = level.meta.author ?? "[Paul]";
+  author.addEventListener("change", () => {
+    ctx.change({ meta: { ...level.meta, author: author.value.trim() || "[Paul]" } }, "level author");
+  });
+  authorLabel.append(author);
+  host.append(authorLabel);
+
   const sky: Sky = level.sky ?? DEFAULT_SKY;
   const kindLabel = document.createElement("label");
   kindLabel.textContent = "sky";

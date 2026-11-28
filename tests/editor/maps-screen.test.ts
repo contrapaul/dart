@@ -22,7 +22,7 @@ const stored = (key: string, saved: number, name = key, picture?: string): Store
 
 describe("builtInName", () => {
   it("drops the folder and the extension", () => {
-    expect(builtInName("../../data/levels/1-1-pit.json")).toBe("1-1-pit");
+    expect(builtInName("../fixtures/levels/1-1-pit.json")).toBe("1-1-pit");
   });
 });
 

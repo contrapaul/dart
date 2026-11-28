@@ -18,7 +18,7 @@ import { linearColorTable } from "../../src/voxel/materials";
 // so they can be edited, and the copy plays the same. Also the camera spot a
 // level opens on.
 
-const FILES = import.meta.glob<{ default: unknown }>("../../data/levels/*.json", { eager: true });
+const FILES = import.meta.glob<{ default: unknown }>("../fixtures/levels/*.json", { eager: true });
 const LEVELS = Object.entries(FILES).map(([path, module]) => ({
   name: path.split("/").pop()!.replace(/\.json$/, ""),
   level: module.default as Level,

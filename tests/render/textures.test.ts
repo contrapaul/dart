@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import pitJson from "../../data/levels/1-1-pit.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
 import { validateLevel, textureImageSize } from "../../src/level/validate";
 import type { Level, TextureAsset } from "../../src/level/format";
 

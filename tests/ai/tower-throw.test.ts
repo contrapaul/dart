@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import levelJson from "../../data/levels/1-2.json";
+import levelJson from "../fixtures/levels/1-2.json";
 import type { Level } from "../../src/level/format";
 import { makeLevelRig, DT, type PitRig } from "./pit-rig";
 import { ProjectileSystem } from "../../src/foamers/projectiles";

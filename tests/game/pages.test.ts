@@ -9,7 +9,7 @@ import ARENA_HTML from "../../arena.html?raw";
 // on both playable pages.
 describe("the playable pages", () => {
   const ids = [...HUD_TS.matchAll(/querySelector<\w+>\("#([\w-]+)/g)].map((m) => m[1]!);
-  it.each([["index.html", INDEX_HTML], ["arena.html", ARENA_HTML]])("%s has every element the HUD uses", (_page, html) => {
+  it.each([["arena.html", ARENA_HTML]])("%s has every element the HUD uses", (_page, html) => {
     expect(ids.length).toBeGreaterThan(3);
     for (const id of ids) expect(html, `#${id}`).toContain(`id="${id}"`);
   });
@@ -31,11 +31,12 @@ describe("the campaign's pages (LVL-05)", () => {
     expect(html).toContain(`id="${id.slice(1)}"`);
   });
 
-  it.each([
-    ["#newGame", INDEX_HTML],
-    ["#continueGame", INDEX_HTML],
-  ])("index.html has %s", (id, html) => {
-    expect(html).toContain(`id="${id.slice(1)}"`);
+  // MENU-01: the title menu has one slot for New game and Continue, and
+  // the vertical menu's five items in order.
+  it("index.html has the campaign slot and the menu in order", () => {
+    expect(INDEX_HTML).toContain('id="campaignSlot"');
+    const items = [...INDEX_HTML.matchAll(/class="menu-item"[^>]*>([^<]+)</g)].map((m) => m[1]!.trim());
+    expect(items).toEqual(["New game", "Levels", "Map Builder", "Settings", "About"]);
   });
 
   it("every id the arena's extras ask for is on arena.html", async () => {

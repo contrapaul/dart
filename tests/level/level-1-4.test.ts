@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { World } from "@dimforge/rapier3d-compat";
-import levelJson from "../../data/levels/1-4.json";
+import levelJson from "../fixtures/levels/1-4.json";
 import foamerData from "../../data/foamers.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
@@ -13,7 +13,6 @@ import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable, materialId } from "../../src/voxel/materials";
 import type { Arena, Level } from "../../src/level/format";
-import { chosenLevel } from "../../src/arena/levels";
 import * as THREE from "three";
 import { DebrisSystem } from "../../src/voxel/debris";
 import { DartSystem } from "../../src/weapons/darts";
@@ -166,12 +165,6 @@ describe("Level 1-4 loads (LVL-04a)", () => {
     expect(level.exit.pos[2]).toBeLessThan(-288);
   });
 
-  it("2. the level choice plays 1-4 by name", () => {
-    expect(chosenLevel("?level=1-4").level.meta.id).toBe("1-4");
-    expect(chosenLevel("?level=1-4").unknownLevel).toBe(null);
-    // GAME-10b's test Ring keeps its own entry, a 90 s test space.
-    expect(chosenLevel("?level=1-4-ring").level.meta.targetSeconds).toBe(90);
-  });
 
   it("3. has floor under the walk from the start to the exit", async () => {
     const { rapier, world } = await createPhysics();

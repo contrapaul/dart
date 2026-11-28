@@ -5,7 +5,7 @@ import {
   DO_KINDS, WHEN_KINDS, applyLink, emptyDo, emptyWhen, fieldIds, firstLinkKey, newTrigger,
   spawnActionIds, triggerIds,
 } from "../../src/editor/trigger-parts";
-import levelJson from "../../data/levels/ed-07.json";
+import levelJson from "../fixtures/levels/ed-07.json";
 import type { Level, Trigger } from "../../src/level/format";
 
 // ED-08 stage 1: a trigger is one of the document's kinds, so every command

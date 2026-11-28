@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import edOneJson from "../../data/levels/ed-01.json";
+import edOneJson from "../fixtures/levels/ed-01.json";
 import { isVoxelBreakable, validateLevel } from "../../src/level/validate";
 import { chosenLevel, loadLocalLevel, useLocalLevel } from "../../src/arena/levels";
 import type { Level } from "../../src/level/format";
@@ -46,10 +46,6 @@ describe("the ED-01 test level", () => {
     expect(column.hitPoints).toBe(40);
   });
 
-  it("is one of the page's levels by name", () => {
-    expect(chosenLevel("?level=ed-01").level.meta.id).toBe("ed-01");
-    expect(chosenLevel("?level=ed-01").unknownLevel).toBeNull();
-  });
 });
 
 describe("?level=local:<key> (ED-01)", () => {
@@ -61,10 +57,11 @@ describe("?level=local:<key> (ED-01)", () => {
   it("plays the level the store hands over", () => {
     useLocalLevel("local:abc", level);
     const chosen = chosenLevel("?level=local:abc");
-    expect(chosen.level).toBe(level);
-    expect(chosen.unknownLevel).toBeNull();
-    // A name that is not the one the store handed over still falls back.
-    expect(chosenLevel("?level=local:other").unknownLevel).toBe("local:other");
+    expect(chosen?.level).toBe(level);
+    // MENU-01: a name that is not the one the store handed over plays
+    // nothing (there is no default level any more).
+    expect(chosenLevel("?level=local:other")).toBeNull();
+    expect(chosenLevel("")).toBeNull();
   });
 
   it("says so when the store will not open (Node has no database)", async () => {

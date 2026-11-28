@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DART: Levels</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/menu/menu.css" />
+  </head>
+  <body class="menu-page">
+    <main class="page">
+      <header class="page-head">
+        <h1 class="retro-title">Levels</h1>
+        <a class="menu-item back-link" href="/index.html">Main menu</a>
+      </header>
+      <div class="levels">
+        <nav class="retro-panel level-list" id="levelList" aria-label="Levels">
+          <p class="empty">Loading</p>
+        </nav>
+        <section class="retro-panel level-detail" id="levelDetail" aria-live="polite"></section>
+      </div>
+      <div class="level-tools">
+        <button class="retro-button" id="openLevelFile" type="button">Open a level file</button>
+        <input id="levelFile" type="file" accept=".json,application/json" hidden />
+        <p class="level-problems" id="fileProblems" hidden></p>
+      </div>
+    </main>
+    <script type="module" src="/src/menu/levels-page.ts"></script>
+  </body>
+</html>

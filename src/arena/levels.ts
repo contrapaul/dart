@@ -1,52 +1,22 @@
 import type { Level } from "../level/format";
 import { getLevel, LOCAL_PREFIX } from "../editor/store";
-import envOneJson from "../../data/levels/env-01.json";
-import envTwoJson from "../../data/levels/env-02.json";
-import envThreeJson from "../../data/levels/env-03.json";
-import envFourJson from "../../data/levels/env-04.json";
-import envFiveJson from "../../data/levels/env-05.json";
-import fourJson from "../../data/levels/1-4.json";
-import pitJson from "../../data/levels/1-1-pit.json";
-import ringJson from "../../data/levels/1-4-ring.json";
-import twoJson from "../../data/levels/1-2.json";
-import threeJson from "../../data/levels/1-3.json";
-import edOneJson from "../../data/levels/ed-01.json";
-import edSevenJson from "../../data/levels/ed-07.json";
 
-// GAME-10b: the arena page's level choice. `arena.html?level=1-4-ring` loads
-// the Ring; anything else, or nothing, loads the Pit (the card: the Pit
-// stays the default). Level files are imported by name rather than fetched,
-// because nothing is ever fetched from another host and Vite has to bundle
-// them anyway. Both src/arena/main.ts and src/arena/extras.ts read the
-// level through here, so the built level and the arena extras agree.
-// LVL-02b adds 1-2 (beats 1 to 4), the level with two arenas in order.
-// LVL-03a adds 1-3 (beats 1 to 5), the Swarmer's level.
-// LVL-04a adds 1-4 (beats 1 to 5), the Darter's level up to the bridge.
-// ENV-01 adds env-01, the test room for foam cladding: one room, no arena.
-// ENV-02 adds env-02, the test level for the toy button: two rooms, one
-// door that only a button opens.
-// ENV-03 adds env-03, the test room for the mod stations: the same room.
-// GAME-10m adds env-05, the test room for the ambush from a growth: an
-// F12 hidden in a foam-purple growth in env-01's room.
-// ED-01 adds ed-01, the test level for the editor's prims, sky, placed
-// Foamers, doors and start loadout, and `?level=local:<key>`, a level the
-// player made in the editor and saved in this browser.
+// GAME-10b: the arena page's level choice. `arena.html?level=<name>` plays
+// a shipped level from data/levels/ (bundled, never fetched); ED-01 added
+// `?level=local:<key>`, a level the player made in the Map Builder and
+// saved in this browser. Both src/arena/main.ts and src/arena/extras.ts
+// read the level through here, so the built level and the arena extras
+// agree. MENU-01 (2026-11-29): the old test levels left the game (they are
+// test fixtures now, in tests/fixtures/levels/), so there is no default
+// level: a page with no level, or an unknown one, says so and offers the
+// Levels page.
 
-/** Every level the arena page can play, keyed by its file name. */
-export const ARENA_LEVELS: Record<string, Level> = {
-  "1-1-pit": pitJson as unknown as Level,
-  "1-2": twoJson as unknown as Level,
-  "1-3": threeJson as unknown as Level,
-  "1-4": fourJson as unknown as Level,
-  "1-4-ring": ringJson as unknown as Level,
-  "env-01": envOneJson as unknown as Level,
-  "env-02": envTwoJson as unknown as Level,
-  "env-03": envThreeJson as unknown as Level,
-  "env-04": envFourJson as unknown as Level,
-  "env-05": envFiveJson as unknown as Level,
-  "ed-01": edOneJson as unknown as Level,
-  "ed-07": edSevenJson as unknown as Level,
-};
+const FILES = import.meta.glob<{ default: unknown }>("../../data/levels/*.json", { eager: true });
+
+/** Every shipped level the arena page can play, keyed by its file name. */
+export const ARENA_LEVELS: Record<string, Level> = Object.fromEntries(
+  Object.entries(FILES).map(([path, mod]) => [path.split("/").pop()!.replace(/\.json$/, ""), mod.default as Level]),
+);
 
 /** ED-01: the level the browser store handed over, if `?level=local:<key>`
  *  asked for one. Nothing else can see it: a page has one level at a time. */
@@ -79,15 +49,12 @@ export async function loadLocalLevel(search = location.search): Promise<string |
   }
 }
 
-/** The level the page should play: `?level=` when it names one, else the
- *  Pit. An unknown name falls back to the Pit and `unknownLevel` says so,
- *  so the page can tell the player rather than load something else. */
-export function chosenLevel(search = location.search): { level: Level; name: string; unknownLevel: string | null } {
+/** The level the page should play, or null when `?level=` names none the
+ *  page has (the page then says so instead of loading something else). */
+export function chosenLevel(search = location.search): { level: Level; name: string } | null {
   const name = new URLSearchParams(search).get("level");
-  if (name && localLevel && localLevel.name === name) {
-    return { level: localLevel.level, name, unknownLevel: null };
-  }
-  if (name && ARENA_LEVELS[name]) return { level: ARENA_LEVELS[name], name, unknownLevel: null };
-  // LVL-05: the campaign's own level ids are the page's names ("1-1-pit").
-  return { level: ARENA_LEVELS["1-1-pit"]!, name: "1-1-pit", unknownLevel: name };
+  if (!name) return null;
+  if (localLevel && localLevel.name === name) return { level: localLevel.level, name };
+  const shipped = ARENA_LEVELS[name];
+  return shipped ? { level: shipped, name } : null;
 }

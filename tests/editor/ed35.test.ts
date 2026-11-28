@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import editorData from "../../data/editor.json";
-import ed01 from "../../data/levels/ed-01.json";
+import ed01 from "../fixtures/levels/ed-01.json";
 import {
   assetIdFromName, base64Of, makeModel, modelAssetOf, modelFileProblem, removeUnusedAssets,
   unusedAssetIds,

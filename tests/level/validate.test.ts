@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import pitJson from "../../data/levels/1-1-pit.json";
-import level12 from "../../data/levels/1-2.json";
-import level13 from "../../data/levels/1-3.json";
-import level14 from "../../data/levels/1-4.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
+import level12 from "../fixtures/levels/1-2.json";
+import level13 from "../fixtures/levels/1-3.json";
+import level14 from "../fixtures/levels/1-4.json";
 import { validateLevel } from "../../src/level/validate";
 import type { Arena, Level, Pickup } from "../../src/level/format";
 

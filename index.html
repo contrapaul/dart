@@ -6,65 +6,26 @@
     <title>DART</title>
     <link rel="icon" href="/favicon.svg" />
     <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/menu/menu.css" />
   </head>
-  <body>
-    <canvas id="view"></canvas>
-    <div id="overlay">
-      <h1>DART</h1>
-      <p id="status">Loading</p>
-      <!-- LVL-05 stage 2: the title's two ways into the campaign. Continue
-           only shows when a save exists; New game forgets it. The title
-           itself is [Paul]'s. -->
-      <p class="menu">
-        <button id="newGame" type="button">New game</button>
-        <button id="continueGame" type="button" hidden>Continue</button>
-        <button id="makeLevel" type="button">Make a level</button>
-        <button id="playLevel" type="button">Play a level</button>
-      </p>
-      <button id="titleSettings" type="button">Settings</button>
-      <p class="links"><a href="/arena.html">The Pit</a></p>
-    </div>
-    <div id="hud" hidden>
-      <div id="crosshair"></div>
-      <div id="lockmarker"></div>
-      <div id="finishprompt"></div>
-      <div id="ammo"></div>
-      <div id="pickupflash"></div>
-      <div id="vacpip"><i></i></div>
-      <div id="health"><div class="bar"><i></i></div><span class="num"></span></div>
-      <div id="meleepips"></div>
-    </div>
-    <div id="hitflash"></div>
-    <div id="healflash"></div>
-    <div id="popped" hidden>
-      <h2>You popped!</h2>
-      <button id="tryAgain" type="button">Try again</button>
-    </div>
-    <div id="pausemenu" hidden>
-      <div class="panel">
-        <h2>Paused</h2>
-        <button id="resumeBtn" type="button">Resume</button>
-        <button id="settingsBtn" type="button">Settings</button>
-        <button id="restartBtn" type="button">Restart</button>
-      </div>
-    </div>
+  <body class="menu-page">
+    <!-- MENU-01: the title menu. The title is a placeholder until Paul's
+         logo exists. -->
+    <main class="title-screen">
+      <h1 class="logo">DART</h1>
+      <nav class="main-menu" id="mainMenuList" aria-label="Main menu">
+        <button class="menu-item" id="campaignSlot" type="button">New game</button>
+        <a class="menu-item" href="/levels.html">Levels</a>
+        <a class="menu-item" href="/editor.html">Map Builder</a>
+        <button class="menu-item" id="titleSettings" type="button">Settings</button>
+        <a class="menu-item" href="/about.html">About</a>
+      </nav>
+    </main>
     <div id="settings" hidden>
       <div class="panel">
         <h2>Settings</h2>
         <div id="settingsRows"></div>
         <button id="settingsBack" type="button">Back</button>
-      </div>
-    </div>
-    <div id="myLevels" hidden>
-      <div class="panel">
-        <h2>My levels</h2>
-        <p id="myLevelsEmpty" class="empty" hidden>No levels yet. Make a level first.</p>
-        <p id="myLevelsError" class="error" hidden></p>
-        <div id="myLevelsList"></div>
-        <div id="myLevelsProblems" class="problems" hidden></div>
-        <button id="openLevelFile" type="button">Open a level file</button>
-        <input id="myLevelFile" type="file" accept=".json,application/json" hidden />
-        <button id="myLevelsBack" type="button">Back</button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

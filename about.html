@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DART: About</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/menu/menu.css" />
+  </head>
+  <body class="menu-page">
+    <!-- MENU-01 (2026-11-29): a factual draft for Paul to edit. The spots
+         marked [Paul] are his: his voice, the why, anything personal. -->
+    <main class="page">
+      <header class="page-head">
+        <h1 class="retro-title">About</h1>
+        <a class="menu-item back-link" href="/index.html">Main menu</a>
+      </header>
+      <article class="retro-panel">
+        <h3>What DART is</h3>
+        <p>DART is a first person shooter that runs in a web browser. You fight
+          Foamers, monsters from the Foam dimension, with toy foam dart blasters,
+          a shield and a melee. Nothing bleeds: everything that breaks, breaks
+          into foam, and the walls and the Foamers come apart where you hit
+          them. It is free, needs no install or account, and is made for
+          players aged 10 and up.</p>
+        <p class="placeholder">[Paul: why you are making it, and who it is for.]</p>
+
+        <h3>How it was made</h3>
+        <p>Paul writes the game: the blasters, the Foamers, the story, the
+          names and the levels. The code was written by AI models working from
+          Paul's plan, a single planning document that splits the work into
+          small task cards. Each card names the files it may touch and what
+          "done" means, and code from one model is reviewed by another before
+          it ships.</p>
+        <p>Work started on 30 October 2026. Since then the project has grown to
+          over 900 commits and more than 1,700 automated tests, which run on
+          every change before it goes live.</p>
+
+        <h3>The models and machines</h3>
+        <p>Claude (Opus 5.5, with Fable 5.2 for some editor work) led the
+          build: it wrote the plan's task cards, built the harder parts,
+          merged everyone's work and checked it in a browser. Other models
+          built cards in parallel through the Pi coding agent: DeepSeek V4.1
+          Flash over OpenRouter, Qwen 3.8 running on a local machine, and
+          Inkling 2 Mini running on a DGX Spark and on two V100 graphics cards.
+          Up to six Inkling sessions worked at once on the Spark, each on its
+          own card in its own copy of the code, while the V100s drafted plans
+          and reviewed the results.</p>
+        <p class="placeholder">[Paul: what it was like to direct a swarm of
+          models, and what surprised you.]</p>
+
+        <h3>Built with</h3>
+        <p>TypeScript, <a href="https://threejs.org/">Three.js</a> for the 3D,
+          <a href="https://rapier.rs/">Rapier</a> for the physics and Vite to
+          bundle it. Every font, model, texture and sound ships with the game:
+          nothing is loaded from another site, so it works on school and venue
+          wifi.</p>
+
+        <h3>The Map Builder</h3>
+        <p>The same tools that make the game's levels are in the menu: build a
+          level, play it straight away, and find it on the Levels page with its
+          picture and your name as the author.</p>
+
+        <h3>Credits</h3>
+        <p class="placeholder">[Paul: credits, thanks and contact.]</p>
+      </article>
+    </main>
+  </body>
+</html>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DART: the Pit</title>
+    <title>DART</title>
     <link rel="icon" href="/favicon.svg" />
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="stylesheet" href="/src/arena/arena.css" />
@@ -11,15 +11,20 @@
   <body>
     <canvas id="view"></canvas>
     <div id="banner" hidden><span id="bannerText"></span></div>
+    <!-- MENU-01: the loading screen. The level's name and author while it
+         loads, then "Click to play" on the status line. -->
     <div id="overlay">
-      <h1>DART</h1>
-      <p id="status">Loading</p>
-      <p class="menu">
-        <button id="makeLevel" type="button">Make a level</button>
-        <button id="playLevel" type="button">Play a level</button>
-      </p>
-      <button id="titleSettings" type="button">Settings</button>
-      <p class="links"><a href="/index.html">Test course</a></p>
+      <div class="loading">
+        <p class="kicker">Now entering</p>
+        <h1 id="loadName">DART</h1>
+        <p id="loadAuthor" hidden></p>
+        <p id="status">Loading</p>
+        <p class="links">
+          <button class="menu-item" id="titleSettings" type="button">Settings</button>
+          <a class="menu-item" href="/levels.html">Levels</a>
+          <a class="menu-item" href="/index.html">Main menu</a>
+        </p>
+      </div>
     </div>
     <div id="hud" hidden>
       <div id="crosshair"></div>
@@ -63,6 +68,7 @@
         <button id="resumeBtn" type="button">Resume</button>
         <button id="settingsBtn" type="button">Settings</button>
         <button id="restartBtn" type="button">Restart</button>
+        <a class="menu-item" id="mainMenuBtn" href="/index.html">Main menu</a>
       </div>
     </div>
     <div id="settings" hidden>
@@ -70,18 +76,6 @@
         <h2>Settings</h2>
         <div id="settingsRows"></div>
         <button id="settingsBack" type="button">Back</button>
-      </div>
-    </div>
-    <div id="myLevels" hidden>
-      <div class="panel">
-        <h2>My levels</h2>
-        <p id="myLevelsEmpty" class="empty" hidden>No levels yet. Make a level first.</p>
-        <p id="myLevelsError" class="error" hidden></p>
-        <div id="myLevelsList"></div>
-        <div id="myLevelsProblems" class="problems" hidden></div>
-        <button id="openLevelFile" type="button">Open a level file</button>
-        <input id="myLevelFile" type="file" accept=".json,application/json" hidden />
-        <button id="myLevelsBack" type="button">Back</button>
       </div>
     </div>
     <script type="module" src="/src/arena/main.ts"></script>

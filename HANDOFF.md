@@ -13,8 +13,9 @@ the old text is in git history.
 
 **Live at dart.contrapaul.com** (main, pushed 2026-11-12, `bbe2a43`):
 
-- The range is the weapon tuning page and plays in Chrome, Edge and
-  Firefox (Paul, 2026-11-12). Playtest cards PT-01 to PT-10 are all
+- (2026-11-29, MENU-01) The range, the sandbox and the test course are
+  gone; weapon tuning is Tune blasters in the Map Builder. Until then the
+  range was the weapon tuning page (Paul, 2026-11-12). Playtest cards PT-01 to PT-10 are all
   reviewed and merged.
 - Keys 1 to 8 select B01 to B08; B04 is plain fast full-auto.
 - QA-01 (performance) passed: above 60 fps (Paul, 2026-11-12).
@@ -92,6 +93,81 @@ pushed, waiting on review; the suite there is 1344 tests, 2 skipped.
   2026-11-12 was made to fail once on purpose before it was trusted.
 
 ## Log
+
+### 2026-11-29: MENU-01, the retro title menu, Levels, About, loading and pause (Claude Opus 5.5)
+
+Asked (Paul): redo the landing page, loading screen and pause menu in a
+retro look in the game's own colours; remove the made-up levels, the early
+test space and the range; a vertical menu of New game/Continue, Levels,
+Map Builder, Settings and About; New game greyed out until a full level is
+finished; a Levels page (list on the left third, picture and details with
+the author on the right); an About page. Paul's answers: delete all the old
+levels, move weapon tuning into the Map Builder, list Map Builder levels
+plus any shipped later, and a factual About draft for him to edit.
+
+Built:
+- `index.html` is the title menu now (`src/main.ts`, `src/menu/title.ts`,
+  `src/menu/menu.css`): the five items, Up/Down (and W/S) move, pointing
+  lights an item, Settings opens the shared panel. The title is still the
+  placeholder "DART" until Paul's logo.
+- One slot for New game and Continue. `data/campaign.json` gained
+  `ready: false`: until Paul sets it true the slot is New game, greyed out,
+  "Not ready yet". Once ready, a save whose level ships shows Continue.
+- `levels.html` (`src/menu/levels-page.ts`, list logic in
+  `src/menu/level-list.ts`): shipped levels (none yet) then Map Builder
+  levels newest first; the stored picture, name, author, Foamers placed,
+  pickups, target time, setting, saved time; Play (refused with the first
+  errors when the validator finds any) and Open in Map Builder; Open a level
+  file imports as before.
+- `about.html`: a draft from the repo's history with `[Paul]` spots.
+- `LevelMeta.author` (new, optional): "[Paul]" until set, editable in the
+  Map Builder's level panel; new levels start with "[Paul]".
+- Arena: the overlay is a loading screen ("Now entering", the level name,
+  "by" the author, the status line, Settings, Levels, Main menu); it hides
+  once play starts, so a pause shows the pause menu alone, which gained
+  Main menu. Pause, Settings, popped and level complete share one retro
+  panel look. Colour tokens for every page are in `src/style.css` `:root`.
+- Removed: `range.html`, `sandbox.html`, the test course (old `src/main.ts`,
+  `src/course/`), `src/range/`, `src/sandbox/`, `src/ui/frame-graph.ts`,
+  `data/range.json`, `tools/lvl05-probe.mjs`, the My levels panel wiring and
+  the old title buttons. `arena.html` has no default level: no `?level=` or
+  an unknown one says so.
+- The 12 old level files moved to `tests/fixtures/levels/` instead of being
+  deleted (see Decided). `data/levels/` is the shipped folder, empty but for
+  a README; the arena page and the Levels page pick up any file put there.
+- Weapon tuning: the range's Tune panel is `src/editor/blaster-tune.ts`
+  (fields in `src/editor/blaster-fields.ts`), opened by Tune blasters in the
+  Map Builder's level panel (nothing selected). It first went in the top
+  bar, but that made the bar overflow at 1024 px, so it moved.
+- Smoke: index, levels and about are checked by their text (no canvas);
+  the arena plays the 1-1 fixture put into the profile's level store first.
+
+Decided:
+- The old levels are test fixtures, not deleted. Paul chose "delete all"
+  and the tests built on them, but about 50 engine tests (parry, pounce,
+  pickups, triggers, lights and more) use them only as a room to test in.
+  Deleting those would drop that coverage; as fixtures they are not in the
+  game and cost nothing. Only tests of the removed pages and of the page's
+  level choice went. To delete them anyway: remove `tests/fixtures/levels/`
+  and the tests that import it.
+- No font is fetched or committed: the display face is the condensed
+  system faces (Impact and friends), falling back to the system face.
+  Phones without Impact get a plainer look. A committed pixel or display
+  font would need Paul's pick and its licence.
+- About names the tools (Claude, DeepSeek, Qwen, Inkling, Three.js, Rapier)
+  as credits; it never names DOOM.
+
+Checks: `npm run check` green (1782 tests, 2 skipped; the range, sandbox
+and course tests went with their code), `npm run smoke` green on all five
+pages. Seen in the browser pane: title menu and keys, Settings, Levels with
+two stored levels, About, the arena loading screen, the pause menu (shown
+by script, the pane has no real pointer lock), Tune blasters and the author
+field.
+
+Not verified: a real mouse and pointer lock through click to play, pause
+and Main menu; a level with a stored picture on the Levels page (the pane's
+levels have none); the look on a phone and in Firefox and Safari; the
+level-complete and popped panels in play.
 
 ### 2026-11-28: editor round 3 (Claude Opus 5.5 lead; Inkling-2-Mini on the Spark and both V100s)
 

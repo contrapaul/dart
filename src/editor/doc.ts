@@ -180,7 +180,7 @@ export function makePrim(
  *  the exit and the default sky from data/editor.json. */
 export function newLevel(): Level {
   return {
-    meta: { id: "untitled", name: "[Paul]", act: 0, targetSeconds: 300, accent: PALETTE[0]! },
+    meta: { id: "untitled", name: "[Paul]", author: "[Paul]", act: 0, targetSeconds: 300, accent: PALETTE[0]! },
     shell: [],
     prims: [{
       id: "floor-1", shape: "box", pos: [0, -0.5, 0], size: [32, 1, 32],

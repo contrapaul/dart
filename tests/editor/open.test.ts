@@ -5,7 +5,7 @@ import { newLevel } from "../../src/editor/doc";
 import { validateLevel } from "../../src/level/validate";
 import type { Level } from "../../src/level/format";
 import type { StoredLevel } from "../../src/editor/store";
-import pitJson from "../../data/levels/1-1-pit.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
 
 // ED-09 stages 2 and 3: which level the editor opens, and a built in level
 // opened as a copy.

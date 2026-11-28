@@ -5,7 +5,7 @@ import { linearColorTable } from "../../src/voxel/materials";
 import { greedyMesh } from "../../src/voxel/mesher";
 import type { Mesher } from "../../src/voxel/pieces";
 import { DartSystem } from "../../src/weapons/darts";
-import { createRangeSystems } from "../../src/range/setup";
+import { createRangeSystems } from "../fixtures/systems";
 import explosionTuning from "../../data/explosion.json";
 
 // PT-05 stage 3: the small explosive blasts (B05's explosive mod and B06's

@@ -1,9 +1,9 @@
-// Smoke check for the four pages of the built game, using the Chromium that
+// Smoke check for the pages of the built game, using the Chromium that
 // is already on the machine. No new dependency: it drives the browser over
 // the DevTools protocol with the global WebSocket Node 22 and later have.
 //
 //   npm run build            # the check boots dist/, so build first
-//   node tools/smoke.mjs     # all four pages
+//   node tools/smoke.mjs     # every page
 //   node tools/smoke.mjs arena.html   # one page
 //   SMOKE_URL=https://dart.contrapaul.com node tools/smoke.mjs  # the live
 //   DART_CHROME=/path/to/chrome node tools/smoke.mjs            # one binary
@@ -25,6 +25,9 @@ import { readFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
 
 const ROOT = new URL("..", import.meta.url).pathname;
+// The level store's names, as src/editor/store.ts has them.
+const STORE_DB = "dart.levels";
+const STORE_NAME = "levels";
 const DIST = join(ROOT, "dist");
 
 // Chromium's own launcher, or the one Playwright cached for the review
@@ -79,20 +82,49 @@ function findChrome() {
   return null;
 }
 
+// MENU-01: the title menu, Levels and About are plain pages with no canvas:
+// they pass when their settle text appears and nothing throws. The arena has
+// no shipped level yet, so it plays a test fixture put into this profile's
+// level store first (`seed`), the way a level saved in the Map Builder is.
 const PAGES = [
-  { file: "index.html", name: "test course", settle: "#status", ready: "Click to play" },
-  { file: "arena.html", name: "the arena", settle: "#status", ready: "Click to play" },
-  // The range's overlay is static HTML, so it proves nothing; the menu's
-  // blaster label reads "-" until the loadout has loaded, then names B01.
-  // PT-10: the range has a status line now, so the check waits for it like
-  // the game pages' do: that text is written at the first drawn frame, so it
-  // also proves the boot finished and the range may take the mouse.
-  { file: "range.html", name: "test range", settle: "#status", ready: "Click to play" },
-  { file: "sandbox.html", name: "sandbox", settle: "#roster li", ready: "" },
+  { file: "index.html", name: "title menu", settle: "#campaignSlot", ready: "New game", canvas: false },
+  { file: "levels.html", name: "levels", settle: "#levelList", ready: "Made here", canvas: false },
+  { file: "about.html", name: "about", settle: "article", ready: "What DART is", canvas: false },
+  { file: "arena.html?level=local:smoke", name: "the arena", settle: "#status", ready: "Click to play", seed: "1-1-pit" },
   // ED-02: the editor's status line reads Loading until the first frame is
   // drawn and the panels are built, so it proves the page booted.
   { file: "editor.html", name: "the level editor", settle: "#status", ready: "Ready" },
 ];
+
+// Puts a fixture level into the level store (src/editor/store.ts: database
+// dart.levels, store levels, keyed by key) under the key "smoke".
+async function seedLevel(chromePort, base, fixture) {
+  const level = JSON.parse(await readFile(join(ROOT, "tests/fixtures/levels", fixture + ".json"), "utf8"));
+  const { ws, id } = await openPage(chromePort, base + "/about.html");
+  try {
+    const record = JSON.stringify({ key: "smoke", saved: Date.now(), level });
+    const result = await cdp(ws, "Runtime.evaluate", {
+      awaitPromise: true,
+      returnByValue: true,
+      expression: `new Promise((resolve, reject) => {
+        const req = indexedDB.open(${JSON.stringify(STORE_DB)}, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(${JSON.stringify(STORE_NAME)}, { keyPath: "key" });
+        req.onerror = () => reject(String(req.error));
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction(${JSON.stringify(STORE_NAME)}, "readwrite");
+          tx.objectStore(${JSON.stringify(STORE_NAME)}).put(${record});
+          tx.oncomplete = () => { db.close(); resolve("seeded"); };
+          tx.onerror = () => reject(String(tx.error));
+        };
+      })`,
+    });
+    if (result.exceptionDetails) throw new Error("seeding the level store failed: " + result.exceptionDetails.text);
+  } finally {
+    ws.close();
+    await fetch(`http://127.0.0.1:${chromePort}/json/close/${id}`).catch(() => {});
+  }
+}
 
 const TYPES = {
   ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
@@ -255,6 +287,7 @@ const CANVAS_BOX = `(() => {
 })()`;
 
 async function checkPage(chromePort, base, page, settleMs) {
+  if (page.seed) await seedLevel(chromePort, base, page.seed);
   const url = base + "/" + page.file;
   const { ws, problems, id } = await openPage(chromePort, url);
   try {
@@ -281,6 +314,7 @@ async function checkPage(chromePort, base, page, settleMs) {
         break;
       }
       const up = parsed.present && (!page.ready || text.includes(page.ready));
+      if (up && page.canvas === false) break;
       if (up) {
         const box = await cdp(ws, "Runtime.evaluate", { expression: CANVAS_BOX, returnByValue: true });
         const rect = JSON.parse(box.result.value ?? "null");
@@ -303,7 +337,8 @@ async function checkPage(chromePort, base, page, settleMs) {
     if (bootFailed) fails.push("boot failed: " + text.slice(0, 200));
     else if (!text) fails.push("no status text appeared");
     else if (page.ready && !text.includes(page.ready)) fails.push(`never became ready (status: ${text.slice(0, 80)})`);
-    if (!bootFailed && !canvasSeen) fails.push("no canvas on the page");
+    if (page.canvas === false) { /* a menu page: the text is the proof */ }
+    else if (!bootFailed && !canvasSeen) fails.push("no canvas on the page");
     else if (!bootFailed && !canvasSeen.visible) fails.push("the canvas is hidden by CSS");
     else if (!bootFailed && bands <= 8) fails.push(`nothing drawn (${bands} colour band(s) in the canvas)`);
     if (problems.length) fails.push(...problems.slice(0, 4));

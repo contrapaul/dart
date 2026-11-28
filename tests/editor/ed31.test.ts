@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import ed01 from "../../data/levels/ed-01.json";
+import ed01 from "../fixtures/levels/ed-01.json";
 import { validateLevel } from "../../src/level/validate";
 import { makeButton, buttonOnChoices } from "../../src/editor/buttons-editor";
 import { DO_KINDS, fieldIds, emptyDo, applyLink } from "../../src/editor/trigger-parts";

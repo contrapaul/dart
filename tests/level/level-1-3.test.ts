@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
 import type { World } from "@dimforge/rapier3d-compat";
-import levelJson from "../../data/levels/1-3.json";
+import levelJson from "../fixtures/levels/1-3.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { makeLevelAI } from "../../src/ai/level";
@@ -11,7 +11,6 @@ import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
 import type { Level } from "../../src/level/format";
-import { chosenLevel } from "../../src/arena/levels";
 
 // LVL-03a and LVL-03b: Level 1-3 beats 1 to 9 (the bay, explore 1, the
 // Pit, the catwalk breather, the Yard, the hall chase into a 6 m drop that
@@ -113,10 +112,6 @@ describe("Level 1-3 loads (LVL-03a)", () => {
     expect(level.exit.pos[2]).toBeLessThan(-188);
   });
 
-  it("2. the level choice plays 1-3 by name", () => {
-    expect(chosenLevel("?level=1-3").level.meta.id).toBe("1-3");
-    expect(chosenLevel("?level=1-3").unknownLevel).toBe(null);
-  });
 
   it("3. has floor under the walk from the start to the exit", async () => {
     const { rapier, world } = await createPhysics();

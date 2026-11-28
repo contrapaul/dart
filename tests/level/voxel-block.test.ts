@@ -6,7 +6,7 @@ import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
 import { carveSphere } from "../../src/voxel/carve";
 import type { Level } from "../../src/level/format";
-import pitJson from "../../data/levels/1-1-pit.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
 
 // BUG-03: the nav grid and the level's voxel pieces. A solid voxel block
 // on a floor is not floor an agent can stand inside, the block's top is

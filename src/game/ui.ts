@@ -57,8 +57,7 @@ export function createUI(deps: UIDeps, opts: UIOptions): UIController {
 
   const popped = document.querySelector<HTMLDivElement>("#popped")!;
   const pauseMenu = document.querySelector<HTMLDivElement>("#pausemenu")!;
-  // R3-14: the arena's pause panel carries the tuning override note. The
-  // test course page has no note element; the guard keeps it that way.
+  // R3-14: the arena's pause panel carries the tuning override note.
   const tuningNote = document.querySelector<HTMLDivElement>("#tuningNote");
   const tuningReset = document.querySelector<HTMLButtonElement>("#tuningReset");
   function syncTuningNote(): void {
@@ -103,7 +102,9 @@ export function createUI(deps: UIDeps, opts: UIOptions): UIController {
     if (poppedOut && !p) return; // Try again clears the flag first
     if (completeOpen() && !p) return; // Play again clears the panel first
     paused = p;
-    overlay.hidden = !p || !overlayAllowed();
+    // MENU-01: the overlay is the loading screen, so once play has started
+    // a pause shows the pause menu alone.
+    overlay.hidden = !p || !overlayAllowed() || started;
     hud.show(!p);
     pauseMenu.hidden = !(p && !poppedOut && started && !completeOpen());
     // The title's Settings button is for before the first click; after that

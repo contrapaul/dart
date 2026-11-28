@@ -1,11 +1,11 @@
-// R3-14: the Tune section of the range's panel. One row per field in the
+// R3-14: the blaster Tune panel (the range's until MENU-01, 2026-11-29, now
+// the Map Builder's Tune blasters dialog). One row per field in the
 // fields file, grouped Fire / Ammo / Movement; a row whose field is changed
 // by this browser's override gets a reset beside it. Every edit goes through
 // tuneBlaster, so the editor, the arena and play see the same numbers. The
 // panel draws what blaster-fields.ts reports; it holds no tuning logic of
 // its own.
 
-import type { Loadout } from "../weapons/loadout";
 import {
   exportTuning, onTuningChange, resetTuning, tuneBlaster, untuneBlaster,
 } from "../core/tuning";
@@ -13,17 +13,26 @@ import {
   FIELDS, isChanged, patchFor, setByMod, valueInForce, type BlasterField,
 } from "./blaster-fields";
 
+/** Which blaster the panel tunes, and the mods on it (a field a mod sets is
+ *  shown but cannot be dragged). */
+export interface TuneSource {
+  id(): string;
+  mods(): string[];
+}
+
 const GROUPS = ["Fire", "Ammo", "Movement"] as const;
 
 export class TunePanel {
+  /** Stops following tuning changes (the dialog closed). */
+  readonly stop: () => void;
   private rows = new Map<string, { input: HTMLInputElement; out: HTMLElement; reset: HTMLButtonElement }>();
 
   constructor(
     private root: HTMLElement,
-    private loadout: Loadout,
+    private source: TuneSource,
   ) {
     this.render();
-    onTuningChange(() => this.refresh());
+    this.stop = onTuningChange(() => this.refresh());
   }
 
   /** Rebuild the rows for the held blaster (a blaster change). */
@@ -47,7 +56,7 @@ export class TunePanel {
    *  not be interrupted, so the rows are kept). */
   refresh(): void {
     const id = this.blasterId();
-    const mods = this.loadout.activeMods();
+    const mods = this.source.mods();
     for (const [key, row] of this.rows) {
       const field = FIELDS.find((f) => f.key === key)!;
       // An input being dragged keeps its own value: the readout follows
@@ -60,7 +69,7 @@ export class TunePanel {
   }
 
   private blasterId(): string {
-    return this.loadout.activeId();
+    return this.source.id();
   }
 
   private addRow(id: string, field: BlasterField): void {
@@ -68,7 +77,7 @@ export class TunePanel {
     row.className = "tuneRow";
     const name = document.createElement("span");
     name.className = "tuneName";
-    const mods = this.loadout.activeMods();
+    const mods = this.source.mods();
     const byMod = setByMod(id, field, mods);
     name.textContent = (field.note ? `${field.label} (${field.note})` : field.label) + (byMod ? " (set by a mod)" : "");
     const input = document.createElement("input");

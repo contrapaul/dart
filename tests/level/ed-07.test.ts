@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import levelJson from "../../data/levels/ed-07.json";
+import levelJson from "../fixtures/levels/ed-07.json";
 import type { Level } from "../../src/level/format";
 import { validateLevel } from "../../src/level/validate";
 import { TriggerRunner, type TriggerHost } from "../../src/level/triggers";

@@ -1,10 +1,39 @@
+:root {
+  /* MENU-01: the game's own foam colours (data/materials.json) and the
+     retro menu look. Every page's colours come from here. */
+  --night: #1b1430;
+  --ink: #120c22;
+  --panel: #2a1f4d;
+  --panel-hi: #4a3680;
+  --panel-lo: #160f2b;
+  --shadow: rgb(8 4 18 / 85%);
+  --dim: rgb(27 20 48 / 78%);
+  --cream: #fff6e8;
+  --muted: rgb(255 246 232 / 45%);
+  --orange: #ff7a1a;
+  --orange-deep: #b33f00;
+  --purple: #9b5cff;
+  --purple-deep: #3d2470;
+  --blue: #2ec4ff;
+  --blue-deep: #0d5f86;
+  --lime: #b6ff3b;
+  --lime-deep: #4d730f;
+  --yellow: #ffd23f;
+  /* A two-pixel dither, the old-screen texture on panels. */
+  --dither: repeating-conic-gradient(rgb(255 255 255 / 3%) 0 25%, transparent 0 50%) 0 0 / 4px 4px;
+  /* No font is fetched: the condensed display faces most systems have,
+     falling back to the system face. */
+  --font-display: Impact, Haettenschweiler, "Arial Narrow Bold", "Franklin Gothic Medium", "Roboto Condensed", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+}
+
 html,
 body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: #1b1430;
-  color: #fff6e8;
+  background: var(--night);
+  color: var(--cream);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -14,33 +43,86 @@ body {
   height: 100%;
 }
 
-/* Placeholder title until Paul's logo exists. */
+/* MENU-01: the loading screen (the arena's overlay): the level's name in
+   the title's extruded capitals, its author, and the status line. It
+   draws over the dimmed game until the first click. */
 #overlay {
   position: fixed;
   inset: 0;
   display: grid;
   place-content: center;
+  padding: 16px;
   text-align: center;
   pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 40%, rgb(155 92 255 / 30%), transparent 70%),
+    var(--dim);
 }
 
 #overlay[hidden] {
   display: none;
 }
 
-#overlay h1 {
-  margin: 0;
-  font-size: clamp(4rem, 14vw, 10rem);
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  color: #ff7a1a;
-  text-shadow: 0 0.06em 0 #b33f00, 0 0.12em 0.3em rgb(0 0 0 / 50%);
+#overlay .loading {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  max-width: min(44rem, 92vw);
 }
 
-#overlay p {
-  margin: 0.5rem 0 0;
-  font-size: 1.1rem;
-  opacity: 0.8;
+#overlay .kicker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+#overlay h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.8rem, 10vw, 6.5rem);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  color: var(--yellow);
+  background: linear-gradient(180deg, var(--yellow) 0 30%, var(--orange) 65%, var(--orange-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 2px var(--ink);
+  filter: drop-shadow(0 3px 0 var(--purple-deep)) drop-shadow(4px 4px 0 var(--blue-deep));
+}
+
+#overlay #loadAuthor {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--purple);
+}
+
+#overlay #status {
+  margin: 1.2rem 0 0;
+  padding: 0.5rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: var(--lime);
+  background: var(--ink);
+  border: 2px solid var(--purple-deep);
+}
+
+#overlay .links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 1rem 0 0;
+}
+
+#overlay .links .menu-item {
+  width: auto;
+  font-size: 1.3rem;
 }
 
 #hud {
@@ -246,108 +328,228 @@ body {
   transition: opacity 500ms ease-out;
 }
 
-/* UI-01 stage 2: the pause menu and the settings panel, both a dimmed
-   full screen with a chunky toy-like panel. Foam colours, no red. The
-   overlay keeps pointer-events none, so its Settings button re-enables
-   them for itself. */
+/* MENU-01 (2026-11-29): the retro panels. The pause menu, Settings, the
+   popped screen and the level-complete panel share one look with the title
+   menu: square bevelled panels, chunky condensed capitals, the foam
+   colours (orange, purple, blue, lime, yellow) and a lime pointer on the
+   item in focus. The overlay keeps pointer-events none, so its buttons
+   switch them back on for themselves. */
 #overlay button,
-#overlay p.links {
+#overlay a {
   pointer-events: auto;
-  margin-top: 1rem;
 }
 
 #pausemenu,
-#settings {
+#settings,
+#popped,
+#complete {
   position: fixed;
   inset: 0;
   display: grid;
   place-content: center;
-  background: rgb(27 20 48 / 70%);
+  padding: 1rem;
+  background: var(--dim);
+  z-index: 40;
 }
 #pausemenu[hidden],
-#settings[hidden] {
+#settings[hidden],
+#popped[hidden],
+#complete[hidden] {
   display: none;
 }
+
+.panel,
+.retro-panel,
+#popped {
+  --pad: clamp(1.2rem, 4vw, 2.2rem);
+}
 #pausemenu .panel,
-#settings .panel {
+#settings .panel,
+#complete .panel,
+.retro-panel {
   display: grid;
-  gap: 0.8rem;
-  justify-items: center;
-  padding: 2rem 2.5rem;
-  border-radius: 1.2rem;
-  border: 3px solid #fff6e8;
-  background: #2a1f4d;
-  box-shadow: 0 0.1em 0.4em rgb(0 0 0 / 60%);
+  gap: 0.4rem;
+  justify-items: stretch;
+  min-width: min(22rem, 90vw);
+  max-height: 90vh;
+  overflow: auto;
+  padding: var(--pad);
+  background: var(--panel) var(--dither);
+  border: 4px solid var(--ink);
+  box-shadow:
+    inset 3px 3px 0 var(--panel-hi),
+    inset -3px -3px 0 var(--panel-lo),
+    6px 6px 0 var(--shadow);
 }
 #pausemenu h2,
-#settings h2 {
-  margin: 0 0 0.4rem;
-  font-size: 2.2rem;
-  font-weight: 900;
+#settings h2,
+#complete h2,
+#popped h2,
+.retro-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1;
   letter-spacing: 0.06em;
-  color: #b6ff3b;
-  text-shadow: 0 0.04em 0 #4d730f;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--yellow);
+  text-shadow: 3px 3px 0 var(--orange-deep), 5px 5px 0 var(--shadow);
 }
-#pausemenu button,
-#settings button {
-  font: inherit;
-  font-weight: 800;
-  font-size: 1.1rem;
-  letter-spacing: 0.05em;
-  padding: 0.55rem 2rem;
-  border-radius: 999px;
-  border: 3px solid #fff6e8;
-  background: #ff7a1a;
-  color: #fff6e8;
+
+/* The menu items: text, not pills. Focus (and hover, which moves focus)
+   turns an item yellow and puts the lime pointer in front of it. */
+#pausemenu .panel > button,
+#complete .choices button,
+#popped button,
+#settingsBack,
+.menu-item {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.35rem 1rem 0.35rem 2.2rem;
+  border: 0;
+  background: none;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  text-decoration: none;
+  color: var(--orange);
+  text-shadow: 2px 2px 0 var(--shadow);
   cursor: pointer;
 }
-#pausemenu button:hover,
-#pausemenu button:focus-visible,
-#settings button:hover,
-#settings button:focus-visible {
-  background: #ff9a4d;
+#pausemenu .panel > button::before,
+#complete .choices button::before,
+#popped button::before,
+#settingsBack::before,
+.menu-item::before {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin-top: -0.4rem;
+  border: 0.4rem solid transparent;
+  border-left: 0.9rem solid var(--lime);
+  filter: drop-shadow(2px 2px 0 var(--shadow));
+  opacity: 0;
 }
+#pausemenu .panel > button:focus-visible,
+#pausemenu .panel > button:hover,
+#complete .choices button:focus-visible,
+#complete .choices button:hover,
+#popped button:focus-visible,
+#popped button:hover,
+#settingsBack:focus-visible,
+#settingsBack:hover,
+.menu-item:focus,
+.menu-item:hover {
+  outline: none;
+  color: var(--yellow);
+}
+#pausemenu .panel > button:focus-visible::before,
+#pausemenu .panel > button:hover::before,
+#complete .choices button:focus-visible::before,
+#complete .choices button:hover::before,
+#popped button:focus-visible::before,
+#popped button:hover::before,
+#settingsBack:focus-visible::before,
+#settingsBack:hover::before,
+.menu-item:focus::before,
+.menu-item:hover::before {
+  opacity: 1;
+}
+.menu-item:disabled,
+.menu-item[aria-disabled="true"] {
+  color: var(--muted);
+  cursor: default;
+}
+.menu-item:disabled::before {
+  opacity: 0;
+}
+.menu-item small {
+  margin-left: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: middle;
+}
+#pausemenu button[hidden],
+#complete button[hidden],
+#complete p[hidden] {
+  display: none;
+}
+
+/* The small buttons inside panels (Settings presets, Reset). */
+.retro-button,
+#settings .row.presets button,
+#tuningNote button {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.8rem;
+  border: 3px solid var(--ink);
+  background: var(--orange);
+  color: var(--night);
+  box-shadow: inset 2px 2px 0 rgb(255 255 255 / 35%), inset -2px -2px 0 rgb(0 0 0 / 30%);
+  cursor: pointer;
+}
+.retro-button:hover,
+.retro-button:focus-visible,
+#settings .row.presets button:hover,
+#settings .row.presets button:focus-visible,
+#tuningNote button:hover,
+#tuningNote button:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 1px;
+}
+
 #settings .panel {
-  justify-items: stretch;
   min-width: min(30rem, 90vw);
-}
-#settings h2 {
-  justify-self: center;
+  gap: 0.7rem;
 }
 #settings .row {
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 0.6rem;
+  font-family: var(--font-mono);
   font-weight: 700;
+  font-size: 0.95rem;
 }
 #settings .row > span:first-child {
   grid-column: 1 / -1;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 #settings .row .val {
   min-width: 3.4rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: #b6ff3b;
+  color: var(--lime);
 }
 #settings .row.presets {
   grid-template-columns: repeat(4, auto);
   justify-content: center;
 }
 #settings .row.presets > span:first-child {
-  grid-column: 1 / -1;
   text-align: center;
 }
 #settings .row.presets button {
-  padding: 0.3rem 0.9rem;
-  font-size: 0.95rem;
-  opacity: 0.6;
+  opacity: 0.65;
 }
 #settings .row.presets button.on {
   opacity: 1;
-  background: #b6ff3b;
-  color: #1b1430;
-  border-color: #1b1430;
+  background: var(--lime);
 }
 #settings .row.presets .val {
   grid-column: 1 / -1;
@@ -356,189 +558,35 @@ body {
 #settings .row.toggle {
   grid-template-columns: 1fr auto;
 }
+#settings .row.toggle > span:first-child {
+  grid-column: auto;
+}
 #settings input[type="range"] {
   width: 12rem;
-  accent-color: #ff7a1a;
+  accent-color: var(--orange);
 }
 #settings input[type="checkbox"] {
   width: 1.2rem;
   height: 1.2rem;
-  accent-color: #b6ff3b;
+  accent-color: var(--lime);
 }
 #settingsBack {
   margin-top: 0.6rem;
-  justify-self: center;
 }
 
-/* ED-10a: the title menu's My levels panel, same chunky toy-panel style
-   as Settings. The rows are real buttons and the list scrolls if needed. */
-#myLevels {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  background: rgb(27 20 48 / 70%);
-}
-#myLevels[hidden] {
-  display: none;
-}
-#myLevels .panel {
-  display: grid;
-  gap: 0.8rem;
-  justify-items: stretch;
-  padding: 2rem 2.5rem;
-  border-radius: 1.2rem;
-  border: 3px solid #fff6e8;
-  background: #2a1f4d;
-  box-shadow: 0 0.1em 0.4em rgb(0 0 0 / 60%);
-  min-width: min(34rem, 90vw);
-  max-height: 90vh;
-  overflow: auto;
-}
-#myLevels h2 {
-  margin: 0 0 0.4rem;
-  font-size: 2.2rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  color: #b6ff3b;
-  text-shadow: 0 0.04em 0 #4d730f;
-  justify-self: center;
-}
-#myLevels button {
-  font: inherit;
-  font-weight: 800;
-  font-size: 1.1rem;
-  letter-spacing: 0.05em;
-  padding: 0.55rem 2rem;
-  border-radius: 999px;
-  border: 3px solid #fff6e8;
-  background: #ff7a1a;
-  color: #fff6e8;
-  cursor: pointer;
-}
-#myLevels button:hover,
-#myLevels button:focus-visible {
-  background: #ff9a4d;
-}
-#myLevels .level-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.8rem;
-  padding: 0.7rem 0.8rem;
-  border-radius: 0.8rem;
-  background: #1b1430;
-}
-#myLevels .level-row .name {
-  font-weight: 800;
-}
-#myLevels .level-row .when {
-  font-size: 0.9rem;
-  color: #b6ff3b;
-  font-variant-numeric: tabular-nums;
-}
-#myLevels .level-row .actions {
-  display: flex;
-  gap: 0.4rem;
-  margin-left: auto;
-}
-#myLevels .level-row .actions button {
-  padding: 0.3rem 0.9rem;
-  font-size: 0.9rem;
-}
-#myLevels .empty,
-#myLevels .error {
-  margin: 0;
-  text-align: center;
-}
-#myLevels .error {
-  color: #ffb15c;
-}
-#myLevels .problems {
-  padding: 0.5rem 0.8rem;
-  border-radius: 0.6rem;
-  background: #1b1430;
-  font-size: 0.9rem;
-}
-#myLevels .problems div {
-  margin: 0.15rem 0;
-}
-#myLevels input[type="file"] {
-  display: none;
-}
-
-/* UI-01: the "You popped!" panel over the dimmed game. Foam colours only. */
+/* UI-01: the "You popped!" screen over the dimmed game. */
 #popped {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-content: center;
+  justify-items: center;
   gap: 1rem;
   text-align: center;
-  background: rgb(27 20 48 / 70%);
-}
-#popped[hidden] {
-  display: none;
 }
 #popped h2 {
-  margin: 0;
   font-size: clamp(2.5rem, 9vw, 6rem);
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  color: #b6ff3b;
-  text-shadow: 0 0.05em 0 #4d730f, 0 0.1em 0.3em rgb(0 0 0 / 50%);
+  color: var(--lime);
+  text-shadow: 4px 4px 0 var(--lime-deep), 7px 7px 0 var(--shadow);
 }
 #popped button {
-  font: inherit;
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: 0.05em;
-  padding: 0.7rem 2.2rem;
-  border-radius: 999px;
-  border: 3px solid #fff6e8;
-  background: #ff7a1a;
-  color: #fff6e8;
-  cursor: pointer;
-}
-#popped button:hover,
-#popped button:focus-visible {
-  background: #ff9a4d;
-}
-
-/* LVL-05 stage 2: the title's campaign buttons (New game, Continue). Same
-   chunky toy pills as the pause menu; Continue hides itself without a save. */
-#overlay p.menu {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  justify-content: center;
-  pointer-events: auto;
-}
-#overlay p.menu button {
-  pointer-events: auto;
-  margin: 0;
-  font: inherit;
-  font-weight: 800;
-  font-size: 1.15rem;
-  letter-spacing: 0.05em;
-  padding: 0.55rem 2rem;
-  border-radius: 999px;
-  border: 3px solid #fff6e8;
-  background: #ff7a1a;
-  color: #fff6e8;
-  cursor: pointer;
-}
-#overlay p.menu button:hover,
-#overlay p.menu button:focus-visible {
-  background: #ff9a4d;
-}
-#overlay p.menu button[hidden] {
-  display: none;
-}
-
-/* The overlay's link to the arena page (LVL-01). */
-#overlay p.links a {
-  color: #ffd23f;
+  width: auto;
 }
 
 /* GAME-07: the finisher prompt by the crosshair, with the bound key. */

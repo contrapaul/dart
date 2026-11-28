@@ -12,7 +12,7 @@ import destruction from "../../data/destruction.json";
 import foamerData from "../../data/foamers.json";
 import meleeData from "../../data/melee.json";
 import type { Level, Prim } from "../../src/level/format";
-import edOne from "../../data/levels/ed-01.json";
+import edOne from "../fixtures/levels/ed-01.json";
 
 // Node has no Web Workers; the greedy mesher runs inline.
 const edOneLevel = edOne as unknown as Level;

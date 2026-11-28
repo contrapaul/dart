@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Level, Prop } from "../../src/level/format";
 import { LEAKING_BARREL, PROP_KINDS, leakingBarrels, levelPropPrims, propPrims, propSolid } from "../../src/level/props";
 import { validateLevel } from "../../src/level/validate";
-import ed01 from "../../data/levels/ed-01.json";
+import ed01 from "../fixtures/levels/ed-01.json";
 
 // Props: barrels, crates, rubble and tanks, built as prims (data/props.json)
 // and the Range's leaking barrel, run by its own system.

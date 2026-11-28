@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
-import pitJson from "../../data/levels/1-1-pit.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
 import { buildLevel } from "../../src/level/build";
 import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";

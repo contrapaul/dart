@@ -29,8 +29,10 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, "index.html"),
-        range: resolve(import.meta.dirname, "range.html"),
-        sandbox: resolve(import.meta.dirname, "sandbox.html"),
+        // MENU-01: the Levels and About pages (the range and the sandbox
+        // left the game).
+        levels: resolve(import.meta.dirname, "levels.html"),
+        about: resolve(import.meta.dirname, "about.html"),
         arena: resolve(import.meta.dirname, "arena.html"),
         // ED-02: the level editor page.
         editor: resolve(import.meta.dirname, "editor.html"),

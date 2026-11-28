@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import envJson from "../../data/levels/env-02.json";
+import envJson from "../fixtures/levels/env-02.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { ButtonSystem } from "../../src/level/buttons";
@@ -9,7 +9,6 @@ import { LevelRunner, type LevelEvents } from "../../src/level/level-runner";
 import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
-import { ARENA_LEVELS, chosenLevel } from "../../src/arena/levels";
 import type { Level } from "../../src/level/format";
 import buttonsJson from "../../data/buttons.json";
 
@@ -61,8 +60,6 @@ function blocked(world: RAPIER.World): boolean {
 
 describe("the env-02 button test level", () => {
   it("1. loads as a registered level with no errors, two rooms and one door", () => {
-    expect(ARENA_LEVELS["env-02"]).toBe(level);
-    expect(chosenLevel("?level=env-02").level.meta.id).toBe("env-02");
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     const doors = level.arenas!.flatMap((a) => a.doors);

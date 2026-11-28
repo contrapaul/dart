@@ -7,8 +7,8 @@ import pickupData from "../../data/pickups.json";
 import { Blaster, resolveSpec } from "../../src/weapons/blaster";
 import type { DartFiring } from "../../src/weapons/blaster";
 import type { DartTypeName } from "../../src/weapons/dart-model";
-import pitJson from "../../data/levels/1-1-pit.json";
-import ringJson from "../../data/levels/1-4-ring.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
+import ringJson from "../fixtures/levels/1-4-ring.json";
 import type { Level, Pickup } from "../../src/level/format";
 
 const DT = 1 / 60;

@@ -1,4 +1,4 @@
-// PT-01: the range's systems, built in one place so the tests build exactly
+// PT-01 (moved from src/range/setup.ts when the range left the game, MENU-01): the
 // what the page builds. Found in the playtest: the page made its DartImpacts
 // with no ExplosionSystem, so a launcher round, B05's explosive mod and B06's
 // every fifth shot all landed as plain darts. The game pages pass one
@@ -8,18 +8,18 @@
 // No DOM here: the same factory runs in a headless test.
 import * as THREE from "three";
 import type RAPIER from "@dimforge/rapier3d-compat";
-import type { Rapier } from "../physics/world";
-import { DebrisSystem } from "../voxel/debris";
-import { DartImpacts, type VoxelTarget } from "../weapons/impacts";
-import { ExplosionSystem, type ExplosionTarget } from "../weapons/explosion";
-import { FoamerSystem } from "../foamers/foamers";
-import { ProjectileSystem } from "../foamers/projectiles";
-import type { Mesher } from "../voxel/pieces";
-import type { Foamer } from "../foamers/foamer";
-import type { DartSystem } from "../weapons/darts";
-import type { Loadout } from "../weapons/loadout";
-import { QUALITY, type QualityPreset } from "../render/quality";
-import { debrisBudget } from "../core/settings";
+import type { Rapier } from "../../src/physics/world";
+import { DebrisSystem } from "../../src/voxel/debris";
+import { DartImpacts, type VoxelTarget } from "../../src/weapons/impacts";
+import { ExplosionSystem, type ExplosionTarget } from "../../src/weapons/explosion";
+import { FoamerSystem } from "../../src/foamers/foamers";
+import { ProjectileSystem } from "../../src/foamers/projectiles";
+import type { Mesher } from "../../src/voxel/pieces";
+import type { Foamer } from "../../src/foamers/foamer";
+import type { DartSystem } from "../../src/weapons/darts";
+import type { Loadout } from "../../src/weapons/loadout";
+import { QUALITY, type QualityPreset } from "../../src/render/quality";
+import { debrisBudget } from "../../src/core/settings";
 
 export interface RangeSystems {
   debris: DebrisSystem;

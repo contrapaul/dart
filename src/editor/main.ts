@@ -17,7 +17,7 @@ import {
   unusedAssetIds, voxelCapProblem,
 } from "./models-editor";
 import { loadModelAsset } from "../level/models";
-import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
+import { AMMO_TYPES, BLASTERS, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
 import { buildPaintPanel, PAINT_BRUSH, paintHint, type PaintSettings } from "./paint-tool";
 import { setLevelTextures } from "../render/surfaces";
 import {
@@ -35,6 +35,7 @@ import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
 import { deleteLevel, listLevels, pictureDue, putLevel } from "./store";
+import { TunePanel } from "./blaster-tune";
 import { buildMapsScreen } from "./maps-screen";
 import { acceptClose, playUrl } from "./play";
 import { capProblem, clipText, groupMembers, idsInRect, makeClip, pasteClip, pasteMove, readClip, type Clip } from "./clipboard";
@@ -293,6 +294,31 @@ rotateSnapSelect.addEventListener("change", () => {
     buildInspector();
   }
 });
+
+// MENU-01: the blaster Tune panel (the range's until the range left the
+// game), opened from the level panel. Like the Foamer tuning in the
+// inspector, it writes this browser's tuning override (src/core/tuning.ts),
+// which every level plays.
+let blasterTune: TunePanel | null = null;
+function openBlasterTune() {
+  void dialog("Tune blasters", (body) => {
+    const pick = document.createElement("select");
+    pick.title = "The blaster to tune";
+    for (const b of BLASTERS) {
+      const option = document.createElement("option");
+      option.value = b.id;
+      option.textContent = `${b.id} ${b.name}`;
+      pick.append(option);
+    }
+    const rows = document.createElement("div");
+    rows.className = "blaster-tune";
+    body.append(pick, rows);
+    blasterTune?.stop();
+    const panel = new TunePanel(rows, { id: () => pick.value, mods: () => [] });
+    blasterTune = panel;
+    pick.addEventListener("change", () => panel.render());
+  });
+}
 
 $("helpBtn").addEventListener("click", () => {
   void dialog("Help", (body) => {
@@ -1130,6 +1156,13 @@ function buildSkyInspector(host: HTMLElement) {
     uploadSky,
     redraw: buildInspector,
   });
+  // MENU-01: the blaster tuning sits with the start loadout's blasters.
+  const tune = document.createElement("button");
+  tune.type = "button";
+  tune.textContent = "Tune blasters";
+  tune.title = "Tune the blasters for this browser: the same numbers play in every level";
+  tune.addEventListener("click", openBlasterTune);
+  host.append(tune);
   buildLightingSection(host, doc.level, {
     change: (patch, text) => doc.setFields(patch, text),
     redraw: buildInspector,

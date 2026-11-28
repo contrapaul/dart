@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import pitJson from "../../data/levels/1-1-pit.json";
+import pitJson from "../fixtures/levels/1-1-pit.json";
 import { buildLevel } from "../../src/level/build";
 import { makeLevelAI } from "../../src/ai/level";
 import { createPhysics } from "../../src/physics/world";

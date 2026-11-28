@@ -23,6 +23,9 @@ export interface LevelMeta {
   accent: string;
   /** [Paul]. Free text, not used by the loader. */
   setting?: string;
+  /** MENU-01: who made the level, shown on the Levels page. "[Paul]" until
+   *  set; an older file without it reads as "[Paul]". */
+  author?: string;
 }
 
 export interface Box {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import envThreeJson from "../../data/levels/env-03.json";
+import envThreeJson from "../fixtures/levels/env-03.json";
 import { validateLevel } from "../../src/level/validate";
-import { ARENA_LEVELS, chosenLevel } from "../../src/arena/levels";
 import blastersJson from "../../data/blasters.json";
 import type { Level } from "../../src/level/format";
 
@@ -16,8 +15,6 @@ const blasterIds = blastersJson.order;
 
 describe("the env-03 test level", () => {
   it("loads as a registered level with no errors", () => {
-    expect(ARENA_LEVELS["env-03"]).toBe(level);
-    expect(chosenLevel("?level=env-03").level.meta.id).toBe("env-03");
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     expect(report.warnings).toEqual([]);

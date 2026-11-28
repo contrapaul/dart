@@ -6,7 +6,7 @@ import { greedyMesh } from "../../src/voxel/mesher";
 import type { Mesher } from "../../src/voxel/pieces";
 import { DartSystem } from "../../src/weapons/darts";
 import { FoamerSystem } from "../../src/foamers/foamers";
-import { createRangeSystems } from "../../src/range/setup";
+import { createRangeSystems } from "../fixtures/systems";
 import { Blaster, resolveSpec, type BlasterControls } from "../../src/weapons/blaster";
 
 // PT-03 stage 2: the B03's impact from the card, in the real scene. The card

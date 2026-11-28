@@ -42,7 +42,8 @@ import { CLOSE_MESSAGE, editorBackUrl, isFramed, spawnFor, type PlayStart } from
 // the game, the level build included, is shared in src/game/.
 
 // GAME-10b: the same `?level=` choice as the page (src/arena/levels.ts).
-const CHOSEN = chosenLevel();
+// arena main.ts imports this module only once it has found the level.
+const CHOSEN = chosenLevel()!;
 const LEVEL = CHOSEN.level;
 /** The level's id in the campaign order: the `?level=` name, not meta.id. */
 const LEVEL_NAME = CHOSEN.name;

@@ -4,7 +4,7 @@ import { makeLight, LIGHT_DEFAULTS } from "../../src/editor/lights-editor";
 import { markerFor } from "../../src/editor/markers";
 import type { LevelLight } from "../../src/level/format";
 import { validateLevel } from "../../src/level/validate";
-import ed01 from "../../data/levels/ed-01.json";
+import ed01 from "../fixtures/levels/ed-01.json";
 
 // ED-32: the editor's Light tool. The factory, the document and the marker
 // the view draws.

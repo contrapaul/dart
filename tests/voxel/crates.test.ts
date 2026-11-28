@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import envJson from "../../data/levels/env-01.json";
+import envJson from "../fixtures/levels/env-01.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { createPhysics } from "../../src/physics/world";

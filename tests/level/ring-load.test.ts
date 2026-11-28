@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
-import ringJson from "../../data/levels/1-4-ring.json";
+import ringJson from "../fixtures/levels/1-4-ring.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { makeLevelAI } from "../../src/ai/level";
@@ -9,7 +9,6 @@ import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable } from "../../src/voxel/materials";
 import type { Level } from "../../src/level/format";
-import { ARENA_LEVELS, chosenLevel } from "../../src/arena/levels";
 
 // GAME-10b: the Ring (the KIT A2 Ring) as the arena page loads it with
 // `?level=1-4-ring`. Clean validation, floor under the start and the exit,
@@ -88,18 +87,4 @@ describe("the Ring loads (GAME-10b)", () => {
     expect(length).toBeGreaterThan(straight * 1.05);
   });
 
-  it("5. the level choice plays the Ring by name and the Pit otherwise", () => {
-    // LVL-04a adds 1-4, the Darter's level up to the bridge. The Ring's test
-    // file still keeps its own id, a 90 s test space.
-    // ENV-01 adds env-01, the cladding test room. ENV-02 adds env-02, the
-    // button test level. ENV-03 adds env-03, the stations test room. ENV-04
-    // adds env-04, the crushing toy press test corridor. GAME-10m adds
-    // env-05, the ambush test room. ED-01 adds ed-01, the editor's parts
-    // test level.
-    expect(Object.keys(ARENA_LEVELS).sort()).toEqual(["1-1-pit", "1-2", "1-3", "1-4", "1-4-ring", "ed-01", "ed-07", "env-01", "env-02", "env-03", "env-04", "env-05"]);
-    expect(chosenLevel("?level=1-4-ring").level.meta.id).toBe("1-4");
-    expect(chosenLevel("").level.meta.id).toBe("1-1");
-    expect(chosenLevel("?level=9-9-nope").level.meta.id).toBe("1-1");
-    expect(chosenLevel("?level=9-9-nope").unknownLevel).toBe("9-9-nope");
-  });
 });

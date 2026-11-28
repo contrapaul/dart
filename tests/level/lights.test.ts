@@ -4,7 +4,7 @@ import { buildLights, lightOutput, targetDirection } from "../../src/level/light
 import type { Level, LevelLight } from "../../src/level/format";
 import type { QualityPreset } from "../../src/render/quality";
 import editorData from "../../data/editor.json";
-import ed01 from "../../data/levels/ed-01.json";
+import ed01 from "../fixtures/levels/ed-01.json";
 import { validateLevel } from "../../src/level/validate";
 
 const HIGH: QualityPreset = { pixelRatioMax: 2, antialias: true, shadows: true, shadowMapMax: 2048, debrisMax: 150, breakoffMaxPieces: 16 };

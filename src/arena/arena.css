@@ -45,75 +45,40 @@
   display: none;
 }
 
-#complete {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 40;
-}
-#complete[hidden] {
-  display: none;
-}
+/* MENU-01: the level-complete panel takes the shared retro panel look
+   (src/style.css); only its own lines are styled here. */
 #complete .panel {
-  padding: 1.4em 2em;
-  border-radius: 10px;
-  background: rgba(20, 12, 40, 0.88);
-  border: 2px solid rgba(255, 210, 63, 0.55);
   text-align: center;
-}
-#complete h2 {
-  margin: 0 0 0.8em;
-  font-size: clamp(20px, 3vw, 32px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #fff3d6;
-}
-#complete button {
-  border: 0;
-  border-radius: 6px;
-  padding: 0.6em 1.4em;
-  font: inherit;
-  font-weight: 700;
-  color: #1b1430;
-  background: #ffd23f;
-  cursor: pointer;
-}
-#complete button:hover,
-#complete button:focus-visible {
-  background: #fff3d6;
-}
-#complete button[hidden],
-#complete p[hidden] {
-  display: none;
 }
 /* LVL-05 stage 2: the campaign's panel. The level's name and the time sit
    above the two ways on; the choices share a row so Next level and Main
    menu read as a pair. */
 #complete .level {
   margin: 0 0 0.2em;
-  font-size: clamp(16px, 2.2vw, 22px);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2.6vw, 1.5rem);
   letter-spacing: 0.04em;
-  color: #ffd23f;
+  text-transform: uppercase;
+  color: var(--blue);
 }
 #complete .time {
   margin: 0 0 0.9em;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  color: #cfc4ee;
+  color: var(--cream);
+}
+#complete #actEnd {
+  font-family: var(--font-mono);
 }
 #complete .choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6em;
-  justify-content: center;
+  display: grid;
 }
 
-/* ED-11: a run in the editor's frame has no title menu, only "Click to
-   play" on the status line. */
-body.framed #overlay .menu,
+/* ED-11: a run in the editor's frame has no way back to the title menu,
+   only "Click to play" on the status line. */
 body.framed #overlay #titleSettings,
-body.framed #overlay .links {
+body.framed #overlay .links,
+body.framed #mainMenuBtn {
   display: none;
 }
 
@@ -125,8 +90,8 @@ body.framed #overlay .links {
   gap: 8px;
   margin: 0 0 8px;
   padding: 6px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
+  border: 2px solid var(--yellow);
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 #tuningNote[hidden] { display: none; }

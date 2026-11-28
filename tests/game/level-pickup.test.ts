@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { ARENA_LEVELS } from "../../src/arena/levels";
+import { FIXTURE_LEVELS as ARENA_LEVELS } from "../fixtures/levels";
 import { CAMPAIGN_ORDER, foundAt } from "../../src/game/campaign";
 import { validateLevel } from "../../src/level/validate";
 import { buildLevel } from "../../src/level/build";

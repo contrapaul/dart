@@ -1,13 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import RAPIER from "@dimforge/rapier3d-compat";
-import envJson from "../../data/levels/env-01.json";
+import envJson from "../fixtures/levels/env-01.json";
 import { buildLevel } from "../../src/level/build";
 import { validateLevel } from "../../src/level/validate";
 import { createPhysics } from "../../src/physics/world";
 import { greedyMesh, type MeshData } from "../../src/voxel/mesher";
 import { linearColorTable, material, materialId } from "../../src/voxel/materials";
 import { carveSphere } from "../../src/voxel/carve";
-import { ARENA_LEVELS, chosenLevel } from "../../src/arena/levels";
 import { LevelRunner, type LevelEvents } from "../../src/level/level-runner";
 import type { Level } from "../../src/level/format";
 
@@ -47,8 +46,6 @@ function voxels(built: ReturnType<typeof buildLevel>, x: number, y: number, z: n
 
 describe("the env-01 test room", () => {
   it("loads as a registered level with no errors", () => {
-    expect(ARENA_LEVELS["env-01"]).toBe(level);
-    expect(chosenLevel("?level=env-01").level.meta.id).toBe("env-01");
     const report = validateLevel(level);
     expect(report.errors).toEqual([]);
     // No arenas, so no lock and no zone count in the report; the warning
