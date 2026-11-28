@@ -961,3 +961,57 @@ button.on {
   gap: 0.3rem;
   padding: 0;
 }
+
+/* R3: the Foamer tuning panel, under a selected Foamer. */
+#inspector .tuning-panel {
+  padding: 0.2rem 0 0.4rem;
+  border-top: 1px solid rgba(255, 210, 63, 0.25);
+  margin-top: 0.4rem;
+}
+#inspector .tuning-panel h3 {
+  margin: 0.4rem 0.6rem 0.15rem;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+}
+#inspector .tuning-toggle {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+}
+#inspector .tuning-toggle button {
+  flex: 1;
+  padding: 0.2rem 0.3rem;
+  font-size: 11px;
+  cursor: pointer;
+}
+#inspector .tuning-toggle button.active {
+  background: rgba(255, 210, 63, 0.85);
+  color: #20143a;
+}
+#inspector .tuning-row {
+  grid-template-columns: 1fr 5rem auto;
+  gap: 0.25rem;
+}
+#inspector .tuning-row.changed .tuning-name {
+  color: #ffd23f;
+  font-weight: 600;
+}
+#inspector .tuning-reset {
+  font-size: 10px;
+  padding: 0.1rem 0.3rem;
+  cursor: pointer;
+}
+#inspector .tuning-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem 0;
+}
+#inspector .tuning-buttons button {
+  flex: 1 1 auto;
+  font-size: 11px;
+  padding: 0.25rem 0.3rem;
+  cursor: pointer;
+}

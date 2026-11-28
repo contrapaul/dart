@@ -1,5 +1,6 @@
 import type { Level, LevelDoor, Pickup, PlacedFoamer, Prop, Rift, Vec3, Zone } from "../level/format";
 import { LEAKING_BARREL, PROP_KINDS, propSolid } from "../level/props";
+import { buildTuningPanel } from "./tuning-panel";
 import { GRID, snapAxis, type EntryKind } from "./doc";
 import { EXIT_ID, START_ID } from "./markers";
 import { BLASTERS, MELEE, makePickup } from "./parts";
@@ -117,6 +118,8 @@ export function buildFoamerFields(host: HTMLElement, f: PlacedFoamer, rigs: { id
     (v) => ctx.change({ wake: v as PlacedFoamer["wake"] }, `wake ${v}`),
   )));
   host.append(checkField("starts hidden", f.hidden === true, (on) => ctx.change({ hidden: on || undefined }, on ? "hide" : "show")));
+  // R3: the tuning panel, under the other fields.
+  buildTuningPanel(host, f, ctx);
 }
 
 export function buildPickupFields(host: HTMLElement, p: Pickup, ctx: PartContext) {
