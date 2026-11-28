@@ -3,7 +3,7 @@
 // colours, and is the only thing the paint tool knows: the page (main.ts)
 // owns the state and the painting itself.
 
-import { drawSurface, SURFACES, SURFACE_NAMES } from "../render/surfaces";
+import { drawSurface, levelTextureAssets, SURFACES, SURFACE_NAMES } from "../render/surfaces";
 import { EDITOR, PALETTE } from "./doc";
 
 /** The paint tool's settings: the surface to brush on, and the colour to
@@ -39,6 +39,21 @@ export function swatchCanvas(name: string, size = 32): HTMLCanvasElement {
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
+  if (name.startsWith("tex:")) {
+    const asset = levelTextureAssets().find((t) => `tex:${t.id}` === name);
+    if (!asset) {
+      ctx.fillStyle = "#d9d2c2";
+      ctx.fillRect(0, 0, size, size);
+      return canvas;
+    }
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(img, 0, 0, size, size);
+    };
+    img.src = asset.image;
+    return canvas;
+  }
   const img = drawSurface(name);
   if (!img) {
     ctx.fillStyle = "#d9d2c2";

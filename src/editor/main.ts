@@ -19,6 +19,10 @@ import {
 import { loadModelAsset } from "../level/models";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
 import { buildPaintPanel, PAINT_BRUSH, paintHint, type PaintSettings } from "./paint-tool";
+import { setLevelTextures } from "../render/surfaces";
+import {
+  buildTexturesSection, jpegDataUrl, scaledCanvas, textureFileProblem, textureIdFromName, tileCanvas,
+} from "./textures-editor";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { PHYSICS_SHAPES, buildPhysicsFields, makePhysicsObject } from "./physics-editor";
@@ -181,6 +185,8 @@ function typing(target: EventTarget | null): boolean {
 
 // The panels that read the document.
 function redraw() {
+  // R3-04: register the level's textures before the view draws.
+  setLevelTextures(doc.level.textures ?? []);
   view.setLocked(lockedIds(doc.level));
   setMarkerLevel(doc.level);
   view.show(doc.level);
@@ -1127,6 +1133,12 @@ function buildSkyInspector(host: HTMLElement) {
   buildLightingSection(host, doc.level, {
     change: (patch, text) => doc.setFields(patch, text),
     redraw: buildInspector,
+  });
+  buildTexturesSection(host, doc.level, {
+    setTextures: (list, text) => doc.setFields({ textures: list.length ? list : undefined }, text),
+    uploadTextures,
+    redraw: buildInspector,
+    warn: (text) => { status.textContent = text; },
   });
   // ED-35: an asset stays in the file after its last copy is deleted, until
   // this drops it. Only assets no placed model uses go.
@@ -3136,6 +3148,67 @@ window.addEventListener("message", (e) => {
 });
 
 // The sky's picture: read it, scale it on a canvas, put it in the level.
+// R3-04: the Textures section's upload. The file is scaled down to the
+// cap with a canvas, cut into tiles across x down (1 and 1 is one
+// texture), and each one kept in the level file as a data: URL.
+function uploadTextures(file: File, name: string, scale: number, tilesAcross: number, tilesDown: number) {
+  void file.arrayBuffer().then((buffer) => {
+    const problem = textureFileProblem(file.name, buffer.byteLength);
+    if (problem) {
+      status.textContent = problem;
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      try {
+        if (!image.naturalWidth || !image.naturalHeight) throw new Error("image not read");
+        const { canvas } = scaledCanvas(image);
+        const taken = (doc.level.textures ?? []).map((t) => t.id);
+        const cap = textureCap();
+        const added: import("../level/format").TextureAsset[] = [];
+        const across = Math.max(1, Math.round(tilesAcross));
+        const down = Math.max(1, Math.round(tilesDown));
+        for (let j = 0; j < down; j++) {
+          for (let i = 0; i < across; i++) {
+            const cell = tileCanvas(canvas, across, down, i, j);
+            const data = jpegDataUrl(cell, cap);
+            if (data.length * 0.75 > cap) {
+              status.textContent = `${name} tile ${j * across + i + 1}: too big even after scaling, skipped.`;
+              continue;
+            }
+            const k = j * across + i + 1;
+            const id = textureIdFromName(`${name}-${k}`, taken);
+            taken.push(id);
+            added.push({ id, name: `${name} ${k}`, image: data, scale });
+          }
+        }
+        if (!added.length) {
+          status.textContent = `${name}: no texture was added.`;
+          return;
+        }
+        doc.setFields({ textures: [...(doc.level.textures ?? []), ...added] }, `add ${added.length} texture${added.length === 1 ? "" : "s"}`);
+        status.textContent = `Added ${added.length} texture${added.length === 1 ? "" : "s"}: ${name}.`;
+        buildInspector();
+      } catch (e) {
+        status.textContent = `Texture not used: ${(e as Error).message}`;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      status.textContent = "Texture not read";
+    };
+    image.src = url;
+  });
+}
+
+function textureCap(): number {
+  // The level keeps its textures inside the file, so the file carries the image.
+  return (EDITOR.textures as { maxBytes: number }).maxBytes;
+}
+
 function uploadSky(file: File) {
   const url = URL.createObjectURL(file);
   const image = new Image();

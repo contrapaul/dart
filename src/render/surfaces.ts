@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import surfaceData from "../../data/surfaces.json";
 import { MORE_PAINTERS } from "./painters-more";
+import type { TextureAsset } from "../level/format";
 
 // ED-36 (design/EDITOR-V2.md): the surfaces things can wear. Textures are
 // drawn in code, one canvas per surface, greys so the thing's colour tints
@@ -16,6 +17,41 @@ export interface SurfaceSpec {
 
 export const SURFACES = (surfaceData as { surfaces: Record<string, SurfaceSpec> }).surfaces;
 export const SURFACE_NAMES = Object.keys(SURFACES);
+
+// R3-04: the level's uploaded textures, registered by setLevelTextures
+// before the level is built (game and editor). They join SURFACES and
+// SURFACE_NAMES as `tex:<id>`, so every SURFACES lookup for scale keeps
+// working.
+let levelTextures: TextureAsset[] = [];
+
+export function setLevelTextures(list: TextureAsset[]): void {
+  levelTextures = list;
+  // Textures and materials tied to a level's uploads are rebuilt from the
+  // new list: a later level must not reuse an earlier level's image.
+  texCache.clear();
+  imageCache.clear();
+  cache.clear();
+  for (const key of Object.keys(SURFACES)) {
+    if (key.startsWith("tex:")) delete SURFACES[key];
+  }
+  const builtins = SURFACE_NAMES.filter((n) => !n.startsWith("tex:"));
+  SURFACE_NAMES.length = 0;
+  const texNames = list.map((t) => `tex:${t.id}`);
+  SURFACE_NAMES.push(...builtins, ...texNames);
+  for (const t of list) {
+    SURFACES[`tex:${t.id}`] = { label: t.name, scale: t.scale };
+  }
+}
+
+/** The level's uploaded textures, as registered by setLevelTextures. */
+export function levelTextureAssets(): TextureAsset[] {
+  return levelTextures;
+}
+
+/** The `tex:<id>` textures currently registered (excluding the built-ins). */
+export function textureNames(): string[] {
+  return levelTextures.map((t) => `tex:${t.id}`);
+}
 
 export function isSurface(name: string): boolean {
   return Object.hasOwn(SURFACES, name);
@@ -276,8 +312,31 @@ export function drawSurface(name: string, size = SURFACE_SIZE): CanvasImage | nu
 /** Canvas wrapper: the only three.js-facing part of the drawing. */
 const texCache = new Map<string, THREE.CanvasTexture>();
 
-/** The texture for a surface, or null for plain / unknown. */
+/** The texture for an uploaded texture, or null when headless or unknown.
+ *  The texture is returned before the image has loaded; the page fills it
+ *  in and sets needsUpdate when the data: URL decodes, so a mesh that
+ *  binds it paints as soon as the image is ready. */
+const imageCache = new Map<string, THREE.Texture>();
+
 export function surfaceTexture(name: string, size = SURFACE_SIZE): THREE.CanvasTexture | null {
+  if (name.startsWith("tex:")) {
+    const asset = levelTextures.find((t) => `tex:${t.id}` === name);
+    if (!asset || typeof document === "undefined") return null;
+    let tex = imageCache.get(name);
+    if (tex) return tex as THREE.CanvasTexture;
+    tex = new THREE.Texture();
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    const img = new Image();
+    img.onload = () => {
+      tex!.image = img;
+      tex!.needsUpdate = true;
+    };
+    img.src = asset.image;
+    imageCache.set(name, tex);
+    return tex as THREE.CanvasTexture;
+  }
   if (!PAINTERS[name]) return null;
   const key = `${name}|${size}`;
   let tex = texCache.get(key);

@@ -6,6 +6,7 @@ import { VoxelVolume } from "../voxel/chunk";
 import { VolumeMesh } from "../voxel/volume-mesh";
 import type { Mesher } from "../voxel/pieces";
 import { material, materialId } from "../voxel/materials";
+import { setLevelTextures } from "../render/surfaces";
 import { Crates, type CrateBox } from "../voxel/crates";
 import { buildButton, type ButtonHandle } from "./buttons";
 import { buildPress, type PressHandle } from "./presses";
@@ -347,6 +348,9 @@ export function buildLevel(
   mesher: Mesher,
   scene?: THREE.Scene,
 ): BuiltLevel {
+  // R3-04: register the level's uploaded textures before anything builds,
+  // so surfaceTexture and surfaceMaterial resolve `tex:<id>`.
+  setLevelTextures(level.textures ?? []);
   const group = new THREE.Group();
 
   for (const box of level.shell) {
