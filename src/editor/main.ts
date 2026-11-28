@@ -550,14 +550,17 @@ function renameEntry(oldId: string, newId: string) {
     buildInspector();
     return;
   }
+  // The change handler runs inside doc.rename and drops selected ids that
+  // are gone, so the new id joins the selection first (the lead, at merge:
+  // the selection used to be lost).
+  const wasSelected = selected.has(oldId);
+  if (wasSelected) selected.add(trimmed);
   const problem = doc.rename(oldId, trimmed);
   if (problem) {
+    if (wasSelected) selected.delete(trimmed);
     status.textContent = problem;
   } else {
-    if (selected.has(oldId)) {
-      selected.delete(oldId);
-      selected.add(trimmed);
-    }
+    selected.delete(oldId);
     status.textContent = `Renamed ${oldId} to ${trimmed}.`;
     buildOutliner();
     selectInView();
