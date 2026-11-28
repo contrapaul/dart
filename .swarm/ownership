@@ -22,3 +22,4 @@ r3-06: src/render/look.ts, tests/render/look.test.ts, tasks/R3-06.md
 r3-14: src/range/blaster-fields.ts, src/range/tune-panel.ts, tests/range/tune-panel.test.ts, tasks/R3-14.md
 r3-15: src/editor/tuning-fields.ts, src/editor/tuning-panel.ts, tests/editor/tuning-panel.test.ts, tests/level/placed-tuning.test.ts, tasks/R3-15.md
 r3-16: src/editor/paint-tool.ts, tests/editor/paint-panel.test.ts, tasks/R3-16.md
+r3-17: tasks/R3-17.md
