@@ -43,5 +43,11 @@
   "pausedFrame": 0.25,
   "ao": {
     "levels": [0.5, 0.68, 0.84, 1.0]
+  },
+  "look": {
+    "toneMapping": "aces",
+    "exposure": 1.0,
+    "skyLight": 0.4,
+    "bounce": "#3a2a60"
   }
 }

@@ -437,6 +437,14 @@ export interface LevelLighting {
   /** Degrees: the sun's direction as yaw about Y and pitch down from level. */
   sunYaw: number;
   sunPitch: number;
+  /** R3-06: global illumination options. Omitted fields take the data/render.json look defaults. */
+  gi?: {
+    toneMapping?: "none" | "aces" | "agx" | "neutral";
+    exposure?: number;
+    skyLight?: number;
+    /** The hemisphere light's ground colour (the light thrown up from the floor). */
+    bounce?: string;
+  };
 }
 
 /** ED-33: a loose object the world pushes about: darts and blasts shove it,

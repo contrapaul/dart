@@ -550,6 +550,20 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
     if (!(typeof l.range === "number" && l.range > 0)) errors.push(`${what}: range must be positive`);
     if (l.angle !== undefined && !(l.angle > 0 && l.angle < 180)) errors.push(`${what}: angle must be between 0 and 180`);
   }
+  const lg = level.lighting;
+  if (lg?.gi) {
+    const gi = lg.gi;
+    if (gi.toneMapping !== undefined && !["none", "aces", "agx", "neutral"].includes(gi.toneMapping)) {
+      errors.push(`lighting gi: unknown toneMapping ${gi.toneMapping}`);
+    }
+    if (gi.exposure !== undefined && !(typeof gi.exposure === "number" && Number.isFinite(gi.exposure) && gi.exposure > 0)) {
+      errors.push("lighting gi: exposure must be positive");
+    }
+    if (gi.skyLight !== undefined && !(typeof gi.skyLight === "number" && Number.isFinite(gi.skyLight) && gi.skyLight >= 0)) {
+      errors.push("lighting gi: skyLight must be 0 or more");
+    }
+    if (gi.bounce !== undefined && !isColour(gi.bounce)) errors.push("lighting gi: bounce must be #rrggbb");
+  }
   const shadows = lights.filter((l) => l.castShadow).length;
   if (shadows > editorData.lights.maxShadows) errors.push(`${shadows} lights cast shadows, over the limit of ${editorData.lights.maxShadows}`);
   const physics = level.physics ?? [];
