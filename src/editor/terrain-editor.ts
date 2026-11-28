@@ -252,15 +252,23 @@ export class TerrainTool {
     const c = this.cursor;
     this.ring.visible = !!((this.armed || this.stroke) && t && c);
     if (!this.ring.visible || !t || !c) return;
-    const pos = this.ring.geometry.getAttribute("position") as THREE.BufferAttribute;
-    for (let k = 0; k < pos.count; k++) {
-      const a = (k / pos.count) * Math.PI * 2;
-      const x = c.x + Math.cos(a) * this.brush.radius;
-      const z = c.z + Math.sin(a) * this.brush.radius;
-      pos.setXYZ(k, x, (heightAt(t, x, z) ?? t.origin[1]) + 0.05, z);
-    }
-    pos.needsUpdate = true;
+    layoutRing(this.ring, t, c.x, c.z, this.brush.radius);
   }
+}
+
+
+/** Lays the brush's rim on the ground under the cursor (the ring is a
+ *  THREE.LineLoop of 64 points). Exported for the Paint tool's own ring
+ *  (R3-16). */
+export function layoutRing(ring: THREE.LineLoop, t: Terrain, x: number, z: number, radius: number) {
+  const pos = ring.geometry.getAttribute("position") as THREE.BufferAttribute;
+  for (let k = 0; k < pos.count; k++) {
+    const a = (k / pos.count) * Math.PI * 2;
+    const rx = x + Math.cos(a) * radius;
+    const rz = z + Math.sin(a) * radius;
+    pos.setXYZ(k, rx, (heightAt(t, rx, rz) ?? t.origin[1]) + 0.05, rz);
+  }
+  pos.needsUpdate = true;
 }
 
 /** A flat terrain of the default size, centred on the origin. */
