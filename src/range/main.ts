@@ -33,6 +33,8 @@ import { Barrels } from "../level/barrels";
 import { LineupLabels } from "./labels";
 import { TtkTracker, TtkPanel } from "./ttk";
 import { RangeMenu, RangeMenuPanel } from "./menu";
+import { TunePanel } from "./tune-panel";
+import { onTuningChange } from "../core/tuning";
 import { foamerLabel } from "./labels";
 import { MesherPool } from "../voxel/mesher-pool";
 import { firstFrame, pageBoot } from "../core/boot-report";
@@ -378,6 +380,13 @@ const menuPanel = new RangeMenuPanel(
   document.querySelector<HTMLButtonElement>("#menuRespawn")!,
   () => respawnLineupHere(),
 );
+// R3-14: the Tune section for the held blaster. Every edit goes through
+// tuneBlaster, so the editor, the arena and play see the same numbers; the
+// held blaster (and every blaster) is rebuilt with the new spec on a change.
+const tunePanel = new TunePanel(document.querySelector<HTMLDivElement>("#tunePanel")!, loadout);
+onTuningChange(() => {
+  for (let i = 0; i < loadout.ids.length; i++) loadout.rebuild(i);
+});
 // The bench tools stay on the page for performance work, hidden until
 // range.html?bench asks for them.
 document.querySelector<HTMLDivElement>("#benchTools")!.hidden =
@@ -942,6 +951,7 @@ loopCtl = startLoop({
       if (lastMenuBlaster !== loadout.activeIndex) {
         lastMenuBlaster = loadout.activeIndex;
         menuPanel.render();
+        tunePanel.render();
       }
       // Muzzle from the active viewmodel, then aim through the world,
       // then the loadout's fixed step, then the darts.

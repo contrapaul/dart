@@ -2,6 +2,7 @@ import type { Input } from "../core/input";
 import type { SettingsStore } from "../core/settings";
 import { SettingsPanel } from "../ui/menus";
 import type { Hud } from "../ui/hud";
+import { localTuning, onTuningChange, resetTuning } from "../core/tuning";
 
 // Pause menu, settings panel and the popped screen, shared by both game
 // pages (moved out of src/main.ts and src/arena/main.ts, ENG-13). The
@@ -56,6 +57,21 @@ export function createUI(deps: UIDeps, opts: UIOptions): UIController {
 
   const popped = document.querySelector<HTMLDivElement>("#popped")!;
   const pauseMenu = document.querySelector<HTMLDivElement>("#pausemenu")!;
+  // R3-14: the arena's pause panel carries the tuning override note. The
+  // test course page has no note element; the guard keeps it that way.
+  const tuningNote = document.querySelector<HTMLDivElement>("#tuningNote");
+  const tuningReset = document.querySelector<HTMLButtonElement>("#tuningReset");
+  function syncTuningNote(): void {
+    if (!tuningNote) return;
+    const t = localTuning();
+    const changed = Object.keys(t.blasters).length > 0 || Object.keys(t.foamers).length > 0;
+    tuningNote.hidden = !changed;
+  }
+  if (tuningNote && tuningReset) {
+    tuningReset.addEventListener("click", () => resetTuning());
+    onTuningChange(syncTuningNote);
+    syncTuningNote();
+  }
   const settingsBtn = document.querySelector<HTMLButtonElement>("#settingsBtn")!;
   const titleSettings = document.querySelector<HTMLButtonElement>("#titleSettings")!;
   const settingsPanel = new SettingsPanel(

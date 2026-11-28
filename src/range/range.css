@@ -336,3 +336,25 @@ button.on {
 #ammo .pips i.full {
   background: #ff7a1a;
 }
+
+/* R3-14: the Tune section. */
+.tunePanel { display: flex; flex-direction: column; gap: 4px; }
+.tunePanel .tuneGroup {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.tunePanel .tuneRow {
+  display: grid;
+  grid-template-columns: minmax(90px, 150px) 1fr 42px auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.tunePanel .tuneName { color: var(--text); }
+.tunePanel .tuneVal { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.tunePanel .tuneRow input[type="range"] { width: 100%; }
+.tunePanel .tuneReset { min-width: 44px; }
+.tunePanel .tuneButtons { gap: 8px; margin-top: 8px; flex-wrap: wrap; }
