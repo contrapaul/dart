@@ -19,6 +19,7 @@ import {
 import { loadModelAsset } from "../level/models";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
 import { buildPaintPanel, PAINT_BRUSH, type PaintSettings } from "./paint-tool";
+import { setLevelTextures } from "../render/surfaces";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { PHYSICS_SHAPES, buildPhysicsFields, makePhysicsObject } from "./physics-editor";
@@ -175,6 +176,8 @@ function typing(target: EventTarget | null): boolean {
 
 // The panels that read the document.
 function redraw() {
+  // R3-04: register the level's textures before the view draws.
+  setLevelTextures(doc.level.textures ?? []);
   view.setLocked(lockedIds(doc.level));
   setMarkerLevel(doc.level);
   view.show(doc.level);

@@ -135,3 +135,26 @@ describe("tex:<id> surfaces", () => {
     expect(errorsOf(level).join(" ")).toMatch(/unknown surface nope/);
   });
 });
+
+describe("setLevelTextures", () => {
+  it("joins the uploads to SURFACES and SURFACE_NAMES", async () => {
+    const { setLevelTextures, SURFACES, SURFACE_NAMES, isSurface, textureNames } = await import("../../src/render/surfaces");
+    setLevelTextures([texture({ id: "t1", name: "My tex", scale: 2 })]);
+    expect(SURFACES["tex:t1"]).toEqual({ label: "My tex", scale: 2 });
+    expect(SURFACE_NAMES).toContain("tex:t1");
+    expect(SURFACE_NAMES[0]).not.toBe("tex:t1");
+    expect(textureNames()).toEqual(["tex:t1"]);
+    expect(isSurface("tex:t1")).toBe(true);
+    expect(isSurface("tex:nope")).toBe(false);
+    setLevelTextures([]);
+    expect(SURFACES["tex:t1"]).toBeUndefined();
+    expect(isSurface("tex:t1")).toBe(false);
+  });
+
+  it("keeps the built-ins in the name list", async () => {
+    const { setLevelTextures, SURFACE_NAMES } = await import("../../src/render/surfaces");
+    setLevelTextures([texture({ id: "t1" })]);
+    expect(SURFACE_NAMES).toContain("brick");
+    setLevelTextures([]);
+  });
+});
