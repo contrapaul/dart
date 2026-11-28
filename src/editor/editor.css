@@ -873,3 +873,91 @@ button.on {
 #topbar .menu-items button {
   text-align: left;
 }
+
+/* R3-10: the Maps screen. */
+#dialogs .map-search {
+  box-sizing: border-box;
+  width: 100%;
+  background: #140c28;
+  color: #fff6e8;
+  border: 1px solid #4a3f6e;
+  border-radius: 4px;
+  padding: 0.35em 0.6em;
+  font: inherit;
+  margin: 0.3rem 0;
+}
+
+#dialogs .maps-state {
+  min-height: 1.2em;
+  font-size: 12px;
+}
+
+#dialogs .map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+
+#dialogs .map-grid .hint {
+  grid-column: 1 / -1;
+}
+
+#dialogs .map-card {
+  display: grid;
+  gap: 0.25rem;
+  background: #140c28;
+  border: 1px solid #4a3f6e;
+  border-radius: 6px;
+  padding: 0.4rem;
+}
+
+#dialogs .map-card.map-new {
+  place-items: center;
+  color: #fff6e8;
+  font-size: 1rem;
+  cursor: pointer;
+  min-height: 3.4rem;
+}
+
+#dialogs .map-pic[hidden] {
+  display: none;
+}
+
+#dialogs .map-pic {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #120c22;
+}
+
+#dialogs .map-name {
+  margin: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#dialogs .map-meta {
+  margin: 0;
+  font-size: 11px;
+  color: #b9a8d6;
+}
+
+#dialogs .map-current {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8dffb0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+#dialogs .map-card .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0;
+}

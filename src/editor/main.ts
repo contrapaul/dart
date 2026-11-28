@@ -26,7 +26,8 @@ import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./aren
 import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
-import { deleteLevel, listLevels, putLevel } from "./store";
+import { deleteLevel, listLevels, pictureDue, putLevel } from "./store";
+import { buildMapsScreen } from "./maps-screen";
 import { acceptClose, playUrl } from "./play";
 import { capProblem, clipText, groupMembers, idsInRect, makeClip, pasteClip, pasteMove, readClip, type Clip } from "./clipboard";
 import { ASSET_LIMITS, asOneGroup, type Asset } from "./assets";
@@ -2296,10 +2297,16 @@ function scheduleSave() {
   saveTimer = window.setTimeout(() => void saveNow(), 500);
 }
 
+let lastPictureAt: number | null = null;
+
 async function saveNow(): Promise<string | null> {
   window.clearTimeout(saveTimer);
   try {
-    savedKey = await putLevel(doc.level, savedKey ?? undefined);
+    // A level's thumbnail is retaken at most once per 10 s, so typing is
+    // not a redraw per keystroke.
+    const picture = pictureDue(lastPictureAt, Date.now()) ? view.levelPicture() || undefined : undefined;
+    if (picture) lastPictureAt = Date.now();
+    savedKey = await putLevel(doc.level, savedKey ?? undefined, picture);
     status.textContent = "Saved";
     return savedKey;
   } catch (e) {
@@ -2517,73 +2524,75 @@ function nameOf(path: string): string {
 }
 
 $("openBtn").addEventListener("click", () => {
-  void dialog("Open a level", (body) => {
-    const list = document.createElement("div");
-    list.className = "list";
-    body.append(list);
-    const note = document.createElement("p");
-    note.className = "hint";
-    note.textContent = "Saved levels open as they are. A built in level opens as a copy: saving makes a new one.";
-    body.append(note);
+  openMapsScreen();
+});
 
-    const row = (name: string, open: () => void, remove?: () => void) => {
-      const el = document.createElement("div");
-      el.className = "row";
-      const openButton = document.createElement("button");
-      openButton.type = "button";
-      openButton.className = "name";
-      openButton.textContent = name;
-      openButton.addEventListener("click", open);
-      el.append(openButton);
-      if (remove) {
-        const del = document.createElement("button");
-        del.type = "button";
-        del.textContent = "Delete";
-        del.addEventListener("click", remove);
-        el.append(del);
-      }
-      list.append(el);
-    };
-
-    void listLevels().then((stored) => {
-      if (stored.length) {
-        const heading = document.createElement("h2");
-        heading.textContent = "Saved here";
-        list.append(heading);
-      }
-      for (const { key, level, saved } of stored) {
-        row(`${level.meta.name || "[Paul]"}  ${new Date(saved).toLocaleString()}`, () => {
-          load(structuredClone(level), key);
+function openMapsScreen() {
+  void dialog("Maps", (body) => {
+    buildMapsScreen(body, {
+      currentKey: () => savedKey,
+      currentState: () => status.textContent ?? "",
+      stored: listLevels,
+      builtIns: () => Object.keys(BUILT_IN).map((path) => ({ path })),
+      openStored: (key) => {
+        void listLevels().then((stored) => {
+          const found = stored.find((s) => s.key === key);
+          if (!found) return;
+          load(structuredClone(found.level), key);
           $("dialogs").hidden = true;
-        }, () => {
-          void deleteLevel(key).then(() => {
-            if (savedKey === key) savedKey = null;
+        });
+      },
+      duplicateStored: (key) => {
+        void listLevels().then((stored) => {
+          const found = stored.find((s) => s.key === key);
+          if (!found) return;
+          void putLevel(structuredClone(found.level), undefined).then((newKey) => {
+            load(structuredClone(found.level), newKey);
             $("dialogs").hidden = true;
-            $("openBtn").click();
+            status.textContent = `Duplicated ${found.level.meta.name || "[Paul]"}.`;
           });
         });
-      }
-      const heading = document.createElement("h2");
-      heading.textContent = "Built in, as a copy";
-      list.append(heading);
-      for (const [path, module] of Object.entries(BUILT_IN)) {
-        row(nameOf(path), () => {
-          // ED-09 stage 3: a built in level opens as a copy with its arenas
-          // turned into triggers, so its fights can be edited. The
-          // conversion's warnings go to the Problems list once.
-          const copy = builtInCopy(module.default as Level);
-          load(copy.level, null);
-          extraProblems = copy.warnings.map((text): Problem => ({ text, severity: "warning", id: null }));
-          updateTopBar();
-          $("dialogs").hidden = true;
-          status.textContent = copy.warnings.length
-            ? `Opened ${nameOf(path)} as a copy: ${copy.warnings.length} warning${copy.warnings.length === 1 ? "" : "s"} in Problems.`
-            : `Opened ${nameOf(path)} as a copy.`;
+      },
+      exportStored: (level) => {
+        const text = JSON.stringify(level, null, 2);
+        const blob = new Blob([text], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = exportFileName(level);
+        link.click();
+        URL.revokeObjectURL(url);
+      },
+      deleteStored: (key) => {
+        void deleteLevel(key).then(() => {
+          if (savedKey === key) savedKey = null;
+          openMapsScreen();
         });
-      }
+      },
+      openBuiltIn: (path) => {
+        // ED-09 stage 3: a built in level opens as a copy with its arenas
+        // turned into triggers, so its fights can be edited.
+        const module = BUILT_IN[path];
+        if (!module) return;
+        const copy = builtInCopy(module.default as Level);
+        load(copy.level, null);
+        extraProblems = copy.warnings.map((text): Problem => ({ text, severity: "warning", id: null }));
+        updateTopBar();
+        $("dialogs").hidden = true;
+        status.textContent = copy.warnings.length
+          ? `Opened ${nameOf(path)} as a copy: ${copy.warnings.length} warning${copy.warnings.length === 1 ? "" : "s"} in Problems.`
+          : `Opened ${nameOf(path)} as a copy.`;
+      },
+      newMap: () => {
+        load(newLevel(), null);
+        extraProblems = [];
+        updateTopBar();
+        $("dialogs").hidden = true;
+        status.textContent = "New map.";
+      },
     });
   });
-});
+}
 
 $("exportBtn").addEventListener("click", () => {
   const text = JSON.stringify(doc.level, null, 2);

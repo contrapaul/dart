@@ -975,6 +975,15 @@ export class EditorView {
    *  URL, or "" when none of them is drawn. It is drawn on the view's own
    *  canvas and the real view is drawn again at once, so nothing shows. */
   picture(ids: string[], pixels: number): string {
+    return this.renderPicture(ids, pixels, pixels);
+  }
+
+  /** A 192x108 JPEG data: URL of the whole level, as saved with each save. */
+  levelPicture(): string {
+    return this.renderPicture([...this.meshes.keys(), ...this.markerData.keys()], 192, 108);
+  }
+
+  private renderPicture(ids: string[], outWidth: number, outHeight: number): string {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1b1430);
     scene.add(new THREE.HemisphereLight(0xfff0e0, 0x3a2a60, 1.2));
@@ -1003,12 +1012,19 @@ export class EditorView {
     camera.lookAt(ball.center);
     this.renderer.render(scene, camera);
     const out = document.createElement("canvas");
-    out.width = pixels;
-    out.height = pixels;
-    const side = Math.min(canvas.width, canvas.height);
-    out.getContext("2d")?.drawImage(
-      canvas, (canvas.width - side) / 2, (canvas.height - side) / 2, side, side, 0, 0, pixels, pixels,
-    );
+    out.width = outWidth;
+    out.height = outHeight;
+    const ctx = out.getContext("2d");
+    if (outWidth === outHeight) {
+      // Square: keep the centre square of the view, as the assets did.
+      const side = Math.min(canvas.width, canvas.height);
+      ctx?.drawImage(
+        canvas, (canvas.width - side) / 2, (canvas.height - side) / 2, side, side, 0, 0, outWidth, outHeight,
+      );
+    } else {
+      // Landscape: the whole view scaled down.
+      ctx?.drawImage(canvas, 0, 0, outWidth, outHeight);
+    }
     this.renderer.render(this.scene, this.camera);
     return out.toDataURL("image/jpeg", 0.8);
   }
