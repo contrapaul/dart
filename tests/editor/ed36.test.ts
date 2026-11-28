@@ -12,8 +12,10 @@ const NAMES = ["plain", "brick", "tiles", "planks", "metal", "concrete", "grass"
 
 describe("data/surfaces.json", () => {
   it("keeps the card's names, in the card's order", () => {
-    expect(Object.keys(surfaceData.surfaces)).toEqual(NAMES);
-    expect(SURFACE_NAMES).toEqual(NAMES);
+    // R3-05 added generated surfaces after these; the card's ten stay
+    // first, in order.
+    expect(Object.keys(surfaceData.surfaces).slice(0, NAMES.length)).toEqual(NAMES);
+    expect(SURFACE_NAMES.slice(0, NAMES.length)).toEqual(NAMES);
     for (const [name, spec] of Object.entries(surfaceData.surfaces)) {
       expect(spec.label).toBeTruthy();
       expect(spec.scale).toBeGreaterThan(0);
