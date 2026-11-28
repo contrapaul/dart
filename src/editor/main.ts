@@ -1317,6 +1317,8 @@ function paintBucket(hit: { id: string | null; point: THREE.Vector3 } | null, e:
 /** R3-03: after a bucket fill, leave the tool armed only when Shift is held,
  *  like the brush drag. */
 function finishBucket(e: PointerEvent) {
+  // The click that follows this press must not select what was filled.
+  pressUsed = true;
   if (!e.shiftKey) {
     armedPaint = false;
     const hint = $("toolHint");
