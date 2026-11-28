@@ -26,7 +26,7 @@ import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./aren
 import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
-import { deleteLevel, listLevels, putLevel } from "./store";
+import { deleteLevel, listLevels, pictureDue, putLevel } from "./store";
 import { acceptClose, playUrl } from "./play";
 import { capProblem, clipText, groupMembers, idsInRect, makeClip, pasteClip, pasteMove, readClip, type Clip } from "./clipboard";
 import { ASSET_LIMITS, asOneGroup, type Asset } from "./assets";
@@ -2295,10 +2295,16 @@ function scheduleSave() {
   saveTimer = window.setTimeout(() => void saveNow(), 500);
 }
 
+let lastPictureAt: number | null = null;
+
 async function saveNow(): Promise<string | null> {
   window.clearTimeout(saveTimer);
   try {
-    savedKey = await putLevel(doc.level, savedKey ?? undefined);
+    // A level's thumbnail is retaken at most once per 10 s, so typing is
+    // not a redraw per keystroke.
+    const picture = pictureDue(lastPictureAt, Date.now()) ? view.levelPicture() || undefined : undefined;
+    if (picture) lastPictureAt = Date.now();
+    savedKey = await putLevel(doc.level, savedKey ?? undefined, picture);
     status.textContent = "Saved";
     return savedKey;
   } catch (e) {
