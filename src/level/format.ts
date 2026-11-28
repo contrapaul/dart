@@ -317,6 +317,10 @@ export interface Prim {
  *  player (`wake` "sight", the default) or a trigger wakes it. */
 export interface PlacedFoamer {
   id: string;
+  /** R3: this Foamer's own tuning over its type's (src/core/tuning.ts
+   *  FoamerTune: `spec` for data/foamers.json keys, `rig` for speed, health
+   *  and voxelSize). Travels with the level file. */
+  tuning?: { spec?: Record<string, unknown>; rig?: Record<string, unknown> };
   /** ED-13: an editor group. Things that share one are selected and moved
    *  together in the editor. The game ignores it. */
   group?: string;

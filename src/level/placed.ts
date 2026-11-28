@@ -21,6 +21,7 @@ export interface FoamerSpawner {
   spawnState: "idle" | "alert";
   spawn(
     feet: THREE.Vector3, facing?: THREE.Vector3, type?: string, promoted?: boolean,
+    teleport?: boolean, own?: PlacedFoamer["tuning"],
   ): object | null;
 }
 
@@ -97,7 +98,7 @@ export class PlacedFoamers {
     const was = this.foamers.spawnState;
     this.foamers.spawnState = state;
     this.feet.set(f.pos[0], f.pos[1], f.pos[2]);
-    const made = this.foamers.spawn(this.feet, facingOf(f.pos, f.yaw), f.foamer, f.promoted);
+    const made = this.foamers.spawn(this.feet, facingOf(f.pos, f.yaw), f.foamer, f.promoted, false, f.tuning);
     this.foamers.spawnState = was;
     // At the cap the id stays waiting, so a later trigger can still wake it.
     if (!made) {

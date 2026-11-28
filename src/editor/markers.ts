@@ -229,7 +229,7 @@ function lightMarker(l: LevelLight): THREE.Group {
   group.add(bulb);
   if (l.kind === "spot") {
     const range = Math.max(1, l.range);
-    const radius = Math.tan(Math.min(89, l.angle ?? 45) / 2 * (Math.PI / 180)) * range;
+    const radius = Math.tan(Math.min(89, (l.angle ?? 45) / 2) * (Math.PI / 180)) * range;
     // The cone's tip sits at the light and its open end at the range,
     // pointing down -Y like the real light.
     const cone = new THREE.Mesh(

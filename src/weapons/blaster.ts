@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { deepMerge, tuning } from "../core/tuning";
 import type { DartTypeName, DartShot, ShotChunk, ImpactRange } from "./darts";
 import blastersJson from "../../data/blasters.json";
 
@@ -224,7 +225,8 @@ interface RawBlaster {
  *  list, its recoil and motion blocks merge key by key, and its show and
  *  hide node lists accumulate. */
 export function resolveSpec(blasterId: string, activeMods: string[] = []): BlasterSpec {
-  const raw = (blastersJson as unknown as Record<string, RawBlaster>)[blasterId];
+  // R3: the tuning in force (data/tuning.json and this browser's override).
+  const raw = deepMerge((blastersJson as unknown as Record<string, RawBlaster>)[blasterId]!, tuning().blasters[blasterId]);
   const s: BlasterSpec = {
     name: raw.name,
     model: raw.model,

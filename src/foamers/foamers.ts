@@ -15,6 +15,7 @@ import { Foamer, type FoamerSpec, type GameRig } from "./foamer";
 import type { FoamerPart } from "./foamer-part";
 import { armourOf, plateFaces } from "./armour";
 import { SpawnFx } from "./spawn-fx";
+import { deepMerge, onTuningChange, tuning, type FoamerTune } from "../core/tuning";
 import { SPAWN_IN, spawnInPose } from "./spawn-in";
 import { SPURT, spurtsFoam } from "./spurt";
 import { coneDirection } from "../voxel/spray";
@@ -84,20 +85,51 @@ export function specFor(type: string): FoamerSpec {
   const cached = SPECS.get(type);
   if (cached) return cached;
   const o = OVERRIDES[type] ?? {};
-  const spec: FoamerSpec = {
+  const base: FoamerSpec = {
     ...BASE,
     ...o,
     attacks: (o.attacks as FoamerSpec["attacks"]) ?? BASE.attacks,
     rig: o.rig ?? BASE.rig,
   };
+  // R3: the tuning in force (data/tuning.json and this browser's override).
+  const spec = deepMerge(base, tuning().foamers[type]?.spec);
   SPECS.set(type, spec);
+  TYPE_OF.set(spec, type);
   return spec;
 }
 const SPECS = new Map<string, FoamerSpec>();
 
-/** The rig a type draws its shape, speed and health from. */
+/** The rig a type draws its shape, speed and health from, with its tuning.
+ *  The tuning is keyed by the type, so it is looked up by the spec's own
+ *  type (TYPE_OF), falling back to the rig id. */
 function rigFor(spec: FoamerSpec): GameRig {
-  return RIGS.find((r) => r.id === spec.rig) ?? RIGS[0]!;
+  const cached = TUNED_RIGS.get(spec);
+  if (cached) return cached;
+  const rig = RIGS.find((r) => r.id === spec.rig) ?? RIGS[0]!;
+  const type = TYPE_OF.get(spec) ?? spec.rig;
+  const tuned = deepMerge(rig, tuning().foamers[type]?.rig);
+  TUNED_RIGS.set(spec, tuned);
+  return tuned;
+}
+const TUNED_RIGS = new Map<FoamerSpec, GameRig>();
+const TYPE_OF = new Map<FoamerSpec, string>();
+
+// R3: a tuning change (here or in another tab) rebuilds every spec and rig
+// the next time one is asked for, so the next spawn uses the new numbers.
+onTuningChange(() => {
+  SPECS.clear();
+  TUNED_RIGS.clear();
+  TYPE_OF.clear();
+  PROMOTED_RIGS.clear();
+});
+
+/** R3: one placed Foamer's own tuning (PlacedFoamer.tuning) over its type's:
+ *  a fresh spec and rig, not cached, so no other Foamer changes. */
+export function tunedOne(type: string, own: FoamerTune | undefined, promoted: boolean): { spec: FoamerSpec; rig: GameRig } {
+  const spec = specFor(type);
+  const rig = rigForSpawn(spec, promoted);
+  if (!own) return { spec, rig };
+  return { spec: deepMerge(spec, own.spec), rig: deepMerge(rig, own.rig) };
 }
 
 /** LVL-04b: the mini-boss promotion, from the `promoted` block in
@@ -507,10 +539,14 @@ export class FoamerSystem {
   /** Spawn at a feet position. Returns null at the `max` cap. With
    *  `facing` (a world point), it starts turned toward that point.
    *  `promoted` (LVL-04b) gives it the mini-boss health and plates. */
-  spawn(feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01", promoted = false, teleport = false): Foamer | null {
+  spawn(
+    feet: THREE.Vector3, facing?: THREE.Vector3, type = "F01", promoted = false, teleport = false,
+    /** R3: one placed Foamer's own tuning, over its type's. */
+    own?: FoamerTune,
+  ): Foamer | null {
     if (this.list.length >= this.spawnCap) return null;
-    const spec = specFor(type);
-    const f = new Foamer(this.rapier, this.world, this.mesher, spec, rigForSpawn(spec, promoted), feet);
+    const { spec, rig } = tunedOne(type, own, promoted);
+    const f = new Foamer(this.rapier, this.world, this.mesher, spec, rig, feet);
     if (facing) f.yaw = Math.atan2(facing.x - feet.x, facing.z - feet.z);
     f.setSystem(this);
     // ENG-08 stage 3b: the brain. Its token pool comes from what its attacks

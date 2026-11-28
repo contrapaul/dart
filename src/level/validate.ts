@@ -658,6 +658,9 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
     if (!rigIds.has(f.foamer)) errors.push(`${what}: unknown foamer ${f.foamer}`);
     if (!isVec3(f.pos)) errors.push(`${what}: pos must be three numbers`);
     if (!Number.isFinite(f.yaw)) errors.push(`${what}: yaw must be a number`);
+    if (f.tuning !== undefined && (typeof f.tuning !== "object" || f.tuning === null || Array.isArray(f.tuning))) {
+      errors.push(`${what}: tuning must be an object`);
+    }
     if (f.wake !== undefined && !WAKES.has(f.wake)) errors.push(`${what}: wake must be sight or trigger`);
   }
 
