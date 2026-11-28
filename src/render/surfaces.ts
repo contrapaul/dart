@@ -91,6 +91,14 @@ function newImage(w: number, h: number): CanvasImage {
   return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
 }
 
+/** The shortest distance along one axis on a texture that wraps, so a blob
+ *  near an edge continues on the far side and the tile has no seam (R3-05's
+ *  review of the drawn surfaces). */
+function wrapD(a: number, b: number, size: number): number {
+  const d = Math.abs(a - b);
+  return Math.min(d, size - d);
+}
+
 function setPx(img: CanvasImage, x: number, y: number, v: number) {
   const i = (y * img.width + x) * 4;
   img.data[i] = v;
@@ -162,7 +170,10 @@ function paintPlanks(img: CanvasImage, rng: () => number) {
     const v = 165 + Math.round(rng() * 60);
     for (let y = row * ph + 2; y < (row + 1) * ph - 2; y++) {
       for (let x = 0; x < img.width; x++) {
-        const grain = Math.round(Math.sin((x + row * 37) / 9) * 12 + (rng() - 0.5) * 22);
+        // A whole number of waves across the width, so the grain meets
+        // itself at the tile's edge.
+        const waves = Math.max(2, Math.round(img.width / 56));
+        const grain = Math.round(Math.sin((x / img.width) * 2 * Math.PI * waves + row * 1.7) * 12 + (rng() - 0.5) * 22);
         setPx(img, x, y, Math.max(0, Math.min(255, v + grain)));
       }
     }
@@ -219,7 +230,8 @@ function paintConcrete(img: CanvasImage, rng: () => number) {
   for (let i = 0; i < 14; i++) {
     const cx = Math.floor(rng() * img.width), cy = Math.floor(rng() * img.height), r = 6 + Math.floor(rng() * 22);
     for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
-      const d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+      const dx = wrapD(x, cx, img.width), dy = wrapD(y, cy, img.height);
+      const d2 = dx * dx + dy * dy;
       if (d2 <= r * r) {
         const i2 = (y * img.width + x) * 4;
         img.data[i2] = img.data[i2 + 1] = img.data[i2 + 2] = Math.round(img.data[i2]! * 0.82);
@@ -236,8 +248,10 @@ function paintGrass(img: CanvasImage, rng: () => number) {
     const lean = rng() > 0.5 ? 1 : -1;
     const v = 130 + Math.floor(rng() * 110);
     for (let j = 0; j < len; j++) {
-      const yy = y - j, xx = x + Math.round((lean * j) / 2);
-      if (xx >= 0 && xx < img.width && yy >= 0 && yy < img.height) setPx(img, xx, yy, v);
+      // Wrapped, so a blade at an edge carries on at the far side.
+      const yy = (y - j + img.height) % img.height;
+      const xx = (x + Math.round((lean * j) / 2) + img.width) % img.width;
+      setPx(img, xx, yy, v);
     }
   }
   noise(rng, img, 16);
@@ -252,9 +266,11 @@ function paintSand(img: CanvasImage, rng: () => number) {
   }
   for (let i = 0; i < 6; i++) {
     const cy = Math.floor(rng() * img.height), amp = 4 + rng() * 6, period = 40 + rng() * 60;
+    // A whole number of waves across the width, wrapped top to bottom.
+    const waves = Math.max(1, Math.round(img.width / period));
     for (let x = 0; x < img.width; x++) {
-      const y = Math.round(cy + Math.sin(x / period) * amp);
-      if (y >= 0 && y < img.height) setPx(img, x, y, 190);
+      const y = Math.round(cy + Math.sin((x / img.width) * 2 * Math.PI * waves) * amp);
+      setPx(img, x, (y + img.height) % img.height, 190);
     }
   }
 }
@@ -265,8 +281,8 @@ function paintRock(img: CanvasImage, rng: () => number) {
     const cx = Math.floor(rng() * img.width), cy = Math.floor(rng() * img.height), r = 8 + Math.floor(rng() * 26);
     const v = 120 + Math.floor(rng() * 70);
     for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
-      const d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-      if (d2 <= r * r) setPx(img, x, y, v);
+      const dx = wrapD(x, cx, img.width), dy = wrapD(y, cy, img.height);
+      if (dx * dx + dy * dy <= r * r) setPx(img, x, y, v);
     }
   }
   noise(rng, img, 14);

@@ -10,6 +10,14 @@
     "grass": { "label": "Grass", "scale": 2 },
     "sand": { "label": "Sand", "scale": 2 },
     "rock": { "label": "Rock", "scale": 3 },
-    "stripes": { "label": "Hazard stripes", "scale": 1 }
+    "stripes": { "label": "Hazard stripes", "scale": 1 },
+    "cobbles": { "label": "Cobbles", "scale": 2 },
+    "dirt": { "label": "Dirt", "scale": 2 },
+    "wood-floor": { "label": "Wood floor", "scale": 2 },
+    "foam-tiles": { "label": "Foam tiles", "scale": 1 },
+    "grate": { "label": "Grate", "scale": 2 },
+    "carpet": { "label": "Carpet", "scale": 2 },
+    "gravel": { "label": "Gravel", "scale": 2 },
+    "padding": { "label": "Soft padding", "scale": 2 }
   }
 }
