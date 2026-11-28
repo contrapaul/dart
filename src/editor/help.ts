@@ -20,6 +20,7 @@ export const HELP: HelpSection[] = [
       ["Right mouse drag", "Look round."],
       ["Alt + left drag", "Orbit round the point under the cursor."],
       ["F", "Frame what is selected."],
+      ["Home, Reset camera", "Back to the opening view, behind the player start."],
       ["Click, Shift+click", "Select, add to the selection."],
       ["Drag on empty space", "Draw a box and select what is in it. Shift adds."],
       ["Ctrl+C, Ctrl+X, Ctrl+V", "Copy, cut and paste what is selected. Paste lands under the cursor, in this level or another."],

@@ -1764,6 +1764,7 @@ window.addEventListener("keydown", (e) => {
   const codes = ["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight"];
   if (codes.includes(e.code)) view.nav.keyDown(e.code);
   if (e.code === "KeyF") view.frame([...selected]);
+  if (e.code === "Home") resetCamera();
   // [ and ] turn the selection about the vertical by one rotate step.
   if ((e.code === "BracketLeft" || e.code === "BracketRight") && !view.isLooking) {
     const deg = e.code === "BracketLeft" ? -ROTATE_STEP : ROTATE_STEP;
@@ -2333,6 +2334,14 @@ function load(level: Level, key: string | null) {
 }
 
 $("newBtn").addEventListener("click", () => load(newLevel(), null));
+
+// Paul, 2026-11-28: back to the opening view, behind the player start, from
+// wherever the camera has flown to. Home does the same.
+function resetCamera() {
+  view.openOn(doc.level.playerStart);
+  status.textContent = "Camera reset to the opening view.";
+}
+$("resetCameraBtn").addEventListener("click", resetCamera);
 
 $("levelName").addEventListener("change", () => {
   const name = $<HTMLInputElement>("levelName").value.trim() || "[Paul]";
