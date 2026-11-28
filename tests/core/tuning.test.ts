@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  deepMerge, exportTuning, localTuning, resetTuning, setLocalTuningForTest, tuneBlaster, tuneFoamer, tuning,
+  deepMerge, exportTuning, localTuning, removeLeaves, resetTuning, setLocalTuningForTest, tuneBlaster, tuneFoamer, tuning,
+  untuneBlaster, untuneFoamer,
 } from "../../src/core/tuning";
 import { specFor, tunedOne } from "../../src/foamers/foamers";
 import { resolveSpec } from "../../src/weapons/blaster";
@@ -58,5 +59,37 @@ describe("R3 tuning", () => {
     expect(file.foamers.F02.rig.health).toBe(12);
     expect(tuning().foamers.F02?.rig?.health).toBe(12);
     void foamerData;
+  });
+});
+
+describe("R3 tuning after the GPU1 review", () => {
+  it("a list of things with ids merges item by item by id", () => {
+    const base = { attacks: [{ id: "bonk", damage: 12, windup: 0.6 }, { id: "headbutt", damage: 8, windup: 0.9 }] };
+    expect(deepMerge(base, { attacks: [{ id: "bonk", damage: 20 }] })).toEqual({
+      attacks: [{ id: "bonk", damage: 20, windup: 0.6 }, { id: "headbutt", damage: 8, windup: 0.9 }],
+    });
+  });
+
+  it("an attack tuned for the type still reaches a placed Foamer with its own tuning", () => {
+    tuneFoamer("F01", { spec: { attacks: [{ id: "bonk", damage: 20 }] } });
+    const own = tunedOne("F01", { spec: { attacks: [{ id: "bonk", windup: 0.9 }] } }, false);
+    const bonk = own.spec.attacks.find((a) => a.id === "bonk")!;
+    expect(bonk.damage).toBe(20);
+    expect(bonk.windup).toBe(0.9);
+    resetTuning({ foamer: "F01" });
+    const after = tunedOne("F01", { spec: { attacks: [{ id: "bonk", windup: 0.9 }] } }, false);
+    expect(after.spec.attacks.find((a) => a.id === "bonk")!.damage).not.toBe(20);
+  });
+
+  it("a per-field reset forgets the change, leaving no empty entry", () => {
+    tuneFoamer("F02", { rig: { health: 12, speed: 3 } });
+    untuneFoamer("F02", { rig: { health: 0 } });
+    expect(localTuning().foamers.F02).toEqual({ rig: { speed: 3 } });
+    untuneFoamer("F02", { rig: { speed: 0 } });
+    expect(localTuning().foamers.F02).toBeUndefined();
+    tuneBlaster("B01", { recoil: { spreadPerShot: 1 } });
+    untuneBlaster("B01", { recoil: { spreadPerShot: 0 } });
+    expect(localTuning().blasters).toEqual({});
+    expect(removeLeaves({ attacks: [{ id: "bonk", damage: 20 }] }, { attacks: [{ id: "bonk", damage: 0 }] })).toBeUndefined();
   });
 });

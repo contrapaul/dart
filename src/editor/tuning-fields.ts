@@ -76,8 +76,10 @@ function attacks(spec: FoamerSpec): FoamerSpec["attacks"] {
 /** Every field the panel can show for `type`, or `type` plus a placed
  *  Foamer's own tuning. `own` is PlacedFoamer.tuning (undefined for the
  *  whole type). */
-export function fieldsFor(type: string, own?: FoamerTune): FieldValue[] {
-  const { spec, rig } = tunedOne(type, own, false);
+export function fieldsFor(type: string, own?: FoamerTune, promoted = false): FieldValue[] {
+  // Promoted as in play (src/level/placed.ts), so the numbers shown are
+  // the numbers it spawns with (the GPU1 reviewer).
+  const { spec, rig } = tunedOne(type, own, promoted);
   const bSpec = baseSpec(type);
   const bRig = baseRig(type);
   const fields: TuningField[] = [
@@ -88,8 +90,11 @@ export function fieldsFor(type: string, own?: FoamerTune): FieldValue[] {
     numberField("spec.attackRange", "Movement", "attack range (m)", "How close the player must be before the Foamer swings.", 0.1, 0.2, 6,
       (s) => s.attackRange, (_s, _r, v) => ({ spec: { attackRange: v } })),
   ];
-  // Preferred distance: only types that declare one keep a field for it.
-  if (spec.preferredDistanceMetres !== undefined) {
+  // Preferred distance: only types that set one of their own (the ranged
+  // and support brains read it); the base file gives every type one that
+  // the bonkers never read (the GPU1 reviewer).
+  const ownTypeData = (foamerData.types as Record<string, Record<string, unknown>>)[type] ?? {};
+  if (ownTypeData.preferredDistanceMetres !== undefined) {
     fields.push(numberField("spec.preferredDistanceMetres", "Movement", "preferred distance (m)", "How far away the Foamer prefers to keep the player.", 0.5, 0, 30,
       (s) => s.preferredDistanceMetres, (_s, _r, v) => ({ spec: { preferredDistanceMetres: v } })));
   }
@@ -104,21 +109,21 @@ export function fieldsFor(type: string, own?: FoamerTune): FieldValue[] {
   for (const atk of attacks(spec)) {
     fields.push(numberField(`attack.${atk.id}.damage`, "Damage dealt", `${atk.id} damage (hp)`, "How many hit points this attack takes off the player.", 1, 0, 100,
       (s) => s.attacks.find((a) => a.id === atk.id)?.damage ?? 0,
-      (s, _r, v) => ({
-        spec: { attacks: s.attacks.map((a) => (a.id === atk.id ? { ...a, damage: v } : a)) },
+      (_s, _r, v) => ({
+        spec: { attacks: [{ id: atk.id, damage: v }] },
       })));
   }
   // Attack speed, per attack: windup and strike.
   for (const atk of attacks(spec)) {
     fields.push(numberField(`attack.${atk.id}.windup`, "Attack speed", `${atk.id} wind-up before a hit (s)`, "Seconds to wind up before this attack lands.", 0.05, 0, 3,
       (s) => s.attacks.find((a) => a.id === atk.id)?.windup ?? 0,
-      (s, _r, v) => ({
-        spec: { attacks: s.attacks.map((a) => (a.id === atk.id ? { ...a, windup: v } : a)) },
+      (_s, _r, v) => ({
+        spec: { attacks: [{ id: atk.id, windup: v }] },
       })));
     fields.push(numberField(`attack.${atk.id}.strike`, "Attack speed", `${atk.id} strike time (s)`, "How long this attack takes to strike.", 0.05, 0, 2,
       (s) => s.attacks.find((a) => a.id === atk.id)?.strike ?? 0,
-      (s, _r, v) => ({
-        spec: { attacks: s.attacks.map((a) => (a.id === atk.id ? { ...a, strike: v } : a)) },
+      (_s, _r, v) => ({
+        spec: { attacks: [{ id: atk.id, strike: v }] },
       })));
   }
   // Damage taken: part damage multipliers, wear break, min hp, weakpoint,

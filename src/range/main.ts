@@ -359,6 +359,8 @@ function renderModRow() {
       loadout.setMod(i, mod, !on);
       applyInfiniteAmmoHooks();
       renderModRow();
+      // A mod can set a field the Tune panel shows (the GPU1 reviewer).
+      tunePanel.render();
     });
     modRow.appendChild(b);
   }

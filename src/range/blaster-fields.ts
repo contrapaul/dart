@@ -65,9 +65,18 @@ function committedBase(id: string): RawBlaster {
 }
 
 /** The value in force for a field: the resolved spec (committed plus this
- *  browser's override), with no mods applied (the mod layer stacks on top). */
-export function valueInForce(id: string, field: BlasterField): number {
-  return readPath(resolveSpec(id), field.path);
+ *  browser's override) with the held blaster's mods, which is what it fires
+ *  with (the GPU1 reviewer: without the mods the panel and the blaster
+ *  disagreed). */
+export function valueInForce(id: string, field: BlasterField, mods: string[] = []): number {
+  return readPath(resolveSpec(id, mods), field.path);
+}
+
+/** True when one of `mods` sets this field, so tuning it does nothing
+ *  until the mod is off: the mod's value wins in resolveSpec. */
+export function setByMod(id: string, field: BlasterField, mods: string[]): boolean {
+  if (!mods.length) return false;
+  return readPath(resolveSpec(id, mods), field.path) !== readPath(resolveSpec(id), field.path);
 }
 
 /** The value the committed file gives the field: what a reset restores. */

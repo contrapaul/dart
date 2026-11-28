@@ -3,7 +3,7 @@
 // (the type, shared by every workspace, via tuneFoamer). Changed fields are
 // marked, with a small reset beside them.
 
-import { deepMerge, exportTuning, resetTuning, tuneFoamer } from "../core/tuning";
+import { deepMerge, exportTuning, removeLeaves, resetTuning, tuneFoamer, untuneFoamer } from "../core/tuning";
 import type { FoamerTune } from "../core/tuning";
 import { tunedOne } from "../foamers/foamers";
 import type { PlacedFoamer } from "../level/format";
@@ -42,8 +42,8 @@ export function buildTuningPanel(host: HTMLElement, f: PlacedFoamer, ctx: Tuning
   section.append(toggle);
 
   const own = mode === "own" ? f.tuning : undefined;
-  const { spec, rig } = tunedOne(type, own, false);
-  const fields = fieldsFor(type, own);
+  const { spec, rig } = tunedOne(type, own, f.promoted === true);
+  const fields = fieldsFor(type, own, f.promoted === true);
   for (const group of ["Movement", "Health", "Size", "Damage dealt", "Attack speed", "Damage taken"] as const) {
     const rows = fields.filter((v) => v.field.group === group);
     if (!rows.length) continue;
@@ -109,8 +109,13 @@ function buildRow(row: FieldValue, f: PlacedFoamer, spec: ReturnType<typeof tune
     reset.textContent = "reset";
     reset.title = "Back to the committed value";
     reset.addEventListener("click", () => {
-      const committed = committedValue(field, f.foamer);
-      commit(field.patch(spec, rig, committed), f, ctx, `reset ${field.id}`);
+      // Forget the change (the GPU1 reviewer: writing the committed value
+      // back left a no-op entry, kept the "changed" note on and went into
+      // the export).
+      const which = field.patch(spec, rig, committedValue(field, f.foamer));
+      if (mode === "own") {
+        ctx.change({ tuning: removeLeaves(f.tuning, which) }, `reset ${field.id}`);
+      } else untuneFoamer(f.foamer, which);
       ctx.redraw();
     });
     label.append(reset);

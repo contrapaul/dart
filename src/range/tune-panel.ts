@@ -7,10 +7,10 @@
 
 import type { Loadout } from "../weapons/loadout";
 import {
-  exportTuning, onTuningChange, resetTuning, tuneBlaster,
+  exportTuning, onTuningChange, resetTuning, tuneBlaster, untuneBlaster,
 } from "../core/tuning";
 import {
-  FIELDS, committedValue, isChanged, patchFor, valueInForce, type BlasterField,
+  FIELDS, isChanged, patchFor, setByMod, valueInForce, type BlasterField,
 } from "./blaster-fields";
 
 const GROUPS = ["Fire", "Ammo", "Movement"] as const;
@@ -47,13 +47,15 @@ export class TunePanel {
    *  not be interrupted, so the rows are kept). */
   refresh(): void {
     const id = this.blasterId();
+    const mods = this.loadout.activeMods();
     for (const [key, row] of this.rows) {
       const field = FIELDS.find((f) => f.key === key)!;
       // An input being dragged keeps its own value: the readout follows
       // the drag, not the store echo.
-      if (document.activeElement !== row.input) row.input.value = String(valueInForce(id, field));
-      row.out.textContent = String(valueInForce(id, field));
+      if (document.activeElement !== row.input) row.input.value = String(valueInForce(id, field, mods));
+      row.out.textContent = String(valueInForce(id, field, mods));
       row.reset.hidden = !isChanged(id, field);
+      row.input.disabled = setByMod(id, field, mods);
     }
   }
 
@@ -66,25 +68,29 @@ export class TunePanel {
     row.className = "tuneRow";
     const name = document.createElement("span");
     name.className = "tuneName";
-    name.textContent = field.note ? `${field.label} (${field.note})` : field.label;
+    const mods = this.loadout.activeMods();
+    const byMod = setByMod(id, field, mods);
+    name.textContent = (field.note ? `${field.label} (${field.note})` : field.label) + (byMod ? " (set by a mod)" : "");
     const input = document.createElement("input");
     input.type = "range";
     input.min = String(field.min);
     input.max = String(field.max);
     input.step = String(field.step);
-    input.value = String(valueInForce(id, field));
+    input.value = String(valueInForce(id, field, mods));
+    input.disabled = byMod;
     input.addEventListener("input", () => {
       tuneBlaster(id, patchFor(field, Number(input.value)));
     });
     const out = document.createElement("span");
     out.className = "tuneVal";
-    out.textContent = String(valueInForce(id, field));
+    out.textContent = String(valueInForce(id, field, mods));
     const reset = document.createElement("button");
     reset.type = "button";
     reset.className = "tuneReset";
     reset.textContent = "Reset";
     reset.addEventListener("click", () => {
-      tuneBlaster(id, patchFor(field, committedValue(id, field)));
+      // Forget the change rather than write the committed value back.
+      untuneBlaster(id, patchFor(field, 0));
     });
     this.showOrHideReset(reset, isChanged(id, field));
     // The readout follows the input, not the store (the store rebuilds the

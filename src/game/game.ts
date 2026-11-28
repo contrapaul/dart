@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { onTuningChange } from "../core/tuning";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import { createRenderer, type SceneOptions } from "../render/scene";
 import { createFoamMaterial } from "../render/foam-material";
@@ -254,6 +255,12 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const loadout = await Loadout.load(camera, darts, (_id, i, n) =>
     boot.progress("Loading blasters", i, n), hooks.startBlasters);
   boot.step("Loadout ready");
+  // R3: a tuning change (the pause panel's Reset, or another tab such as
+  // the range) reaches the blasters in hand, as on the range (the GPU1
+  // reviewer: the arena kept the numbers it booted with).
+  onTuningChange(() => {
+    for (let i = 0; i < loadout.ids.length; i++) loadout.rebuild(i);
+  });
 
   // GAME-09e: the zoom. It holds the player's own field of view and look
   // sensitivity, and narrows both while the `zoom` action is held with a

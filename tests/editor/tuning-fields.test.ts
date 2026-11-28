@@ -31,7 +31,7 @@ describe("tuning fields", () => {
     expect(committedValue(health.field, "F01")).toBe(6);
   });
 
-  it("attacks come from the type, and damage patches rebuild the attack list", () => {
+  it("attacks come from the type, and a damage patch names only that attack, by id", () => {
     const attackFields = fieldsFor("F01").filter((f) => f.field.id.startsWith("attack."));
     expect(attackFields.map((f) => f.field.id)).toContain("attack.bonk.damage");
     const atk = attackFields.find((f) => f.field.id === "attack.bonk.damage")!;
@@ -40,10 +40,9 @@ describe("tuning fields", () => {
       { attacks: [{ id: "bonk", damage: 12, token: "melee", needs: [], windup: 0.6, strike: 0.2 }, { id: "headbutt", damage: 8, token: "melee", needs: [], windup: 0.9, strike: 0.2 }] } as never,
       {} as never, 20,
     );
-    expect(patch.spec!.attacks).toEqual([
-      { id: "bonk", damage: 20, token: "melee", needs: [], windup: 0.6, strike: 0.2 },
-      { id: "headbutt", damage: 8, token: "melee", needs: [], windup: 0.9, strike: 0.2 },
-    ]);
+    // The GPU1 review: a whole list froze a snapshot; the store now merges
+    // lists of things with ids by id.
+    expect(patch.spec!.attacks).toEqual([{ id: "bonk", damage: 20 }]);
   });
 
   it("size is a multiplier of the committed size, and writes the scaled voxelSize", () => {

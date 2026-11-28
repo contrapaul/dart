@@ -35,14 +35,57 @@ function empty(): TuningFile {
   return { version: 1, foamers: {}, blasters: {} };
 }
 
-/** Objects merge key by key, arrays and plain values replace. Returns a new
- *  object; neither input is changed. */
+/** Objects merge key by key, plain values replace. Arrays replace, except
+ *  a list of things with ids (a Foamer's attacks) patched by a list of
+ *  things with ids: those merge item by item by id, so a patch can say
+ *  `[{ id: "bonk", damage: 20 }]` and leave the other attacks, and the
+ *  rest of the bonk, to whatever is under it (the GPU1 reviewer: whole
+ *  lists froze a snapshot). Returns a new value; no input is changed. */
 export function deepMerge<T>(base: T, patch: unknown): T {
   if (patch === undefined) return base;
+  if (Array.isArray(base) && Array.isArray(patch) && isIdList(base) && isIdList(patch)) {
+    return base.map((item) => {
+      const p = (patch as { id: string }[]).find((q) => q.id === (item as { id: string }).id);
+      return p ? deepMerge(item, p) : item;
+    }) as T;
+  }
   if (!isRecord(base) || !isRecord(patch)) return patch as T;
   const out: Record<string, unknown> = { ...base };
   for (const [k, v] of Object.entries(patch)) out[k] = deepMerge(out[k], v);
   return out as T;
+}
+
+function isIdList(list: unknown[]): boolean {
+  return list.length > 0 && list.every((x) => isRecord(x) && typeof x.id === "string");
+}
+
+/** `obj` with every leaf `patch` names taken out (its values do not
+ *  matter), and anything left empty pruned: how a per-field reset forgets a
+ *  change instead of writing the committed value back. Undefined when
+ *  nothing is left. */
+export function removeLeaves(obj: unknown, patch: unknown): unknown {
+  if (obj === undefined) return undefined;
+  if (Array.isArray(obj) && Array.isArray(patch) && isIdList(obj) && isIdList(patch)) {
+    const kept = obj
+      .map((item) => {
+        const p = (patch as { id: string }[]).find((q) => q.id === (item as { id: string }).id);
+        if (!p) return item;
+        const { id: _id, ...rest } = p;
+        const left = removeLeaves(item, rest) as Record<string, unknown> | undefined;
+        return left && Object.keys(left).some((k) => k !== "id") ? left : undefined;
+      })
+      .filter((x) => x !== undefined);
+    return kept.length ? kept : undefined;
+  }
+  if (!isRecord(obj) || !isRecord(patch)) return undefined;
+  const out: Record<string, unknown> = { ...obj };
+  for (const [k, v] of Object.entries(patch)) {
+    if (!(k in out)) continue;
+    const left = isRecord(v) || Array.isArray(v) ? removeLeaves(out[k], v) : undefined;
+    if (left === undefined) delete out[k];
+    else out[k] = left;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -110,6 +153,25 @@ export function tuneFoamer(type: string, patch: FoamerTune) {
 /** Merges a patch into one blaster's override. */
 export function tuneBlaster(id: string, patch: Record<string, unknown>) {
   local = { ...local, blasters: { ...local.blasters, [id]: deepMerge(local.blasters[id] ?? {}, patch) } };
+  writeLocal(local);
+  changed();
+}
+
+/** Forgets the fields a patch names in one type's override (a per-field
+ *  reset), so the committed value shows through again. */
+export function untuneFoamer(type: string, patch: FoamerTune) {
+  const left = removeLeaves(local.foamers[type], patch) as FoamerTune | undefined;
+  const { [type]: _old, ...rest } = local.foamers;
+  local = { ...local, foamers: left ? { ...rest, [type]: left } : rest };
+  writeLocal(local);
+  changed();
+}
+
+/** The same for one blaster. */
+export function untuneBlaster(id: string, patch: Record<string, unknown>) {
+  const left = removeLeaves(local.blasters[id], patch) as Record<string, unknown> | undefined;
+  const { [id]: _old, ...rest } = local.blasters;
+  local = { ...local, blasters: left ? { ...rest, [id]: left } : rest };
   writeLocal(local);
   changed();
 }
