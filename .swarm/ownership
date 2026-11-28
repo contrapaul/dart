@@ -10,13 +10,15 @@ ed37: src/editor/group-transform.ts, tests/editor/ed37.test.ts, tasks/ED-37.md
 lead: src/level/terrain.ts, src/editor/terrain-editor.ts, design/EDITOR-V2.md, HANDOFF.md, PLAN.md
 spawn-core: src/foamers/spawn-in.ts, src/foamers/foamers.ts, src/foamers/foamer.ts, src/arena/extras.ts, tests/foamers/spawn-in.test.ts, tests/foamers/spawn-in-game.test.ts, tasks/SPAWN-01a.md
 spawn-fx: src/foamers/spawn-fx.ts, data/spawn.json, tests/foamers/spawn-fx.test.ts, tasks/SPAWN-01b.md
-r3-03: src/editor/bucket.ts, src/editor/paint-tool.ts, tests/editor/bucket.test.ts, tasks/R3-03.md
+r3-03: src/editor/bucket.ts, tests/editor/bucket.test.ts, tasks/R3-03.md
 r3-04: src/render/surfaces.ts, src/editor/textures-editor.ts, tests/render/textures.test.ts, tasks/R3-04.md
 r3-05: src/render/painters-more.ts, data/surfaces.json, tools/render-surfaces.ts, design/surfaces/, tests/render/painters-more.test.ts, tasks/R3-05.md
 r3-07: data/arena-templates/, src/editor/arena-templates.ts, tests/editor/arena-templates.test.ts, tasks/R3-07.md
 r3-08: src/editor/arena-formulas.ts, src/editor/arena-build.ts, tests/editor/arena-formulas.test.ts, tasks/R3-08.md
 r3-09: src/editor/rename.ts, tests/editor/rename.test.ts, tasks/R3-09.md
 r3-10: src/editor/maps-screen.ts, src/editor/store.ts, tests/editor/maps-screen.test.ts, tasks/R3-10.md
-r3-13: src/editor/tuning-fields.ts, src/editor/tuning-panel.ts, tests/editor/tuning-panel.test.ts, tasks/R3-13.md
+r3-13: tasks/R3-13.md
 r3-06: src/render/look.ts, tests/render/look.test.ts, tasks/R3-06.md
 r3-14: src/range/blaster-fields.ts, src/range/tune-panel.ts, tests/range/tune-panel.test.ts, tasks/R3-14.md
+r3-15: src/editor/tuning-fields.ts, src/editor/tuning-panel.ts, tests/editor/tuning-panel.test.ts, tests/level/placed-tuning.test.ts, tasks/R3-15.md
+r3-16: src/editor/paint-tool.ts, tests/editor/paint-panel.test.ts, tasks/R3-16.md
