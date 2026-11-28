@@ -116,3 +116,17 @@ body.framed #overlay #titleSettings,
 body.framed #overlay .links {
   display: none;
 }
+
+/* R3-14: the tuning override note on the pause panel. */
+#tuningNote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 12px;
+}
+#tuningNote[hidden] { display: none; }
