@@ -1044,3 +1044,59 @@ button.on {
   font-size: 13px;
   margin-top: 0.3rem;
 }
+
+/* R3-17: the Arena dialog's wave rows: a small header row names the boxes,
+   so a count, a hold and a delay are never confused. Boxes size to their
+   numbers and the row wraps inside the dialog instead of cutting off. */
+#dialogs .wave-header {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0 0 0.15rem;
+  font-size: 11px;
+  color: #b9a8d8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#dialogs .wave-header span:nth-child(2),
+#dialogs .wave-header span:nth-child(4),
+#dialogs .wave-header span:nth-child(5) {
+  width: 3.4rem;
+}
+
+#dialogs .wave-header span:nth-child(3) {
+  flex: 0 0 auto;
+}
+
+#dialogs .wave-row {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+#dialogs .wave-row select {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+#dialogs .wave-count {
+  width: 3.4rem;
+}
+
+#dialogs .wave-num {
+  width: 3.4rem;
+}
+
+#dialogs .wave-row label[for],
+#dialogs .wave-row > label {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#dialogs .wave-move {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-left: auto;
+}
