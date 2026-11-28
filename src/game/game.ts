@@ -70,6 +70,8 @@ export interface BuildInput {
   world: RAPIER.World;
   scene: THREE.Scene;
   mesherPool: MesherPool;
+  /** R3-06: for the level's look (tone mapping, exposure, sky light). */
+  renderer: THREE.WebGLRenderer;
 }
 
 /** What a page's build hands back: its voxel volume, the bounds the nav
@@ -220,7 +222,7 @@ export async function createGame<T extends BuiltGame>(hooks: GameHooks<T>): Prom
   const mesherPool = new MesherPool();
 
   boot.progress("Building level");
-  const built = hooks.build({ rapier, world, scene, mesherPool });
+  const built = hooks.build({ rapier, world, scene, mesherPool, renderer });
   boot.step("Level built");
   const { voxels, voxelMesh, crates } = built;
   const voxelSize = voxels.voxelSize;

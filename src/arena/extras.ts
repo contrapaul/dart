@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { applyLookEnvironment, applyLookToRenderer, resolveLook } from "../render/look";
 import type RAPIER from "@dimforge/rapier3d-compat";
 import blastersData from "../../data/blasters.json";
 import { buildLevel, type BuiltLevel } from "../level/build";
@@ -97,7 +98,7 @@ export interface ArenaBuilt extends BuiltGame {
 }
 
 /** Builds the level file's geometry in the shared game's build hook. */
-export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): ArenaBuilt {
+export function buildArena({ rapier, world, scene, mesherPool, renderer }: BuildInput): ArenaBuilt {
   // ED-01: the level's sky, before its geometry goes in.
   applySky(scene, LEVEL.sky);
   const level = buildLevel(LEVEL, rapier, world, mesherPool, scene);
@@ -105,6 +106,11 @@ export function buildArena({ rapier, world, scene, mesherPool }: BuildInput): Ar
   // ED-32: the level's lights and lighting, after the sky, before the
   // geometry goes in.
   const lights = buildLights(scene, LEVEL, QUALITY.preset);
+  // R3-06 (the lead, from its request): the level's look in the game too,
+  // as the editor view shows it. The low preset has no sky light.
+  const look = resolveLook(LEVEL.lighting?.gi, undefined, !QUALITY.preset.shadows && !QUALITY.preset.antialias);
+  applyLookToRenderer(renderer, look);
+  applyLookEnvironment(renderer, scene, LEVEL.sky, look);
   return {
     hazards,
     lights,

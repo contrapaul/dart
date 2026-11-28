@@ -45,9 +45,10 @@
     "levels": [0.5, 0.68, 0.84, 1.0]
   },
   "look": {
-    "toneMapping": "aces",
+    "_note": "R3-06: a level's global light when its lighting.gi says nothing. These are the look the game had before the options (no tone mapping, no sky light, the hemisphere's old ground colour), so no existing level changes until its own Lighting section turns them on (the lead, 2026-11-28).",
+    "toneMapping": "none",
     "exposure": 1.0,
-    "skyLight": 0.4,
+    "skyLight": 0,
     "bounce": "#3a2a60"
   }
 }
