@@ -95,3 +95,20 @@ export function fillTerrain(t: Terrain, layerIndex: number): void {
     for (let l = 0; l < L; l++) p[v * L + l] = l === layerIndex ? 255 : 0;
   }
 }
+
+/** The index of the layer with the heaviest paint weight at (x, z), nearest
+ *  grid vertex. */
+export function heaviestLayerAt(t: Terrain, x: number, z: number): number {
+  const p = ensurePaint(t);
+  const nxc = Math.min(t.nx, Math.max(0, Math.round((x - t.origin[0]) / t.cell)));
+  const nzc = Math.min(t.nz, Math.max(0, Math.round((z - t.origin[2]) / t.cell)));
+  const v = nzc * (t.nx + 1) + nxc;
+  const L = t.layers.length;
+  let best = 0;
+  let bestW = -1;
+  for (let l = 0; l < L; l++) {
+    const w = p[v * L + l]!;
+    if (w > bestW) { bestW = w; best = l; }
+  }
+  return best;
+}

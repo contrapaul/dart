@@ -45,7 +45,7 @@ import { BUTTON_COLOUR, buildButtonFields, makeButton } from "./buttons-editor";
 import { TerrainTool, TERRAIN_ID, buildTerrainInspector } from "./terrain-editor";
 import { isNudgeKey, nudgeOffset } from "./nudge";
 import { layerForPaint } from "../level/terrain";
-import { connectedSameLook, fillTerrain } from "./bucket";
+import { connectedSameLook, fillTerrain, heaviestLayerAt, lookOf, type Look } from "./bucket";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -1190,6 +1190,9 @@ function showSelectBox(x0: number, y0: number, x1: number, y1: number) {
 let lastPointer: { clientX: number; clientY: number } | null = null;
 /** Set when a press was a place or a drag, so the click after it is not a pick. */
 let pressUsed = false;
+/** R3-03: where an Alt+click press started, so a click with no drag can pick
+ *  a look. The camera's Alt+drag orbit is never a pick. */
+let altDown: { clientX: number; clientY: number } | null = null;
 
 /** Paint one prim (the tracked id is recorded once, as a snapshot of before-state). */
 function paintPrim(id: string) {
@@ -1234,6 +1237,47 @@ function floorPoint(e: PointerEvent, y: number): THREE.Vector3 | null {
   return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), new THREE.Vector3());
 }
 
+
+
+/** R3-03: Alt+click with the Paint tool armed copies a prim's or physics
+ *  object's look into the settings (on the terrain, the heaviest layer under
+ *  the cursor). The camera's Alt+drag orbit is untouched: only a click with
+ *  no drag picks. */
+function pickLookFromView(e: { clientX: number; clientY: number }) {
+  const entry = view.pick(...ndcOf(e));
+  if (entry?.id) {
+    const kind = doc.kindOf(entry.id);
+    let look: Look | null = null;
+    if (kind === "prims") {
+      const p = doc.prim(entry.id);
+      if (p) look = lookOf(p);
+    } else if (kind === "physics") {
+      const o = doc.find("physics", entry.id) as { surface?: string; colour: string } | undefined;
+      if (o) look = lookOf(o);
+    }
+    if (look) {
+      paintSettings.surface = look.surface;
+      paintSettings.colour = look.colour;
+      buildPalette();
+      status.textContent = `Picked ${look.surface} / ${look.colour}.`;
+      return;
+    }
+  }
+  const t = doc.level.terrain;
+  if (t && onTerrain(e, entry)) {
+    const th = view.terrainHit(...ndcOf(e));
+    if (th) {
+      const i = heaviestLayerAt(t, th.x, th.z);
+      const layer = t.layers[i]!;
+      paintSettings.surface = layer.surface;
+      paintSettings.colour = layer.colour;
+      buildPalette();
+      status.textContent = `Picked ${layer.surface} / ${layer.colour}.`;
+      return;
+    }
+  }
+  status.textContent = "Nothing to pick a look from.";
+}
 
 /** R3-03: Bucket mode. A click on a prim paints every prim reachable through
  *  touching or overlapping boxes that wear the same surface and colour; a
@@ -1284,6 +1328,7 @@ function finishBucket(e: PointerEvent) {
 // listener and can keep them out of a press that drags the thing itself.
 canvas.addEventListener("pointerdown", (e) => {
   pressUsed = false;
+  altDown = e.altKey && armedPaint && e.button === 0 ? { clientX: e.clientX, clientY: e.clientY } : null;
   if (e.button !== 0 || e.altKey || view.nav.busy || view.overHandle || linkKey) return;
   // ED-36: the Paint tool paints, it does not move or select.
   if (armedPaint) {
@@ -1537,6 +1582,16 @@ canvas.addEventListener("dblclick", (e) => {
   if (hit?.id) pick(hit.id, false);
 });
 canvas.addEventListener("click", (e) => {
+  // R3-03: Alt+click with the Paint tool armed picks a look from the thing
+  // under the cursor (or the heaviest terrain layer). A drag is the camera's
+  // orbit, never a pick.
+  if (e.altKey && armedPaint) {
+    if (altDown && Math.hypot(e.clientX - altDown.clientX, e.clientY - altDown.clientY) <= DRAG_PIXELS) {
+      pickLookFromView(e);
+    }
+    altDown = null;
+    return;
+  }
   if (view.nav.swallowClick) {
     view.nav.swallowClick = false;
     return;

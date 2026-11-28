@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { LevelDoc, newLevel } from "../../src/editor/doc";
 import { flatTerrain, vertexCount } from "../../src/level/terrain";
 import type { Prim, Terrain } from "../../src/level/format";
-import { connectedSameLook, fillTerrain, lookOf } from "../../src/editor/bucket";
+import { connectedSameLook, fillTerrain, heaviestLayerAt, lookOf } from "../../src/editor/bucket";
 
 function prim(id: string, pos: [number, number, number], opts: Partial<Prim> = {}): Prim {
   return { id, shape: "box", pos, size: [2, 2, 2], colour: "#ff8800", behaviour: "solid", surface: "brick", ...opts };
@@ -77,6 +77,17 @@ describe("lookOf", () => {
   it("is the surface and colour of a prim", () => {
     expect(lookOf(prim("a", [0, 0, 0]))).toEqual({ surface: "brick", colour: "#ff8800" });
     expect(lookOf(prim("a", [0, 0, 0], { surface: undefined }))).toEqual({ surface: "plain", colour: "#ff8800" });
+  });
+});
+
+describe("heaviestLayerAt", () => {
+  it("picks the layer with the most weight at the cursor", () => {
+    const t = flatTerrain([0, 0], 0, 2, 2, 1, [
+      { surface: "grass", colour: "#2ec4ff" }, { surface: "sand", colour: "#ffd23a" },
+    ]);
+    fillTerrain(t, 1);
+    expect(heaviestLayerAt(t, 0.5, 0.5)).toBe(1);
+    expect(heaviestLayerAt(t, 100, 100)).toBe(1); // clamped to the nearest vertex
   });
 });
 
