@@ -13,8 +13,17 @@
     "skyImageHeight": 1024,
     "stairsMaxSteps": 64
   },
-  "lights": { "maxShadows": 4, "referenceRange": 8, "_note": "ED-32: at most this many lights cast shadows (each is a shadow map pass). referenceRange: a light's output grows with its range squared relative to this many metres, so range sets how far it spreads (at this range a light is as bright as its intensity says)." },
-  "models": { "maxAssetBytes": 3000000, "maxTotalBytes": 12000000, "maxVoxels": 60000, "_note": "ED-35: an imported GLB may be this many bytes, and all of a level's together this many (they live inside the level file). A voxel breakable model with more voxels inside than maxVoxels is built by hit points instead." },
+  "lights": {
+    "maxShadows": 4,
+    "referenceRange": 8,
+    "_note": "ED-32: at most this many lights cast shadows (each is a shadow map pass). referenceRange: a light's output grows with its range squared relative to this many metres, so range sets how far it spreads (at this range a light is as bright as its intensity says)."
+  },
+  "models": {
+    "maxAssetBytes": 3000000,
+    "maxTotalBytes": 12000000,
+    "maxVoxels": 60000,
+    "_note": "ED-35: an imported GLB may be this many bytes, and all of a level's together this many (they live inside the level file). A voxel breakable model with more voxels inside than maxVoxels is built by hit points instead."
+  },
   "terrain": {
     "_note": "ED-34: maxCells: the most heightfield cells along a side. defaultSize, defaultCell and baseY: the flat terrain the Terrain tool makes, in metres (baseY a little over the new level's floor top at 0, so the two do not flicker). headroom: metres of open sky over the terrain's highest point that still count as inside the level. layers: its four paint layers (a surface from data/surfaces.json and a colour). brush: the brush's starting radius (m) and strength, and the sliders' top ends.",
     "maxCells": 256,
@@ -23,20 +32,59 @@
     "baseY": 0.1,
     "headroom": 40,
     "layers": [
-      { "surface": "grass", "colour": "#b6ff3b" },
-      { "surface": "rock", "colour": "#6f6788" },
-      { "surface": "sand", "colour": "#ffd23a" },
-      { "surface": "concrete", "colour": "#f4ecdc" }
+      {
+        "surface": "grass",
+        "colour": "#b6ff3b"
+      },
+      {
+        "surface": "rock",
+        "colour": "#6f6788"
+      },
+      {
+        "surface": "sand",
+        "colour": "#ffd23a"
+      },
+      {
+        "surface": "concrete",
+        "colour": "#f4ecdc"
+      }
     ],
-    "brush": { "radius": 3, "strength": 2, "maxRadius": 20, "maxStrength": 10 }
+    "brush": {
+      "radius": 3,
+      "strength": 2,
+      "maxRadius": 20,
+      "maxStrength": 10
+    }
+  },
+  "paint": {
+    "radius": 2,
+    "strength": 8,
+    "maxRadius": 20,
+    "maxStrength": 20,
+    "_note": "The Paint tool's own brush on the terrain: its starting size (m) and strength (a share a second, so a quick pass covers), and the sliders' top ends."
   },
   "paint": { "radius": 2, "strength": 8, "maxRadius": 20, "maxStrength": 20, "bucketMax": 500, "_note": "The Paint tool's own brush on the terrain: its starting size (m) and strength (a share a second, so a quick pass covers), and the sliders' top ends." },
   "nudgeFine": 0.1,
   "_nudgeNote": "The arrow keys nudge the selection one grid step, or nudgeFine metres with snap off.",
   "grid": 0.5,
   "rotateStep": 15,
-  "palette": ["#ff7a1a", "#2ec4ff", "#b6ff3b", "#ff4fa3", "#ffd23a", "#8a5cff", "#f4ecdc", "#6f6788", "#3a3550"],
-  "sky": { "kind": "gradient", "top": "#3a6ff0", "horizon": "#bfe3ff", "bottom": "#3a3550" },
+  "palette": [
+    "#ff7a1a",
+    "#2ec4ff",
+    "#b6ff3b",
+    "#ff4fa3",
+    "#ffd23a",
+    "#8a5cff",
+    "#f4ecdc",
+    "#6f6788",
+    "#3a3550"
+  ],
+  "sky": {
+    "kind": "gradient",
+    "top": "#3a6ff0",
+    "horizon": "#bfe3ff",
+    "bottom": "#3a3550"
+  },
   "triggerDefaults": {
     "messageSeconds": 3
   },
@@ -45,12 +93,20 @@
     "doorReach": 2.5,
     "size": 0.5,
     "turnRate": 1.2,
-    "colours": { "red": "#ff3b3b", "blue": "#2e7dff", "yellow": "#ffd23a" }
+    "colours": {
+      "red": "#ff3b3b",
+      "blue": "#2e7dff",
+      "yellow": "#ffd23a"
+    }
   },
   "markers": {
     "pickupColour": "#fff6e8",
     "healthPickupColour": "#ff9b7a",
-    "keyColours": { "red": "#ff3b3b", "blue": "#2e7dff", "yellow": "#ffd23a" },
+    "keyColours": {
+      "red": "#ff3b3b",
+      "blue": "#2e7dff",
+      "yellow": "#ffd23a"
+    },
     "doorColour": "#c89a5b",
     "exitColour": "#b6ff3b",
     "startColour": "#ff7a1a",
@@ -62,8 +118,36 @@
     "noseLength": 0.6,
     "ringRadius": 1
   },
-  "assets": { "max": 200, "maxThings": 300, "pictureSize": 128 },
-  "arena": { "holdSeconds": 0.5, "defaultCount": 3 },
-  "start": { "blasters": ["B01"], "melee": [], "health": 100 },
-  "camera": { "flySpeed": 9, "fastSpeed": 26, "lookSpeed": 0.004, "orbitSpeed": 0.006, "zoomStep": 0.15, "minDistance": 0.5, "fallbackDistance": 20, "handleSize": 0.7, "openBack": 10, "openUp": 6, "faceHandleSize": 0.018 }
+  "assets": {
+    "max": 200,
+    "maxThings": 300,
+    "pictureSize": 128
+  },
+  "arena": {
+    "holdSeconds": 0.5,
+    "defaultCount": 3
+  },
+  "arenaFormulas": {
+    "max": 40
+  },
+  "start": {
+    "blasters": [
+      "B01"
+    ],
+    "melee": [],
+    "health": 100
+  },
+  "camera": {
+    "flySpeed": 9,
+    "fastSpeed": 26,
+    "lookSpeed": 0.004,
+    "orbitSpeed": 0.006,
+    "zoomStep": 0.15,
+    "minDistance": 0.5,
+    "fallbackDistance": 20,
+    "handleSize": 0.7,
+    "openBack": 10,
+    "openUp": 6,
+    "faceHandleSize": 0.018
+  }
 }

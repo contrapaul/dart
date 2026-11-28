@@ -1,15 +1,29 @@
-import type { Level, Trigger } from "../level/format";
+import type { Level, Trigger, TriggerDo } from "../level/format";
 import { EDITOR } from "./doc";
 
-// ED-08 stage 4: the usual fight, built as three or more ordinary triggers,
-// the same shape data/levels/ed-07.json uses by hand:
+// ED-08 stage 4: the usual fight, built as ordinary triggers:
 //
-//   enter the zone:  show the blockers, spawn wave 1
-//   wave 1 all dead: spawn wave 2        (one trigger per further wave)
-//   every wave dead: hide the blockers, open the doors picked
+//   enter the zone:  show the blockers, close the doors when locked,
+//                    spawn wave 1 (or an after trigger of the lock runs it)
+//   wave k all dead: spawn wave k + 1 (or an after trigger of that start)
+//   every wave dead: hide the blockers, open the doors when unlocked
 //
 // No message text is written here: the words are Paul's, so a level that
 // wants a line adds it in the inspector.
+
+/** One wave as the Arena dialog holds it. */
+export interface ArenaWaveSpec {
+  /** A rig id (data/foamer-rigs.json). */
+  foamer: string;
+  count: number;
+  /** Spawned as promoted Foamers. */
+  promoted?: boolean;
+  /** Seconds between one Foamer of the wave arriving and the next. */
+  holdSeconds?: number;
+  /** Seconds after the previous wave clears (after the lock for wave 1)
+   *  before this wave starts. 0 starts it straight away. */
+  delaySeconds?: number;
+}
 
 /** What the Arena dialog asks for, as ids and waves. */
 export interface ArenaSpec {
@@ -19,10 +33,15 @@ export interface ArenaSpec {
   blockers: string[];
   /** Spawn points the waves come in at, in turn. */
   spawnPoints: string[];
-  /** Each wave: a rig id (data/foamer-rigs.json) and how many. */
-  waves: { foamer: string; count: number }[];
-  /** Doors opened when the last wave is down. */
+  /** Each wave: a rig id, how many, and how it arrives. */
+  waves: ArenaWaveSpec[];
+  /** Doors closed when the fight starts (when `lockDoors`) and opened when
+   *  it is won (when `unlockOnClear`). */
   doors: string[];
+  /** Close the picked doors at the fight's start. */
+  lockDoors?: boolean;
+  /** Open the picked doors at the fight's clear. The default is true. */
+  unlockOnClear?: boolean;
 }
 
 const ARENA = EDITOR.arena;
@@ -34,7 +53,22 @@ export function arenaProblem(spec: ArenaSpec): string | null {
   if (!spec.waves.length) return "Add at least one wave.";
   if (!spec.spawnPoints.length) return "Tick at least one spawn point: a wave needs somewhere to come in.";
   if (spec.waves.some((w) => !w.foamer || !(w.count >= 1))) return "Every wave needs a Foamer and a count of one or more.";
+  if (spec.waves.some((w) => w.holdSeconds !== undefined && (!Number.isFinite(w.holdSeconds) || w.holdSeconds < 0))) return "Every wave's hold seconds must be 0 or more.";
+  if (spec.waves.some((w) => w.delaySeconds !== undefined && (!Number.isFinite(w.delaySeconds) || w.delaySeconds < 0))) return "Every wave's delay seconds must be 0 or more.";
   return null;
+}
+
+/** The spawn action for one wave. */
+function spawnDo(wave: ArenaWaveSpec, id: string, spawnPoints: string[]): TriggerDo {
+  return {
+    kind: "spawn",
+    id,
+    foamer: wave.foamer,
+    count: Math.max(1, Math.round(wave.count)),
+    at: [...spawnPoints],
+    holdSeconds: wave.holdSeconds !== undefined ? Math.max(0, wave.holdSeconds) : ARENA.holdSeconds,
+    ...(wave.promoted ? { promoted: true } : {}),
+  };
 }
 
 /** The triggers for one arena, in the order the fight happens. `nextId` gives
@@ -45,45 +79,69 @@ export function buildArena(spec: ArenaSpec, nextId: (prefix: string) => string):
   if (arenaProblem(spec)) return [];
   const triggers: Trigger[] = [];
 
-  // Wave 1 comes in when the player enters; each later wave when the one
-  // before it is down, so the fight is paced and cannot be rushed past.
+  // Each wave is pre-allocated, the way ED-08 stage 4 did: its trigger and its
+  // spawn id are ids too, so nothing collides with what is already there.
   const waves = spec.waves.map((wave) => ({
+    wave,
     trigger: nextId("arena-wave"),
     spawn: nextId("wave"),
-    foamer: wave.foamer,
-    count: Math.max(1, Math.round(wave.count)),
   }));
+  const lockId = nextId("arena-lock");
 
-  const lock: Trigger = {
-    id: nextId("arena-lock"),
+  // Wave 1 comes in when the player enters. Its delay runs off the lock
+  // trigger through an `after`, the same shape arena-to-triggers uses.
+  const first = waves[0]!;
+  const firstDelay = (first.wave.delaySeconds ?? 0);
+  const lockDo: TriggerDo[] = [
+    ...(spec.blockers.length ? [{ kind: "show" as const, ids: [...spec.blockers] }] : []),
+    ...(spec.lockDoors ? spec.doors.map((door) => ({ kind: "close" as const, door }) as TriggerDo) : []),
+  ];
+  if (firstDelay <= 0) {
+    lockDo.push(spawnDo(first.wave, first.spawn, spec.spawnPoints));
+  }
+  triggers.push({
+    id: lockId,
     when: { kind: "enter", zone: spec.zone },
-    do: [
-      ...(spec.blockers.length ? [{ kind: "show" as const, ids: [...spec.blockers] }] : []),
-      {
-        kind: "spawn", id: waves[0]!.spawn, foamer: waves[0]!.foamer, count: waves[0]!.count,
-        at: [...spec.spawnPoints], holdSeconds: ARENA.holdSeconds,
-      },
-    ],
-  };
-  triggers.push(lock);
-
-  for (let i = 1; i < waves.length; i++) {
+    do: lockDo,
+  });
+  if (firstDelay > 0) {
     triggers.push({
-      id: waves[i]!.trigger,
-      when: { kind: "killed", ids: [waves[i - 1]!.spawn] },
-      do: [{
-        kind: "spawn", id: waves[i]!.spawn, foamer: waves[i]!.foamer, count: waves[i]!.count,
-        at: [...spec.spawnPoints], holdSeconds: ARENA.holdSeconds,
-      }],
+      id: nextId("arena-wave"),
+      when: { kind: "after", trigger: lockId, seconds: firstDelay },
+      do: [spawnDo(first.wave, first.spawn, spec.spawnPoints)],
     });
   }
 
-  // Winning does something only when there are blockers to take away or a door
-  // to open; with neither, the clear trigger would have an empty do, which a
-  // level rejects, so it is left out.
-  const reply = [
+  for (let i = 1; i < waves.length; i++) {
+    const { wave, trigger, spawn } = waves[i]!;
+    const prev = waves[i - 1]!.spawn;
+    const delay = wave.delaySeconds ?? 0;
+    if (delay > 0) {
+      triggers.push({
+        id: trigger,
+        when: { kind: "killed", ids: [prev] },
+        do: [],
+      });
+      triggers.push({
+        id: nextId("arena-wave"),
+        when: { kind: "after", trigger: trigger, seconds: delay },
+        do: [spawnDo(wave, spawn, spec.spawnPoints)],
+      });
+    } else {
+      triggers.push({
+        id: trigger,
+        when: { kind: "killed", ids: [prev] },
+        do: [spawnDo(wave, spawn, spec.spawnPoints)],
+      });
+    }
+  }
+
+  // Winning does something only when there is a blocker to take away or a
+  // door to open; with neither (and unlocked doors), the clear trigger would
+  // have an empty do, which a level rejects, so it is left out.
+  const reply: TriggerDo[] = [
     ...(spec.blockers.length ? [{ kind: "hide" as const, ids: [...spec.blockers] }] : []),
-    ...spec.doors.map((door) => ({ kind: "open" as const, door })),
+    ...(spec.unlockOnClear === false ? [] : spec.doors.map((door) => ({ kind: "open" as const, door }) as TriggerDo)),
   ];
   if (reply.length) {
     triggers.push({

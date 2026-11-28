@@ -22,7 +22,11 @@ import { buildPaintPanel, PAINT_BRUSH, type PaintSettings } from "./paint-tool";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { PHYSICS_SHAPES, buildPhysicsFields, makePhysicsObject } from "./physics-editor";
-import { arenaProblem, blockerChoices, buildArena, type ArenaSpec } from "./arena-build";
+import { arenaProblem, blockerChoices, buildArena, type ArenaSpec, type ArenaWaveSpec } from "./arena-build";
+import {
+  formulasFileName, formulasFileText, formulaProblem, fitImport, deleteFormula,
+  listFormulas, putFormula, readFormulasFile, tidyFormulaName, type ArenaFormula,
+} from "./arena-formulas";
 import { applyLink, firstLinkKey, newTrigger, triggerIds } from "./trigger-parts";
 import { triggerSummary } from "./trigger-text";
 import { buildLevelFields } from "./sky";
@@ -2484,7 +2488,14 @@ function arenaDialog(zone: string) {
   const blockers = new Set<string>();
   const points = new Set<string>((level.spawnPoints ?? []).map((s) => s.id));
   const doors = new Set<string>();
-  const waves: ArenaSpec["waves"] = [{ foamer: RIGS[0]?.id ?? "F01", count: EDITOR.arena.defaultCount }];
+  const waves: ArenaWaveSpec[] = [{ foamer: RIGS[0]?.id ?? "F01", count: EDITOR.arena.defaultCount }];
+  let lockDoors = false;
+  let unlockOnClear = true;
+
+  const spec = (): ArenaSpec => ({
+    zone, blockers: [...blockers], spawnPoints: [...points],
+    waves: waves.map((w) => ({ ...w })), doors: [...doors], lockDoors, unlockOnClear,
+  });
 
   void dialog(`Arena in ${zone}`, (body) => {
     const state = document.createElement("p");
@@ -2537,6 +2548,16 @@ function arenaDialog(zone: string) {
           (v) => { wave.foamer = v; say(); },
         );
         const count = numberInput(wave.count, 1, (n) => { wave.count = Math.max(1, Math.round(n)); say(); });
+        const promote = document.createElement("label");
+        const promoteInput = document.createElement("input");
+        promoteInput.type = "checkbox";
+        promoteInput.checked = wave.promoted === true;
+        promoteInput.addEventListener("change", () => { wave.promoted = promoteInput.checked || undefined; say(); });
+        promote.append(promoteInput, document.createTextNode("promoted"));
+        const hold = numberInput(wave.holdSeconds ?? EDITOR.arena.holdSeconds, 0.25, (n) => { wave.holdSeconds = Math.max(0, n); say(); });
+        hold.title = "seconds between arrivals";
+        const delay = numberInput(wave.delaySeconds ?? 0, 0.5, (n) => { wave.delaySeconds = Math.max(0, n); say(); });
+        delay.title = "seconds after the previous wave";
         const up = document.createElement("button");
         up.type = "button";
         up.textContent = "Up";
@@ -2553,33 +2574,198 @@ function arenaDialog(zone: string) {
           waves.splice(i, 1);
           waves_();
         });
-        row.append(type, count, up, cut);
+        row.append(type, count, promote, hold, delay, up, cut);
         waveBox.append(row);
       });
       const add = document.createElement("button");
       add.type = "button";
       add.textContent = "Add a wave";
       add.addEventListener("click", () => {
-        waves.push({ ...waves[waves.length - 1]! });
+        waves.push({ ...waves[waves.length - 1]!, count: EDITOR.arena.defaultCount });
         waves_();
       });
       waveBox.append(add);
     };
     waves_();
 
-    ticks("doors to open when the fight is won", (level.doors ?? []).map((d) => ({ id: d.id, label: d.id })), doors);
+    // Doors open when the fight is won; doors can also be shut when it
+    // starts, the two halves of an arena lock.
+    const doorTicks = ticksSection("doors to open when the fight is won", (level.doors ?? []).map((d) => ({ id: d.id, label: d.id })), doors);
+    const lockBox = document.createElement("label");
+    const lockInput = document.createElement("input");
+    lockInput.type = "checkbox";
+    lockInput.checked = lockDoors;
+    lockInput.addEventListener("change", () => { lockDoors = lockInput.checked; say(); });
+    lockBox.append(lockInput, document.createTextNode("Lock the doors when the fight starts"));
+    const unlockBox = document.createElement("label");
+    const unlockInput = document.createElement("input");
+    unlockInput.type = "checkbox";
+    unlockInput.checked = unlockOnClear;
+    unlockInput.addEventListener("change", () => { unlockOnClear = unlockInput.checked; say(); });
+    unlockBox.append(unlockInput, document.createTextNode("Open the doors when the fight is won"));
+    lockBox.className = "formula-toggle";
+    unlockBox.className = "formula-toggle";
+    body.append(lockBox, unlockBox, doorTicks);
+
+    function ticksSection(title: string, options: { id: string; label: string }[], on: Set<string>) {
+      const box = document.createElement("label");
+      box.textContent = title;
+      const list = document.createElement("div");
+      list.className = "ticks";
+      for (const option of options) {
+        const tick = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = on.has(option.id);
+        input.addEventListener("change", () => {
+          if (input.checked) on.add(option.id);
+          else on.delete(option.id);
+          say();
+        });
+        tick.append(input, document.createTextNode(option.label));
+        list.append(tick);
+      }
+      box.append(list);
+      return box;
+    }
+
+    // Formula row: pick a saved formula (it fills the dialog), save the
+    // current dialog as one, delete one, export and import a file.
+    const formulaBox = document.createElement("div");
+    formulaBox.className = "formula-row";
+    const formulaHeading = document.createElement("h3");
+    formulaHeading.textContent = "formula";
+    const formulaSelect = document.createElement("select");
+    formulaSelect.className = "formula-select";
+    const formulaButtons = document.createElement("div");
+    formulaButtons.className = "formula-buttons";
+    const save = document.createElement("button");
+    save.type = "button";
+    save.textContent = "Save as formula";
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.textContent = "Delete";
+    const exportBtn = document.createElement("button");
+    exportBtn.type = "button";
+    exportBtn.textContent = "Export";
+    const importBtn = document.createElement("button");
+    importBtn.type = "button";
+    importBtn.textContent = "Import";
+    const importFile = document.createElement("input");
+    importFile.type = "file";
+    importFile.accept = ".json,application/json";
+    importFile.hidden = true;
+
+    const formulaNote = document.createElement("div");
+    formulaNote.className = "hint";
+
+    let formulas: ArenaFormula[] = [];
+
+    const refreshFormulas = () => {
+      const current = formulaSelect.value;
+      formulaSelect.replaceChildren();
+      const unsaved = document.createElement("option");
+      unsaved.value = "";
+      unsaved.textContent = "(unsaved)";
+      formulaSelect.append(unsaved);
+      for (const f of formulas) {
+        const option = document.createElement("option");
+        option.value = f.name;
+        option.textContent = f.name;
+        formulaSelect.append(option);
+      }
+      formulaSelect.value = formulas.some((f) => f.name === current) ? current : "";
+      deleteBtn.disabled = !formulaSelect.value;
+    };
+
+    const applyFormula = (f: ArenaFormula) => {
+      waves.length = 0;
+      for (const w of f.waves) waves.push({ ...w });
+      lockDoors = f.lockDoors;
+      unlockOnClear = f.unlockOnClear;
+      lockInput.checked = lockDoors;
+      unlockInput.checked = unlockOnClear;
+      waves_();
+      say();
+    };
+
+    const loadFormulas = async () => {
+      formulas = await listFormulas().catch(() => [] as ArenaFormula[]);
+      refreshFormulas();
+    };
+
+    formulaSelect.addEventListener("change", () => {
+      const picked = formulas.find((f) => f.name === formulaSelect.value);
+      if (picked) applyFormula(picked);
+    });
+
+    save.addEventListener("click", () => {
+      const name = tidyFormulaName(window.prompt("Formula name", formulaSelect.value || "gap") ?? "");
+      const problem = formulaProblem(name, waves, formulas.length);
+      if (problem) { formulaNote.textContent = problem; return; }
+      const formula: ArenaFormula = { name, waves: waves.map((w) => ({ ...w })), lockDoors, unlockOnClear };
+      void putFormula(formula).then(() => {
+        formulas = [...formulas.filter((f) => f.name !== name), formula];
+        refreshFormulas();
+        formulaSelect.value = name;
+        formulaNote.textContent = `Saved "${name}".`;
+      }).catch(() => { formulaNote.textContent = "The browser would not store that."; });
+    });
+
+    deleteBtn.addEventListener("click", () => {
+      const name = formulaSelect.value;
+      if (!name) return;
+      void deleteFormula(name).then(() => {
+        formulas = formulas.filter((f) => f.name !== name);
+        refreshFormulas();
+        formulaNote.textContent = `Deleted "${name}".`;
+      }).catch(() => { formulaNote.textContent = "The browser would not delete that."; });
+    });
+
+    exportBtn.addEventListener("click", () => {
+      const picked = formulas.find((f) => f.name === formulaSelect.value);
+      const chosen = picked ? [picked] : formulas;
+      if (!chosen.length) { formulaNote.textContent = "No formulas to export."; return; }
+      const url = URL.createObjectURL(new Blob([formulasFileText(chosen)], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = formulasFileName(chosen);
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    importBtn.addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", () => {
+      const file = importFile.files?.[0];
+      if (!file) return;
+      void file.text().then((text) => {
+        const { formulas: incoming, error } = readFormulasFile(text);
+        if (error) { formulaNote.textContent = error; return; }
+        const { formulas: stored, left } = fitImport(incoming, formulas);
+        void Promise.all(stored.map((f) => putFormula(f))).then(() => {
+          formulas = [...formulas, ...stored];
+          refreshFormulas();
+          formulaNote.textContent = left
+            ? `Imported ${stored.length}; ${left} did not fit the store.`
+            : `Imported ${stored.length} formula${stored.length === 1 ? "" : "s"}.`;
+        }).catch(() => { formulaNote.textContent = "The browser would not store the import."; });
+      });
+      importFile.value = "";
+    });
+
+    formulaButtons.append(save, deleteBtn, exportBtn, importBtn);
+    formulaBox.append(formulaHeading, formulaSelect, formulaButtons, formulaNote, importFile);
+    body.append(formulaBox);
+    void loadFormulas();
 
     const build = document.createElement("button");
     build.type = "button";
     build.className = "name";
     build.textContent = "Build the triggers";
     build.addEventListener("click", () => {
-      const spec: ArenaSpec = {
-        zone, blockers: [...blockers], spawnPoints: [...points], waves: waves.map((w) => ({ ...w })), doors: [...doors],
-      };
-      const problem = arenaProblem(spec);
+      const problem = arenaProblem(spec());
       if (problem) return;
-      const made = buildArena(spec, (prefix) => doc.nextId(prefix));
+      const made = buildArena(spec(), (prefix) => doc.nextId(prefix));
       if (!roomForTriggers(made.length)) return;
       doc.addMany("triggers", made, `arena in ${zone}`);
       $("dialogs").hidden = true;
@@ -2593,10 +2779,7 @@ function arenaDialog(zone: string) {
     body.append(build);
 
     function say() {
-      const spec: ArenaSpec = {
-        zone, blockers: [...blockers], spawnPoints: [...points], waves: waves.map((w) => ({ ...w })), doors: [...doors],
-      };
-      state.textContent = arenaProblem(spec) ?? `Lock, ${waves.length} wave${waves.length === 1 ? "" : "s"}, clear. Nothing is written to the level until Build.`;
+      state.textContent = arenaProblem(spec()) ?? `Lock, ${waves.length} wave${waves.length === 1 ? "" : "s"}, clear. Nothing is written to the level until Build.`;
     }
     say();
   });

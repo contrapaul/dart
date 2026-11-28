@@ -149,3 +149,52 @@ describe("ED-08 stage 4: the arena builder", () => {
     ]);
   });
 });
+
+describe("R3-08: formula-driven arena triggers", () => {
+  it("closes doors at the lock and opens them at clear when the formula says so", () => {
+    const triggers = buildArena({ ...spec, lockDoors: true, unlockOnClear: true }, ids());
+    const lock = triggers[0]!;
+    expect(lock.do.some((d) => d.kind === "close" && (d as { door: string }).door === "side-door")).toBe(true);
+    expect(lock.do.some((d) => d.kind === "show")).toBe(true);
+    const clear = triggers[triggers.length - 1]!;
+    expect(clear.do.some((d) => d.kind === "open" && (d as { door: string }).door === "side-door")).toBe(true);
+  });
+
+  it("opens doors at clear only when unlockOnClear is set", () => {
+    const triggers = buildArena({ ...spec, lockDoors: false, unlockOnClear: false }, ids());
+    const clear = triggers[triggers.length - 1]!;
+    expect(clear.do.some((d) => d.kind === "open")).toBe(false);
+    expect(clear.do.some((d) => d.kind === "hide")).toBe(true);
+  });
+
+  it("runs a wave with its delay through an after of the previous wave", () => {
+    const triggers = buildArena({
+      ...spec,
+      waves: [{ foamer: "F01", count: 2, delaySeconds: 1.5 }, { foamer: "F01", count: 1, delaySeconds: 2 }],
+    }, ids());
+    const lock = triggers[0]!;
+    // The lock only shows the blocker: wave 1's spawn runs off the after.
+    expect(lock.do.some((d) => d.kind === "spawn")).toBe(false);
+    const afters = triggers.filter((t) => t.when.kind === "after");
+    expect(afters).toHaveLength(2);
+    expect(afters[0]!.when).toMatchObject({ kind: "after", trigger: lock.id, seconds: 1.5 });
+    expect(afters[1]!.when).toMatchObject({ seconds: 2 });
+    expect(triggers.some((t) => t.when.kind === "killed" && (t as { do: unknown[] }).do.length === 0)).toBe(true);
+  });
+
+  it("passes promoted and holdSeconds through to the spawn action", () => {
+    const triggers = buildArena({
+      ...spec,
+      waves: [{ foamer: "F01", count: 2, promoted: true, holdSeconds: 1.25 }],
+    }, ids());
+    const lock = triggers[0]!;
+    const spawn = lock.do.find((d) => d.kind === "spawn") as { promoted?: boolean; holdSeconds?: number };
+    expect(spawn.promoted).toBe(true);
+    expect(spawn.holdSeconds).toBe(1.25);
+  });
+
+  it("refuses a negative delay or hold seconds", () => {
+    expect(arenaProblem({ ...spec, waves: [{ foamer: "F01", count: 1, holdSeconds: -0.5 }] })).toMatch(/hold seconds/);
+    expect(arenaProblem({ ...spec, waves: [{ foamer: "F01", count: 1, delaySeconds: -0.5 }] })).toMatch(/delay seconds/);
+  });
+});
