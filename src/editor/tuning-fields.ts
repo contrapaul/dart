@@ -102,7 +102,7 @@ export function fieldsFor(type: string, own?: FoamerTune): FieldValue[] {
     (_s, r) => r.voxelSize / committedSize, (_s, _r, v) => ({ rig: { voxelSize: committedSize * v } })));
   // Damage dealt, per attack.
   for (const atk of attacks(spec)) {
-    fields.push(numberField(`attack.${atk.id}.damage`, "Damage dealt", `${atk.id} damage (times)`, "How hard this attack hits, in times its base damage.", 1, 0, 100,
+    fields.push(numberField(`attack.${atk.id}.damage`, "Damage dealt", `${atk.id} damage (hp)`, "How many hit points this attack takes off the player.", 1, 0, 100,
       (s) => s.attacks.find((a) => a.id === atk.id)?.damage ?? 0,
       (s, _r, v) => ({
         spec: { attacks: s.attacks.map((a) => (a.id === atk.id ? { ...a, damage: v } : a)) },
