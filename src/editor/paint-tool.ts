@@ -20,6 +20,14 @@ export interface PaintSettings {
   strength: number;
 }
 
+
+/** The tool hint per mode (R3-16): what a click does. */
+export function paintHint(mode: "brush" | "bucket"): string {
+  return mode === "bucket"
+    ? "Bucket: click a prim to fill every touching prim of the same look, or the terrain to fill it all. Alt+click picks up a look."
+    : "Paint: click or drag across prims to set their surface, or drag on the terrain to paint it. Shift keeps the tool. Esc stops.";
+}
+
 /** The paint brush's starting numbers and slider ends, data/editor.json. */
 export const PAINT_BRUSH = EDITOR.paint as { radius: number; strength: number; maxRadius: number; maxStrength: number };
 
@@ -55,23 +63,6 @@ export function swatchCanvas(name: string, size = 32): HTMLCanvasElement {
 export function buildPaintPanel(state: PaintSettings, onChange: () => void): HTMLElement {
   const panel = document.createElement("div");
   panel.className = "tool-options paint-options";
-
-  const modes = document.createElement("div");
-  modes.className = "paint-modes";
-  for (const m of ["brush", "bucket"] as const) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = m === "brush" ? "Brush" : "Bucket";
-    b.dataset.mode = m;
-    b.setAttribute("aria-pressed", String(state.mode === m));
-    if (state.mode === m) b.classList.add("on");
-    b.addEventListener("click", () => {
-      state.mode = m;
-      onChange();
-    });
-    modes.append(b);
-  }
-  panel.append(modes);
 
   const surfaceTitle = document.createElement("span");
   surfaceTitle.className = "paint-title";
@@ -134,18 +125,41 @@ export function buildPaintPanel(state: PaintSettings, onChange: () => void): HTM
   panel.append(colours);
 
   // The brush for the ground. Sliders change the numbers in place without
-  // redrawing the panel, so a drag on one is not interrupted. Hidden in
-  // Bucket mode, where the whole terrain fills at once.
-  if (state.mode === "brush") {
-    const brushTitle = document.createElement("span");
-    brushTitle.className = "paint-title";
-    brushTitle.textContent = "Brush on the terrain";
-    panel.append(brushTitle);
-    panel.append(
-      paintSlider("size", state.radius, 0.5, PAINT_BRUSH.maxRadius, 0.5, (v) => { state.radius = v; }),
-      paintSlider("strength", state.strength, 0.5, PAINT_BRUSH.maxStrength, 0.5, (v) => { state.strength = v; }),
-    );
+  // redrawing the panel, so a drag on one is not interrupted. Shown in both
+  // modes (disabled in Bucket mode) and the mode buttons sit in the bottom
+  // row, so the panel keeps one height and no button moves under the pointer
+  // (R3-16).
+  const brushTitle = document.createElement("span");
+  brushTitle.className = "paint-title";
+  brushTitle.textContent = "Brush on the terrain";
+  panel.append(brushTitle);
+  const size = paintSlider("size", state.radius, 0.5, PAINT_BRUSH.maxRadius, 0.5, (v) => { state.radius = v; });
+  const strength = paintSlider("strength", state.strength, 0.5, PAINT_BRUSH.maxStrength, 0.5, (v) => { state.strength = v; });
+  if (state.mode === "bucket") {
+    for (const el of [size, strength]) {
+      el.classList.add("paint-slider-disabled");
+      const input = el.querySelector("input");
+      if (input) input.disabled = true;
+    }
   }
+  panel.append(size, strength);
+
+  const modes = document.createElement("div");
+  modes.className = "paint-modes";
+  for (const m of ["brush", "bucket"] as const) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = m === "brush" ? "Brush" : "Bucket";
+    b.dataset.mode = m;
+    b.setAttribute("aria-pressed", String(state.mode === m));
+    if (state.mode === m) b.classList.add("on");
+    b.addEventListener("click", () => {
+      state.mode = m;
+      onChange();
+    });
+    modes.append(b);
+  }
+  panel.append(modes);
   return panel;
 }
 

@@ -18,7 +18,7 @@ import {
 } from "./models-editor";
 import { loadModelAsset } from "../level/models";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
-import { buildPaintPanel, PAINT_BRUSH, type PaintSettings } from "./paint-tool";
+import { buildPaintPanel, PAINT_BRUSH, paintHint, type PaintSettings } from "./paint-tool";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { PHYSICS_SHAPES, buildPhysicsFields, makePhysicsObject } from "./physics-editor";
@@ -47,7 +47,7 @@ import { isFolded, toggleFolded, unfoldGroup } from "./outliner-fold";
 import { isLockableKind, lockButton, lockedIds, movableIds } from "./lock";
 import { LEAKING_BARREL, PROP_KINDS } from "../level/props";
 import { BUTTON_COLOUR, buildButtonFields, makeButton } from "./buttons-editor";
-import { TerrainTool, TERRAIN_ID, buildTerrainInspector } from "./terrain-editor";
+import { TerrainTool, TERRAIN_ID, buildTerrainInspector, layoutRing } from "./terrain-editor";
 import { isNudgeKey, nudgeOffset } from "./nudge";
 import { layerForPaint } from "../level/terrain";
 import { connectedSameLook, fillTerrain, heaviestLayerAt, lookOf, type Look } from "./bucket";
@@ -629,6 +629,7 @@ function partColour(kind: PartKind): string {
 /** Arms one shape or part, or disarms it when it is already armed, and says
  *  in the status line what a click will do. */
 function arm(shape: PrimShape | null, part: PartKind | null) {
+  if (paintRing) paintRing.visible = false;
   if (shape) lastShape = shape;
   terrainTool.disarm();
   armed = shape;
@@ -683,7 +684,7 @@ function armPaint() {
   terrainTool.disarm();
   view.setGhost(null);
   const hint = $("toolHint");
-  hint.textContent = "Paint: click or drag across prims to set their surface, or drag on the terrain to paint it. Shift keeps the tool. Esc stops.";
+  hint.textContent = paintHint(paintSettings.mode);
   hint.hidden = false;
   buildPalette();
 }
@@ -702,6 +703,7 @@ function armModel(assetId: string) {
 
 /** Arms or disarms the Paint tool; its settings live in paintSettings. */
 function togglePaint() {
+  if (paintRing) paintRing.visible = false;
   if (armedPaint) {
     armedPaint = false;
     const hint = $("toolHint");
@@ -759,7 +761,13 @@ function buildPalette() {
   const paintWrap = document.createElement("div");
   paintWrap.className = "tool-wrap";
   paintWrap.append(toolButton("paint", "Paint", null, armedPaint, () => togglePaint()));
-  if (armedPaint) paintWrap.append(buildPaintPanel(paintSettings, () => buildPalette()));
+  if (armedPaint) paintWrap.append(buildPaintPanel(paintSettings, () => {
+    if (paintRing) paintRing.visible = false;
+    buildPalette();
+    const hint = $("toolHint");
+    hint.textContent = paintHint(paintSettings.mode);
+    hint.hidden = false;
+  }));
   paint.append(paintWrap);
   // ED-35: the level's imported models, each by its own name. The button
   // arms the one the picker shows; with none imported the section is not
@@ -1129,6 +1137,35 @@ const terrainTool = new TerrainTool({
   },
 });
 
+/** R3-16: the Paint tool's brush ring, its own size, shown on hover with the
+ *  Paint tool armed in Brush mode. Made lazily like sizeLabel. */
+let paintRing: THREE.LineLoop | null = null;
+function updatePaintRing(e: (PointerEvent & { target: EventTarget | null }) | null) {
+  if (!armedPaint || paintSettings.mode !== "brush" || !e || e.target !== canvas) {
+    if (paintRing) paintRing.visible = false;
+    return;
+  }
+  const t = doc.level.terrain;
+  if (!t) {
+    if (paintRing) paintRing.visible = false;
+    return;
+  }
+  const hit = view.terrainHit(...ndcOf(e));
+  if (!hit) {
+    if (paintRing) paintRing.visible = false;
+    return;
+  }
+  if (!paintRing) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(64 * 3), 3));
+    paintRing = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: "#ffd23f", depthTest: false }));
+    paintRing.renderOrder = 10;
+    view.scene.add(paintRing);
+  }
+  paintRing.visible = true;
+  layoutRing(paintRing, t, hit.x, hit.z, paintSettings.radius);
+}
+
 /** Pixels the cursor must travel before a press becomes a drag. */
 const DRAG_PIXELS = 4;
 
@@ -1403,6 +1440,7 @@ canvas.addEventListener("pointerdown", (e) => {
 
 window.addEventListener("pointermove", (e) => {
   lastPointer = e.target === canvas ? { clientX: e.clientX, clientY: e.clientY } : null;
+  updatePaintRing(e);
   if (!press) {
     if ((armed || armedPart || armedModel) && e.target === canvas && !view.nav.busy) {
       const hit = view.pick(...ndcOf(e));
@@ -1579,6 +1617,7 @@ window.addEventListener("pointerup", (e) => {
 });
 
 canvas.addEventListener("pointerleave", () => {
+  if (paintRing) paintRing.visible = false;
   if (press) return;
   if (armedAsset) view.ghostAt(null);
   else view.setGhost(null);
