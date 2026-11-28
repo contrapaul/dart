@@ -4,14 +4,22 @@
 // owns the state and the painting itself.
 
 import { drawSurface, SURFACES, SURFACE_NAMES } from "../render/surfaces";
-import { PALETTE } from "./doc";
+import { EDITOR, PALETTE } from "./doc";
 
 /** The paint tool's settings: the surface to brush on, and the colour to
  *  brush (null keeps the prim's own colour). */
 export interface PaintSettings {
   surface: string;
   colour: string | null;
+  /** The brush on the ground, its own and not the Terrain tool's (Paul,
+   *  2026-11-28): metres, and how fast it lays the paint (a share a
+   *  second). Prims are painted whole, so they ignore both. */
+  radius: number;
+  strength: number;
 }
+
+/** The paint brush's starting numbers and slider ends, data/editor.json. */
+export const PAINT_BRUSH = EDITOR.paint as { radius: number; strength: number; maxRadius: number; maxStrength: number };
 
 /** A small canvas of one surface, drawn from the same pixels the texture
  *  uses (negated? no: the grey pattern, tinted at paint time by the
@@ -105,5 +113,37 @@ export function buildPaintPanel(state: PaintSettings, onChange: () => void): HTM
     colours.append(button);
   }
   panel.append(colours);
+
+  // The brush for the ground. Sliders change the numbers in place without
+  // redrawing the panel, so a drag on one is not interrupted.
+  const brushTitle = document.createElement("span");
+  brushTitle.className = "paint-title";
+  brushTitle.textContent = "Brush on the terrain";
+  panel.append(brushTitle);
+  panel.append(
+    paintSlider("size", state.radius, 0.5, PAINT_BRUSH.maxRadius, 0.5, (v) => { state.radius = v; }),
+    paintSlider("strength", state.strength, 0.5, PAINT_BRUSH.maxStrength, 0.5, (v) => { state.strength = v; }),
+  );
   return panel;
+}
+
+function paintSlider(name: string, value: number, min: number, max: number, step: number, set: (v: number) => void): HTMLElement {
+  const wrap = document.createElement("label");
+  wrap.className = "paint-slider";
+  const text = document.createElement("span");
+  text.textContent = `${name} ${value}`;
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(value);
+  input.setAttribute("aria-label", `Paint brush ${name}`);
+  input.addEventListener("input", () => {
+    const v = Number(input.value);
+    set(v);
+    text.textContent = `${name} ${v}`;
+  });
+  wrap.append(text, input);
+  return wrap;
 }

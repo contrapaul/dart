@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { buildLights, targetDirection } from "../../src/level/lights";
+import { buildLights, lightOutput, targetDirection } from "../../src/level/lights";
 import type { Level, LevelLight } from "../../src/level/format";
 import type { QualityPreset } from "../../src/render/quality";
 import editorData from "../../data/editor.json";
@@ -127,5 +127,20 @@ describe("the validator takes a placed light", () => {
       id: `l${i}`, kind: "point", pos: [i, 2, 0], colour: "#ffffff", intensity: 1, range: 8, castShadow: true,
     })) });
     expect(over.errors.some((e) => e.includes("cast shadows"))).toBe(true);
+  });
+});
+
+describe("a light's range sets its spread (Paul, 2026-11-28)", () => {
+  it("at the reference range the output is the intensity, as before", () => {
+    expect(lightOutput(20, 8)).toBeCloseTo(20);
+  });
+
+  it("lights halfway to its range equally brightly, whatever the range", () => {
+    // Physical falloff: illuminance is output over distance squared.
+    const at = (range: number) => lightOutput(20, range) / (range / 2) ** 2;
+    expect(at(16)).toBeCloseTo(at(8));
+    expect(at(30)).toBeCloseTo(at(8));
+    // So a longer range spreads further: at 6 m, range 16 is 4 times range 8.
+    expect(lightOutput(20, 16) / 36).toBeCloseTo(4 * (lightOutput(20, 8) / 36));
   });
 });

@@ -18,7 +18,7 @@ import {
 } from "./models-editor";
 import { loadModelAsset } from "../level/models";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
-import { buildPaintPanel, type PaintSettings } from "./paint-tool";
+import { buildPaintPanel, PAINT_BRUSH, type PaintSettings } from "./paint-tool";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { PHYSICS_SHAPES, buildPhysicsFields, makePhysicsObject } from "./physics-editor";
@@ -112,7 +112,7 @@ let placeColour = "#ff7a1a";
 /** ED-36: the Paint tool. `paintSurface` is the surface brushed on a prim,
  *  `paintColour` is null (keep the prim's colour) or a hex colour. */
 let armedPaint = false;
-const paintSettings: PaintSettings = { surface: "brick", colour: null };
+const paintSettings: PaintSettings = { surface: "brick", colour: null, radius: PAINT_BRUSH.radius, strength: PAINT_BRUSH.strength };
 const selected = new Set<string>();
 /** ED-08 stage 3: the trigger field Link fills ("enter", "killed", "do:2"),
  *  or null when nothing is linking. Cleared when the selection changes. */
@@ -1256,7 +1256,7 @@ canvas.addEventListener("pointerdown", (e) => {
         return;
       }
       const { layers, index } = layerForPaint(t, paintSettings.surface, paintSettings.colour);
-      const brush = { mode: "paint" as const, radius: terrainTool.brush.radius, strength: EDITOR.terrain.brush.paintToolStrength, layer: index };
+      const brush = { mode: "paint" as const, radius: paintSettings.radius, strength: paintSettings.strength, layer: index };
       if (terrainTool.beginStroke(e, brush, layers === t.layers ? undefined : layers, () => {
         status.textContent = "Painted the terrain.";
       })) pressUsed = true;

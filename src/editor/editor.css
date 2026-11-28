@@ -814,3 +814,9 @@ button.on {
   border-color: #ffd23f;
   background: rgba(255, 210, 63, 0.28);
 }
+
+#palette .paint-slider {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}

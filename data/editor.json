@@ -13,10 +13,10 @@
     "skyImageHeight": 1024,
     "stairsMaxSteps": 64
   },
-  "lights": { "maxShadows": 4, "_note": "ED-32: at most this many lights cast shadows (each is a shadow map pass)." },
+  "lights": { "maxShadows": 4, "referenceRange": 8, "_note": "ED-32: at most this many lights cast shadows (each is a shadow map pass). referenceRange: a light's output grows with its range squared relative to this many metres, so range sets how far it spreads (at this range a light is as bright as its intensity says)." },
   "models": { "maxAssetBytes": 3000000, "maxTotalBytes": 12000000, "maxVoxels": 60000, "_note": "ED-35: an imported GLB may be this many bytes, and all of a level's together this many (they live inside the level file). A voxel breakable model with more voxels inside than maxVoxels is built by hit points instead." },
   "terrain": {
-    "_note": "ED-34: maxCells: the most heightfield cells along a side. defaultSize, defaultCell and baseY: the flat terrain the Terrain tool makes, in metres (baseY a little over the new level's floor top at 0, so the two do not flicker). headroom: metres of open sky over the terrain's highest point that still count as inside the level. layers: its four paint layers (a surface from data/surfaces.json and a colour). brush: the brush's starting radius (m) and strength, and the sliders' top ends; paintToolStrength: how fast the Paint tool lays a colour on the terrain (a share a second, so a quick pass covers).",
+    "_note": "ED-34: maxCells: the most heightfield cells along a side. defaultSize, defaultCell and baseY: the flat terrain the Terrain tool makes, in metres (baseY a little over the new level's floor top at 0, so the two do not flicker). headroom: metres of open sky over the terrain's highest point that still count as inside the level. layers: its four paint layers (a surface from data/surfaces.json and a colour). brush: the brush's starting radius (m) and strength, and the sliders' top ends.",
     "maxCells": 256,
     "defaultSize": 64,
     "defaultCell": 1,
@@ -28,8 +28,9 @@
       { "surface": "sand", "colour": "#ffd23a" },
       { "surface": "concrete", "colour": "#f4ecdc" }
     ],
-    "brush": { "radius": 3, "strength": 2, "maxRadius": 20, "maxStrength": 10, "paintToolStrength": 8 }
+    "brush": { "radius": 3, "strength": 2, "maxRadius": 20, "maxStrength": 10 }
   },
+  "paint": { "radius": 2, "strength": 8, "maxRadius": 20, "maxStrength": 20, "_note": "The Paint tool's own brush on the terrain: its starting size (m) and strength (a share a second, so a quick pass covers), and the sliders' top ends." },
   "nudgeFine": 0.1,
   "_nudgeNote": "The arrow keys nudge the selection one grid step, or nudgeFine metres with snap off.",
   "grid": 0.5,

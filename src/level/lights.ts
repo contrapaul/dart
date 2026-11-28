@@ -11,6 +11,7 @@ import editorData from "../../data/editor.json";
 
 const DEG = Math.PI / 180;
 const MAX_SHADOWS = editorData.lights.maxShadows;
+const REFERENCE_RANGE = editorData.lights.referenceRange;
 
 export interface LightHandle {
   id: string;
@@ -64,13 +65,27 @@ export function applyLighting(scene: THREE.Scene, lighting: LevelLighting | unde
   }
 }
 
+/**
+ * The light's real output (candela) for its level-file intensity and range.
+ * With physical falloff (1 over distance squared) the range alone only
+ * moves the cut-off, so a light's spread hardly changed with it (Paul,
+ * 2026-11-28). The output now grows with the range squared, relative to
+ * `lights.referenceRange` in data/editor.json: at that range a light is as
+ * bright as before, and at twice the range it lights a pool twice as wide
+ * at the same brightness.
+ */
+export function lightOutput(intensity: number, range: number): number {
+  const k = range / REFERENCE_RANGE;
+  return intensity * k * k;
+}
+
 /** Builds one light and adds it to the scene. Shadows are only ever on when
  *  the preset allows them and the casters are under the cap. */
 function buildOne(def: LevelLight, castShadow: boolean): { id: string; light: THREE.PointLight | THREE.SpotLight; target?: THREE.Object3D } {
   const pos = new THREE.Vector3(...def.pos);
   const colour = new THREE.Color(def.colour);
   if (def.kind === "spot") {
-    const spot = new THREE.SpotLight(colour, def.intensity, def.range, Math.min(89, (def.angle ?? 45) / 2) * DEG, Math.min(1, Math.max(0, def.softness ?? 0.3)), 2);
+    const spot = new THREE.SpotLight(colour, lightOutput(def.intensity, def.range), def.range, Math.min(89, (def.angle ?? 45) / 2) * DEG, Math.min(1, Math.max(0, def.softness ?? 0.3)), 2);
     spot.position.copy(pos);
     spot.castShadow = castShadow;
     // Half the full angle, since three.js wants the cone's half angle.
@@ -78,7 +93,7 @@ function buildOne(def: LevelLight, castShadow: boolean): { id: string; light: TH
     spot.target.position.copy(pos).addScaledVector(dir, Math.max(def.range, 1));
     return { id: def.id, light: spot, target: spot.target };
   }
-  const point = new THREE.PointLight(colour, def.intensity, def.range, 2);
+  const point = new THREE.PointLight(colour, lightOutput(def.intensity, def.range), def.range, 2);
   point.position.copy(pos);
   point.castShadow = castShadow;
   return { id: def.id, light: point };
