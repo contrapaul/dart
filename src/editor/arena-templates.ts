@@ -13,6 +13,8 @@ export interface ArenaTemplate {
   clip: Clip;
   /** "" when the file carries none (templates have no pictures). */
   picture: string;
+  /** The file's _note, one line, for the Templates list. */
+  note: string;
 }
 
 /** Every file, read and checked with the asset reader. A broken file is
@@ -35,6 +37,8 @@ export const TEMPLATES: ArenaTemplate[] = Object.entries(FILES)
       return null;
     }
     const body: AssetBody = read.assets[0]!;
-    return { name: body.name, clip: body.clip, picture: body.picture };
+    const raw = mod.default as { _note?: unknown };
+    const note = typeof raw?._note === "string" ? raw._note.trim() : "";
+    return { name: body.name, clip: body.clip, picture: body.picture, note };
   })
   .filter((t): t is ArenaTemplate => t !== null);

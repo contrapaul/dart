@@ -1100,3 +1100,55 @@ button.on {
   gap: 0.3rem;
   margin-left: auto;
 }
+
+/* R3-17: the Templates list. One row per template: name over a one line
+   description, the Place button aligned right. Spacing like the saved
+   asset rows. */
+#dialogs .template-section {
+  margin: 0.6rem 0 0.4rem;
+}
+
+#dialogs .template-section h3 {
+  margin: 0 0 0.35rem;
+  font-size: 13px;
+}
+
+#dialogs .template-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+#dialogs .template-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #2a2340;
+  border-radius: 6px;
+  background: #171126;
+}
+
+#dialogs .template-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+#dialogs .template-name {
+  font-size: 13px;
+  color: #fff6e8;
+}
+
+#dialogs .template-desc {
+  font-size: 11px;
+  color: #b9a8d8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#dialogs .template-place {
+  flex: 0 0 auto;
+}
