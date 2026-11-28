@@ -7,6 +7,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 // @ts-expect-error Node module types are intentionally not installed.
 import { drawSurface, SURFACE_NAMES, SURFACES } from "../src/render/surfaces";
+import { MORE_PAINTERS } from "../src/render/painters-more";
 import type { CanvasImage } from "../src/render/surfaces";
 import { encodePng } from "./render-rig";
 
@@ -22,7 +23,7 @@ const TINTS: { name: string; hex: string }[] = [
 const TILE = 128; // one texture repeat in px
 const COLS = 3, ROWS_2 = 2;
 const CELL = TILE * ROWS_2;
-const LABEL_W = 176;
+const LABEL_W = 240;
 const GAP = 10;
 const BG = [232, 230, 236] as const;
 
@@ -118,7 +119,9 @@ function drawText(im: Image, text: string, cx: number, cy: number, scale = 4): v
 }
 
 export function renderSheet(): Image {
-  const names = SURFACE_NAMES;
+  // The json is the palette, as owned by its editor role: the generated
+  // painters are drawn whether or not their data/surfaces.json entry has landed.
+  const names = Array.from(new Set([...SURFACE_NAMES, ...Object.keys(MORE_PAINTERS)]));
   const rows = names.length;
   const width = LABEL_W + COLS * CELL + (COLS + 0) * GAP + GAP;
   const height = rows * (CELL + GAP) + GAP;
@@ -136,7 +139,8 @@ export function renderSheet(): Image {
       for (let y = 0; y < CELL; y++) { pixel(im, ox, oy + y, [42, 35, 64]); pixel(im, ox + CELL - 1, oy + y, [42, 35, 64]); }
     }
     // Label on the left, centred.
-    drawText(im, label.toUpperCase(), LABEL_W / 2, oy + CELL / 2);
+    const text = label.toUpperCase();
+    drawText(im, text, LABEL_W / 2, oy + CELL / 2, text.length > 10 ? 3 : 4);
   });
   return im;
 }
