@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Level, LevelLight, LevelLighting } from "./format";
 import type { QualityPreset } from "../render/quality";
+import { resolveLook } from "../render/look";
 import editorData from "../../data/editor.json";
 
 // ED-32: the level's lights. A point light shines every way; a spot light
@@ -46,9 +47,13 @@ export function sceneLights(scene: THREE.Scene): { ambient: THREE.HemisphereLigh
 /** Applies a level's lighting to the scene's own ambient and sun. The sun's
  *  direction comes from sunYaw (degrees about Y) and sunPitch (degrees
  *  down from level); the sun sits at dir * 20 and shines at the origin. */
-export function applyLighting(scene: THREE.Scene, lighting: LevelLighting | undefined) {
-  if (!lighting) return;
+export function applyLighting(scene: THREE.Scene, lighting: LevelLighting | undefined, skyLightOff = false) {
+  // R3-06: bounce is the hemisphere light's ground colour; it resolves from
+  // the gi option or the data/render.json defaults, even when no lighting
+  // block is set at all.
   const { ambient, sun } = sceneLights(scene);
+  if (ambient) ambient.groundColor = new THREE.Color(resolveLook(lighting?.gi, undefined, skyLightOff).bounce);
+  if (!lighting) return;
   if (ambient) {
     ambient.color = new THREE.Color(lighting.ambient);
     ambient.intensity = lighting.ambientIntensity;
@@ -103,7 +108,9 @@ function buildOne(def: LevelLight, castShadow: boolean): { id: string; light: TH
  *  capped at data/editor.json `lights.maxShadows`, and none happen on a
  *  preset with shadows off. Returns handles by id with `setVisible`. */
 export function buildLights(scene: THREE.Scene, level: Level, quality: QualityPreset): BuiltLights {
-  applyLighting(scene, level.lighting);
+  // R3-06: the low preset (no shadows, no antialias) turns skyLight off.
+  const skyLightOff = !quality.shadows && !quality.antialias;
+  applyLighting(scene, level.lighting, skyLightOff);
   const handles = new Map<string, LightHandle>();
   let shadows = 0;
   for (const def of level.lights ?? []) {

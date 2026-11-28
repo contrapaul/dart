@@ -12,6 +12,7 @@ import { EditorCamera, openCameraSpot } from "./camera";
 import { faceCentre, type Resizable } from "./resize";
 import { EXIT_ID, START_ID, markerFor, type Marker } from "./markers";
 import { buildLights, sceneLights, type BuiltLights } from "../level/lights";
+import { applyLookEnvironment, applyLookToRenderer, resolveLook } from "../render/look";
 import { isUpright, yawOf } from "./group-transform";
 
 // ED-02 stage 2: everything the editor draws and the camera that flies over
@@ -333,10 +334,18 @@ export class EditorView {
       sun.position.set(6, 12, 4);
     }
     this.realLights?.dispose();
-    this.realLights = buildLights(this.scene, level, {
+    const preset = {
       pixelRatioMax: 1, antialias: false, shadows: false,
       shadowMapMax: 512, debrisMax: 60, breakoffMaxPieces: 8,
-    });
+    };
+    this.realLights = buildLights(this.scene, level, preset);
+    // R3-06: tone mapping, exposure and the sky as an environment map, the
+    // same look the game plays. The editor keeps skyLight on, so Paul can
+    // see the option he is editing (the low quality preset in the game
+    // turns it off; the editor is not the low preset).
+    const look = resolveLook(level.lighting?.gi, undefined, false);
+    applyLookToRenderer(this.renderer, look);
+    applyLookEnvironment(this.renderer, this.scene, level.sky, look);
   }
 
   // ED-34: the terrain's mesh. Rebuilt when the grid's size changes, else

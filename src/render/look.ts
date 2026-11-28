@@ -71,3 +71,94 @@ export function applyLookToRenderer(renderer: THREE.WebGLRenderer, look: LookOpt
 export function isColour(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
 }
+
+/** A gradient sky as a big inside-out sphere with three stops. Mirrors the
+ *  editor view's sky, standalone, so the environment map needs no DOM. */
+function gradientMesh(sky: Extract<import("../level/format").Sky, { kind: "gradient" }>): THREE.Mesh {
+  const geo = new THREE.SphereGeometry(50, 32, 16);
+  const pos = geo.getAttribute("position");
+  const colours = new Float32Array(pos.count * 3);
+  const top = new THREE.Color(sky.top);
+  const horizon = new THREE.Color(sky.horizon);
+  const bottom = new THREE.Color(sky.bottom);
+  const c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const h = pos.getY(i) / 50;
+    if (h >= 0) c.copy(horizon).lerp(top, Math.min(1, h));
+    else c.copy(horizon).lerp(bottom, Math.min(1, -h));
+    colours[i * 3] = c.r;
+    colours[i * 3 + 1] = c.g;
+    colours[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(colours, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false }));
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+// PMREM textures are kept for the page's lifetime; the map is tiny (one
+// texture per sky, which is rare), and a brush stroke calls show() a lot.
+const envCache = new Map<string, THREE.Texture>();
+
+function cacheKey(sky: import("../level/format").Sky): string {
+  return sky.kind === "gradient" ? `g|${sky.top}|${sky.horizon}|${sky.bottom}` : `i|${sky.image.length}|${sky.image.slice(0, 64)}`;
+}
+
+/** The level's sky as an environment map, at `look.skyLight`. Sets
+ *  scene.environment and scene.environmentIntensity. With no sky, or
+ *  skyLight 0, the scene is left with no environment (the arena's hemisphere
+ *  light is the only fill). */
+export function applyLookEnvironment(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  sky: import("../level/format").Sky | undefined,
+  look: LookOptions,
+) {
+  if (look.skyLight <= 0 || !sky) {
+    scene.environment = null;
+    scene.environmentIntensity = 1;
+    return;
+  }
+  if (sky.kind === "gradient") {
+    const key = cacheKey(sky);
+    let tex = envCache.get(key);
+    if (!tex) {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const temp = new THREE.Scene();
+      temp.add(gradientMesh(sky));
+      tex = pmrem.fromScene(temp, 0.04).texture;
+      pmrem.dispose();
+      envCache.set(key, tex);
+    }
+    scene.environment = tex;
+  } else {
+    // An image sky decodes asynchronously; with no DOM (headless tests)
+    // there is nothing to decode.
+    if (typeof document === "undefined") {
+      scene.environment = null;
+      scene.environmentIntensity = 1;
+      return;
+    }
+    const key = cacheKey(sky);
+    let tex = envCache.get(key);
+    if (!tex) {
+      new THREE.TextureLoader().load(sky.image, (image) => {
+        image.mapping = THREE.EquirectangularReflectionMapping;
+        image.colorSpace = THREE.SRGBColorSpace;
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const rt = pmrem.fromEquirectangular(image);
+        pmrem.dispose();
+        image.dispose();
+        tex = rt.texture;
+        envCache.set(key, tex!);
+        scene.environment = tex!;
+        scene.environmentIntensity = look.skyLight;
+      });
+      scene.environment = null;
+      scene.environmentIntensity = 1;
+      return;
+    }
+    scene.environment = tex;
+  }
+  scene.environmentIntensity = look.skyLight;
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import {
+  applyLookEnvironment,
   isColour,
   lookDefaults,
   resolveLook,
@@ -60,6 +61,21 @@ describe("resolveLook", () => {
     const out = resolveLook({ skyLight: 0.9 }, BASE, true);
     expect(out.skyLight).toBe(0);
     expect(out.exposure).toBe(BASE.exposure);
+  });
+});
+
+describe("applyLookEnvironment", () => {
+  it("leaves no environment with no sky", () => {
+    const s = new THREE.Scene();
+    applyLookEnvironment(null as never, s, undefined, { ...BASE, skyLight: 0.5 });
+    expect(s.environment).toBeNull();
+    expect(s.environmentIntensity).toBe(1);
+  });
+
+  it("leaves no environment with skyLight 0", () => {
+    const s = new THREE.Scene();
+    applyLookEnvironment(null as never, s, { kind: "gradient", top: "#000000", horizon: "#111111", bottom: "#222222" }, { ...BASE, skyLight: 0 });
+    expect(s.environment).toBeNull();
   });
 });
 
