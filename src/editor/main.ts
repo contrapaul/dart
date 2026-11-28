@@ -46,6 +46,7 @@ import { BUTTON_COLOUR, buildButtonFields, makeButton } from "./buttons-editor";
 import { TerrainTool, TERRAIN_ID, buildTerrainInspector } from "./terrain-editor";
 import { isNudgeKey, nudgeOffset } from "./nudge";
 import { layerForPaint } from "../level/terrain";
+import { connectedSameLook, fillTerrain, heaviestLayerAt, lookOf, type Look } from "./bucket";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -113,7 +114,7 @@ let placeColour = "#ff7a1a";
 /** ED-36: the Paint tool. `paintSurface` is the surface brushed on a prim,
  *  `paintColour` is null (keep the prim's colour) or a hex colour. */
 let armedPaint = false;
-const paintSettings: PaintSettings = { surface: "brick", colour: null, radius: PAINT_BRUSH.radius, strength: PAINT_BRUSH.strength };
+const paintSettings: PaintSettings = { surface: "brick", colour: null, mode: "brush", radius: PAINT_BRUSH.radius, strength: PAINT_BRUSH.strength };
 const selected = new Set<string>();
 /** ED-08 stage 3: the trigger field Link fills ("enter", "killed", "do:2"),
  *  or null when nothing is linking. Cleared when the selection changes. */
@@ -1191,6 +1192,9 @@ function showSelectBox(x0: number, y0: number, x1: number, y1: number) {
 let lastPointer: { clientX: number; clientY: number } | null = null;
 /** Set when a press was a place or a drag, so the click after it is not a pick. */
 let pressUsed = false;
+/** R3-03: where an Alt+click press started, so a click with no drag can pick
+ *  a look. The camera's Alt+drag orbit is never a pick. */
+let altDown: { clientX: number; clientY: number } | null = null;
 
 /** Paint one prim (the tracked id is recorded once, as a snapshot of before-state). */
 function paintPrim(id: string) {
@@ -1235,14 +1239,106 @@ function floorPoint(e: PointerEvent, y: number): THREE.Vector3 | null {
   return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), new THREE.Vector3());
 }
 
+
+
+/** R3-03: Alt+click with the Paint tool armed copies a prim's or physics
+ *  object's look into the settings (on the terrain, the heaviest layer under
+ *  the cursor). The camera's Alt+drag orbit is untouched: only a click with
+ *  no drag picks. */
+function pickLookFromView(e: { clientX: number; clientY: number }) {
+  const entry = view.pick(...ndcOf(e));
+  if (entry?.id) {
+    const kind = doc.kindOf(entry.id);
+    let look: Look | null = null;
+    if (kind === "prims") {
+      const p = doc.prim(entry.id);
+      if (p) look = lookOf(p);
+    } else if (kind === "physics") {
+      const o = doc.find("physics", entry.id) as { surface?: string; colour: string } | undefined;
+      if (o) look = lookOf(o);
+    }
+    if (look) {
+      paintSettings.surface = look.surface;
+      paintSettings.colour = look.colour;
+      buildPalette();
+      status.textContent = `Picked ${look.surface} / ${look.colour}.`;
+      return;
+    }
+  }
+  const t = doc.level.terrain;
+  if (t && onTerrain(e, entry)) {
+    const th = view.terrainHit(...ndcOf(e));
+    if (th) {
+      const i = heaviestLayerAt(t, th.x, th.z);
+      const layer = t.layers[i]!;
+      paintSettings.surface = layer.surface;
+      paintSettings.colour = layer.colour;
+      buildPalette();
+      status.textContent = `Picked ${layer.surface} / ${layer.colour}.`;
+      return;
+    }
+  }
+  status.textContent = "Nothing to pick a look from.";
+}
+
+/** R3-03: Bucket mode. A click on a prim paints every prim reachable through
+ *  touching or overlapping boxes that wear the same surface and colour; a
+ *  click on the terrain fills the whole terrain with the chosen look. Each
+ *  is one undo step. */
+function paintBucket(hit: { id: string | null; point: THREE.Vector3 } | null, e: PointerEvent) {
+  if (hit?.id && doc.kindOf(hit.id) === "prims") {
+    const ids = connectedSameLook(doc.level, hit.id).map((p) => p.id);
+    if (!ids.length) return;
+    const patch: Record<string, unknown> = {
+      surface: paintSettings.surface === "plain" ? undefined : paintSettings.surface,
+    };
+    if (paintSettings.colour) patch.colour = paintSettings.colour;
+    doc.change("prims", ids.map((id) => ({ id, patch })), `paint ${ids.length} prim${ids.length === 1 ? "" : "s"}`);
+    status.textContent = `Filled ${ids.length} prim${ids.length === 1 ? "" : "s"}.`;
+    finishBucket(e);
+    return;
+  }
+  const t = doc.level.terrain;
+  if (t && onTerrain(e, hit)) {
+    if (t.locked) {
+      status.textContent = "The terrain is locked. Unlock it in its inspector to paint it.";
+      return;
+    }
+    const { layers, index } = layerForPaint(t, paintSettings.surface, paintSettings.colour);
+    const work = structuredClone(t);
+    work.layers = layers.map((l) => ({ ...l }));
+    fillTerrain(work, index);
+    doc.setFields({ terrain: work }, "fill the terrain");
+    status.textContent = "Filled the terrain.";
+    finishBucket(e);
+  }
+}
+
+/** R3-03: after a bucket fill, leave the tool armed only when Shift is held,
+ *  like the brush drag. */
+function finishBucket(e: PointerEvent) {
+  if (!e.shiftKey) {
+    armedPaint = false;
+    const hint = $("toolHint");
+    hint.textContent = "";
+    hint.hidden = true;
+  }
+  buildPalette();
+}
+
 // Registered in the capture phase, so it runs before the handles' own
 // listener and can keep them out of a press that drags the thing itself.
 canvas.addEventListener("pointerdown", (e) => {
   pressUsed = false;
+  altDown = e.altKey && armedPaint && e.button === 0 ? { clientX: e.clientX, clientY: e.clientY } : null;
   if (e.button !== 0 || e.altKey || view.nav.busy || view.overHandle || linkKey) return;
   // ED-36: the Paint tool paints, it does not move or select.
   if (armedPaint) {
     const hit = view.pick(...ndcOf(e));
+    if (paintSettings.mode === "bucket") {
+      paintBucket(hit, e);
+      return;
+    }
     if (hit?.id && doc.kindOf(hit.id) === "prims") {
       press = { kind: "paint", x: e.clientX, y: e.clientY, painted: new Map() };
       paintPrim(hit.id);
@@ -1488,6 +1584,16 @@ canvas.addEventListener("dblclick", (e) => {
   if (hit?.id) pick(hit.id, false);
 });
 canvas.addEventListener("click", (e) => {
+  // R3-03: Alt+click with the Paint tool armed picks a look from the thing
+  // under the cursor (or the heaviest terrain layer). A drag is the camera's
+  // orbit, never a pick.
+  if (e.altKey && armedPaint) {
+    if (altDown && Math.hypot(e.clientX - altDown.clientX, e.clientY - altDown.clientY) <= DRAG_PIXELS) {
+      pickLookFromView(e);
+    }
+    altDown = null;
+    return;
+  }
   if (view.nav.swallowClick) {
     view.nav.swallowClick = false;
     return;
