@@ -504,6 +504,51 @@ export function isVoxelBreakable(p: Prim): boolean {
   return p.behaviour === "breakable" && p.shape === "box" && (p.rot ?? [0, 0, 0]).every((d) => d % 90 === 0);
 }
 
+/** R3-04: the side in pixels of an uploaded texture, read from its image
+ *  header (PNG or JPEG). Returns null when the header is not a known one. */
+export function textureImageSize(image: string): { width: number; height: number } | null {
+  if (typeof image !== "string") return null;
+  const match = /^data:image\/(png|jpeg|jpg);base64,(.*)$/i.exec(image);
+  if (!match) return null;
+  let bytes: Uint8Array;
+  try {
+    const bin = atob(match[2]!);
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  } catch {
+    return null;
+  }
+  if (/png/i.test(match[1]!)) {
+    if (bytes.length < 24 || bytes[0] !== 0x89 || bytes[1] !== 0x50) return null;
+    const width = (bytes[16]! << 24) | (bytes[17]! << 16) | (bytes[18]! << 8) | bytes[19]!;
+    const height = (bytes[20]! << 24) | (bytes[21]! << 16) | (bytes[22]! << 8) | bytes[23]!;
+    return width > 0 && height > 0 ? { width, height } : null;
+  }
+  // JPEG: scan for a start-of-frame marker, the payload's first two bytes
+  // are the height and width, big endian.
+  let i = 2;
+  while (i + 9 < bytes.length) {
+    if (bytes[i] !== 0xff) { i++; continue; }
+    const marker = bytes[i + 1]!;
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      const height = (bytes[i + 5]! << 8) | bytes[i + 6]!;
+      const width = (bytes[i + 7]! << 8) | bytes[i + 8]!;
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+    if (marker === 0xd8 || marker === 0xd9) { i += 2; continue; }
+    const len = ((bytes[i + 2]! << 8) | bytes[i + 3]!);
+    i += 2 + len;
+  }
+  return null;
+}
+
+/** R3-04: a surface name is a built-in or `tex:<id>` of an existing upload. */
+function isSurfaceRef(name: string, texIds: Set<string>): boolean {
+  if (name in surfaceData.surfaces) return true;
+  if (!name.startsWith("tex:")) return false;
+  return texIds.has(name.slice(4));
+}
+
 /** ED-00 (design/EDITOR.md): the editor's parts of a level file. */
 function editorParts(level: Level, errors: string[], warnings: string[], shell: Bounds, arenaAndLevelDoors: Set<string>) {
   const prims = level.prims ?? [];
@@ -552,6 +597,27 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
   }
   const shadows = lights.filter((l) => l.castShadow).length;
   if (shadows > editorData.lights.maxShadows) errors.push(`${shadows} lights cast shadows, over the limit of ${editorData.lights.maxShadows}`);
+  // R3-04: uploaded textures. The image is kept in the level file, so it
+  // is capped like the sky picture is: count, bytes and side length.
+  const TEX_CAP = editorData.textures;
+  const textures = level.textures ?? [];
+  const texIds = new Set<string>();
+  if (textures.length > TEX_CAP.maxCount) errors.push(`${textures.length} textures, over the limit of ${TEX_CAP.maxCount}`);
+  for (const t of textures) {
+    const what = `texture ${t.id}`;
+    if (typeof t.id !== "string" || !t.id || texIds.has(t.id)) errors.push(`${what}: id missing or used twice`);
+    texIds.add(t.id);
+    if (typeof t.name !== "string" || !t.name) errors.push(`${what}: name must be a string`);
+    if (typeof t.image !== "string" || !t.image.startsWith("data:image/")) errors.push(`${what}: image must be a data:image URL`);
+    else {
+      const bytes = t.image.length * 0.75;
+      if (bytes > TEX_CAP.maxBytes) errors.push(`${what}: image is about ${Math.round(bytes / 1000)} KB, over the ${Math.round(TEX_CAP.maxBytes / 1000)} KB limit`);
+      const size = textureImageSize(t.image);
+      if (!size) errors.push(`${what}: image could not be read (a png or jpg)`);
+      else if (size.width > TEX_CAP.maxSize || size.height > TEX_CAP.maxSize) errors.push(`${what}: ${size.width} x ${size.height} px is over the ${TEX_CAP.maxSize} px a side limit`);
+    }
+    if (!(typeof t.scale === "number" && t.scale > 0 && Number.isFinite(t.scale))) errors.push(`${what}: scale must be a positive number`);
+  }
   const physics = level.physics ?? [];
   if (physics.length > LIMITS.physics) errors.push(`${physics.length} physics objects, over the limit of ${LIMITS.physics}`);
   for (const o of physics) {
@@ -565,6 +631,7 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
     if (!(typeof o.mass === "number" && o.mass > 0)) errors.push(`${what}: mass must be positive`);
     if (!(typeof o.damage === "number" && o.damage >= 0)) errors.push(`${what}: damage must be 0 or more`);
     if (o.breakable && !(typeof o.hitPoints === "number" && o.hitPoints > 0)) errors.push(`${what}: a breakable one needs hitPoints`);
+    if (o.surface !== undefined && !isSurfaceRef(o.surface, texIds)) errors.push(`${what}: unknown surface ${o.surface}`);
   }
   const assets = level.modelAssets ?? [];
   const assetIds = new Set<string>();
@@ -608,7 +675,10 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
     }
     if (!Array.isArray(t.layers) || t.layers.length < 1 || t.layers.length > 4) errors.push(`${what}: 1 to 4 layers`);
     else {
-      for (const l of t.layers) if (!isColour(l.colour)) errors.push(`${what}: a layer colour must be #rrggbb`);
+      for (const l of t.layers) {
+        if (!isColour(l.colour)) errors.push(`${what}: a layer colour must be #rrggbb`);
+        if (!isSurfaceRef(l.surface, texIds)) errors.push(`${what}: unknown surface ${l.surface}`);
+      }
       if (t.paint !== undefined && (!Array.isArray(t.paint) || t.paint.length !== verts * t.layers.length)) {
         errors.push(`${what}: paint must be ${verts * t.layers.length} numbers`);
       }
@@ -632,7 +702,7 @@ function editorParts(level: Level, errors: string[], warnings: string[], shell: 
     if (isVec3(p.size) && p.size.some((n) => n <= 0)) errors.push(`${what}: size must be positive`);
     if (p.rot !== undefined && !isVec3(p.rot)) errors.push(`${what}: rot must be three numbers`);
     if (!isColour(p.colour)) errors.push(`${what}: colour must be #rrggbb`);
-    if (p.surface !== undefined && !(p.surface in surfaceData.surfaces)) errors.push(`${what}: unknown surface ${p.surface}`);
+    if (p.surface !== undefined && !isSurfaceRef(p.surface, texIds)) errors.push(`${what}: unknown surface ${p.surface}`);
     if (p.shape === "stairs" && !(Number.isInteger(p.steps) && p.steps! >= 2 && p.steps! <= LIMITS.stairsMaxSteps)) {
       errors.push(`${what}: stairs need 2 to ${LIMITS.stairsMaxSteps} steps`);
     }

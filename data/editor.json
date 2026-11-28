@@ -65,5 +65,11 @@
   "assets": { "max": 200, "maxThings": 300, "pictureSize": 128 },
   "arena": { "holdSeconds": 0.5, "defaultCount": 3 },
   "start": { "blasters": ["B01"], "melee": [], "health": 100 },
-  "camera": { "flySpeed": 9, "fastSpeed": 26, "lookSpeed": 0.004, "orbitSpeed": 0.006, "zoomStep": 0.15, "minDistance": 0.5, "fallbackDistance": 20, "handleSize": 0.7, "openBack": 10, "openUp": 6, "faceHandleSize": 0.018 }
+  "camera": { "flySpeed": 9, "fastSpeed": 26, "lookSpeed": 0.004, "orbitSpeed": 0.006, "zoomStep": 0.15, "minDistance": 0.5, "fallbackDistance": 20, "handleSize": 0.7, "openBack": 10, "openUp": 6, "faceHandleSize": 0.018 },
+  "textures": {
+    "_note": "R3-04: caps for uploaded textures. maxCount: how many uploads a level may hold. maxSize: the side in pixels a side may be, after scaling down. maxBytes: the approximate size of one data: URL (a base64 image is three quarters its length).",
+    "maxCount": 16,
+    "maxSize": 512,
+    "maxBytes": 300000
+  }
 }

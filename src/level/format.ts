@@ -477,6 +477,19 @@ export interface ModelAsset {
   data: string;
 }
 
+/** R3-04: an uploaded texture (a png or jpg), kept inside the level file as
+ *  a data: URL, like the sky image. A "tiles across / down" upload is cut
+ *  into that many textures, one per cell. */
+export interface TextureAsset {
+  id: string;
+  /** Display name. [Paul]. */
+  name: string;
+  /** "data:image/png;base64,..." or "data:image/jpeg;base64,...". */
+  image: string;
+  /** Metres one repeat of the texture covers. */
+  scale: number;
+}
+
 export interface PlacedModel {
   id: string;
   group?: string;
@@ -584,6 +597,8 @@ export interface Level {
   /** ED-35. */
   modelAssets?: ModelAsset[];
   models?: PlacedModel[];
+  /** R3-04: uploaded textures, max maxCount in data/editor.json. */
+  textures?: TextureAsset[];
   /** ED-34. */
   terrain?: Terrain;
 }
