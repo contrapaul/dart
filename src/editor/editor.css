@@ -1015,3 +1015,13 @@ button.on {
   padding: 0.25rem 0.3rem;
   cursor: pointer;
 }
+
+#palette .paint-slider-disabled {
+  opacity: 0.45;
+}
+
+/* R3-16: the mode buttons sit in the bottom row so the upper rows never
+   move when the brush section is disabled. */
+#palette .paint-modes {
+  margin-top: 0.3rem;
+}

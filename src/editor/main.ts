@@ -18,7 +18,7 @@ import {
 } from "./models-editor";
 import { loadModelAsset } from "../level/models";
 import { AMMO_TYPES, MARKERS, MIN_SIZE, RIGS, dragPatch, foamerColour, pickupColour, makeDoor, makeFoamer, makePickup, makeProp, makeSpawn, makeZone, rigLabel } from "./parts";
-import { buildPaintPanel, PAINT_BRUSH, type PaintSettings } from "./paint-tool";
+import { buildPaintPanel, PAINT_BRUSH, paintHint, type PaintSettings } from "./paint-tool";
 import { problemsFor, problemsLabel, type Problem } from "./problems";
 import { buildTriggerFields } from "./inspector-trigger";
 import { PHYSICS_SHAPES, buildPhysicsFields, makePhysicsObject } from "./physics-editor";
@@ -679,7 +679,7 @@ function armPaint() {
   terrainTool.disarm();
   view.setGhost(null);
   const hint = $("toolHint");
-  hint.textContent = "Paint: click or drag across prims to set their surface, or drag on the terrain to paint it. Shift keeps the tool. Esc stops.";
+  hint.textContent = paintHint(paintSettings.mode);
   hint.hidden = false;
   buildPalette();
 }
@@ -755,7 +755,12 @@ function buildPalette() {
   const paintWrap = document.createElement("div");
   paintWrap.className = "tool-wrap";
   paintWrap.append(toolButton("paint", "Paint", null, armedPaint, () => togglePaint()));
-  if (armedPaint) paintWrap.append(buildPaintPanel(paintSettings, () => buildPalette()));
+  if (armedPaint) paintWrap.append(buildPaintPanel(paintSettings, () => {
+    buildPalette();
+    const hint = $("toolHint");
+    hint.textContent = paintHint(paintSettings.mode);
+    hint.hidden = false;
+  }));
   paint.append(paintWrap);
   // ED-35: the level's imported models, each by its own name. The button
   // arms the one the picker shows; with none imported the section is not
