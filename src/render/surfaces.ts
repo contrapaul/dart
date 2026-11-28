@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import surfaceData from "../../data/surfaces.json";
+import { MORE_PAINTERS } from "./painters-more";
 
 // ED-36 (design/EDITOR-V2.md): the surfaces things can wear. Textures are
 // drawn in code, one canvas per surface, greys so the thing's colour tints
@@ -257,6 +258,8 @@ const PAINTERS: Record<string, (img: CanvasImage, rng: () => number) => void> = 
   sand: paintSand,
   rock: paintRock,
   stripes: paintStripes,
+  // R3-05: the generated surfaces, in their own file.
+  ...MORE_PAINTERS,
 };
 
 /** Draws one surface's texture into an ImageData-like array. `plain` has no
