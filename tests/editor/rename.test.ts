@@ -173,3 +173,57 @@ describe("R3-09 rename", () => {
     expect(errors).toEqual([]);
   });
 });
+
+describe("LevelDoc.rename", () => {
+  it("rewrites references as one undo step", async () => {
+    const { LevelDoc } = await import("../../src/editor/doc");
+    const level = newLevel();
+    level.zones = [{ id: "zone-1", pos: [0, 0, 0], size: [2, 2, 2] }];
+    level.triggers = [{
+      id: "trigger-1",
+      when: { kind: "enter", zone: "zone-1" },
+      do: [],
+    }];
+    const doc = new LevelDoc(level);
+    expect(doc.rename("zone-1", "zone-2")).toBeNull();
+    expect(doc.level.zones![0]!.id).toBe("zone-2");
+    expect(doc.level.triggers![0]!.when).toEqual({ kind: "enter", zone: "zone-2" });
+    doc.undo();
+    expect(doc.level.zones![0]!.id).toBe("zone-1");
+    expect(doc.level.triggers![0]!.when).toEqual({ kind: "enter", zone: "zone-1" });
+    doc.redo();
+    expect(doc.level.zones![0]!.id).toBe("zone-2");
+    expect(doc.level.triggers![0]!.when).toEqual({ kind: "enter", zone: "zone-2" });
+  });
+
+  it("refuses and records no change", async () => {
+    const { LevelDoc } = await import("../../src/editor/doc");
+    const level = newLevel();
+    level.zones = [{ id: "zone-1", pos: [0, 0, 0], size: [2, 2, 2] }];
+    const doc = new LevelDoc(level);
+    expect(doc.rename("zone-1", "floor-1")).toMatch(/already used/);
+    expect(doc.canUndo).toBe(false);
+    expect(doc.rename("zone-1", "ok")).toBeNull();
+  });
+
+  it("keeps a renamed trigger's own references after undo", async () => {
+    const { LevelDoc } = await import("../../src/editor/doc");
+    const level = newLevel();
+    level.triggers = [{
+      id: "trigger-1",
+      when: { kind: "after", trigger: "trigger-2", seconds: 1 },
+      do: [],
+    }, {
+      id: "trigger-2",
+      when: { kind: "start" },
+      do: [],
+    }];
+    const doc = new LevelDoc(level);
+    expect(doc.rename("trigger-2", "trigger-9")).toBeNull();
+    expect(doc.level.triggers![1]!.id).toBe("trigger-9");
+    expect(doc.level.triggers![0]!.when).toEqual({ kind: "after", trigger: "trigger-9", seconds: 1 });
+    doc.undo();
+    expect(doc.level.triggers![1]!.id).toBe("trigger-2");
+    expect(doc.level.triggers![0]!.when).toEqual({ kind: "after", trigger: "trigger-2", seconds: 1 });
+  });
+});
