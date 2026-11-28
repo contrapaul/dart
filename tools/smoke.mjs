@@ -102,6 +102,16 @@ async function seedLevel(chromePort, base, fixture) {
   const level = JSON.parse(await readFile(join(ROOT, "tests/fixtures/levels", fixture + ".json"), "utf8"));
   const { ws, id } = await openPage(chromePort, base + "/about.html");
   try {
+    // The live host redirects /about.html to /about: write only once the
+    // page has settled, or the navigation drops the write.
+    for (let i = 0; i < 40; i++) {
+      const state = await cdp(ws, "Runtime.evaluate", {
+        expression: `document.readyState + " " + !!document.querySelector("article")`,
+        returnByValue: true,
+      }).catch(() => null);
+      if (state?.result?.value === "complete true") break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
     const record = JSON.stringify({ key: "smoke", saved: Date.now(), level });
     const result = await cdp(ws, "Runtime.evaluate", {
       awaitPromise: true,
