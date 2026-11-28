@@ -87,11 +87,13 @@ function buildRow(row: FieldValue, f: PlacedFoamer, spec: ReturnType<typeof tune
   const name = document.createElement("span");
   name.className = "tuning-name";
   name.textContent = field.label;
+  name.title = field.title;
   const input = document.createElement("input");
   input.type = "number";
   input.step = String(field.step);
   input.min = String(field.min);
   input.max = String(field.max);
+  input.title = field.title;
   input.value = String(Math.round(value * 1000) / 1000);
   input.addEventListener("change", () => {
     const n = Number(input.value);

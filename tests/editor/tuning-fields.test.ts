@@ -10,7 +10,7 @@ describe("tuning fields", () => {
     const groups = new Set(fields.map((f) => f.field.group));
     expect(groups).toEqual(new Set(["Movement", "Health", "Size", "Damage dealt", "Attack speed", "Damage taken"]));
     expect(fields.every((f) => !f.changed)).toBe(true);
-    expect(fields.find((f) => f.field.id === "rig.voxelSize")!.value).toBeCloseTo(0.05, 5);
+    expect(fields.find((f) => f.field.id === "rig.voxelSize")!.value).toBeCloseTo(1, 5);
   });
 
   it("marks a field changed when the type is tuned, and reverts on reset", () => {
@@ -44,6 +44,22 @@ describe("tuning fields", () => {
       { id: "bonk", damage: 20, token: "melee", needs: [], windup: 0.6, strike: 0.2 },
       { id: "headbutt", damage: 8, token: "melee", needs: [], windup: 0.9, strike: 0.2 },
     ]);
+  });
+
+  it("size is a multiplier of the committed size, and writes the scaled voxelSize", () => {
+    const fields = fieldsFor("F01");
+    const size = fields.find((f) => f.field.id === "rig.voxelSize")!;
+    expect(size.field.title).toBeTruthy();
+    expect(size.value).toBeCloseTo(1, 5);
+    tuneFoamer("F01", { rig: { voxelSize: 0.1 } });
+    const tuned = fieldsFor("F01").find((f) => f.field.id === "rig.voxelSize")!;
+    expect(tuned.value).toBeCloseTo(2, 5);
+    expect(tuned.changed).toBe(true);
+    // The patch writes the committed voxelSize times the multiplier.
+    const patch = tuned.field.patch({} as never, {} as never, 3);
+    expect(patch.rig!.voxelSize).toBeCloseTo(0.15, 5);
+    // The committed value resets to 1 (normal).
+    expect(committedValue(tuned.field, "F01")).toBeCloseTo(1, 5);
   });
 
   it("weakpoint fields appear only for types that declare a weakpoint", () => {
