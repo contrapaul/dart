@@ -2,7 +2,7 @@ import hazardData from "../../data/hazards.json";
 import type { Prim, PrimBehaviour, PrimShape, Vec3 } from "../level/format";
 import { isVoxelBreakable } from "../level/validate";
 import { GRID, LIMITS, PALETTE, ROTATE_STEP, snapAxis } from "./doc";
-import { SURFACE_NAMES } from "../render/surfaces";
+import { SURFACES, SURFACE_NAMES } from "../render/surfaces";
 
 // ED-02 stage 3: the inspector's fields for the selected prims. It reads a
 // prim and calls back with a patch; the page turns the patch into one undo
@@ -67,12 +67,12 @@ function vecField(
   return host;
 }
 
-function selectField(options: string[], current: string, onChange: (v: string) => void): HTMLSelectElement {
+function selectField(options: string[], current: string, onChange: (v: string) => void, labels?: Record<string, string>): HTMLSelectElement {
   const select = document.createElement("select");
   for (const option of options) {
     const el = document.createElement("option");
     el.value = option;
-    el.textContent = option;
+    el.textContent = labels?.[option] ?? option;
     select.append(el);
   }
   select.value = current;
@@ -158,6 +158,7 @@ export function buildPrimFields(host: HTMLElement, prims: Prim[], ctx: Inspector
     (v) => {
       ctx.change({ surface: v === "plain" ? undefined : v }, `surface ${v}`);
     },
+    Object.fromEntries(SURFACE_NAMES.map((n) => [n, SURFACES[n]?.label ?? n])),
   ));
   host.append(surfaceLabel);
 
