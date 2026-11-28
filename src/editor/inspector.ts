@@ -14,8 +14,8 @@ const HAZARD_DEFAULTS = (hazardData as { defaults: { dps: number; slow: number }
 export interface InspectorContext {
   /** One undo step changing every selected prim the same way. */
   change(patch: Partial<Prim>, text: string): void;
-  /** One undo step for one prim (a rename). */
-  changeOne(id: string, patch: Partial<Prim>, text: string): void;
+  /** Renames one prim, as one undo step; refuses with a status message. */
+  rename(v: string): void;
   /** Rebuilds the panels: after a change the fields may need different ones
    *  (a behaviour brings its own block). */
   redraw(): void;
@@ -117,7 +117,7 @@ export function buildPrimFields(host: HTMLElement, prims: Prim[], ctx: Inspector
   idInput.disabled = prims.length !== 1;
   idInput.addEventListener("change", () => {
     const id = idInput.value.trim();
-    if (id && id !== first.id) ctx.changeOne(first.id, { id }, `rename to ${id}`);
+    if (id && id !== first.id) ctx.rename(id);
   });
   idLabel.append(idInput);
   host.append(idLabel);

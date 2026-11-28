@@ -15,6 +15,8 @@ export interface TriggerHandlers {
   level: Level;
   /** One undo step changing this trigger's fields. */
   change(patch: Partial<Trigger>, text: string): void;
+  /** Renames this trigger, as one undo step; refuses with a status message. */
+  rename(v: string): void;
   /** Rebuilds the panel: a kind change brings its own fields. */
   redraw(): void;
   /** The field the Link button fills ("enter", "killed", "do:2"), or null
@@ -270,7 +272,7 @@ function doRow(
 }
 
 export function buildTriggerFields(host: HTMLElement, trigger: Trigger, ctx: TriggerHandlers) {
-  host.append(label("id", textField(trigger.id, (v) => ctx.change({ id: v }, `rename to ${v}`))));
+  host.append(label("id", textField(trigger.id, (v) => ctx.rename(v))));
   host.append(label("when", selectField(
     WHEN_KINDS.map((k) => ({ value: k.kind, label: k.label })),
     trigger.when?.kind ?? "start",

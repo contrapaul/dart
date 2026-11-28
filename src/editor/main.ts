@@ -429,6 +429,7 @@ function buildOutliner() {
       name.className = "name";
       name.textContent = prim.id;
       name.addEventListener("click", (e) => pick(prim.id, e.shiftKey));
+      outlinerRenameable(row, name, prim.id);
       const eye = document.createElement("button");
       eye.type = "button";
       eye.textContent = "o";
@@ -456,6 +457,7 @@ function buildOutliner() {
       name.className = "name";
       name.textContent = partName(entry.id);
       name.addEventListener("click", (e) => pick(entry.id, e.shiftKey));
+      outlinerRenameable(row, name, entry.id);
       if (isLockableKind(kind) && "locked" in entry) {
         const lock = lockButton((entry as { locked?: boolean }).locked === true, () => toggleEntryLock(kind, entry.id));
         row.append(name, lock);
@@ -476,6 +478,7 @@ function buildOutliner() {
       const name = document.createElement("span");
       name.className = "name";
       name.textContent = trigger.id;
+      outlinerRenameable(row, name, trigger.id);
       row.title = triggerSummary(trigger);
       // The whole row picks: a long summary used to squeeze the name to
       // nothing, which left nothing to click (Paul, 2026-11-27).
@@ -528,6 +531,59 @@ function groupTitleFor(id: string): string | null {
   }
   if (id === START_ID || id === EXIT_ID) return "Level";
   return null;
+}
+
+/** R3-09: renames one entry and every reference to it, as one undo step.
+ *  Refusals land in the status line; success follows the new id. */
+function renameEntry(oldId: string, newId: string) {
+  const problem = doc.rename(oldId, newId);
+  if (problem) {
+    status.textContent = problem;
+  } else {
+    if (selected.has(oldId)) {
+      selected.delete(oldId);
+      selected.add(newId);
+    }
+    status.textContent = `Renamed ${oldId} to ${newId}.`;
+    buildOutliner();
+    selectInView();
+  }
+  buildInspector();
+}
+
+/** R3-09: the outliner row double-click. Edits the id in the row itself;
+ *  Enter commits, Escape or leaving cancels. */
+function startRowRename(row: HTMLElement, id: string) {
+  const nameEl = row.querySelector(".name");
+  if (!nameEl || row.querySelector("input")) return;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = id;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const commit = (save: boolean) => {
+    if (done) return;
+    done = true;
+    if (save) renameEntry(id, input.value.trim());
+    else buildOutliner();
+  };
+  input.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") { e.preventDefault(); commit(true); }
+    else if (e.key === "Escape") { e.preventDefault(); commit(false); }
+  });
+  input.addEventListener("blur", () => commit(true));
+  input.addEventListener("click", (e) => e.stopPropagation());
+}
+
+function outlinerRenameable(row: HTMLElement, name: HTMLElement, id: string) {
+  name.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    startRowRename(row, id);
+  });
 }
 
 /** Selects one thing, or adds it to the selection with Shift (design/EDITOR
@@ -975,6 +1031,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
     },
     redraw: buildInspector,
     rotateStep: rotateStep(),
+    rename: (v: string) => renameEntry(id, v),
   };
   if (kind === "start") buildStartFields(host, doc.level, ctx);
   else if (kind === "exit") buildExitFields(host, doc.level, ctx);
@@ -986,6 +1043,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
   else if (kind === "lights") buildLightFields(host, doc.find<LevelLight>(kind, id)!, {
     change: ctx.change,
     redraw: ctx.redraw,
+    rename: ctx.rename,
     refused: (text) => { status.textContent = text; },
     maxShadows: EDITOR.lights.maxShadows,
     shadows: doc.entries("lights").filter((l) => (l as LevelLight).castShadow === true).length,
@@ -996,6 +1054,7 @@ function buildPartInspector(host: HTMLElement, id: string, kind: EntryKind | "st
     buildModelFields(host, doc.find(kind, id)!, doc.level, {
       change: (patch, text) => doc.change("models", [{ id, patch }], text),
       redraw: buildInspector,
+      rename: (v) => renameEntry(id, v),
       warn: (text) => setModelWarning(id, text),
     });
   }
@@ -1012,6 +1071,7 @@ function buildTriggerInspector(host: HTMLElement, id: string) {
   buildTriggerFields(host, trigger, {
     level: doc.level,
     change: (patch, text) => doc.change("triggers", [{ id, patch: patch as Record<string, unknown> }], text),
+    rename: (v) => renameEntry(id, v),
     redraw: buildInspector,
     linkKey,
     setLink: (key) => {
@@ -1074,7 +1134,7 @@ function buildPrimInspector(host: HTMLElement) {
   if (!prims.length) return;
   buildPrimFields(host, prims, {
     change: (patch, text) => doc.change("prims", [...selected].map((id) => ({ id, patch })), text),
-    changeOne: (id, patch, text) => doc.change("prims", [{ id, patch }], text),
+    rename: (v) => { if (selected.size === 1) renameEntry([...selected][0]!, v); },
     redraw: () => {
       buildInspector();
       buildPalette();

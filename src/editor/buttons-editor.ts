@@ -3,7 +3,7 @@ import buttonData from "../../data/buttons.json";
 import { material, materialId } from "../voxel/materials";
 import type { Button, Level, Vec3 } from "../level/format";
 import { GRID } from "./doc";
-import { checkField, label, selectField, vecField, type PartContext } from "./inspector-parts";
+import { checkField, label, renameField, selectField, vecField, type PartContext } from "./inspector-parts";
 
 // ED-31: the editor's Button tool. A button is placed on the surface that
 // was clicked: its `pos` is the hit point and its `facing` the face's
@@ -70,6 +70,7 @@ export function buttonOnChoices(level: Level): { value: string; label: string }[
  *  mounted on (read only: it is placed by clicking the face), what it is
  *  mounted on, and whether a press needs the use key. */
 export function buildButtonFields(host: HTMLElement, b: Button, level: Level, ctx: PartContext) {
+  renameField(host, b.id, (v) => ctx.rename(v));
   host.append(label("position", vecField(b.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move the button"))));
   const facing = document.createElement("span");
   facing.className = "hint";

@@ -25,6 +25,8 @@ export interface PartContext {
   redraw(): void;
   /** The rotation snap choice: the rotation boxes' step, not their snap. */
   rotateStep: number;
+  /** Renames this entry, as one undo step; refuses with a status message. */
+  rename(v: string): void;
 }
 
 export function label(text: string, input: HTMLElement): HTMLElement {
@@ -99,10 +101,17 @@ export function textField(value: string, commit: (v: string) => void): HTMLInput
   return input;
 }
 
+/** The editable id, at the top of a single-selection panel. Commits on
+ *  Enter or leaving the field; the caller refuses with a status message. */
+export function renameField(host: HTMLElement, value: string, commit: (v: string) => void) {
+  host.append(label("id", textField(value, commit)));
+}
+
 // Per-kind field lists, so the page and a test can see what each kind edits.
 
 /** The rig ids and their names (data/foamer-rigs.json), as select options. */
 export function buildFoamerFields(host: HTMLElement, f: PlacedFoamer, rigs: { id: string; label: string }[], ctx: PartContext) {
+  renameField(host, f.id, (v) => ctx.rename(v));
   host.append(label("type", selectField(
     rigs.map((r) => ({ value: r.id, label: `${r.id} ${r.label}` })),
     f.foamer,
@@ -120,6 +129,7 @@ export function buildFoamerFields(host: HTMLElement, f: PlacedFoamer, rigs: { id
 }
 
 export function buildPickupFields(host: HTMLElement, p: Pickup, ctx: PartContext) {
+  renameField(host, p.id, (v) => ctx.rename(v));
   // The type list is grouped by what the pickup gives, since the fields
   // below change with it.
   const types: { value: string; label: string }[] = [
@@ -172,10 +182,10 @@ export function buildPickupFields(host: HTMLElement, p: Pickup, ctx: PartContext
       (v) => ctx.change({ key: v as Pickup["key"] }, `key ${v}`),
     )));
   }
-  host.append(label("id", textField(p.id, (v) => ctx.change({ id: v }, `rename to ${v}`))));
 }
 
 export function buildDoorFields(host: HTMLElement, d: LevelDoor, ctx: PartContext) {
+  renameField(host, d.id, (v) => ctx.rename(v));
   host.append(label("lock", selectField([
     { value: "none", label: "none" },
     { value: "trigger", label: "trigger" },
@@ -196,6 +206,7 @@ export function buildDoorFields(host: HTMLElement, d: LevelDoor, ctx: PartContex
 /** A prop: what it is, where, its turn, and whether it blocks. The leaking
  *  barrel always blocks, so its box is shown ticked and cannot be changed. */
 export function buildPropFields(host: HTMLElement, p: Prop, ctx: PartContext) {
+  renameField(host, p.id, (v) => ctx.rename(v));
   host.append(label("prop", selectField(
     Object.entries(PROP_KINDS).map(([value, k]) => ({ value, label: k.label })),
     p.kind, (v) => ctx.change({ kind: v, solid: undefined }, `make it a ${PROP_KINDS[v]?.label ?? v}`),
@@ -215,10 +226,12 @@ export function buildPropFields(host: HTMLElement, p: Prop, ctx: PartContext) {
 }
 
 export function buildSpawnFields(host: HTMLElement, r: Rift, ctx: PartContext) {
+  renameField(host, r.id, (v) => ctx.rename(v));
   host.append(label("position", vecField(r.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move"))));
 }
 
 export function buildZoneFields(host: HTMLElement, z: Zone, ctx: PartContext) {
+  renameField(host, z.id, (v) => ctx.rename(v));
   host.append(label("position", vecField(z.pos, GRID, GRID, (v) => ctx.change({ pos: v }, "move"))));
   host.append(label("size", vecField(z.size, GRID, GRID, (v) => ctx.change({ size: v.map((n) => Math.max(GRID, n)) as Vec3 }, "size"))));
 }

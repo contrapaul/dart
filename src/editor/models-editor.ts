@@ -4,6 +4,7 @@ import { GRID, PALETTE, snapValue } from "./doc";
 import { loadModelAsset, modelBounds, modelObject, placedMatrix } from "../level/models";
 import { modelVoxelVolumes } from "../level/model-voxels";
 import { colourField } from "./inspector";
+import { renameField } from "./inspector-parts";
 import type { Level, ModelAsset, PlacedModel, Vec3 } from "../level/format";
 
 // ED-35: importing a GLB into the editor and the fields of a placed model.
@@ -171,6 +172,8 @@ export async function voxelCapProblem(level: Level, model: PlacedModel): Promise
 export interface ModelFieldsContext {
   change(patch: Record<string, unknown>, text: string): void;
   redraw(): void;
+  /** Renames this entry, as one undo step; refuses with a status message. */
+  rename(v: string): void;
   /** A warning for the Problems list (the voxel cap). */
   warn(text: string | null): void;
 }
@@ -181,6 +184,7 @@ export interface ModelFieldsContext {
 export function buildModelFields(
   host: HTMLElement, model: PlacedModel, level: Level, ctx: ModelFieldsContext,
 ) {
+  renameField(host, model.id, (v) => ctx.rename(v));
   const asset = (level.modelAssets ?? []).find((a) => a.id === model.asset);
   const assetLabel = document.createElement("label");
   assetLabel.textContent = "asset";
