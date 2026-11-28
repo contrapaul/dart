@@ -536,15 +536,22 @@ function groupTitleFor(id: string): string | null {
 /** R3-09: renames one entry and every reference to it, as one undo step.
  *  Refusals land in the status line; success follows the new id. */
 function renameEntry(oldId: string, newId: string) {
-  const problem = doc.rename(oldId, newId);
+  const trimmed = newId.trim();
+  if (!trimmed) return;
+  if (trimmed === oldId) {
+    buildOutliner();
+    buildInspector();
+    return;
+  }
+  const problem = doc.rename(oldId, trimmed);
   if (problem) {
     status.textContent = problem;
   } else {
     if (selected.has(oldId)) {
       selected.delete(oldId);
-      selected.add(newId);
+      selected.add(trimmed);
     }
-    status.textContent = `Renamed ${oldId} to ${newId}.`;
+    status.textContent = `Renamed ${oldId} to ${trimmed}.`;
     buildOutliner();
     selectInView();
   }
