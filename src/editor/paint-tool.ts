@@ -11,6 +11,8 @@ import { EDITOR, PALETTE } from "./doc";
 export interface PaintSettings {
   surface: string;
   colour: string | null;
+  /** Brush (drag) or Bucket (click). R3-03. */
+  mode: "brush" | "bucket";
   /** The brush on the ground, its own and not the Terrain tool's (Paul,
    *  2026-11-28): metres, and how fast it lays the paint (a share a
    *  second). Prims are painted whole, so they ignore both. */
@@ -53,6 +55,23 @@ export function swatchCanvas(name: string, size = 32): HTMLCanvasElement {
 export function buildPaintPanel(state: PaintSettings, onChange: () => void): HTMLElement {
   const panel = document.createElement("div");
   panel.className = "tool-options paint-options";
+
+  const modes = document.createElement("div");
+  modes.className = "paint-modes";
+  for (const m of ["brush", "bucket"] as const) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = m === "brush" ? "Brush" : "Bucket";
+    b.dataset.mode = m;
+    b.setAttribute("aria-pressed", String(state.mode === m));
+    if (state.mode === m) b.classList.add("on");
+    b.addEventListener("click", () => {
+      state.mode = m;
+      onChange();
+    });
+    modes.append(b);
+  }
+  panel.append(modes);
 
   const surfaceTitle = document.createElement("span");
   surfaceTitle.className = "paint-title";
@@ -115,15 +134,18 @@ export function buildPaintPanel(state: PaintSettings, onChange: () => void): HTM
   panel.append(colours);
 
   // The brush for the ground. Sliders change the numbers in place without
-  // redrawing the panel, so a drag on one is not interrupted.
-  const brushTitle = document.createElement("span");
-  brushTitle.className = "paint-title";
-  brushTitle.textContent = "Brush on the terrain";
-  panel.append(brushTitle);
-  panel.append(
-    paintSlider("size", state.radius, 0.5, PAINT_BRUSH.maxRadius, 0.5, (v) => { state.radius = v; }),
-    paintSlider("strength", state.strength, 0.5, PAINT_BRUSH.maxStrength, 0.5, (v) => { state.strength = v; }),
-  );
+  // redrawing the panel, so a drag on one is not interrupted. Hidden in
+  // Bucket mode, where the whole terrain fills at once.
+  if (state.mode === "brush") {
+    const brushTitle = document.createElement("span");
+    brushTitle.className = "paint-title";
+    brushTitle.textContent = "Brush on the terrain";
+    panel.append(brushTitle);
+    panel.append(
+      paintSlider("size", state.radius, 0.5, PAINT_BRUSH.maxRadius, 0.5, (v) => { state.radius = v; }),
+      paintSlider("strength", state.strength, 0.5, PAINT_BRUSH.maxStrength, 0.5, (v) => { state.strength = v; }),
+    );
+  }
   return panel;
 }
 

@@ -45,6 +45,7 @@ import { BUTTON_COLOUR, buildButtonFields, makeButton } from "./buttons-editor";
 import { TerrainTool, TERRAIN_ID, buildTerrainInspector } from "./terrain-editor";
 import { isNudgeKey, nudgeOffset } from "./nudge";
 import { layerForPaint } from "../level/terrain";
+import { connectedSameLook, fillTerrain } from "./bucket";
 
 // ED-02 stage 2: the editor page, the panels around the view. The document
 // (src/editor/doc.ts) holds the level and the undo list; the view
@@ -112,7 +113,7 @@ let placeColour = "#ff7a1a";
 /** ED-36: the Paint tool. `paintSurface` is the surface brushed on a prim,
  *  `paintColour` is null (keep the prim's colour) or a hex colour. */
 let armedPaint = false;
-const paintSettings: PaintSettings = { surface: "brick", colour: null, radius: PAINT_BRUSH.radius, strength: PAINT_BRUSH.strength };
+const paintSettings: PaintSettings = { surface: "brick", colour: null, mode: "brush", radius: PAINT_BRUSH.radius, strength: PAINT_BRUSH.strength };
 const selected = new Set<string>();
 /** ED-08 stage 3: the trigger field Link fills ("enter", "killed", "do:2"),
  *  or null when nothing is linking. Cleared when the selection changes. */
@@ -1233,6 +1234,52 @@ function floorPoint(e: PointerEvent, y: number): THREE.Vector3 | null {
   return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), new THREE.Vector3());
 }
 
+
+/** R3-03: Bucket mode. A click on a prim paints every prim reachable through
+ *  touching or overlapping boxes that wear the same surface and colour; a
+ *  click on the terrain fills the whole terrain with the chosen look. Each
+ *  is one undo step. */
+function paintBucket(hit: { id: string | null; point: THREE.Vector3 } | null, e: PointerEvent) {
+  if (hit?.id && doc.kindOf(hit.id) === "prims") {
+    const ids = connectedSameLook(doc.level, hit.id).map((p) => p.id);
+    if (!ids.length) return;
+    const patch: Record<string, unknown> = {
+      surface: paintSettings.surface === "plain" ? undefined : paintSettings.surface,
+    };
+    if (paintSettings.colour) patch.colour = paintSettings.colour;
+    doc.change("prims", ids.map((id) => ({ id, patch })), `paint ${ids.length} prim${ids.length === 1 ? "" : "s"}`);
+    status.textContent = `Filled ${ids.length} prim${ids.length === 1 ? "" : "s"}.`;
+    finishBucket(e);
+    return;
+  }
+  const t = doc.level.terrain;
+  if (t && onTerrain(e, hit)) {
+    if (t.locked) {
+      status.textContent = "The terrain is locked. Unlock it in its inspector to paint it.";
+      return;
+    }
+    const { layers, index } = layerForPaint(t, paintSettings.surface, paintSettings.colour);
+    const work = structuredClone(t);
+    work.layers = layers.map((l) => ({ ...l }));
+    fillTerrain(work, index);
+    doc.setFields({ terrain: work }, "fill the terrain");
+    status.textContent = "Filled the terrain.";
+    finishBucket(e);
+  }
+}
+
+/** R3-03: after a bucket fill, leave the tool armed only when Shift is held,
+ *  like the brush drag. */
+function finishBucket(e: PointerEvent) {
+  if (!e.shiftKey) {
+    armedPaint = false;
+    const hint = $("toolHint");
+    hint.textContent = "";
+    hint.hidden = true;
+  }
+  buildPalette();
+}
+
 // Registered in the capture phase, so it runs before the handles' own
 // listener and can keep them out of a press that drags the thing itself.
 canvas.addEventListener("pointerdown", (e) => {
@@ -1241,6 +1288,10 @@ canvas.addEventListener("pointerdown", (e) => {
   // ED-36: the Paint tool paints, it does not move or select.
   if (armedPaint) {
     const hit = view.pick(...ndcOf(e));
+    if (paintSettings.mode === "bucket") {
+      paintBucket(hit, e);
+      return;
+    }
     if (hit?.id && doc.kindOf(hit.id) === "prims") {
       press = { kind: "paint", x: e.clientX, y: e.clientY, painted: new Map() };
       paintPrim(hit.id);
