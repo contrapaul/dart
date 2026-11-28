@@ -12,15 +12,24 @@
     <canvas id="view"></canvas>
     <div id="editor-ui">
       <div id="topbar">
-        <button id="newBtn" type="button">New</button>
-        <button id="openBtn" type="button">Open</button>
+        <!-- The file buttons in one menu, so the bar fits a laptop screen
+             (Paul, 2026-11-28: the bar had grown 1681 px wide). -->
+        <details id="fileMenu" class="menu">
+          <summary>File</summary>
+          <div class="menu-items">
+            <button id="newBtn" type="button">New</button>
+            <button id="openBtn" type="button">Open</button>
+            <button id="exportBtn" type="button">Export</button>
+            <button id="importBtn" type="button">Import</button>
+            <button id="importModelBtn" type="button" title="Import a .glb model, kept in the level file">Import model</button>
+            <button id="assetsBtn" type="button" title="Save what is selected as an asset, and place a saved asset">Assets</button>
+          </div>
+        </details>
+        <input id="importFile" type="file" accept=".json,application/json" hidden />
+        <input id="importModelFile" type="file" accept=".glb,model/gltf-binary" hidden />
         <input id="levelName" type="text" value="[Paul]" title="Level name" />
         <button id="undoBtn" type="button">Undo</button>
         <button id="redoBtn" type="button">Redo</button>
-        <button id="exportBtn" type="button">Export</button>
-        <button id="importBtn" type="button">Import</button>
-        <input id="importFile" type="file" accept=".json,application/json" hidden />
-        <button id="assetsBtn" type="button" title="Save what is selected as an asset, and place a saved asset">Assets</button>
         <select id="rotateSnap" title="Rotation snap: degrees the rotate handle and snapPrim snap to, remembered">
           <option value="0">Snap off</option>
           <option value="1">1 deg</option>
@@ -29,8 +38,6 @@
           <option value="45">45 deg</option>
           <option value="90">90 deg</option>
         </select>
-        <button id="importModelBtn" type="button" title="Import a .glb model, kept in the level file">Import model</button>
-        <input id="importModelFile" type="file" accept=".glb,model/gltf-binary" hidden />
         <span class="spacer"></span>
         <button id="playBtn" type="button" title="Play the level here (Tab). Shift+Tab plays from the camera. Esc comes back."><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 1 L11 6 L2 11 Z" fill="currentColor" /></svg> Play</button>
         <span class="spacer"></span>

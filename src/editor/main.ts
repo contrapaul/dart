@@ -200,13 +200,14 @@ function updateTopBar() {
   counts.classList.toggle("over", overCaps(doc.level).length > 0);
 }
 
-/** "12 of 2000 prims, 3 of 150 foamers" against the caps in data/editor.json. */
+/** "12 prims, 3 Foamers": short, so the top bar fits a laptop screen; the
+ *  caps in data/editor.json are in its tooltip and the Problems count. */
 function countText(level: Level): string {
   const parts = [
-    `${level.prims?.length ?? 0} of ${LIMITS.prims} prims`,
-    `${level.foamers?.length ?? 0} of ${LIMITS.foamers} foamers`,
-    `${level.triggers?.length ?? 0} of ${LIMITS.triggers} triggers`,
-    `${level.lights?.length ?? 0} of ${LIMITS.lights} lights`,
+    `${level.prims?.length ?? 0} prims`,
+    `${level.foamers?.length ?? 0} Foamers`,
+    `${level.triggers?.length ?? 0} triggers`,
+    `${level.lights?.length ?? 0} lights`,
   ];
   return parts.join(", ");
 }
@@ -2334,6 +2335,16 @@ function load(level: Level, key: string | null) {
 }
 
 $("newBtn").addEventListener("click", () => load(newLevel(), null));
+
+// The File menu closes once one of its buttons is used, and on a click
+// anywhere else.
+const fileMenu = $<HTMLDetailsElement>("fileMenu");
+fileMenu.addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).closest(".menu-items button")) fileMenu.open = false;
+});
+document.addEventListener("pointerdown", (e) => {
+  if (fileMenu.open && !fileMenu.contains(e.target as Node)) fileMenu.open = false;
+});
 
 // Paul, 2026-11-28: back to the opening view, behind the player start, from
 // wherever the camera has flown to. Home does the same.

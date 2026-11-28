@@ -20,8 +20,8 @@
   top: 0;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.6rem;
+  gap: 0.3rem;
+  padding: 0.35rem 0.5rem;
   background: rgba(20, 12, 40, 0.9);
   border-bottom: 1px solid rgba(255, 210, 63, 0.35);
   font-size: 13px;
@@ -38,7 +38,7 @@
 }
 
 #topbar input#levelName {
-  width: 12em;
+  width: 9em;
   background: #140c28;
   color: #fff6e8;
   border: 1px solid #4a3f6e;
@@ -832,4 +832,44 @@ button.on {
   padding: 0.25rem 0.6rem;
   background: rgba(20, 12, 40, 0.9);
   border: 1px solid rgba(255, 210, 63, 0.35);
+}
+
+/* The File menu in the top bar. */
+#topbar .menu {
+  position: relative;
+}
+
+#topbar .menu > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #4a3f6e;
+  border-radius: 4px;
+  background: #2a2340;
+}
+
+#topbar .menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+#topbar .menu[open] > summary {
+  border-color: #ffd23f;
+}
+
+#topbar .menu-items {
+  position: fixed;
+  top: 2.3rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.3rem;
+  min-width: 9rem;
+  background: #140c28;
+  border: 1px solid #ffd23f;
+  border-radius: 4px;
+}
+
+#topbar .menu-items button {
+  text-align: left;
 }
