@@ -171,14 +171,23 @@ export function buildAssetPanel(body: HTMLElement, host: AssetPanelHost) {
   for (const template of TEMPLATES) {
     const row = document.createElement("div");
     row.className = "template-row";
-    const label = document.createElement("span");
-    label.className = "template-name";
-    label.textContent = template.name;
+    const text = document.createElement("span");
+    text.className = "template-text";
+    const name = document.createElement("span");
+    name.className = "template-name";
+    name.textContent = template.name;
+    const desc = document.createElement("span");
+    desc.className = "template-desc";
+    desc.textContent = template.note;
+    desc.title = template.note;
+    text.append(name, desc);
     const place = button("Place", () => host.place({
       name: template.name, clip: template.clip, picture: template.picture,
       key: `template-${template.name}`, saved: 0,
     }));
-    row.append(label, place);
+    place.className = "template-place";
+    place.title = `Place ${template.name}`;
+    row.append(text, place);
     templateRows.append(row);
   }
   templates.append(heading, templateRows);

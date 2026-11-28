@@ -2607,6 +2607,10 @@ function arenaDialog(zone: string) {
   });
 
   void dialog(`Arena in ${zone}`, (body) => {
+    // R3-17: the formula row sits under the title, since picking one fills
+    // everything below the line.
+    const formulaSlot = document.createElement("div");
+    body.append(formulaSlot);
     const state = document.createElement("p");
     state.className = "hint";
     body.append(state);
@@ -2648,15 +2652,25 @@ function arenaDialog(zone: string) {
       const heading = document.createElement("h3");
       heading.textContent = "waves";
       waveBox.append(heading);
+      const header = document.createElement("div");
+      header.className = "wave-header";
+      for (const text of ["Foamer", "count", "promoted", "hold (s)", "delay (s)", ""]) {
+        const cell = document.createElement("span");
+        cell.textContent = text;
+        header.append(cell);
+      }
+      waveBox.append(header);
       waves.forEach((wave, i) => {
         const row = document.createElement("div");
-        row.className = "row";
+        row.className = "row wave-row";
         const type = selectField(
           RIGS.map((r) => ({ value: r.id, label: `${r.id} ${r.label}` })),
           wave.foamer,
           (v) => { wave.foamer = v; say(); },
         );
         const count = numberInput(wave.count, 1, (n) => { wave.count = Math.max(1, Math.round(n)); say(); });
+        count.className = "wave-count";
+        count.title = "how many foamers";
         const promote = document.createElement("label");
         const promoteInput = document.createElement("input");
         promoteInput.type = "checkbox";
@@ -2664,8 +2678,10 @@ function arenaDialog(zone: string) {
         promoteInput.addEventListener("change", () => { wave.promoted = promoteInput.checked || undefined; say(); });
         promote.append(promoteInput, document.createTextNode("promoted"));
         const hold = numberInput(wave.holdSeconds ?? EDITOR.arena.holdSeconds, 0.25, (n) => { wave.holdSeconds = Math.max(0, n); say(); });
+        hold.className = "wave-num";
         hold.title = "seconds between arrivals";
         const delay = numberInput(wave.delaySeconds ?? 0, 0.5, (n) => { wave.delaySeconds = Math.max(0, n); say(); });
+        delay.className = "wave-num";
         delay.title = "seconds after the previous wave";
         const up = document.createElement("button");
         up.type = "button";
@@ -2683,7 +2699,10 @@ function arenaDialog(zone: string) {
           waves.splice(i, 1);
           waves_();
         });
-        row.append(type, count, promote, hold, delay, up, cut);
+        const movePair = document.createElement("span");
+        movePair.className = "wave-move";
+        movePair.append(up, cut);
+        row.append(type, count, promote, hold, delay, movePair);
         waveBox.append(row);
       });
       const add = document.createElement("button");
@@ -2864,7 +2883,7 @@ function arenaDialog(zone: string) {
 
     formulaButtons.append(save, deleteBtn, exportBtn, importBtn);
     formulaBox.append(formulaHeading, formulaSelect, formulaButtons, formulaNote, importFile);
-    body.append(formulaBox);
+    formulaSlot.append(formulaBox);
     void loadFormulas();
 
     const build = document.createElement("button");
