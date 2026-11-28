@@ -6,7 +6,7 @@
 import type { Level, LevelLight, LevelLighting, Vec3 } from "../level/format";
 import { GRID, PALETTE, snapAxis } from "./doc";
 import { colourField } from "./inspector";
-import { numberInput, label, selectField } from "./inspector-parts";
+import { label, numberInput, renameField, selectField } from "./inspector-parts";
 import { lookDefaults, TONE_MAPPING_NAMES, type ToneMappingName } from "../render/look";
 
 /** The defaults a click places, from data/editor.json: white, intensity 20,
@@ -42,6 +42,8 @@ export function makeLight(id: string, pos: Vec3, kind: LightKindChoice, lift = 0
 export interface LightFieldsContext {
   change(patch: Record<string, unknown>, text: string): void;
   redraw(): void;
+  /** Renames this entry, as one undo step; refuses with a status message. */
+  rename(v: string): void;
   /** Puts a refusal in the status line (over the shadow cap). */
   refused(text: string): void;
   /** The shadow cap, from data/editor.json. */
@@ -52,6 +54,7 @@ export interface LightFieldsContext {
 
 /** The inspector's fields for one placed light. */
 export function buildLightFields(host: HTMLElement, light: LevelLight, ctx: LightFieldsContext) {
+  renameField(host, light.id, (v) => ctx.rename(v));
   // The position field commits one step per axis, as the prims' do.
   const posField = (() => {
     const host2 = document.createElement("div");

@@ -3,7 +3,7 @@ import { SURFACE_NAMES } from "../render/surfaces";
 import { GRID, PALETTE } from "./doc";
 import { colourField } from "./inspector";
 import {
-  checkField, label, numberInput, selectField, vecField, type PartContext,
+  checkField, label, numberInput, renameField, selectField, vecField, type PartContext,
 } from "./inspector-parts";
 import physicsData from "../../data/physics.json";
 
@@ -44,6 +44,7 @@ export function makePhysicsObject(
 
 /** The inspector's fields for one physics object. */
 export function buildPhysicsFields(host: HTMLElement, o: PhysicsObject, ctx: PartContext) {
+  renameField(host, o.id, (v) => ctx.rename(v));
   host.append(label("shape", selectField(PHYSICS_SHAPES, o.shape, (v) => {
     ctx.change({ shape: v }, `make it a ${v}`);
     ctx.redraw();

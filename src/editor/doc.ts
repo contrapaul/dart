@@ -2,6 +2,7 @@ import editorData from "../../data/editor.json";
 import type {
   Box, Level, PlayerStart, Prim, PrimBehaviour, PrimShape, Sky, Vec3,
 } from "../level/format";
+import { applyRename, renameProblem } from "./rename";
 
 // ED-02 stage 1: the level document the editor edits. Pure data: no DOM and
 // no Three.js, so the undo list and the level can be tested headless.
@@ -356,6 +357,43 @@ export class LevelDoc {
       text: text ?? (entries.length === 1 ? `change ${entries[0]!.key}` : `change ${entries.length} things`),
       entries,
     });
+  }
+
+  /** R3-09: renames an entry and every reference to it, as one undo step.
+   *  Returns why it cannot (empty, invalid or already-used id), or null. */
+  rename(oldId: string, newId: string): string | null {
+    const kind = this.kindOf(oldId);
+    if (!kind) return "No such thing.";
+    const problem = renameProblem(this.current, oldId, newId);
+    if (problem) return problem;
+    const next = applyRename(this.current, oldId, newId);
+    const entries: EntryEdit[] = [];
+    const capture = <T extends { id: string }>(kind: EntryKind, before: T[], after: T[]) => {
+      for (let i = 0; i < before.length; i += 1) {
+        if (JSON.stringify(before[i]) !== JSON.stringify(after[i])) {
+          entries.push({ kind, key: before[i]!.id, before: before[i], after: after[i] });
+        }
+      }
+    };
+    capture("prims", this.current.prims ?? [], next.prims ?? []);
+    capture("foamers", this.current.foamers ?? [], next.foamers ?? []);
+    capture("pickups", this.current.pickups ?? [], next.pickups ?? []);
+    capture("doors", this.current.doors ?? [], next.doors ?? []);
+    capture("spawnPoints", this.current.spawnPoints ?? [], next.spawnPoints ?? []);
+    capture("zones", this.current.zones ?? [], next.zones ?? []);
+    capture("triggers", this.current.triggers ?? [], next.triggers ?? []);
+    capture("props", this.current.props ?? [], next.props ?? []);
+    capture("buttons", this.current.buttons ?? [], next.buttons ?? []);
+    capture("lights", this.current.lights ?? [], next.lights ?? []);
+    capture("physics", this.current.physics ?? [], next.physics ?? []);
+    capture("models", this.current.models ?? [], next.models ?? []);
+    const sameArenas = JSON.stringify(this.current.arenas ?? null) === JSON.stringify(next.arenas ?? null);
+    this.run({
+      text: `rename ${oldId} to ${newId}`,
+      entries,
+      fields: sameArenas ? undefined : { before: { arenas: this.current.arenas }, after: { arenas: next.arenas } },
+    });
+    return null;
   }
 
   /** Copies entries of a kind with fresh ids, moved by `offset` metres.
