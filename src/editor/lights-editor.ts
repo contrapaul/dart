@@ -7,6 +7,7 @@ import type { Level, LevelLight, LevelLighting, Vec3 } from "../level/format";
 import { GRID, PALETTE, snapAxis } from "./doc";
 import { colourField } from "./inspector";
 import { numberInput, label, selectField } from "./inspector-parts";
+import { lookDefaults, TONE_MAPPING_NAMES, type ToneMappingName } from "../render/look";
 
 /** The defaults a click places, from data/editor.json: white, intensity 20,
  *  range 8, angle 45 and softness 0.3. [Paul] owns colours. */
@@ -155,6 +156,23 @@ export function buildLightingSection(host: HTMLElement, level: Level, ctx: {
     const cur = level.lighting ?? defaultLighting();
     ctx.change({ lighting: { ...cur, sunPitch: Math.max(0, Math.min(90, n)) } }, "sun pitch");
   })));
+  // R3-06: global illumination. Omitted gi fields take the data/render.json
+  // look defaults; the fields show the resolved values.
+  const look = lookDefaults();
+  const gi = l?.gi;
+  const giPatch = (patch: Record<string, unknown>, text: string) => {
+    const cur = level.lighting ?? defaultLighting();
+    const nextGi: Record<string, unknown> = { ...cur.gi, ...patch };
+    ctx.change({ lighting: { ...cur, gi: nextGi as LevelLighting["gi"] } }, text);
+  };
+  host.append(label("tone mapping", selectField(
+    TONE_MAPPING_NAMES.map((name) => ({ value: name, label: name })),
+    gi?.toneMapping ?? look.toneMapping,
+    (v) => giPatch({ toneMapping: v as ToneMappingName }, "tone mapping"),
+  )));
+  host.append(label("exposure", numberInput(gi?.exposure ?? look.exposure, 0.1, (n) => giPatch({ exposure: Math.max(0.01, n) }, "exposure"))));
+  host.append(label("sky light", numberInput(gi?.skyLight ?? look.skyLight, 0.1, (n) => giPatch({ skyLight: Math.max(0, n) }, "sky light"))));
+  host.append(label("bounce colour", colourField(gi?.bounce ?? look.bounce, PALETTE, (c) => giPatch({ bounce: c }, "bounce colour"))));
   const note = document.createElement("p");
   note.className = "hint";
   note.textContent = l ? "This level's own light, replacing the defaults." : "The arena's defaults (no lighting set).";
